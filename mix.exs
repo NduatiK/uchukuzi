@@ -22,6 +22,9 @@ defmodule Uchukuzi.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:topo, "~> 0.4.0"},
+      {:distance, "~> 0.2.1"},
+      {:envelope, "~> 1.1"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]

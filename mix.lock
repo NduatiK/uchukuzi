@@ -1,0 +1,8 @@
+%{
+  "distance": {:hex, :distance, "0.2.2", "76f7cd6b6e21b3c1430a0776d594955baafd9ebf1133f98f62cdbb180074215a", [:mix], [], "hexpm"},
+  "envelope": {:hex, :envelope, "1.2.0", "ebd4644b0c51a209671e7f73e530cf427b8abefcae78b90b6ef27f454327ee45", [:mix], [{:distance, "~> 0.2.1", [hex: :distance, repo: "hexpm", optional: false]}, {:geo, "~> 1.0 or ~> 2.0 or ~> 3.0", [hex: :geo, repo: "hexpm", optional: false]}], "hexpm"},
+  "geo": {:hex, :geo, "3.3.3", "1119302b20d21515fbcec0a180b82653524067873ed333e7fa1f55e39959d702", [:mix], [], "hexpm"},
+  "seg_seg": {:hex, :seg_seg, "0.1.1", "a7a5c072ad9de3af1bb5e155492c2c7a0fd5f381700efe9b9ba38c95fb997bd7", [:mix], [{:vector, "~> 1.0", [hex: :vector, repo: "hexpm", optional: false]}], "hexpm"},
+  "topo": {:hex, :topo, "0.4.0", "93dcfb35574c76502d5b43a5caef79567e8aa7f2d340ef8bbac35f9ff92ca5f3", [:mix], [{:geo, "~> 3.1", [hex: :geo, repo: "hexpm", optional: false]}, {:seg_seg, "~> 0.1", [hex: :seg_seg, repo: "hexpm", optional: false]}, {:vector, "~> 1.0", [hex: :vector, repo: "hexpm", optional: false]}], "hexpm"},
+  "vector": {:hex, :vector, "1.0.1", "587fdc3866a224c359df80b5f59f403ac38817f9f60d4076fd0d1128028ea4cd", [:mix], [], "hexpm"},
+}
