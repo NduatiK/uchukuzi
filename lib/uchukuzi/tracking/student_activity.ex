@@ -1,11 +1,12 @@
 defmodule Uchukuzi.Tracking.StudentActivity do
   alias __MODULE__
   alias Uchukuzi.Tracking.Trip
+  alias Uchukuzi.Tracking.Report
   alias Uchukuzi.Location
   alias Uchukuzi.School.Bus
   alias Uchukuzi.Roles.Assistant
 
-  @activities [:board_vehicle, :exit_vehicle]
+  @activities [:boarded_vehicle, :exited_vehicle]
 
   @enforce_keys [:student, :activity, :bus, :time, :reported_by]
   defstruct [:student, :activity, :time, :bus, :infered_location, :reported_by]
@@ -54,4 +55,7 @@ defmodule Uchukuzi.Tracking.StudentActivity do
       lat: (report_after.lat + report_before.lat) / 2
     }
   end
+
+  def is_boarding?(%StudentActivity{activity: :boarded_vehicle}), do: true
+  def is_boarding?(%StudentActivity{}), do: false
 end

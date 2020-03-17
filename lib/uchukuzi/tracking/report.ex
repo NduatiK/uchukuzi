@@ -6,6 +6,7 @@ defmodule Uchukuzi.Tracking.Report do
 
   @enforce_keys [:time, :location, :device]
   defstruct [:time, :location, :device]
+  @type t :: %__MODULE__{time: Int.t(), location: Location.t(), device: Device.t()}
 
   def new(time, %Location{} = location, %Device{} = device) do
     %Report{time: time, location: location, device: device}
