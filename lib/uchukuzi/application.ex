@@ -7,12 +7,11 @@ defmodule Uchukuzi.Application do
 
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: Uchukuzi.Worker.start_link(arg)
-      # {Uchukuzi.Worker, arg}
+      {Registry, keys: :unique, name: Registry.Uchukuzi},
+      Uchukuzi.Tracking.TripTrackerSupervisor
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
+    :ets.new(Uchukuzi.Tracking.TripTracker.tableName(), [:public, :named_table])
     opts = [strategy: :one_for_one, name: Uchukuzi.Supervisor]
     Supervisor.start_link(children, opts)
   end
