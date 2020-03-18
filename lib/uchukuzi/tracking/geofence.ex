@@ -23,16 +23,15 @@ defmodule Uchukuzi.Tracking.Geofence do
       geofence.perimeter
       |> Enum.map(fn point ->
         {point.lon, point.lat}
-        point
       end)
 
-    perimeter = %Geo.Polygon{coordinates: perimeter_points}
+    perimeter = %Geo.Polygon{coordinates: [perimeter_points]}
 
     perimeter_env =
       perimeter
       |> Envelope.from_geo()
 
-    location = %Geo.Point{coordinates: {location.lon, location.lat}, srid: nil}
+    location = %Geo.Point{coordinates: {location.lon, location.lat}}
 
     location_env =
       location

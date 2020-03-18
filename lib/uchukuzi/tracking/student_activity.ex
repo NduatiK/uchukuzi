@@ -6,6 +6,8 @@ defmodule Uchukuzi.Tracking.StudentActivity do
   alias Uchukuzi.School.Bus
   alias Uchukuzi.Roles.Assistant
 
+  def boarded_vehicle(), do: :boarded_vehicle
+  def exited_vehicle(), do: :exited_vehicle
   @activities [:boarded_vehicle, :exited_vehicle]
 
   @enforce_keys [:student, :activity, :bus, :time, :reported_by]
@@ -13,18 +15,13 @@ defmodule Uchukuzi.Tracking.StudentActivity do
 
   def new(student, activity, time, %Bus{} = bus, %Assistant{} = assistant)
       when activity in @activities do
-    {:ok,
-     %StudentActivity{
-       student: student,
-       activity: activity,
-       time: time,
-       bus: bus,
-       reported_by: assistant
-     }}
-  end
-
-  def new(_, _, _) do
-    {:error, :invalid_activity}
+    %StudentActivity{
+      student: student,
+      activity: activity,
+      time: time,
+      bus: bus,
+      reported_by: assistant
+    }
   end
 
   @doc """
@@ -40,10 +37,6 @@ defmodule Uchukuzi.Tracking.StudentActivity do
   Calculate where an activity happened based on a trip's information
   """
   def infer_location(%StudentActivity{} = student_activity, %Trip{} = trip) do
-    if trip.start_time > student_activity.time || trip.end_time < student_activity.time do
-      {:error, :activity_out_of_trip_bounds}
-    end
-
     is_before_activity = fn report -> report.time < student_activity.time end
     is_after_activity = fn report -> not is_before_activity.(report) end
 
@@ -51,8 +44,8 @@ defmodule Uchukuzi.Tracking.StudentActivity do
     report_after = Enum.find(trip.reports, nil, is_after_activity)
 
     %Location{
-      lon: (report_after.lon + report_before.lon) / 2,
-      lat: (report_after.lat + report_before.lat) / 2
+      lon: (report_after.location.lon + report_before.location.lon) / 2,
+      lat: (report_after.location.lat + report_before.location.lat) / 2
     }
   end
 

@@ -9,7 +9,7 @@ defmodule Uchukuzi.School.School do
   defstruct [:name, :perimeter, :managers, :assistants]
 
   def new(name, %Geofence{type: :school} = perimeter) do
-    {:ok, %School{name: name, perimeter: perimeter, assistants: [], managers: []}}
+    %School{name: name, perimeter: perimeter, assistants: [], managers: []}
   end
 
   @spec contains_point?(Uchukuzi.School.School.t(), Uchukuzi.Location.t()) :: boolean

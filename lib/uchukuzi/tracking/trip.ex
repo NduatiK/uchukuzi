@@ -1,11 +1,20 @@
 defmodule Uchukuzi.Tracking.Trip do
   alias __MODULE__
 
-  @trip_states [:ongoing, :terminate]
-  @trip_types [:mobile, :dormant]
+  @trip_states [:ongoing, :terminated]
+  @trip_types [:mobile, :in_school]
 
   @enforce_keys [:reports]
-  defstruct [:reports, :student_activities, :students, :state, :start_time, :end_time, :type]
+  defstruct [
+    :reports,
+    :student_activities,
+    :students,
+    :state,
+    :start_time,
+    :end_time,
+    :type,
+    :distance_covered
+  ]
 
   alias Uchukuzi.Location
   alias Uchukuzi.Tracking.Report
@@ -18,22 +27,28 @@ defmodule Uchukuzi.Tracking.Trip do
   def new(%Report{} = initial_report, %School{} = school) do
     type =
       if School.contains_point?(school, initial_report.location) do
-        :dormant
+        :in_school
       else
         :mobile
       end
 
-    {:ok,
-     %Trip{
-       reports: [initial_report],
-       student_activities: [],
-       students: [],
-       state: :ongoing,
-       type: type,
-       start_time: initial_report.time
-     }}
+    %Trip{
+      reports: [initial_report],
+      student_activities: [],
+      students: [],
+      state: :ongoing,
+      type: type,
+      start_time: initial_report.time,
+      end_time: initial_report.time,
+      distance_covered: 0
+    }
   end
 
+  @spec insert_report(
+          Uchukuzi.Tracking.Trip.t(),
+          Uchukuzi.Tracking.Report.t(),
+          Uchukuzi.School.School.t()
+        ) :: {:error, <<_::640>>} | {:ok, Uchukuzi.Tracking.Trip.t()}
   def insert_report(
         %Trip{state: state, end_time: end_time} = trip,
         %Report{time: time} = report,
@@ -50,12 +65,14 @@ defmodule Uchukuzi.Tracking.Trip do
   end
 
   def insert_report(%Trip{}, %Report{}, %School{}) do
-    {:error, "this is not an ongoing trip and the provided report occurs after trip was closed"}
+    {:error, :invalid_report_for_trip}
   end
 
+  @spec insert_student_activity(Uchukuzi.Tracking.Trip.t(), Uchukuzi.Tracking.StudentActivity.t()) ::
+          {:error, :activity_out_of_trip_bounds} | {:ok, %{reports: any}}
   def insert_student_activity(%Trip{} = trip, %StudentActivity{} = student_activity) do
-    with true <- trip.start_time > student_activity.time,
-         true <- trip.end_time < student_activity.time do
+    with true <- trip.start_time < student_activity.time,
+         true <- trip.end_time > student_activity.time do
       trip =
         trip
         |> insert(student_activity)
@@ -67,6 +84,9 @@ defmodule Uchukuzi.Tracking.Trip do
     end
   end
 
+  @spec insert(%{reports: any}, %{
+          __struct__: Uchukuzi.Tracking.Report | Uchukuzi.Tracking.StudentActivity
+        }) :: %{reports: any}
   def insert(trip, %Report{} = report) do
     reports = Enum.sort([report | trip.reports], &(&1.time >= &2.time))
     [latest_report | _] = reports
@@ -91,7 +111,9 @@ defmodule Uchukuzi.Tracking.Trip do
     {distance_covered, _last_report} =
       trip.reports
       |> Enum.reduce({0, nil}, fn current_report, acc ->
-        {sum, previous_report} = acc
+        {sum, previous_report_or_nil} = acc
+
+        previous_report = previous_report_or_nil || current_report
 
         distance = Location.distance_between(current_report.location, previous_report.location)
 
@@ -106,14 +128,14 @@ defmodule Uchukuzi.Tracking.Trip do
 
     state =
       cond do
-        inside_school and type == :mobile ->
-          :terminate
+        inside_school and type == :in_school ->
+          :ongoing
 
-        not inside_school and type == :dormant ->
+        not inside_school and type == :mobile ->
           :ongoing
 
         true ->
-          :terminate
+          :terminated
       end
 
     %{trip | state: state}
@@ -131,7 +153,7 @@ defmodule Uchukuzi.Tracking.Trip do
     %{trip | student_activities: student_activities, state: :terminate}
   end
 
-  def is_terminated(%Trip{state: :terminate}), do: true
+  def is_terminated(%Trip{state: :terminated}), do: true
   def is_terminated(_), do: false
 
   def latest_location(%Trip{} = trip) do
@@ -140,6 +162,7 @@ defmodule Uchukuzi.Tracking.Trip do
 
   def students_onboard(%Trip{} = trip) do
     trip.student_activities
+    |> Enum.reverse()
     |> Enum.reduce(MapSet.new(), fn activity, students ->
       cond do
         StudentActivity.is_boarding?(activity) ->
