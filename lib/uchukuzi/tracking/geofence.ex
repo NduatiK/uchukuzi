@@ -37,12 +37,10 @@ defmodule Uchukuzi.Tracking.Geofence do
       location
       |> Envelope.from_geo()
 
-    case Envelope.intersects?(perimeter_env, location_env) do
-      true ->
-        Topo.intersects?(perimeter, location)
-
-      false ->
-        false
+    if Envelope.intersects?(perimeter_env, location_env) do
+      Topo.intersects?(perimeter, location)
+    else
+      false
     end
   end
 end

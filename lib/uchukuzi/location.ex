@@ -7,7 +7,7 @@ defmodule Uchukuzi.Location do
   @enforce_keys [:lon, :lat]
   defstruct [:lon, :lat]
 
-  def new(lat, lon) when -90 <= lat and lat <= 90 and -180 <= lon and lon <= 180 do
+  def new(lon, lat) when -90 <= lat and lat <= 90 and -180 <= lon and lon <= 180 do
     {:ok, %Location{lon: lon, lat: lat}}
   end
 
@@ -18,5 +18,9 @@ defmodule Uchukuzi.Location do
     [loc1, loc2]
     |> Enum.map(&{&1.lon, &1.lat})
     |> Distance.GreatCircle.distance()
+  end
+
+  def to_coord(%Location{} = loc) do
+    {loc.lon, loc.lat}
   end
 end
