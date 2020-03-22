@@ -1,9 +1,9 @@
 defmodule TripTrackerTest do
   use ExUnit.Case
   doctest Uchukuzi
-  alias Uchukuzi.Tracking.TripTrackerSupervisor
+  alias Uchukuzi.Tracking.TripSupervisor
   alias Uchukuzi.Tracking.TripTracker
-  alias Uchukuzi.Tracking.Report
+  alias Uchukuzi.Report
   alias Uchukuzi.Tracking.Geofence
   alias Uchukuzi.School.School
   alias Uchukuzi.Location
@@ -12,6 +12,23 @@ defmodule TripTrackerTest do
   alias Uchukuzi.Tracking.StudentActivity
   alias Uchukuzi.Roles.Student
   alias Uchukuzi.Roles.Assistant
+  alias Uchukuzi.School.BusesSupervisor
+  alias Uchukuzi.School.BusSupervisor
+
+  setup do
+    try do
+      if pid = GenServer.whereis(BusSupervisor.via_tuple(sample_bus())) do
+        Supervisor.stop(pid, :normal)
+      end
+    catch
+      _ ->
+        nil
+    end
+
+    # :sys.terminate(BusesSupervisor, "setup")
+    # :sys.terminate(BusesSupervisor, "setup")
+    :ok
+  end
 
   def sample_school(name \\ "name") do
     {:ok, loc1} = Location.new(0, 0)
@@ -32,14 +49,21 @@ defmodule TripTrackerTest do
 
   def report(time, lon, lat) do
     {:ok, location} = Location.new(lon, lat)
-    Report.new(time, location, %Uchukuzi.School.Device{imei: ""})
+    Report.new(time, location)
   end
 
-  def sample_bus, do: %Bus{number_plate: "KAU944P", device: [], route: [], assistants: []}
+  def sample_bus, do: %Bus{id: 1, number_plate: "KAU944P", device: [], route: [], assistants: []}
 
   test "the trip tracker is restored with all its state on crash" do
+    bus = sample_bus()
+
+    IO.inspect(BusesSupervisor.start_bus(bus))
+
+    trip_sup = TripSupervisor.pid_from(bus)
+
     {:ok, trip_tracker} =
-      TripTrackerSupervisor.start_trip(
+      TripSupervisor.start_trip(
+        trip_sup,
         sample_school(),
         sample_bus(),
         report(0, 0, 0)
@@ -52,12 +76,11 @@ defmodule TripTrackerTest do
     TripTracker.insert_report(trip_tracker, report)
 
     state_before_crash = TripTracker.trip(trip_tracker)
-    # IO.inspect(state_before_crash)
 
     Process.exit(trip_tracker, :kaboom)
     :timer.sleep(10)
 
-    trip_tracker = GenServer.whereis(TripTracker.via_tuple(sample_school(), sample_bus()))
+    trip_tracker = GenServer.whereis(TripTracker.via_tuple(sample_bus()))
 
     state_after_crash = TripTracker.trip(trip_tracker)
 
@@ -65,8 +88,15 @@ defmodule TripTrackerTest do
   end
 
   test "the trip tracker exits when trip is terminated" do
+    bus = sample_bus()
+
+    IO.inspect(BusesSupervisor.start_bus(bus))
+
+    trip_sup = TripSupervisor.pid_from(bus)
+
     {:ok, trip_tracker} =
-      TripTrackerSupervisor.start_trip(
+      TripSupervisor.start_trip(
+        trip_sup,
         sample_school("name2"),
         sample_bus(),
         report(0, 0, 0)
@@ -77,7 +107,7 @@ defmodule TripTrackerTest do
     TripTracker.insert_report(trip_tracker, report)
     :timer.sleep(10)
 
-    name = TripTracker.via_tuple(sample_school("name2"), sample_bus())
+    name = TripTracker.pid_from(sample_bus())
 
     assert(nil == GenServer.whereis(name))
 
@@ -85,16 +115,23 @@ defmodule TripTrackerTest do
       [] ==
         :ets.lookup(
           TripTracker.tableName(),
-          TripTracker.via_tuple(sample_school("name2"), sample_bus())
+          TripTracker.via_tuple(sample_bus())
         )
     )
   end
 
   test "student tracking works" do
+    bus = sample_bus()
+
+    IO.inspect(BusesSupervisor.start_bus(bus))
+
+    trip_sup = TripSupervisor.pid_from(bus)
+
     {:ok, trip_tracker} =
-      TripTrackerSupervisor.start_trip(
+      TripSupervisor.start_trip(
+        trip_sup,
         sample_school("name3"),
-        sample_bus(),
+        bus,
         report(0, 0, 0)
       )
 
