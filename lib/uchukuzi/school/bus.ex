@@ -5,12 +5,31 @@ defmodule Uchukuzi.School.Bus do
   alias Uchukuzi.School.Route
   alias Uchukuzi.Roles.Assistant
 
-  @enforce_keys [:number_plate, :device, :route, :assistants]
-  defstruct [:number_plate, :device, :route, :assistants]
+  @enforce_keys [:id, :number_plate, :device, :route, :assistants]
+  defstruct [
+    :id,
+    :number_plate,
+    :device,
+    :route,
+    assistants: [],
+    fuel_records: [],
+    performed_repairs: [],
+    scheduled_repairs: []
+  ]
 
   def new(number_plate, %Device{} = device, %Route{} = route) do
     with :ok <- validate_number_plate(number_plate) do
-      {:ok, %Bus{number_plate: number_plate, device: device, route: route, assistants: []}}
+      {:ok,
+       %Bus{
+         id: number_plate,
+         number_plate: number_plate,
+         device: device,
+         route: route,
+         assistants: [],
+         fuel_records: [],
+         performed_repairs: [],
+         scheduled_repairs: []
+       }}
     else
       {:error, msg} ->
         {:error, msg}

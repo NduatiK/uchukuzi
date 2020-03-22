@@ -3,27 +3,26 @@ defmodule Uchukuzi.Tracking.TripTracker do
 
   @message_timeout 60 * 15 * 1_000
 
+  alias __MODULE__
   alias Uchukuzi.School.School
   alias Uchukuzi.School.Bus
-  alias Uchukuzi.Tracking.Report
+  alias Uchukuzi.Report
   alias Uchukuzi.Tracking.Trip
   alias Uchukuzi.Tracking.Geofence
   alias Uchukuzi.Tracking.StudentActivity
 
-  def start_link(
-        %{
-          school: %School{} = school,
-          bus: %Bus{} = bus,
-          initial_report: %Report{},
-          geofences: geofences
-        } = args
-      )
-      when is_list(geofences) do
-    GenServer.start_link(__MODULE__, args, name: via_tuple(school, bus))
+  def start_link([args, %Bus{} = bus]) do
+    GenServer.start_link(__MODULE__, args, name: via_tuple(bus))
   end
 
-  def via_tuple(%School{} = school, %Bus{} = bus),
-    do: {:via, Registry, {Registry.Uchukuzi, "#{school.name}:#{bus.number_plate}"}}
+  def via_tuple(%Bus{} = bus),
+    do: Uchukuzi.service_name({__MODULE__, bus.id})
+
+  def pid_from(%Bus{} = bus) do
+    bus
+    |> via_tuple()
+    |> GenServer.whereis()
+  end
 
   def fresh_state(%{
         school: %School{} = school,
@@ -32,7 +31,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
         geofences: geofences
       }) do
     %{
-      name: via_tuple(school, bus),
+      name: via_tuple(bus),
       trip: Trip.new(initial_report, school),
       school: school,
       geofences: geofences,
@@ -40,13 +39,8 @@ defmodule Uchukuzi.Tracking.TripTracker do
     }
   end
 
-  def init(
-        %{
-          school: %School{} = school,
-          bus: %Bus{} = bus
-        } = args
-      ) do
-    send(self(), {:set_state, via_tuple(school, bus), args})
+  def init(%{bus: %Bus{} = bus} = args) do
+    send(self(), {:set_state, via_tuple(bus), args})
 
     {:ok, fresh_state(args), @message_timeout}
   end

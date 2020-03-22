@@ -17,7 +17,7 @@ defmodule Uchukuzi.Tracking.Trip do
   ]
 
   alias Uchukuzi.Location
-  alias Uchukuzi.Tracking.Report
+  alias Uchukuzi.Report
   alias Uchukuzi.School.School
   alias Uchukuzi.Tracking.StudentActivity
 
@@ -44,24 +44,19 @@ defmodule Uchukuzi.Tracking.Trip do
     }
   end
 
-  @spec insert_report(
-          Uchukuzi.Tracking.Trip.t(),
-          Uchukuzi.Tracking.Report.t(),
-          Uchukuzi.School.School.t()
-        ) :: {:error, <<_::640>>} | {:ok, Uchukuzi.Tracking.Trip.t()}
+  @spec insert_report(Uchukuzi.Tracking.Trip.t(), Uchukuzi.Report.t(), Uchukuzi.School.School.t()) ::
+          {:error, :invalid_report_for_trip} | {:ok, Uchukuzi.Tracking.Trip.t()}
   def insert_report(
         %Trip{state: state, end_time: end_time} = trip,
         %Report{time: time} = report,
         %School{} = school
       )
       when state == :ongoing or time < end_time do
-    trip =
-      trip
-      |> insert(report)
-      |> update_distance_covered()
-      |> update_state(school, report)
-
-    {:ok, trip}
+    {:ok,
+     trip
+     |> insert(report)
+     |> update_distance_covered()
+     |> update_state(school, report)}
   end
 
   def insert_report(%Trip{}, %Report{}, %School{}) do
@@ -69,29 +64,24 @@ defmodule Uchukuzi.Tracking.Trip do
   end
 
   @spec insert_student_activity(Uchukuzi.Tracking.Trip.t(), Uchukuzi.Tracking.StudentActivity.t()) ::
-          {:error, :activity_out_of_trip_bounds} | {:ok, %{reports: any}}
+          {:error, :activity_out_of_trip_bounds} | {:ok, Uchukuzi.Tracking.Trip.t()}
   def insert_student_activity(%Trip{} = trip, %StudentActivity{} = student_activity) do
     with true <- trip.start_time < student_activity.time,
          true <- trip.end_time > student_activity.time do
-      trip =
-        trip
-        |> insert(student_activity)
-
-      {:ok, trip}
+      {:ok,
+       trip
+       |> insert(student_activity)}
     else
       false ->
         {:error, :activity_out_of_trip_bounds}
     end
   end
 
-  @spec insert(%{reports: any}, %{
-          __struct__: Uchukuzi.Tracking.Report | Uchukuzi.Tracking.StudentActivity
-        }) :: %{reports: any}
   def insert(trip, %Report{} = report) do
     reports = Enum.sort([report | trip.reports], &(&1.time >= &2.time))
     [latest_report | _] = reports
 
-    %{trip | reports: reports, end_time: latest_report.time}
+    %Trip{trip | reports: reports, end_time: latest_report.time}
   end
 
   def insert(trip, %StudentActivity{} = student_activity) do
