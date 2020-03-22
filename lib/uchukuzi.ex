@@ -3,16 +3,7 @@ defmodule Uchukuzi do
   Documentation for Uchukuzi.
   """
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Uchukuzi.hello()
-      :world
-
-  """
-  def hello do
-    :world
+  def service_name(service_id) do
+    {:via, Registry, {Uchukuzi.Registry, service_id}}
   end
 end
