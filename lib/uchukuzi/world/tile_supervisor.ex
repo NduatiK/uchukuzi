@@ -7,7 +7,7 @@ defmodule Uchukuzi.World.TileSupervisor do
 
   @name __MODULE__
 
-  def start_link() do
+  def start_link(_options) do
     DynamicSupervisor.start_link(__MODULE__, :ok, name: @name)
   end
 

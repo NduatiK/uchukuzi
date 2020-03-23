@@ -1,4 +1,4 @@
-defmodule Uchukuzi.Household do
+defmodule Uchukuzi.Roles.Household do
   alias __MODULE__
   alias Uchukuzi.Roles.Guardian
   alias Uchukuzi.Roles.Student

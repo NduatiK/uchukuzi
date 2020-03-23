@@ -1,4 +1,4 @@
-defmodule Uchukuzi.Tracking.World do
+defmodule Uchukuzi.World do
   alias Uchukuzi.Report
   alias Uchukuzi.Location
   alias Uchukuzi.World.TileServer
@@ -36,33 +36,33 @@ defmodule Uchukuzi.Tracking.World do
     end
   end
 
-  def tile_for(%Report{} = report),
+  defp tile_for(%Report{} = report),
     do: tile_for(report.location)
 
-  def tile_for(%Location{} = location) do
+  defp tile_for(%Location{} = location) do
     Tile.new(location)
   end
 
-  def tile_server_for(%Report{} = report),
+  defp tile_server_for(%Report{} = report),
     do: tile_server_for(report.location)
 
-  def tile_server_for(%Location{} = location) do
+  defp tile_server_for(%Location{} = location) do
     TileSupervisor.tile_for(location)
   end
 
-  def moved(tile_server, bus_server, %Report{} = current_report) do
+  defp moved(tile_server, bus_server, %Report{} = current_report) do
     TileServer.moved(tile_server, bus_server, current_report)
   end
 
-  def exited(tile_server, bus_server, time) do
+  defp exited(tile_server, bus_server, time) do
     TileServer.exited(tile_server, bus_server, time)
   end
 
-  def entered(tile_server, bus_server, time, location) do
+  defp entered(tile_server, bus_server, time, location) do
     TileServer.entered(tile_server, bus_server, time, location)
   end
 
-  def crossed_tiles(previous_report, current_report) do
+  defp crossed_tiles(previous_report, current_report) do
     start_tile = Tile.new(previous_report.location)
     end_tile = Tile.new(current_report.location)
 
@@ -77,7 +77,7 @@ defmodule Uchukuzi.Tracking.World do
     |> Enum.filter(&Tile.intesects?(&1, path))
   end
 
-  def crossed(tiles, bus_server, average_time) do
+  defp crossed(tiles, bus_server, average_time) do
     tiles
     |> Enum.map(&TileSupervisor.tile_for/1)
     |> Enum.map(&TileServer.crossed(&1, bus_server, average_time))
@@ -85,7 +85,7 @@ defmodule Uchukuzi.Tracking.World do
 
   @spec calculate_time(Uchukuzi.Report.t(), Uchukuzi.Report.t(), any, any, any) ::
           {float, float, float}
-  def calculate_time(previous_report, current_report, previous_tile, tiles, current_tile) do
+  defp calculate_time(previous_report, current_report, previous_tile, tiles, current_tile) do
     path = %Geo.LineString{
       coordinates: [
         Report.to_coord(previous_report),

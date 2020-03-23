@@ -11,8 +11,8 @@ defmodule Uchukuzi.World.WorldSupervisor do
 
   def init(_) do
     children = [
-      # worker(WorldManager, []),
-      supervisor(TileSupervisor, [])
+      worker(WorldManager, [[]]),
+      supervisor(TileSupervisor, [[]])
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
