@@ -4,7 +4,9 @@ defmodule Uchukuzi.Roles.Student do
   An school bus user who attends a specific school.
 
   A student may be registered to use the bus in the
-  morning and/or evening (#{@travel_times})
+  morning and/or evening (#{
+    Enum.reduce(@travel_times, &(&2 <> ", " <> &1)) |> String.replace_suffix(",", "")
+  })
 
   A student may be granted access to bus details by their `Guardian`
   """

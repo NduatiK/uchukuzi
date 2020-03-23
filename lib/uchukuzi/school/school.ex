@@ -1,9 +1,8 @@
 defmodule Uchukuzi.School.School do
   alias __MODULE__
-  import Uchukuzi.Location, only: [is_location: 1]
-  alias Uchukuzi.Location
+  alias Uchukuzi.Common.Location
   alias Uchukuzi.Roles.Manager
-  alias Uchukuzi.Tracking.Geofence
+  alias Uchukuzi.Common.Geofence
 
   @enforce_keys [:name, :perimeter, :managers, :assistants]
   defstruct [:name, :perimeter, :managers, :assistants]
@@ -12,7 +11,7 @@ defmodule Uchukuzi.School.School do
     %School{name: name, perimeter: perimeter, assistants: [], managers: []}
   end
 
-  @spec contains_point?(Uchukuzi.School.School.t(), Uchukuzi.Location.t()) :: boolean
+  @spec contains_point?(Uchukuzi.School.School.t(), Uchukuzi.Common.Location.t()) :: boolean
   def contains_point?(%School{} = school, %Location{} = location) do
     Geofence.contains_point?(school.perimeter, location)
   end

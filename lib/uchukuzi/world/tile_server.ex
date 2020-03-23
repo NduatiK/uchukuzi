@@ -6,10 +6,11 @@ defmodule Uchukuzi.World.TileServer do
   in the real world as they relate to the location of vehicles
   """
 
-  alias __MODULE__
-  alias Uchukuzi.Location
+  # alias __MODULE__
+  alias Uchukuzi.Common.Location
   alias Uchukuzi.World.Tile
-  alias Uchukuzi.World.TileSupervisor
+  alias Uchukuzi.World.WorldManager
+  alias Uchukuzi.School.BusServer
 
   defmodule BusState do
     @enforce_keys [:pid, :enter_time, :position, :ref]
@@ -21,7 +22,7 @@ defmodule Uchukuzi.World.TileServer do
   end
 
   @impl true
-  @spec init(Uchukuzi.Location.t()) :: {:ok, %{buses: %{}, location: Uchukuzi.Location.t()}}
+  @spec init(Uchukuzi.Common.Location.t()) :: {:ok, %{buses: %{}, location: Uchukuzi.Common.Location.t()}}
   def init(%Location{} = location) do
     state = %{
       location: location,
@@ -112,7 +113,9 @@ defmodule Uchukuzi.World.TileServer do
   @impl true
   def handle_cast({:crossed, bus_pid, average_time}, state) do
     # TODO: Learn
-    # Uchukuzi.ETA.time_in(self(), bus_pid, average_time)
+    bus = BusServer.bus(bus_pid)
+    WorldManager.bus_crossed_tile(bus, state.tile, average_time)
+    # .time_in(self(), bus_pid, average_time)
     IO.inspect(average_time, label: "cross time")
 
     state

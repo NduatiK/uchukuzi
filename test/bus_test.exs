@@ -3,8 +3,8 @@ defmodule TripTrackerTest do
   doctest Uchukuzi
 
   alias Uchukuzi.World.Tile
-  alias Uchukuzi.Location
-  alias Uchukuzi.Report
+  alias Uchukuzi.Common.Location
+  alias Uchukuzi.Common.Report
   alias Uchukuzi.School.Bus
   alias Uchukuzi.School.BusServer
 

@@ -1,7 +1,7 @@
-defmodule Uchukuzi.Report do
+defmodule Uchukuzi.Common.Report do
   alias __MODULE__
 
-  alias Uchukuzi.Location
+  alias Uchukuzi.Common.Location
 
   @enforce_keys [:time, :location]
   defstruct [:time, :location]

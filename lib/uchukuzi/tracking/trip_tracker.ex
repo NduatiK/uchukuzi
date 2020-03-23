@@ -1,4 +1,4 @@
-defmodule Uchukuzi.Tracking.TripTracker do
+defmodule Uchukuzi.Trips.TripTracker do
   use GenServer, restart: :transient
 
   @message_timeout 60 * 15 * 1_000
@@ -6,10 +6,10 @@ defmodule Uchukuzi.Tracking.TripTracker do
   alias __MODULE__
   alias Uchukuzi.School.School
   alias Uchukuzi.School.Bus
-  alias Uchukuzi.Report
-  alias Uchukuzi.Tracking.Trip
-  alias Uchukuzi.Tracking.Geofence
-  alias Uchukuzi.Tracking.StudentActivity
+  alias Uchukuzi.Common.Report
+  alias Uchukuzi.Trips.Trip
+  alias Uchukuzi.Common.Geofence
+  alias Uchukuzi.Trips.StudentActivity
 
   def start_link([args, %Bus{} = bus]) do
     GenServer.start_link(__MODULE__, args, name: via_tuple(bus))

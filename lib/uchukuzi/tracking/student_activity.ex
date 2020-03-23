@@ -1,7 +1,7 @@
-defmodule Uchukuzi.Tracking.StudentActivity do
+defmodule Uchukuzi.Trips.StudentActivity do
   alias __MODULE__
-  alias Uchukuzi.Tracking.Trip
-  alias Uchukuzi.Location
+  alias Uchukuzi.Trips.Trip
+  alias Uchukuzi.Common.Location
   alias Uchukuzi.School.Bus
   alias Uchukuzi.Roles.Assistant
 

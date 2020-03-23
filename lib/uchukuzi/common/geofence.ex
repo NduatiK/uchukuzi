@@ -1,7 +1,7 @@
-defmodule Uchukuzi.Tracking.Geofence do
+defmodule Uchukuzi.Common.Geofence do
   alias __MODULE__
-  import Uchukuzi.Location, only: [is_location: 1]
-  alias Uchukuzi.Location
+  import Uchukuzi.Common.Location, only: [is_location: 1]
+  alias Uchukuzi.Common.Location
 
   @types [:school, :stay_inside, :never_enter]
 
@@ -17,7 +17,7 @@ defmodule Uchukuzi.Tracking.Geofence do
     end
   end
 
-  @spec contains_point?(Uchukuzi.Tracking.Geofence.t(), Uchukuzi.Location.t()) :: boolean
+  @spec contains_point?(Uchukuzi.Common.Geofence.t(), Uchukuzi.Common.Location.t()) :: boolean
   def contains_point?(%Geofence{} = geofence, %Location{} = location) do
     perimeter_points =
       geofence.perimeter

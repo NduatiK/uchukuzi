@@ -63,12 +63,11 @@ defmodule Uchukuzi.MixProject do
           Uchukuzi.Roles.Student
         ],
         Tracking: [
-          Uchukuzi.Tracking.Geofence,
-          Uchukuzi.Tracking.StudentActivity,
-          Uchukuzi.Tracking.Trip,
-          Uchukuzi.Tracking.TripSupervisor,
-          Uchukuzi.Tracking.TripTracker,
-          Uchukuzi.Tracking.World
+          Uchukuzi.Common.Geofence,
+          Uchukuzi.Trips.StudentActivity,
+          Uchukuzi.Trips.Trip,
+          Uchukuzi.Trips.TripSupervisor,
+          Uchukuzi.Trips.TripTracker
         ],
         World: [
           Uchukuzi.World.Tile,

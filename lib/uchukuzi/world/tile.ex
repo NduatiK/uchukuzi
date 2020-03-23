@@ -31,18 +31,18 @@ defmodule Uchukuzi.World.Tile do
   """
 
   alias __MODULE__
-  alias Uchukuzi.Location
+  alias Uchukuzi.Common.Location
 
   @enforce_keys [:coordinate, :opposite_coordinate]
   defstruct [:coordinate, :opposite_coordinate, :polygon]
 
-  def get_size(size) do
+  defp get_size(size) do
     cond do
       size != nil ->
         size
 
       true ->
-        with {:ok, size} <- Application.fetch_env(:uchukuzi, "default_tile_size") do
+        with {:ok, size} <- Application.fetch_env(:uchukuzi, :default_tile_size) do
           size
         else
           _ ->
@@ -181,7 +181,7 @@ defmodule Uchukuzi.World.Tile do
 
   @doc """
   Given two tiles, calculate all the tiles through which a straight line connecting
-  the two `could` pass through.
+  the two *could* pass through.
   """
   def tiles_between(%Tile{} = start_tile, %Tile{} = end_tile, size \\ nil) do
     size = get_size(size)
@@ -221,4 +221,9 @@ defmodule Uchukuzi.World.Tile do
     |> Enum.flat_map(& &1)
     |> Enum.reject(&(&1 == start_tile || &1 == end_tile))
   end
+
+  @doc """
+  Generates a unique tuple for a tile
+  """
+  def name(%Tile{} = tile), do: tile.coordinate
 end

@@ -1,8 +1,8 @@
-defmodule Uchukuzi.Tracking.TripSupervisor do
+defmodule Uchukuzi.Trips.TripSupervisor do
   use DynamicSupervisor
 
-  alias Uchukuzi.Tracking.TripTracker
-  alias Uchukuzi.Report
+  alias Uchukuzi.Trips.TripTracker
+  alias Uchukuzi.Common.Report
   alias Uchukuzi.School.Bus
   alias Uchukuzi.School.School
 
@@ -27,7 +27,7 @@ defmodule Uchukuzi.Tracking.TripSupervisor do
           __MODULE__.t(),
           Uchukuzi.School.School.t(),
           Uchukuzi.School.Bus.t(),
-          Uchukuzi.Report.t()
+          Uchukuzi.Common.Report.t()
         ) :: :ignore | {:error, any} | {:ok, pid} | {:ok, pid, any}
   def start_trip(trip_supervisor, %School{} = school, %Bus{} = bus, %Report{} = initial_report) do
     args = %{

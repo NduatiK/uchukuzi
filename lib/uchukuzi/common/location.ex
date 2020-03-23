@@ -1,4 +1,4 @@
-defmodule Uchukuzi.Location do
+defmodule Uchukuzi.Common.Location do
   @moduledoc """
   A longitud-
   """

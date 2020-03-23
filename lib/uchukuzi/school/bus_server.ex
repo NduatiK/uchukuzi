@@ -2,8 +2,7 @@ defmodule Uchukuzi.School.BusServer do
   use GenServer
 
   alias Uchukuzi.School.Bus
-  alias Uchukuzi.Roles.Student
-  alias Uchukuzi.Report
+  alias Uchukuzi.Common.Report
   alias Uchukuzi.School.BusesSupervisor
   alias __MODULE__
 
@@ -17,6 +16,10 @@ defmodule Uchukuzi.School.BusServer do
 
     def last_seen(%State{} = state) do
       Map.get(state, :last_seen)
+    end
+
+    def bus(%State{} = state) do
+      Map.get(state, :bus)
     end
   end
 
@@ -44,6 +47,9 @@ defmodule Uchukuzi.School.BusServer do
     {:ok, state}
   end
 
+  def bus(bus_server),
+    do: GenServer.cast(bus_server, {:bus})
+
   def move(bus_server, %Report{} = report),
     do: GenServer.cast(bus_server, {:move, report})
 
@@ -56,6 +62,10 @@ defmodule Uchukuzi.School.BusServer do
 
   def handle_call(:last_seen, _from, state) do
     {:reply, State.last_seen(state), state}
+  end
+
+  def handle_call(:bus, _from, state) do
+    {:reply, State.bus(state), state}
   end
 
   # def pickup_student(bus_server, %Student{} = student),

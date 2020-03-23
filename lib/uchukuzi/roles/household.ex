@@ -2,7 +2,7 @@ defmodule Uchukuzi.Roles.Household do
   alias __MODULE__
   alias Uchukuzi.Roles.Guardian
   alias Uchukuzi.Roles.Student
-  alias Uchukuzi.Location
+  alias Uchukuzi.Common.Location
 
   @enforce_keys [:home_location, :pickup_location, :guardian, :students]
   defstruct [:home_location, :pickup_location, :guardian, :students]

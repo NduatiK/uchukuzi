@@ -3,7 +3,7 @@ defmodule TripTrackerTest do
   doctest Uchukuzi
 
   alias Uchukuzi.World.Tile
-  alias Uchukuzi.Location
+  alias Uchukuzi.Common.Location
 
   test "trip correctly gets all between tile" do
     size = 0.5

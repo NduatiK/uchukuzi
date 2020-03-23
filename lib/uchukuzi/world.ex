@@ -1,6 +1,6 @@
 defmodule Uchukuzi.World do
-  alias Uchukuzi.Report
-  alias Uchukuzi.Location
+  alias Uchukuzi.Common.Report
+  alias Uchukuzi.Common.Location
   alias Uchukuzi.World.TileServer
   alias Uchukuzi.World.TileSupervisor
   alias Uchukuzi.World.Tile
@@ -83,7 +83,7 @@ defmodule Uchukuzi.World do
     |> Enum.map(&TileServer.crossed(&1, bus_server, average_time))
   end
 
-  @spec calculate_time(Uchukuzi.Report.t(), Uchukuzi.Report.t(), any, any, any) ::
+  @spec calculate_time(Uchukuzi.Common.Report.t(), Uchukuzi.Common.Report.t(), any, any, any) ::
           {float, float, float}
   defp calculate_time(previous_report, current_report, previous_tile, tiles, current_tile) do
     path = %Geo.LineString{

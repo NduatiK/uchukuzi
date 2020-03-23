@@ -3,7 +3,7 @@ defmodule Uchukuzi.World.TileSupervisor do
 
   alias Uchukuzi.World.TileServer
   alias Uchukuzi.World.Tile
-  alias Uchukuzi.Location
+  alias Uchukuzi.Common.Location
 
   @name __MODULE__
 

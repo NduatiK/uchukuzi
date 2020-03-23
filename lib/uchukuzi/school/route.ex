@@ -5,7 +5,7 @@ defmodule Uchukuzi.School.Route do
   """
   alias __MODULE__
   alias Uchukuzi.School.BusStop
-  import Uchukuzi.Location, only: [is_location: 1]
+  import Uchukuzi.Common.Location, only: [is_location: 1]
 
   @enforce_keys [:name, :locations]
   defstruct [:name, :locations, :stops]

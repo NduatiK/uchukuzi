@@ -4,7 +4,7 @@ defmodule Uchukuzi.School.BusStop do
   and drops some of the students for a given `route`
   """
   alias __MODULE__
-  alias Uchukuzi.Location
+  alias Uchukuzi.Common.Location
   alias Uchukuzi.School.Route
 
   @enforce_keys [:location, :route]

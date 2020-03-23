@@ -1,8 +1,8 @@
-defmodule Uchukuzi.Tracking.Trip do
+defmodule Uchukuzi.Trips.Trip do
   alias __MODULE__
 
-  @trip_states [:ongoing, :terminated]
-  @trip_types [:mobile, :in_school]
+  # @trip_states [:ongoing, :terminated]
+  # @trip_types [:mobile, :in_school]
 
   @enforce_keys [:reports]
   defstruct [
@@ -16,10 +16,10 @@ defmodule Uchukuzi.Tracking.Trip do
     :distance_covered
   ]
 
-  alias Uchukuzi.Location
-  alias Uchukuzi.Report
+  alias Uchukuzi.Common.Location
+  alias Uchukuzi.Common.Report
   alias Uchukuzi.School.School
-  alias Uchukuzi.Tracking.StudentActivity
+  alias Uchukuzi.Trips.StudentActivity
 
   @doc """
   Create a trip starting off with an initial report
@@ -44,8 +44,8 @@ defmodule Uchukuzi.Tracking.Trip do
     }
   end
 
-  @spec insert_report(Uchukuzi.Tracking.Trip.t(), Uchukuzi.Report.t(), Uchukuzi.School.School.t()) ::
-          {:error, :invalid_report_for_trip} | {:ok, Uchukuzi.Tracking.Trip.t()}
+  @spec insert_report(Uchukuzi.Trips.Trip.t(), Uchukuzi.Common.Report.t(), Uchukuzi.School.School.t()) ::
+          {:error, :invalid_report_for_trip} | {:ok, Uchukuzi.Trips.Trip.t()}
   def insert_report(
         %Trip{state: state, end_time: end_time} = trip,
         %Report{time: time} = report,
@@ -63,8 +63,8 @@ defmodule Uchukuzi.Tracking.Trip do
     {:error, :invalid_report_for_trip}
   end
 
-  @spec insert_student_activity(Uchukuzi.Tracking.Trip.t(), Uchukuzi.Tracking.StudentActivity.t()) ::
-          {:error, :activity_out_of_trip_bounds} | {:ok, Uchukuzi.Tracking.Trip.t()}
+  @spec insert_student_activity(Uchukuzi.Trips.Trip.t(), Uchukuzi.Trips.StudentActivity.t()) ::
+          {:error, :activity_out_of_trip_bounds} | {:ok, Uchukuzi.Trips.Trip.t()}
   def insert_student_activity(%Trip{} = trip, %StudentActivity{} = student_activity) do
     with true <- trip.start_time < student_activity.time,
          true <- trip.end_time > student_activity.time do
