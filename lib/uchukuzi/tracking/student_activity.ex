@@ -1,27 +1,29 @@
-defmodule Uchukuzi.Trips.StudentActivity do
+defmodule Uchukuzi.Tracking.StudentActivity do
   alias __MODULE__
-  alias Uchukuzi.Trips.Trip
+  alias Uchukuzi.Tracking.Trip
   alias Uchukuzi.Common.Location
-  alias Uchukuzi.School.Bus
   alias Uchukuzi.Roles.Assistant
 
-  def boarded_vehicle(), do: :boarded_vehicle
-  def exited_vehicle(), do: :exited_vehicle
+
   @activities [:boarded_vehicle, :exited_vehicle]
 
-  @enforce_keys [:student, :activity, :bus, :time, :reported_by]
-  defstruct [:student, :activity, :time, :bus, :infered_location, :reported_by]
+  @enforce_keys [:student, :activity, :time, :reported_by]
+  defstruct [:student, :activity, :time, :infered_location, :reported_by]
 
-  def new(student, activity, time, %Bus{} = bus, %Assistant{} = assistant)
-      when activity in @activities do
-    %StudentActivity{
-      student: student,
-      activity: activity,
-      time: time,
-      bus: bus,
-      reported_by: assistant
-    }
-  end
+  def boarded(student, time \\ nil,  %Assistant{} = assistant),
+    do: new(student, :boarded_vehicle, time, assistant)
+
+  def exited(student, time \\ nil,  %Assistant{} = assistant),
+    do: new(student, :exited_vehicle, time, assistant)
+
+  defp new(student, activity, time,  %Assistant{} = assistant)
+       when activity in @activities,
+       do: %StudentActivity{
+         student: student,
+         activity: activity,
+         time: time || DateTime.utc_now(),
+         reported_by: assistant
+       }
 
   @doc """
   Set the location when this activity took place.
@@ -40,12 +42,16 @@ defmodule Uchukuzi.Trips.StudentActivity do
     is_after_activity = fn report -> not is_before_activity.(report) end
 
     report_before = Enum.find(trip.reports, nil, is_before_activity)
-    report_after = Enum.find(trip.reports, nil, is_after_activity)
+    report_after = Enum.find(trip.reports, report_before, is_after_activity)
 
-    %Location{
-      lon: (report_after.location.lon + report_before.location.lon) / 2,
-      lat: (report_after.location.lat + report_before.location.lat) / 2
-    }
+    if report_before == nil and report_after == nil do
+      nil
+    else
+      %Location{
+        lon: (report_after.location.lon + report_before.location.lon) / 2,
+        lat: (report_after.location.lat + report_before.location.lat) / 2
+      }
+    end
   end
 
   def is_boarding?(%StudentActivity{activity: :boarded_vehicle}), do: true

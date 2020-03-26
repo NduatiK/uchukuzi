@@ -4,16 +4,19 @@ defmodule Uchukuzi.School.BusServer do
   alias Uchukuzi.School.Bus
   alias Uchukuzi.Common.Report
   alias Uchukuzi.School.BusesSupervisor
+
+
   alias __MODULE__
 
   defmodule State do
     alias __MODULE__
-    defstruct [:last_seen, :bus]
+    defstruct [:last_seen, :bus, :school]
 
     def set_location(%State{} = state, %Report{} = report) do
       %{state | last_seen: report}
     end
 
+    @spec last_seen(Uchukuzi.School.BusServer.State.t()) :: any
     def last_seen(%State{} = state) do
       Map.get(state, :last_seen)
     end
@@ -47,6 +50,8 @@ defmodule Uchukuzi.School.BusServer do
     {:ok, state}
   end
 
+  # *************************** CLIENT ***************************#
+
   def bus(bus_server),
     do: GenServer.cast(bus_server, {:bus})
 
@@ -55,6 +60,8 @@ defmodule Uchukuzi.School.BusServer do
 
   def last_seen(bus_server),
     do: GenServer.call(bus_server, :last_seen)
+
+  # *************************** SERVER ***************************#
 
   def handle_cast({:move, location}, state) do
     {:noreply, State.set_location(state, location)}
@@ -67,14 +74,4 @@ defmodule Uchukuzi.School.BusServer do
   def handle_call(:bus, _from, state) do
     {:reply, State.bus(state), state}
   end
-
-  # def pickup_student(bus_server, %Student{} = student),
-  #   do: GenServer.cast(bus_server, {:pickup_server, student})
-
-  # def dropoff_student(bus_server, %Student{} = student),
-  #   do: GenServer.cast(bus_server, {:dropoff_student, student})
-
-  # def dropoff_st_call(:location, _from, state) do
-  #   {:reply, Map.get(state, :location), state}
-  # end
 end

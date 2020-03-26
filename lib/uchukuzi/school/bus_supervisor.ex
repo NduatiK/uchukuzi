@@ -1,7 +1,6 @@
 defmodule Uchukuzi.School.BusSupervisor do
   use Supervisor, restart: :transient
 
-  alias Uchukuzi.Trips.TripSupervisor
   alias Uchukuzi.School.Bus
   alias Uchukuzi.School.BusServer
 

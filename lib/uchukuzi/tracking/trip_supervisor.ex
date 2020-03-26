@@ -1,10 +1,11 @@
-defmodule Uchukuzi.Trips.TripSupervisor do
+defmodule Uchukuzi.Tracking.TripSupervisor do
   use DynamicSupervisor
 
-  alias Uchukuzi.Trips.TripTracker
+  alias Uchukuzi.Tracking.TripTracker
+  alias Uchukuzi.Tracking.StudentActivity
   alias Uchukuzi.Common.Report
   alias Uchukuzi.School.Bus
-  alias Uchukuzi.School.School
+
 
   def start_link(bus) do
     DynamicSupervisor.start_link(__MODULE__, bus, name: via_tuple(bus))
@@ -23,20 +24,25 @@ defmodule Uchukuzi.Trips.TripSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
-  @spec start_trip(
-          __MODULE__.t(),
-          Uchukuzi.School.School.t(),
-          Uchukuzi.School.Bus.t(),
-          Uchukuzi.Common.Report.t()
-        ) :: :ignore | {:error, any} | {:ok, pid} | {:ok, pid, any}
-  def start_trip(trip_supervisor, %School{} = school, %Bus{} = bus, %Report{} = initial_report) do
+  def start_trip(trip_supervisor, %Bus{} = bus, %Report{} = initial_report) do
     args = %{
-      school: school,
       bus: bus,
-      initial_report: initial_report,
-      geofences: []
+      initial_report: initial_report
     }
 
+    start_child(trip_supervisor, args, bus)
+  end
+
+  def start_trip(trip_supervisor, %Bus{} = bus, %StudentActivity{} = activity) do
+    args = %{
+      bus: bus,
+      student_activity: activity
+    }
+
+    start_child(trip_supervisor, args, bus)
+  end
+
+  def start_child(trip_supervisor, args, bus) do
     DynamicSupervisor.start_child(
       trip_supervisor,
       {TripTracker, [args, bus]}

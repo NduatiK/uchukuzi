@@ -1,15 +1,15 @@
 defmodule TripTrackerTest do
   use ExUnit.Case
   doctest Uchukuzi
-  alias Uchukuzi.Trips.TripSupervisor
-  alias Uchukuzi.Trips.TripTracker
+  alias Uchukuzi.Tracking.TripSupervisor
+  alias Uchukuzi.Tracking.TripTracker
   alias Uchukuzi.Common.Report
   alias Uchukuzi.Common.Geofence
   alias Uchukuzi.School.School
   alias Uchukuzi.Common.Location
   alias Uchukuzi.School.Bus
   alias Uchukuzi.School.Bus
-  alias Uchukuzi.Trips.StudentActivity
+  alias Uchukuzi.Tracking.StudentActivity
   alias Uchukuzi.Roles.Student
   alias Uchukuzi.Roles.Assistant
   alias Uchukuzi.School.BusesSupervisor

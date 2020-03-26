@@ -1,15 +1,20 @@
-defmodule Uchukuzi.Trips.TripTracker do
-  use GenServer, restart: :transient
+defmodule Uchukuzi.Tracking.TripTracker do
+  # use GenServer, restart: :transient
+  use GenServer
 
   @message_timeout 60 * 15 * 1_000
 
   alias __MODULE__
-  alias Uchukuzi.School.School
-  alias Uchukuzi.School.Bus
+
+  alias Uchukuzi.Roles.Student
+  alias Uchukuzi.Roles.Assistant
+
   alias Uchukuzi.Common.Report
-  alias Uchukuzi.Trips.Trip
   alias Uchukuzi.Common.Geofence
-  alias Uchukuzi.Trips.StudentActivity
+
+  alias Uchukuzi.School.Bus
+  alias Uchukuzi.Tracking.Trip
+  alias Uchukuzi.Tracking.StudentActivity
 
   def start_link([args, %Bus{} = bus]) do
     GenServer.start_link(__MODULE__, args, name: via_tuple(bus))
@@ -25,69 +30,84 @@ defmodule Uchukuzi.Trips.TripTracker do
   end
 
   def fresh_state(%{
-        school: %School{} = school,
         bus: %Bus{} = bus,
-        initial_report: %Report{} = initial_report,
-        geofences: geofences
+        initial_report: %Report{} = report
       }) do
     %{
       name: via_tuple(bus),
-      trip: Trip.new(initial_report, school),
-      school: school,
-      geofences: geofences,
-      violations: []
+      trip: Trip.new() |> insert_report(report),
+      school_perimeter: bus.school.perimeter
+    }
+  end
+
+  def fresh_state(%{
+        bus: %Bus{} = bus,
+        student_activity: %StudentActivity{} = activity
+      }) do
+    %{
+      name: via_tuple(bus),
+      trip: Trip.new() |> Trip.insert_student_activity(activity),
+      school_perimeter: bus.school.perimeter
     }
   end
 
   def init(%{bus: %Bus{} = bus} = args) do
     send(self(), {:set_state, via_tuple(bus), args})
 
-    {:ok, fresh_state(args), @message_timeout}
+    {:ok, fresh_state(args), :hibernate}
   end
 
-  # Client API
-  def insert_report(trip_tracker, %Report{} = report) do
-    # TODO: Ensure report belongs to this bus
-    GenServer.cast(trip_tracker, {:insert_report, report})
-  end
+  # *********************** Client API *********************** #
+  def insert_report(trip_tracker, %Report{} = report),
+    do: GenServer.cast(trip_tracker, {:insert_report, report})
 
-  def insert_student_activity(trip_tracker, %StudentActivity{} = student_activity) do
-    # TODO: Ensure activity belongs to this bus
-    GenServer.cast(trip_tracker, {:insert_student_activity, student_activity})
-  end
+  def student_boarded(trip_tracker, %Student{} = student, %Assistant{} = assistant),
+    do: GenServer.cast(trip_tracker, {:student_boarded, student})
 
-  def current_location(trip_tracker) do
-    GenServer.call(trip_tracker, :current_location)
-  end
+  def student_exited(trip_tracker, %Student{} = student, %Assistant{} = assistant),
+    do: GenServer.cast(trip_tracker, {:student_exited, student, assistant})
 
-  def students_onboard(trip_tracker) do
-    GenServer.call(trip_tracker, :students_onboard)
-  end
+  # def current_location(trip_tracker) do
+  #   GenServer.call(trip_tracker, :current_location)
+  # end
 
-  def trip(trip_tracker) do
-    GenServer.call(trip_tracker, :trip)
-  end
+  # def students_onboard(trip_tracker) do
+  #   GenServer.call(trip_tracker, :students_onboard)
+  # end
+
+  # def trip(trip_tracker) do
+  #   GenServer.call(trip_tracker, :trip)
+  # end
 
   # Server
-  def handle_cast({:insert_report, report}, state) do
-    state
-    |> update_trip_with(report)
-    |> update_geofence_violations(report)
-    |> exit_with_save()
 
-    # TODO: calculate distance covered
-    # TODO: calculate fuel consumed
-  end
+  # *********************** Server API *********************** #
+  def handle_cast({:student_boarded, student, assistant}, state) do
+    student_activity = student |> StudentActivity.boarded(assistant)
 
-  def handle_cast({:insert_student_activity, student_activity}, state) do
     state
     |> update_trip_with(student_activity)
     |> send_notification_of_student_activity()
     |> exit_with_save()
   end
 
-  def handle_call(:current_location, _from, state) do
-    {:reply, Trip.latest_location(state.trip), state}
+  def handle_cast({:student_exited, student, assistant}, state) do
+    student_activity = StudentActivity.exited(student, assistant)
+
+    state
+    |> update_trip_with(student_activity)
+    |> send_notification_of_student_activity()
+    |> exit_with_save()
+  end
+
+  def handle_cast({:insert_report, report}, state) do
+    state
+    |> update_trip_with(report)
+    # |> update_geofence_violations(report)
+    |> exit_with_save()
+
+    # TODO: calculate distance covered
+    # TODO: calculate fuel consumed
   end
 
   def handle_call(:students_onboard, _from, state) do
@@ -122,7 +142,7 @@ defmodule Uchukuzi.Trips.TripTracker do
         [{_key, state}] -> state
       end
 
-    {:noreply, state, @message_timeout}
+    {:noreply, state, :hibernate}
   end
 
   def terminate({:shutdown, reason}, state) when reason in [:timeout, :completed_trip] do
@@ -135,7 +155,7 @@ defmodule Uchukuzi.Trips.TripTracker do
   end
 
   defp update_trip_with(state, %Report{} = report) do
-    case Trip.insert_report(state.trip, report, state.school) do
+    case Trip.insert_report(state.trip, report, state.school_perimeter) do
       {:ok, trip} ->
         %{state | trip: trip}
 
@@ -154,13 +174,13 @@ defmodule Uchukuzi.Trips.TripTracker do
     end
   end
 
-  defp update_geofence_violations(state, %Report{} = report) do
-    violations =
-      state.geofences
-      |> Enum.filter(&Geofence.contains_point?(&1, report.location))
+  # defp update_geofence_violations(state, %Report{} = report) do
+  #   violations =
+  #     state.geofences
+  #     |> Enum.filter(&Geofence.contains_point?(&1, report.location))
 
-    %{state | violations: violations ++ state.violations}
-  end
+  #   %{state | violations: violations ++ state.violations}
+  # end
 
   defp send_notification_of_student_activity(
          %{trip: %Trip{student_activities: [activity | _]}} = state

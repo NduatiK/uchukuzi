@@ -1,71 +1,43 @@
-defmodule Uchukuzi.Trips.Trip do
+defmodule Uchukuzi.Tracking.Trip do
   alias __MODULE__
 
-  # @trip_states [:ongoing, :terminated]
-  # @trip_types [:mobile, :in_school]
-
-  @enforce_keys [:reports]
   defstruct [
-    :reports,
-    :student_activities,
-    :students,
-    :state,
     :start_time,
     :end_time,
-    :type,
-    :distance_covered
+    reports: [],
+    student_activities: [],
+    students: [],
+    distance_covered: 0,
+    state: :created
   ]
 
   alias Uchukuzi.Common.Location
   alias Uchukuzi.Common.Report
-  alias Uchukuzi.School.School
-  alias Uchukuzi.Trips.StudentActivity
+  alias Uchukuzi.Common.Geofence
+  alias Uchukuzi.Tracking.StudentActivity
 
   @doc """
-  Create a trip starting off with an initial report
+
   """
-  def new(%Report{} = initial_report, %School{} = school) do
-    type =
-      if School.contains_point?(school, initial_report.location) do
-        :in_school
-      else
-        :mobile
-      end
-
-    %Trip{
-      reports: [initial_report],
-      student_activities: [],
-      students: [],
-      state: :ongoing,
-      type: type,
-      start_time: initial_report.time,
-      end_time: initial_report.time,
-      distance_covered: 0
-    }
+  def new() do
+    %Trip{}
   end
 
-  @spec insert_report(Uchukuzi.Trips.Trip.t(), Uchukuzi.Common.Report.t(), Uchukuzi.School.School.t()) ::
-          {:error, :invalid_report_for_trip} | {:ok, Uchukuzi.Trips.Trip.t()}
   def insert_report(
-        %Trip{state: state, end_time: end_time} = trip,
-        %Report{time: time} = report,
-        %School{} = school
-      )
-      when state == :ongoing or time < end_time do
-    {:ok,
-     trip
-     |> insert(report)
-     |> update_distance_covered()
-     |> update_state(school, report)}
+        %Trip{} = trip,
+        %Report{} = report,
+        %Geofence{} = school_perimeter
+      ) do
+    trip
+    |> insert(report)
+    |> update_distance_covered()
+    |> update_state(school_perimeter, report)
   end
 
-  def insert_report(%Trip{}, %Report{}, %School{}) do
-    {:error, :invalid_report_for_trip}
-  end
-
-  @spec insert_student_activity(Uchukuzi.Trips.Trip.t(), Uchukuzi.Trips.StudentActivity.t()) ::
-          {:error, :activity_out_of_trip_bounds} | {:ok, Uchukuzi.Trips.Trip.t()}
-  def insert_student_activity(%Trip{} = trip, %StudentActivity{} = student_activity) do
+  def insert_student_activity(
+        %Trip{} = trip,
+        %StudentActivity{} = student_activity
+      ) do
     with true <- trip.start_time < student_activity.time,
          true <- trip.end_time > student_activity.time do
       {:ok,
@@ -77,16 +49,24 @@ defmodule Uchukuzi.Trips.Trip do
     end
   end
 
-  def insert(trip, %Report{} = report) do
+  defp insert(trip, %Report{} = report) do
     reports = Enum.sort([report | trip.reports], &(&1.time >= &2.time))
     [latest_report | _] = reports
 
-    %Trip{trip | reports: reports, end_time: latest_report.time}
+    %Trip{
+      trip
+      | reports: reports,
+        start_time: trip.start_time || latest_report.time,
+        end_time: latest_report.time
+    }
   end
 
-  def insert(trip, %StudentActivity{} = student_activity) do
+  defp insert(trip, %StudentActivity{} = student_activity) do
     student_activity =
       student_activity
+      # TODO - What happens when there are no reports?
+      # TODO - Do we come back?
+      # TODO - Can we fallback on the bus's current location
       |> StudentActivity.infer_location(trip)
       |> StudentActivity.set_inferred_location(student_activity)
 
@@ -113,19 +93,14 @@ defmodule Uchukuzi.Trips.Trip do
     %{trip | distance_covered: distance_covered}
   end
 
-  def update_state(%Trip{type: type} = trip, school, report) do
-    inside_school = School.contains_point?(school, report.location)
+  def update_state(%Trip{} = trip, %Geofence{} = school_perimeter, report) do
+    inside_school = Geofence.contains_point?(school_perimeter, report.location)
 
     state =
-      cond do
-        inside_school and type == :in_school ->
-          :ongoing
-
-        not inside_school and type == :mobile ->
-          :ongoing
-
-        true ->
-          :terminated
+      if inside_school and trip.distance_covered > 100 do
+        :terminated
+      else
+        :ongoing
       end
 
     %{trip | state: state}
@@ -150,19 +125,19 @@ defmodule Uchukuzi.Trips.Trip do
     hd(trip.reports).location
   end
 
+  @doc """
+  Find out which students are currently onboard the bus based on activities
+
+  """
   def students_onboard(%Trip{} = trip) do
+    # Replay activities from start to finish to determine who is on on board
     trip.student_activities
     |> Enum.reverse()
     |> Enum.reduce(MapSet.new(), fn activity, students ->
-      cond do
-        StudentActivity.is_boarding?(activity) ->
-          students |> MapSet.put(activity.student)
-
-        not StudentActivity.is_boarding?(activity) and activity.student in students ->
-          students |> MapSet.delete(activity.student)
-
-        true ->
-          students
+      if StudentActivity.is_boarding?(activity) do
+        students |> MapSet.put(activity.student)
+      else
+        students |> MapSet.delete(activity.student)
       end
     end)
   end

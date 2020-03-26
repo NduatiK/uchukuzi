@@ -15,6 +15,7 @@ defmodule Uchukuzi.Roles.Student do
   @enforce_keys [:name, :travel_time]
   defstruct [:name, :email, :password, :travel_time]
 
+  @spec new(any, any) :: Uchukuzi.Roles.Student.t()
   def new(name, travel_time) when travel_time in @travel_times,
     do: %Student{name: name, travel_time: travel_time}
 

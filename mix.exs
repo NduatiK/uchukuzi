@@ -4,6 +4,7 @@ defmodule Uchukuzi.MixProject do
   def project do
     [
       app: :uchukuzi,
+      description: "School bus tracking on steroids",
       version: "0.1.0",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
@@ -64,10 +65,10 @@ defmodule Uchukuzi.MixProject do
         ],
         Tracking: [
           Uchukuzi.Common.Geofence,
-          Uchukuzi.Trips.StudentActivity,
-          Uchukuzi.Trips.Trip,
-          Uchukuzi.Trips.TripSupervisor,
-          Uchukuzi.Trips.TripTracker
+          Uchukuzi.Tracking.StudentActivity,
+          Uchukuzi.Tracking.Trip,
+          Uchukuzi.Tracking.TripSupervisor,
+          Uchukuzi.Tracking.TripTracker
         ],
         World: [
           Uchukuzi.World.Tile,
@@ -77,6 +78,11 @@ defmodule Uchukuzi.MixProject do
           Uchukuzi.World.ETAGraph,
           Uchukuzi.World.WorldManager,
           Uchukuzi.World.WorldSupervisor
+        ],
+        Common: [
+          Uchukuzi.Common.Report,
+          Uchukuzi.Common.Location,
+          Uchukuzi.Common.Geofence
         ]
       ]
     ]
