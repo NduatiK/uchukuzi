@@ -9,9 +9,7 @@ defmodule Uchukuzi.School do
 
   # ********* SCHOOL *********
 
-  def create_school(_args, %Manager{} = manager) do
-    {:ok, loc} = Location.new(0, 0)
-    school = School.new("name", Geofence.new_school_fence([loc]))
+  def create_school(%School{} = school, %Manager{} = manager) do
     School.set_manager(school, manager)
   end
 
