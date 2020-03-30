@@ -10,6 +10,8 @@ defmodule Uchukuzi.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
 
+      config_path: "config/config.exs",
+
       # DOCS - mix docs
       name: "Uchukuzi",
       docs: docs()
@@ -30,6 +32,10 @@ defmodule Uchukuzi.MixProject do
       {:topo, "~> 0.4.0"},
       {:distance, "~> 0.2.1"},
       {:envelope, "~> 1.1"},
+
+      # ----- DB --------
+      {:ecto_sql, "~> 3.0"},
+      {:postgrex, ">= 0.0.0"},
       # ----- DOCS --------
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
       # {:dep_from_hexpm, "~> 0.3.0"},

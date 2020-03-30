@@ -7,6 +7,7 @@ defmodule Uchukuzi.Application do
 
   def start(_type, _args) do
     children = [
+      {Uchukuzi.Repo, []},
       {Registry, keys: :unique, name: Uchukuzi.Registry},
       Uchukuzi.School.BusesSupervisor,
       Uchukuzi.World.WorldSupervisor
