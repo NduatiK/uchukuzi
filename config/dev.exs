@@ -1,6 +1,6 @@
 use Mix.Config
 
-config :flotilla, Uchukuzi.Repo,
+config :uchukuzi, Uchukuzi.Repo,
   database: "uchukuzi_repo",
   username: "postgres",
   password: "postgres",

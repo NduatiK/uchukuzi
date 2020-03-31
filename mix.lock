@@ -17,4 +17,6 @@
   "telemetry": {:hex, :telemetry, "0.4.1", "ae2718484892448a24470e6aa341bc847c3277bfb8d4e9289f7474d752c09c7f", [:rebar3], [], "hexpm"},
   "topo": {:hex, :topo, "0.4.0", "93dcfb35574c76502d5b43a5caef79567e8aa7f2d340ef8bbac35f9ff92ca5f3", [:mix], [{:geo, "~> 3.1", [hex: :geo, repo: "hexpm", optional: false]}, {:seg_seg, "~> 0.1", [hex: :seg_seg, repo: "hexpm", optional: false]}, {:vector, "~> 1.0", [hex: :vector, repo: "hexpm", optional: false]}], "hexpm"},
   "vector": {:hex, :vector, "1.0.1", "587fdc3866a224c359df80b5f59f403ac38817f9f60d4076fd0d1128028ea4cd", [:mix], [], "hexpm"},
+  "comeonin": {:hex, :comeonin, "5.2.0", "d0277415a4b887f7a5f418be78776e5dacf1b005105913f075d301c0da3b5311", [:mix], [], "hexpm"},
+  "pbkdf2_elixir": {:hex, :pbkdf2_elixir, "1.1.0", "21b3bdd7e6dfe605fe07edb4d17152473b2ffc0e0c8c7e0830726cee02ac2b1c", [:mix], [{:comeonin, "~> 5.2", [hex: :comeonin, repo: "hexpm", optional: false]}], "hexpm"},
 }

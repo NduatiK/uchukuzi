@@ -9,8 +9,10 @@ defmodule Uchukuzi.MixProject do
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      # config_path: "config/config.exs",
 
-      config_path: "config/config.exs",
+      aliases: aliases(),
+
 
       # DOCS - mix docs
       name: "Uchukuzi",
@@ -32,6 +34,10 @@ defmodule Uchukuzi.MixProject do
       {:topo, "~> 0.4.0"},
       {:distance, "~> 0.2.1"},
       {:envelope, "~> 1.1"},
+
+
+      # ----- CRYPTO --------
+      {:pbkdf2_elixir, "~> 1.1"},
 
       # ----- DB --------
       {:ecto_sql, "~> 3.0"},
@@ -91,6 +97,20 @@ defmodule Uchukuzi.MixProject do
           Uchukuzi.Common.Geofence
         ]
       ]
+    ]
+  end
+
+  # Aliases are shortcuts or tasks specific to the current project.
+  # For example, to create, migrate and run the seeds file at once:
+  #
+  #     $ mix ecto.setup
+  #
+  # See the documentation for `Mix` for more info on aliases.
+  defp aliases do
+    [
+      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
+      "ecto.reset": ["ecto.drop", "ecto.setup"],
+      test: ["ecto.create --quiet", "ecto.migrate", "test"]
     ]
   end
 end

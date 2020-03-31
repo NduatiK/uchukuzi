@@ -5,12 +5,24 @@ defmodule Uchukuzi.School do
   Provides access to school, bus and household data
   """
 
+  alias Ecto.Multi
+
   use Uchukuzi.School.Model
 
   # ********* SCHOOL *********
 
   def create_school(%School{} = school, %Manager{} = manager) do
     School.set_manager(school, manager)
+  end
+
+  def create_school(school_changeset, manager) do
+    Multi.new()
+    |> Multi.insert(:school, school_changeset)
+    |> Multi.insert(:manager, fn %{school: school} ->
+      Ecto.build_assoc(school, :manager)
+      |> Manager.registration_changeset(manager)
+    end)
+    |> Repo.transaction()
   end
 
   def buses_for(%School{} = _school) do

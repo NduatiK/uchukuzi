@@ -1,6 +1,6 @@
 use Mix.Config
 
-config :flotilla, Uchukuzi.Repo,
+config :uchukuzi, Uchukuzi.Repo,
   adapter: Ecto.Adapters.Postgres,
   url: System.get_env("DATABASE_URL"),
   ssl: true,

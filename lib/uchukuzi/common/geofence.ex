@@ -1,35 +1,74 @@
 defmodule Uchukuzi.Common.Geofence do
-  alias __MODULE__
+  use Uchukuzi.School.Model
+
   import Uchukuzi.Common.Location, only: [is_location: 1]
-  alias Uchukuzi.Common.Location
 
   @types [:school, :stay_inside, :never_enter]
 
-  @enforce_keys [:type]
-  defstruct [:type, :perimeter, :center, :radius]
+  # @enforce_keys [:type]
+  # defstruct [:type, :perimeter, :center, :radius]
 
-  @spec new_inside([...]) :: {:error, <<_::392>>} | {:ok, Uchukuzi.Common.Geofence.t()}
+  embedded_schema do
+    field(:type, :string)
+    embeds_many(:perimeter, Location)
+    embeds_one(:center, Location)
+    field(:radius, :float)
+  end
+
+  def school_changeset(schema \\ __MODULE__, params),
+    do: changeset(schema, Map.put(params, :type, "school"))
+
+  def changeset(schema \\ __MODULE__, params)
+
+  def changeset(schema, %{type: type, radius: radius, center: center} = params) do
+    schema
+    |> cast(params, [:type, :radius])
+    |> validate_required([:type, :radius])
+    |> cast_embed(:center, with: &Location.changeset/2)
+  end
+
+  def changeset(schema, %{type: type, perimeter: perimeter} = params) do
+    schema
+    |> cast(params, [:type])
+    |> validate_required([:type])
+    |> cast_embed(:perimeter, with: &Location.changeset/2)
+  end
+
+  # def put_pass_hash(changeset) do
+  #   case changeset do
+  #     %Ecto.Changeset{valid?: true, changes: %{password: pass}} ->
+  #       put_change(changeset, :password_hash, Pbkdf2.hash_pwd_salt(pass))
+
+  #     _ ->
+  #       changeset
+  #   end
+  # end
+
+  def new_school_fence(%{latitude: latitude, longitude: longitude} = center, radius)
+      when is_number(radius) do
+    %Geofence{}
+    |> changeset(%{type: :school, center: center, radius: radius})
+  end
+
   def new_inside(perimeter), do: new(:stay_inside, perimeter)
 
-  def new_school_fence(%Location{} = center, radius) when is_number(radius),
-    do: {:ok, %Geofence{type: :school, center: center, radius: radius}}
-
-  @spec new_stay_outside([...]) :: {:error, <<_::392>>} | {:ok, Uchukuzi.Common.Geofence.t()}
   def new_stay_outside(perimeter), do: new(:never_enter, perimeter)
 
-  @spec new(atom, [Uchukuzi.Common.Location.t(), ...]) ::
-          {:error, any} | {:ok, Uchukuzi.Common.Geofence.t()}
   defp new(type, perimeter) when is_list(perimeter) when type in @types do
-    with true <- Enum.all?(perimeter, &is_location/1) do
-      {:ok, %Geofence{type: type, perimeter: perimeter}}
-    else
-      _ ->
-        {:error, "The perimeter must be made up of location objects"}
-    end
+    %Geofence{}
+    |> changeset(%{type: type, perimeter: perimeter})
+
+    # with true <- Enum.all?(perimeter, &is_location/1) do
+    #   {:ok, %Geofence{type: type, perimeter: perimeter}}
+    # else
+    #   _ ->
+    #     {:error, "The perimeter must be made up of location objects"}
+    # end
   end
 
   def contains_point?(%Geofence{type: :school} = geofence, %Location{} = location) do
-    Distance.GreatCircle.distance(Location.to_coord(geofence.center), Location.to_coord(location)) <= geofence.radius
+    Distance.GreatCircle.distance(Location.to_coord(geofence.center), Location.to_coord(location)) <=
+      geofence.radius
   end
 
   @spec contains_point?(Uchukuzi.Common.Geofence.t(), Uchukuzi.Common.Location.t()) :: boolean
