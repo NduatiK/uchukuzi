@@ -2,22 +2,23 @@ module Pages.Buses.BusesPage exposing (Model, Msg, init, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
+import Errors
 import Html exposing (Html)
 import Html.Attributes exposing (id)
-import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (optional, required)
+import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Route
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
-import Views.Heading
 
 
 
@@ -37,7 +38,8 @@ type alias Bus =
     , seats_available : Int
     , vehicleType : String
     , stated_milage : Float
-    , current_location : Maybe Location
+
+    -- , current_location : Maybe Location
     }
 
 
@@ -57,7 +59,7 @@ type Msg
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( Model session Loading ""
-    , fetchBuses session
+    , Cmd.batch [ fetchBuses session, Ports.initializeMaps False ]
     )
 
 
@@ -68,10 +70,17 @@ init session =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ServerResponse buses ->
-            ( { model | buses = buses }
-            , Cmd.none
-            )
+        ServerResponse response ->
+            case response of
+                Failure error ->
+                    let
+                        ( _, error_msg ) =
+                            Errors.decodeErrors error
+                    in
+                    ( { model | buses = response }, error_msg )
+
+                _ ->
+                    ( { model | buses = response }, Cmd.none )
 
         ChangedFilterText filterText ->
             ( { model | filterText = filterText }
@@ -126,28 +135,33 @@ viewBody model =
 
                 Failure error ->
                     let
-                        apiError =
-                            Api.decodeErrors error
+                        ( apiError, _ ) =
+                            Errors.decodeErrors error
                     in
-                    text (Api.errorToString apiError)
+                    text (Errors.errorToString apiError)
 
                 Success buses ->
-                    Element.column
-                        [ padding 30
-                        , spacing 40
-                        , width fill
-                        ]
-                        [ viewHeading "All Buses" model.filterText
-                        , viewBuses buses model.filterText
-                        ]
+                    viewBuses buses model.filterText
     in
-    el [ width fill, height fill, alignTop ] body
+    el [ width fill, height fill, alignTop ]
+        (Element.column
+            [ paddingXY 10 0
+            , spacing 40
+
+            -- , explain Debug.todo
+            , width fill
+            ]
+            [ el [] none
+            , viewHeading "All Buses" model.filterText
+            , body
+            ]
+        )
 
 
 viewHeading : String -> String -> Element Msg
 viewHeading title filterText =
     Element.row
-        [ width fill, spacing 52 ]
+        [ width fill, spacing 52, paddingXY 30 0 ]
         [ el
             Style.headerStyle
             (text title)
@@ -203,7 +217,7 @@ viewBuses buses filterText =
                         [ column [ alignLeft, centerY, spacing 12 ]
                             [ el Style.labelStyle (text bus.numberPlate)
                             , row [ spacing 7 ]
-                                [ Icons.timeline [ Style.fillColorDarkGreen, alpha 1, width <| px 18, height <| px 18 ]
+                                [ Icons.timeline [ Colors.fillDarkGreen, alpha 1, width <| px 18, height <| px 18 ]
                                 , el Style.captionLabelStyle (text bus.numberPlate)
                                 ]
                             ]
@@ -217,25 +231,22 @@ viewBuses buses filterText =
 
         someBuses ->
             wrappedRow
-                [ padding 10
+                [ padding 30
                 , width fill
                 , alignTop
                 , height fill
                 , spacing 20
+                , scrollbarY
                 ]
-                (List.map busView someBuses)
+                (List.map busView (someBuses ))
 
 
 google_map : Maybe (List Bus) -> Element Msg
 google_map buses =
-    el
+    StyledElement.googleMap
         [ width fill
         , height (fill |> minimum 400)
-        , Background.color Style.darkGreenColor
-        , htmlAttribute (id "google-map")
-        , Border.width 1
         ]
-        none
 
 
 
@@ -256,7 +267,10 @@ busDecoder =
         |> required "seats_available" int
         |> required "vehicle_type" string
         |> required "stated_milage" float
-        |> required "location" (nullable locationDecoder)
+
+
+
+-- |> required "location" (nullable locationDecoder)
 
 
 locationDecoder : Decoder Location

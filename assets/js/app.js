@@ -3,12 +3,21 @@
 //
 import "phoenix"
 import { Elm } from '../src/Main.elm'
-import { initializeMaps } from './gmaps'
-import { initializeCamera, stopCamera, setFrameFrozen } from './camera'
+import { initializeMaps, requestGeoLocation } from './gmaps'
+import { initializeCamera } from './camera'
+
+function parse(string) {
+    try {
+        return string ? JSON.parse(string) : null
+    } catch (e) {
+        localStorage.setItem(storageKey, null);
+        return null
+    }
+}
 
 const storageKey = 'credentials'
 const storedState = localStorage.getItem(storageKey);
-const startingState = storedState ? JSON.parse(storedState) : null;
+const startingState = parse(storedState)
 
 function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time))
@@ -19,9 +28,13 @@ var app = Elm.Main.init({
     node: document.getElementById("elm")
 })
 
-app.ports.initializeMaps.subscribe(() => {
+app.ports.initializeMaps.subscribe((clickable) => {
     let numberOfRetries = 5
-    initializeMaps(app, numberOfRetries)
+    initializeMaps(app, clickable, numberOfRetries)
+})
+
+app.ports.requestGeoLocation.subscribe(() => {
+    requestGeoLocation(app)
 })
 
 app.ports.initializeCamera.subscribe(() => {
@@ -33,19 +46,16 @@ app.ports.initializeCamera.subscribe(() => {
 
 
 app.ports.storeCache.subscribe(function (credentials) {
-    var credentialsJson = JSON.stringify(credentials);
-    console.log(credentials)
-
-    localStorage.setItem('credentials', credentialsJson);
+    localStorage.setItem(storageKey,
+        JSON.stringify(credentials));
+    app.ports.onStoreChange.send(credentials);
 });
 
 window.addEventListener("storage", (event) => {
+
     if (event.storageArea === storedState && event.key === storageKey) {
-        console.log("asd")
-        app.ports.onStoreChange.send(event.newValue);
+        const state = parse(event.value)
+
+        app.ports.onStoreChange.send(state);
     }
 }, false);
-
-app.ports.received401.subscribe(function (credentials) {
-    app.ports.onStoreChange.send(true);
-});

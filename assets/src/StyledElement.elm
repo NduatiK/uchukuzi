@@ -1,120 +1,34 @@
 module StyledElement exposing
-    ( Errors(..)
-    , InputError(..)
-    , button
+    ( button
     , buttonLink
     , checkboxIcon
     , dropDown
     , emailInput
+    , googleMap
     , iconButton
-    , inputErrorsFor
     , navigationLink
     , numberInput
     , passwordInput
     , textInput
     , textLink
-    , toClientSideError
-    , toClientSideErrors
     , toDropDownView
-    , toServerSideErrors
     , wrappedInput
     )
 
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Errors exposing (InputError)
+import Html.Attributes exposing (id)
+import Http
 import Icons exposing (IconBuilder)
 import Regex
 import Route
 import Style exposing (..)
 import Views.CustomDropDown as Dropdown
-
-
-type InputError
-    = InputError (List String)
-
-
-type alias FieldName =
-    String
-
-
-type Errors internalError
-    = ClientSideError internalError String
-    | ServerSideError FieldName (List String)
-
-
-inputErrorsFor : List (Errors clientError) -> String -> List clientError -> Maybe InputError
-inputErrorsFor formProblems fieldName errorsToMatch =
-    let
-        clientSideErrors =
-            List.map (\x -> ClientSideError x "") errorsToMatch
-    in
-    Maybe.map InputError
-        (errorWhenContains
-            clientSideErrors
-            formProblems
-            fieldName
-        )
-
-
-toClientSideError : ( a, String ) -> Errors a
-toClientSideError problem =
-    ClientSideError (Tuple.first problem) (Tuple.second problem)
-
-
-toClientSideErrors : List ( a, String ) -> List (Errors a)
-toClientSideErrors problems =
-    List.map (\x -> ClientSideError (Tuple.first x) (Tuple.second x)) problems
-
-
-toServerSideErrors : List ( String, List String ) -> List (Errors a)
-toServerSideErrors formErrors =
-    List.map (\x -> ServerSideError (Tuple.first x) (Tuple.second x)) formErrors
-
-
-
--- errorWhenContains : List (Errors e) -> List (Errors e) -> (e -> String) -> String -> Maybe (List String)
--- errorWhenContains possibleFieldProblems formProblems clientSideToString fieldName =
-
-
-errorWhenContains : List (Errors e) -> List (Errors e) -> String -> Maybe (List String)
-errorWhenContains matchFields formProblems fieldName =
-    let
-        containsError a list =
-            List.any
-                (\x ->
-                    case ( a, x ) of
-                        ( ServerSideError aFieldName _, ServerSideError xFieldName _ ) ->
-                            aFieldName == xFieldName
-
-                        ( ClientSideError aError _, ClientSideError xError _ ) ->
-                            aError == xError
-
-                        _ ->
-                            False
-                )
-                list
-
-        errorsForField =
-            List.filter (\x -> containsError x matchFields) formProblems
-
-        beautifyError =
-            \x ->
-                case x of
-                    ClientSideError _ string ->
-                        [ string ]
-
-                    ServerSideError fieldName2 strings ->
-                        List.map (\str -> "This " ++ String.replace "_" " " fieldName2 ++ " " ++ str) strings
-    in
-    case List.concatMap beautifyError errorsForField of
-        [] ->
-            Nothing
-
-        errorStrings ->
-            Just errorStrings
 
 
 navigationLink : List (Attribute msg) -> { label : Element msg, route : Route.Route } -> Element msg
@@ -123,7 +37,7 @@ navigationLink attrs config =
         (textFontStyle
             ++ [ paddingXY 27 10
                , Font.size 19
-               , Font.color Style.purpleColor
+               , Font.color Colors.purple
                , Element.mouseOver
                     [ alpha 0.9
                     ]
@@ -142,7 +56,7 @@ buttonLink : { label : Element msg, route : Route.Route } -> Element msg
 buttonLink config =
     Element.link
         (textFontStyle
-            ++ [ Background.color purpleColor
+            ++ [ Background.color Colors.purple
 
                --    , paddingXY 38 10
                --    , Font.color (Element.rgb 1 1 1)
@@ -161,7 +75,7 @@ textLink : List (Attribute msg) -> { label : Element msg, route : Route.Route } 
 textLink attributes config =
     link
         (textFontStyle
-            ++ [ Font.color purpleColor
+            ++ [ Font.color Colors.purple
                , Font.size 18
                , Border.rounded 3
                , Element.mouseOver
@@ -180,12 +94,13 @@ button :
     -> Element msg
 button attributes config =
     Input.button
-        ([ Background.color purpleColor
-         , paddingXY 38 10
+        ([ Background.color Colors.purple
+
+         -- Primarily controlled by css
+         , height (px 46)
          , Font.color (Element.rgb 1 1 1)
          , Font.size 18
          , Border.rounded 3
-         , height (px 46)
          , Style.animatesAll
          , Style.cssResponsive
          , Element.mouseOver
@@ -213,7 +128,7 @@ iconButton attributes { onPress, iconAttrs, icon } =
     Input.button
         ([ padding 12
          , alignBottom
-         , Background.color Style.purpleColor
+         , Background.color Colors.purple
          , Border.rounded 8
          , Style.animatesAll
          , Element.mouseOver
@@ -363,7 +278,7 @@ errorBorder hideBorder =
         []
 
     else
-        [ Border.color Style.errorColor, Border.solid, Border.width 2 ]
+        [ Border.color Colors.errorRed, Border.solid, Border.width 2 ]
 
 
 wrappedInput : Element msg -> String -> Maybe String -> Maybe InputError -> Maybe (IconBuilder msg) -> List (Attribute msg) -> List (Element msg) -> Element msg
@@ -379,15 +294,11 @@ wrappedInput input title caption errorCaption icon attributes trailingElements =
 
         errorCaptionLabel =
             case errorCaption of
-                -- Just (InputError captionText) ->
-                --     Element.paragraph (Style.labelStyle ++ [ Font.color Style.errorColor ]) [ text captionText ]
-                -- Just (ServerError errors) ->
-                --     Element.paragraph (Style.labelStyle ++ [ Font.color Style.errorColor ]) (List.map text errors)
-                Just (InputError errors) ->
-                    Element.paragraph (Style.labelStyle ++ [ Font.color Style.errorColor ]) (List.map text errors)
+                Just (Errors.InputError errors) ->
+                    Element.paragraph Style.errorStyle (List.map text errors)
 
                 -- Just (Ser errors) ->
-                --     Element.paragraph (Style.labelStyle ++ [ Font.color Style.errorColor ]) (List.map text errors)
+                --     Element.paragraph (Style.labelStyle ++ [ Font.color Style.error ]) (List.map text errors)
                 _ ->
                     -- Nothing ->
                     none
@@ -492,14 +403,46 @@ numberInput attributes { title, caption, errorCaption, value, onChange, placehol
                 attributes
                 [ Input.button []
                     { label = Icons.subtract [ width <| px 24, height <| px 24 ]
-                    , onPress = Just (onChange (value - 1))
+                    , onPress =
+                        case minimum of
+                            Nothing ->
+                                Just (onChange (value - 1))
+
+                            Just min ->
+                                if (value - 1) < min then
+                                    Nothing
+
+                                else
+                                    Just (onChange (value - 1))
                     }
                 , el [ Background.color (rgba 0 0 0 0.12), width <| px 1, height <| px 20 ] none
                 , Input.button []
                     { label = Icons.add [ width <| px 24, height <| px 24 ]
-                    , onPress = Just (onChange (value + 1))
+                    , onPress =
+                        case maximum of
+                            Nothing ->
+                                Just (onChange (value + 1))
+
+                            Just max ->
+                                if (value + 1) > max then
+                                    Nothing
+
+                                else
+                                    Just (onChange (value + 1))
                     }
                 , el [ width <| px 0, height <| px 20 ] none
                 ]
     in
     body
+
+
+googleMap mapClasses =
+    el
+        ([ height fill
+         , width fill
+         , htmlAttribute (id "google-map")
+         , Background.color (rgb255 237 237 237)
+         ]
+            ++ mapClasses
+        )
+        none

@@ -24,6 +24,7 @@ import Pages.Signup as Signup
 import Route exposing (Route)
 import Session exposing (Session)
 import Style
+import Template.NavBar as NavBar exposing (viewHeader)
 import Time
 import Url
 
@@ -35,6 +36,7 @@ import Url
 type alias Model =
     { page : PageModel
     , route : Maybe Route
+    , navState : NavBar.Model
     }
 
 
@@ -70,6 +72,7 @@ init maybeCreds url navKey =
         (Model
             (Redirect session)
             Nothing
+            (NavBar.init session)
         )
 
 
@@ -83,6 +86,8 @@ type Msg
     | ReceivedCreds (Maybe Session.Cred)
       ------------
       -- | UpdatedSessionCred (Maybe Session.Cred)
+      ------------
+    | GotNavBarMsg NavBar.Msg
       ------------
     | GotHouseholdListMsg HouseholdList.Msg
     | GotHomeMsg ()
@@ -105,59 +110,73 @@ type Msg
 
 
 view : Model -> Browser.Document Msg
-view { page, route } =
+view { page, route, navState } =
     let
-        viewPage page_ toMsg pageContents =
-            Element.map toMsg (Page.frame page_ pageContents (toSession page))
+        viewEmptyPage pageContents =
+            viewPage pageContents GotHomeMsg
+
+        viewPage pageContents toMsg =
+            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg
 
         -- viewEmptyPage =
         renderedView =
             case page of
                 Home _ ->
-                    Page.frame route Home.view (toSession page)
+                    viewEmptyPage Home.view
 
                 Login model ->
-                    viewPage route GotLoginMsg (Login.view model)
+                    viewPage (Login.view model) GotLoginMsg
 
                 Signup model ->
-                    viewPage route GotSignupMsg (Signup.view model)
+                    viewPage (Signup.view model) GotSignupMsg
 
                 Redirect _ ->
-                    Page.frame route Pages.Blank.view (toSession page)
+                    viewEmptyPage Pages.Blank.view
 
                 Logout _ ->
-                    Page.frame route Pages.Blank.view (toSession page)
+                    viewEmptyPage Pages.Blank.view
 
                 NotFound _ ->
-                    Page.frame route NotFound.view (toSession page)
+                    viewEmptyPage NotFound.view
 
                 Dashboard model ->
-                    viewPage route GotDashboardMsg (Dashboard.view model)
+                    viewPage (Dashboard.view model) GotDashboardMsg
 
                 HouseholdList model ->
-                    viewPage route GotHouseholdListMsg (HouseholdList.view model)
+                    viewPage (HouseholdList.view model) GotHouseholdListMsg
 
                 StudentRegistration model ->
-                    viewPage route GotStudentRegistrationMsg (StudentRegistration.view model)
+                    viewPage (StudentRegistration.view model) GotStudentRegistrationMsg
 
                 BusesList model ->
-                    viewPage route GotBusesListMsg (BusesList.view model)
+                    viewPage (BusesList.view model) GotBusesListMsg
 
                 BusRegistration model ->
-                    viewPage route GotBusRegistrationMsg (BusRegistration.view model)
+                    viewPage (BusRegistration.view model) GotBusRegistrationMsg
 
                 BusDetailsPage model ->
-                    viewPage route GotBusDetailsPageMsg (BusDetailsPage.view model)
+                    viewPage (BusDetailsPage.view model) GotBusDetailsPageMsg
 
                 DevicesList model ->
-                    viewPage route GotDevicesListMsg (DevicesList.view model)
+                    viewPage (DevicesList.view model) GotDevicesListMsg
 
                 DeviceRegistration model ->
-                    viewPage route GotDeviceRegistrationMsg (DeviceRegistration.view model)
+                    viewPage (DeviceRegistration.view model) GotDeviceRegistrationMsg
     in
     { title = "Uchukuzi"
     , body =
-        [ Element.layout Style.textFontStyle renderedView ]
+        [ Element.layoutWith
+            { options =
+                [ focusStyle
+                    { borderColor = Nothing
+                    , backgroundColor = Nothing
+                    , shadow = Nothing
+                    }
+                ]
+            }
+            Style.textFontStyle
+            renderedView
+        ]
     }
 
 
@@ -193,7 +212,7 @@ update msg model =
                 changeRouteWithUpdatedSessionTo (Just (Route.Login Nothing)) model session
 
             else
-                changeRouteWithUpdatedSessionTo model.route model session
+                changeRouteWithUpdatedSessionTo (Just Route.Dashboard) model session
 
         _ ->
             updatePage msg model
@@ -210,6 +229,15 @@ updatePage page_msg fullModel =
             Page.transformToModelMsg (pageModelMapper >> modelMapper) pageMsgMapper ( subModel, subCmd )
     in
     case ( page_msg, fullModel.page ) of
+        ( GotNavBarMsg msg, _ ) ->
+            let
+                ( newNavState, navMsg ) =
+                    NavBar.update msg fullModel.navState
+            in
+            ( { fullModel | navState = newNavState }
+            , Cmd.map GotNavBarMsg navMsg
+            )
+
         ( GotHouseholdListMsg msg, HouseholdList model ) ->
             HouseholdList.update msg model
                 |> mapModelAndMsg HouseholdList GotHouseholdListMsg
@@ -248,6 +276,11 @@ updatePage page_msg fullModel =
 
         ( _, _ ) ->
             ( fullModel, Cmd.none )
+
+
+getSession : Model -> Session
+getSession model =
+    toSession model.page
 
 
 toSession : PageModel -> Session
@@ -372,13 +405,22 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
 
 subscriptions : Model -> Sub Msg
 subscriptions model_ =
-    case model_.page of
-        DeviceRegistration model ->
-            -- receiveCameraActive
-            Sub.map GotDeviceRegistrationMsg (DeviceRegistration.subscriptions model)
+    let
+        matching =
+            case model_.page of
+                DeviceRegistration model ->
+                    Sub.map GotDeviceRegistrationMsg (DeviceRegistration.subscriptions model)
 
-        _ ->
-            Api.onStoreChange (Just >> Api.parseCreds >> ReceivedCreds)
+                Signup model ->
+                    Sub.map GotSignupMsg (Signup.subscriptions model)
+
+                _ ->
+                    Sub.none
+    in
+    Sub.batch
+        [ matching
+        , Api.onStoreChange (Debug.log "parseCreds" >> Api.parseCreds >> ReceivedCreds)
+        ]
 
 
 main : Program (Maybe Value) Model Msg

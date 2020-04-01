@@ -41,6 +41,7 @@ Sourced from PaackEng/elm-ui-dropdown
 -}
 
 import Browser.Dom as Dom
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -227,7 +228,7 @@ dropDownConfig dropDownMsgWrapper onPickMsg toString icon =
                 , right = 0
                 , top = 0
                 }
-            , Border.color Style.darkGreenColor
+            , Border.color Colors.darkGreen
             ]
 
         itemToPrompt item =
@@ -239,7 +240,7 @@ dropDownConfig dropDownMsgWrapper onPickMsg toString icon =
             let
                 bgColor =
                     if selected then
-                        Style.withAlpha Style.tealColor 0.3
+                        Colors.withAlpha Colors.teal 0.3
 
                     else
                         rgb255 255 255 255

@@ -9,10 +9,11 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
+import Errors exposing (InputError)
 import Icons exposing (IconBuilder)
 import Regex
 import Style exposing (..)
-import StyledElement exposing (InputError, wrappedInput)
+import StyledElement exposing (wrappedInput)
 
 
 type FloatInput

@@ -2,10 +2,12 @@ module Pages.Devices.DeviceRegistrationPage exposing (Model, Msg, init, subscrip
 
 import Api
 import Api.Endpoint as Endpoint
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
+import Errors exposing (InputError)
 import Html exposing (Html)
 import Html.Attributes exposing (id)
 import Html.Events exposing (..)
@@ -19,7 +21,7 @@ import RemoteData exposing (..)
 import Route
 import Session exposing (Session)
 import Style
-import StyledElement exposing (InputError, toDropDownView)
+import StyledElement exposing (toDropDownView, wrappedInput)
 import Utils.Validator as Validator
 import Views.CustomDropDown as Dropdown
 import Views.Heading exposing (viewHeading)
@@ -61,8 +63,8 @@ type CameraState
 
 type alias Form =
     { imei : String
-    , bus : Maybe Bus
-    , problems : List (StyledElement.Errors Problem)
+    , selectedBus : Maybe Bus
+    , problems : List (Errors.Errors Problem)
 
     -- , problems : List Problem
     -- , serverErrors : List ( String, List String )
@@ -93,7 +95,7 @@ init session =
     ( { session = session
       , form =
             { imei = ""
-            , bus = Nothing
+            , selectedBus = Nothing
             , problems = []
             }
       , cameraState = CameraClosed
@@ -137,7 +139,7 @@ update msg model =
                     ( { model
                         | form =
                             { form
-                                | problems = StyledElement.toClientSideErrors problems
+                                | problems = Errors.toClientSideErrors problems
                             }
                       }
                     , Cmd.none
@@ -149,7 +151,7 @@ update msg model =
                     | cameraState = CameraOpening
                     , form =
                         { form
-                            | problems = List.filter (\x -> x /= StyledElement.ClientSideError CameraOpenError "") model.form.problems
+                            | problems = List.filter (\x -> x /= Errors.ClientSideError CameraOpenError "") model.form.problems
                         }
                   }
                 , Ports.initializeCamera ()
@@ -173,7 +175,7 @@ update msg model =
         GotCameraNotFoundError ->
             let
                 newError =
-                    StyledElement.toClientSideError
+                    Errors.toClientSideError
                         ( CameraOpenError, "No webcam found, type in the code or try again later" )
             in
             ( { model
@@ -211,7 +213,7 @@ update msg model =
                 )
 
         BusPicked bus ->
-            ( { model | form = { form | bus = bus } }, Cmd.none )
+            ( { model | form = { form | selectedBus = bus } }, Cmd.none )
 
         DropdownMsg subMsg ->
             let
@@ -249,22 +251,17 @@ update msg model =
 
                 Failure error ->
                     let
-                        apiError =
-                            Api.decodeErrors error
+                        ( _, error_msg ) =
+                            Errors.decodeErrors error
 
                         apiFormError =
-                            StyledElement.toServerSideErrors
-                                (Api.decodeFormErrors
-                                    [ "phone_number"
-                                    , "email"
-                                    ]
-                                    error
-                                )
+                            Errors.toServerSideErrors
+                                error
 
                         updatedForm =
                             { form | problems = form.problems ++ apiFormError }
                     in
-                    ( { newModel | form = updatedForm }, Api.handleError model apiError )
+                    ( { newModel | form = updatedForm }, error_msg )
 
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
@@ -306,7 +303,7 @@ viewForm model =
             none
         , row [ spacing 36, width shrink, height shrink ]
             [ viewDeviceIMEIInput form.imei form.problems
-            , Input.button [ padding 8, centerY, Background.color Style.purpleColor, Border.rounded 8 ]
+            , Input.button [ padding 8, centerY, Background.color Colors.purple, Border.rounded 8 ]
                 { label =
                     el []
                         (if model.cameraState /= CameraClosed then
@@ -344,7 +341,7 @@ viewScanner cameraState =
              , Background.color (rgb 0 0 0)
              , Border.solid
              , Border.width 1
-             , Border.color Style.purpleColor
+             , Border.color Colors.purple
              , inFront
                 (if cameraState == CameraClosing then
                     -- Animate closing
@@ -377,7 +374,7 @@ viewScanner cameraState =
                     ([ height (px 4)
                      , alignBottom
                      , alignLeft
-                     , Background.color Style.tealColor
+                     , Background.color Colors.teal
                      ]
                         ++ (if cameraState == CameraOpen then
                                 [ width fill, Style.animatesAll20Seconds ]
@@ -392,14 +389,14 @@ viewScanner cameraState =
         ]
 
 
-viewDeviceIMEIInput : String -> List (StyledElement.Errors Problem) -> Element Msg
+viewDeviceIMEIInput : String -> List (Errors.Errors Problem) -> Element Msg
 viewDeviceIMEIInput imei problems =
     let
         errorMapper =
-            StyledElement.inputErrorsFor problems
+            Errors.inputErrorsFor problems
 
         inputError errorText =
-            StyledElement.InputError [ errorText ]
+            Errors.InputError [ errorText ]
     in
     StyledElement.textInput
         [ width
@@ -411,7 +408,7 @@ viewDeviceIMEIInput imei problems =
         { ariaLabel = "Device Serial"
         , caption = Just "You can find this on the side of the device"
         , errorCaption =
-            errorMapper "number_plate"
+            errorMapper "imei"
                 [ InvalidIMEI
                 , CameraOpenError
                 ]
@@ -434,9 +431,9 @@ viewDivider =
 
 viewButton : Element Msg
 viewButton =
-    StyledElement.button []
+    StyledElement.button [ alignRight ]
         { onPress = Just SubmitButtonMsg
-        , label = text "Submit"
+        , label = text "Register"
         }
 
 
@@ -519,7 +516,7 @@ validateForm form =
         [] ->
             Ok
                 { imei = form.imei
-                , bus_id = Maybe.map .id form.bus
+                , bus_id = Maybe.map .id form.selectedBus
                 }
 
         _ ->

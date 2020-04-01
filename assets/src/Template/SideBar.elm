@@ -1,5 +1,6 @@
 module Template.SideBar exposing (viewSidebar)
 
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Font as Font
@@ -103,7 +104,8 @@ sidebarSections =
     [ TopLevel (Section "Dashboard" Icons.dashboard Dashboard)
     , TopLevel (Section "Fleet" Icons.shuttle Buses)
     , TopLevel (Section "Students" Icons.seat HouseholdList)
-    , TopLevel (Section "Devices" Icons.shuttle DeviceList)
+
+    -- , TopLevel (Section "Devices" Icons.shuttle, DeviceList)
     ]
 
 
@@ -206,10 +208,6 @@ sideBarSubSectionStyle =
            ]
 
 
-highlightColor =
-    Style.tealColor
-
-
 colorFor : NavigationPage -> Maybe Route -> Color
 colorFor navPage1 route =
     case route of
@@ -224,9 +222,15 @@ colorFor navPage1 route =
                 rgba 0 0 0 0
 
 
+highlightColor : Color
+highlightColor =
+    Colors.teal
+
+
+hoverColor : Color
 hoverColor =
     let
         color =
-            toRgb Style.tealColor
+            toRgb highlightColor
     in
     fromRgb { color | alpha = 0.9 }

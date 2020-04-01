@@ -1,5 +1,6 @@
 module Icons exposing (..)
 
+import Colors
 import Element exposing (Attribute, Element, alpha, height, image, px, width)
 import Style
 
@@ -61,7 +62,7 @@ subtract attrs =
 
 addWhite : List (Attribute msg) -> Element msg
 addWhite attrs =
-    add (attrs ++ [ Style.fillColorWhite ])
+    add (attrs ++ [ Colors.fillWhite ])
 
 
 camera : List (Attribute msg) -> Element msg
@@ -130,12 +131,18 @@ info attrs =
         { src = "images/info.svg", description = "" }
 
 
+help : List (Attribute msg) -> Element msg
+help attrs =
+    image (alpha 0.54 :: attrs)
+        { src = "images/help.svg", description = "" }
+
+
 loading : List (Attribute msg) -> Element msg
 loading attrs =
     image
         (width (px 80)
             :: height (px 80)
-            :: alpha 0.54
+            -- :: alpha 0.54
             :: attrs
         )
         { src = "images/loading.svg", description = "" }

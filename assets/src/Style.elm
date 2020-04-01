@@ -8,29 +8,23 @@ module Style exposing
     , captionLabelStyle
     , clipStyle
     , cssResponsive
-    , darkGreenColor
-    , darkTextColor
     , edges
-    , errorColor
-    , fillColor
-    , fillColorDarkGreen
-    , fillColorPurple
-    , fillColorWhite
+    , elevated
+    , elevated2
+    , errorStyle
     , header2Style
     , headerStyle
     , inputStyle
     , labelFontStyle
     , labelStyle
     , mobileHidden
-    , purpleColor
     , stickyStyle
     , tableElementStyle
     , tableHeaderStyle
-    , tealColor
     , textFontStyle
-    , withAlpha
     )
 
+import Colors exposing (..)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -40,6 +34,14 @@ import Element.Region as Region
 import Hex
 import Html.Attributes
 import Route
+
+
+elevated =
+    Border.shadow { offset = ( 0, 0 ), size = 0, blur = 5, color = rgba 0 0 0 0.14 }
+
+
+elevated2 =
+    Border.shadow { offset = ( 0, 0 ), size = 0, blur = 10, color = rgba 0 0 0 0.24 }
 
 
 
@@ -87,10 +89,14 @@ header2Style =
 captionLabelStyle : List (Attribute msg)
 captionLabelStyle =
     [ Font.size 13
-    , Font.color (rgb255 4 30 37)
-    , alpha 0.69
+    , Font.color (Colors.withAlpha (rgb255 4 30 37) 0.69)
     ]
         ++ labelFontStyle
+
+
+errorStyle : List (Attribute msg)
+errorStyle =
+    labelStyle ++ [ Font.color errorRed ]
 
 
 labelStyle : List (Attribute msg)
@@ -104,7 +110,7 @@ labelStyle =
 inputStyle : List (Attribute msg)
 inputStyle =
     [ Background.color (rgb255 245 245 245)
-    , Border.color darkGreenColor
+    , Border.color darkGreen
     , Border.widthEach
         { bottom = 2
         , left = 0
@@ -161,100 +167,6 @@ labelFontStyle =
         , Font.sansSerif
         ]
     ]
-
-
-
--- COLORS
-
-
-withAlpha : Color -> Float -> Color
-withAlpha color alpha =
-    let
-        { red, green, blue } =
-            toRgb color
-    in
-    rgba red green blue alpha
-
-
-purpleColor : Color
-purpleColor =
-    Element.rgb255 89 79 238
-
-
-tealColor : Color
-tealColor =
-    Element.rgb255 102 218 213
-
-
-darkGreenColor : Color
-darkGreenColor =
-    Element.rgb255 97 165 145
-
-
-darkTextColor : Color
-darkTextColor =
-    Element.rgb255 4 31 38
-
-
-errorColor : Color
-errorColor =
-    Element.rgb255 200 0 0
-
-
-fillColor : Color -> Attribute msg
-fillColor color =
-    Html.Attributes.attribute "fill" (toHex color)
-        |> htmlAttribute
-
-
-fillColorPurple : Attribute msg
-fillColorPurple =
-    Html.Attributes.style "filter" "brightness(0) saturate(100%) invert(24%) sepia(97%) saturate(1937%) hue-rotate(235deg) brightness(97%) contrast(93%)"
-        |> htmlAttribute
-
-
-fillColorWhite : Attribute msg
-fillColorWhite =
-    Html.Attributes.style "filter" "brightness(100%) saturate(0) invert(1)"
-        |> htmlAttribute
-
-
-fillColorDarkGreen : Attribute msg
-fillColorDarkGreen =
-    Html.Attributes.style "filter" "invert(59%) sepia(40%) saturate(342%) hue-rotate(114deg) brightness(93%) contrast(88%)"
-        |> htmlAttribute
-
-
-toHex : Color -> String
-toHex color =
-    let
-        floatToHex float =
-            let
-                string =
-                    Hex.toString (round (float * 255))
-            in
-            if String.length string == 1 then
-                "0" ++ string
-
-            else
-                string
-
-        { red, green, blue, alpha } =
-            toRgb color
-
-        alphaHex =
-            floatToHex alpha
-
-        redHex =
-            floatToHex red
-
-        greenHex =
-            floatToHex green
-
-        blueHex =
-            floatToHex blue
-    in
-    alphaHex ++ redHex ++ greenHex ++ blueHex
 
 
 

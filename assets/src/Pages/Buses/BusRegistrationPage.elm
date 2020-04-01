@@ -2,18 +2,19 @@ module Pages.Buses.BusRegistrationPage exposing (Model, Msg, init, subscriptions
 
 import Api
 import Api.Endpoint as Endpoint
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Element.Region as Region
+import Errors exposing (InputError)
 import Html exposing (Html)
 import Html.Attributes exposing (id)
 import Html.Events exposing (..)
 import Http
 import Icons
-import Json.Decode as Decode exposing (Decoder, field, int)
+import Json.Decode as Decode exposing (Decoder, Value, bool, decodeString, dict, field, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
 import Ports
@@ -21,7 +22,7 @@ import RemoteData exposing (..)
 import Route
 import Session exposing (Session)
 import Style exposing (edges)
-import StyledElement exposing (InputError, toDropDownView)
+import StyledElement exposing (toDropDownView, wrappedInput)
 import StyledElement.FloatInput as FloatInput exposing (FloatInput)
 import Task
 import Utils.Validator as Validator
@@ -50,7 +51,7 @@ type alias Form =
     , routeId : Maybe String
     , consumptionType : ConsumptionType
     , consumptionAmount : FloatInput
-    , problems : List (StyledElement.Errors Problem)
+    , problems : List (Errors.Errors Problem)
     }
 
 
@@ -59,7 +60,7 @@ type Problem
 
 
 type alias ValidForm =
-    { vehicleName : String
+    { vehicleType : String
     , numberPlate : String
     , seatsAvailable : Int
     , routeId : Maybe String
@@ -125,7 +126,7 @@ init : Session -> ( Model, Cmd Msg )
 init session =
     ( emptyForm session
     , Cmd.batch
-        [ Ports.initializeMaps ()
+        [ Ports.initializeMaps False
         , Task.succeed (FuelDropdownMsg (Dropdown.selectOption Diesel)) |> Task.perform identity
         , Task.succeed (ConsumptionDropdownMsg (Dropdown.selectOption Default)) |> Task.perform identity
         ]
@@ -196,7 +197,7 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | form = { form | problems = StyledElement.toClientSideErrors problems } }, Cmd.none )
+                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
         ServerResponse response ->
             let
@@ -212,22 +213,17 @@ update msg model =
 
                 Failure error ->
                     let
-                        apiError =
-                            Api.decodeErrors error
+                        ( _, error_msg ) =
+                            Errors.decodeErrors error
 
                         apiFormError =
-                            StyledElement.toServerSideErrors
-                                (Api.decodeFormErrors
-                                    [ "phone_number"
-                                    , "email"
-                                    ]
-                                    error
-                                )
+                            Errors.toServerSideErrors
+                                error
 
                         updatedForm =
                             { form | problems = form.problems ++ apiFormError }
                     in
-                    ( { newModel | form = updatedForm }, Api.handleError model apiError )
+                    ( { newModel | form = updatedForm }, error_msg )
 
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
@@ -343,7 +339,7 @@ viewForm model =
             [ column
                 [ spacing 32, width (fill |> minimum 300 |> maximum 300), alignTop ]
                 [ viewNumberPlateInput form.numberPlate form.problems
-                , viewAvailableSeatingInput form.seatsAvailable
+                , viewAvailableSeatingInput form.seatsAvailable form.problems
                 , viewRouteDropDown model
                 ]
             , viewVerticalDivider
@@ -396,8 +392,8 @@ viewVehicle vehicleType currentClass =
 
         selectedAttr =
             if selected then
-                [ Border.color Style.purpleColor
-                , Border.shadow { offset = ( 0, 12 ), size = 0, blur = 16, color = Style.withAlpha Style.darkGreenColor 0.2 }
+                [ Border.color Colors.purple
+                , Border.shadow { offset = ( 0, 12 ), size = 0, blur = 16, color = Colors.withAlpha Colors.darkGreen 0.2 }
                 ]
 
             else
@@ -415,17 +411,17 @@ viewVehicle vehicleType currentClass =
                     ++ selectedAttr
                 )
                 [ icon []
-                , el [ centerX, Font.bold, Font.color Style.purpleColor, Font.size 21 ] (text name)
+                , el [ centerX, Font.bold, Font.color Colors.purple, Font.size 21 ] (text name)
                 ]
         , onPress = Just (Changed (VehicleType vehicleType))
         }
 
 
-viewNumberPlateInput : String -> List (StyledElement.Errors Problem) -> Element Msg
+viewNumberPlateInput : String -> List (Errors.Errors Problem) -> Element Msg
 viewNumberPlateInput numberPlate problems =
     let
         errorMapper =
-            StyledElement.inputErrorsFor problems
+            Errors.inputErrorsFor problems
     in
     StyledElement.textInput
         [ width
@@ -446,8 +442,12 @@ viewNumberPlateInput numberPlate problems =
         }
 
 
-viewAvailableSeatingInput : Int -> Element Msg
-viewAvailableSeatingInput seats =
+viewAvailableSeatingInput : Int -> List (Errors.Errors Problem) -> Element Msg
+viewAvailableSeatingInput seats problems =
+    let
+        errorMapper =
+            Errors.inputErrorsFor problems
+    in
     StyledElement.numberInput
         [ width
             (fill
@@ -457,14 +457,15 @@ viewAvailableSeatingInput seats =
         ]
         { ariaLabel = "How many seats are available for students on the bus?"
         , caption = Just "How many seats are available for students on the bus?"
-        , errorCaption = Nothing
+        , errorCaption =
+            errorMapper "seats_available" []
         , icon = Nothing
         , onChange = SeatsAvailable >> Changed
         , placeholder = Nothing
         , title = "Student Seats"
         , value = seats
         , maximum = Just 70
-        , minimum = Just 0
+        , minimum = Just 3
         }
 
 
@@ -578,7 +579,7 @@ fuelDropDown model =
             model.form.problems
 
         errorMapper =
-            StyledElement.inputErrorsFor model.form.problems
+            Errors.inputErrorsFor model.form.problems
 
         justFuelType x =
             Maybe.withDefault (toFuelType model.form.vehicleClass) x
@@ -725,7 +726,7 @@ validateForm form =
             else
                 [ ( InvalidNumberPlate, "There's something wrong with this number plate" ) ]
 
-        vehicleName =
+        vehicleType =
             case toVehicleType form.vehicleClass of
                 Van ->
                     "van"
@@ -747,7 +748,7 @@ validateForm form =
     case problems of
         [] ->
             Ok
-                { vehicleName = vehicleName
+                { vehicleType = vehicleType
                 , numberPlate = form.numberPlate
                 , seatsAvailable = form.seatsAvailable
                 , routeId = Nothing
@@ -766,7 +767,7 @@ submit session form =
             Encode.object
                 [ ( "number_plate", Encode.string form.numberPlate )
                 , ( "seats_available", Encode.int form.seatsAvailable )
-                , ( "vehicle_type", Encode.string form.vehicleName )
+                , ( "vehicle_type", Encode.string form.vehicleType )
                 , ( "stated_milage", Encode.float form.consumptionAmount )
                 , ( "fuel_type", Encode.string form.fuelType )
                 ]

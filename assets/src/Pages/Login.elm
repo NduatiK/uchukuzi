@@ -2,10 +2,12 @@ module Pages.Login exposing (Model, Msg, init, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Errors
 import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, string)
@@ -97,10 +99,10 @@ updateStatus model msg =
 
         Failure error ->
             let
-                apiError =
-                    Api.decodeErrors error
+                ( apiError, _ ) =
+                    Errors.decodeErrors error
             in
-            ( { model | error = Just (Api.errorToString apiError) }, Cmd.none )
+            ( { model | error = Just (Errors.errorToString apiError) }, Cmd.none )
 
         NotAsked ->
             ( model, Cmd.none )
@@ -170,7 +172,7 @@ viewError error =
 
         Just errorStr ->
             row
-                ([ width fill, padding 10, Background.color (Style.withAlpha Style.errorColor 0.5) ] ++ Style.labelStyle)
+                ([ width fill, padding 10, Background.color (Colors.withAlpha Colors.errorRed 0.5) ] ++ Style.labelStyle)
                 [ Element.paragraph [] [ text errorStr ] ]
 
 
@@ -182,7 +184,7 @@ viewMessage message =
 
         Just messageStr ->
             row
-                ([ width fill, padding 10, Background.color (Style.withAlpha Style.tealColor 0.5) ] ++ Style.labelStyle)
+                ([ width fill, padding 10, Background.color (Colors.withAlpha Colors.teal 0.5) ] ++ Style.labelStyle)
                 [ Element.paragraph [] [ text messageStr ] ]
 
 
@@ -193,13 +195,13 @@ viewFooter =
             [ el (Font.size 15 :: Style.labelStyle)
                 (text "Don’t have an account?")
             , row [ spacing 8 ]
-                [ StyledElement.textLink [ Font.color Style.darkGreenColor, Font.size 15 ] { label = text "Sign up with Flotilla", route = Route.Signup }
+                [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15 ] { label = text "Sign up with Flotilla", route = Route.Signup }
                 , Icons.chevronDown [ rotate (-pi / 2) ]
                 ]
             ]
 
         -- , row [ spacing 8 ]
-        --     [ StyledElement.textLink [ Font.color Style.darkGreenColor, Font.size 15 ] { label = text "Forgot your password?", route = Route.Home }
+        --     [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15 ] { label = text "Forgot your password?", route = Route.Home }
         --     , Icons.chevronDown [ rotate (-pi / 2) ]
         --     ]
         ]
@@ -232,7 +234,7 @@ login session form =
                 ]
                 |> Http.jsonBody
     in
-    Api.post session Endpoint.login params loginDecoder
+    Api.post session Endpoint.login params Api.credDecoder
         |> Cmd.map LoginResponse
 
 
@@ -244,11 +246,3 @@ viewButton { status } =
 
         _ ->
             StyledElement.button [ alignRight ] { label = text "Done", onPress = Just SubmittedForm }
-
-
-loginDecoder : Decoder Session.Cred
-loginDecoder =
-    Decode.succeed Session.Cred
-        |> required "name" string
-        |> required "email" string
-        |> required "auth_token" string

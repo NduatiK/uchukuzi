@@ -96,7 +96,6 @@ function initializeCamera(app) {
             }
         })
         .catch((e) => {
-            console.log(e)
             app.ports.receiveCameraActive.send(false)
         })
 }
@@ -144,6 +143,8 @@ function sleep(time) {
 function setFrameFrozen(isFrozen) {
     freezeFrame = isFrozen
 }
+
+
 export {
     initializeCamera, stopCamera, setFrameFrozen
 }

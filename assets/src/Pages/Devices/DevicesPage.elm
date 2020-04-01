@@ -3,6 +3,7 @@ module Pages.Devices.DevicesPage exposing (Model, Msg, init, update, view)
 import Api
 import Api.Endpoint as Endpoint
 import Element exposing (..)
+import Errors
 import Icons
 import Json.Decode exposing (Decoder, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required)
@@ -58,7 +59,13 @@ view : Model -> Element msg
 view model =
     column [ width fill, spacing 40, paddingXY 24 8 ]
         [ viewHeading "*Devices****" (Just "Place this within the bus")
-        , viewBody model
+        , Element.column []
+            [ StyledElement.buttonLink
+                { route = Route.DeviceRegistration
+                , label = text "Add a device"
+                }
+            , viewBody model
+            ]
         ]
 
 
@@ -66,13 +73,7 @@ viewBody : Model -> Element msg
 viewBody model =
     case model.devices of
         Success devices ->
-            Element.column []
-                [ StyledElement.buttonLink
-                    { route = Route.DeviceRegistration
-                    , label = text "Add a device"
-                    }
-                , viewDevicesTable devices
-                ]
+            viewDevicesTable devices
 
         NotAsked ->
             text "Initialising."
@@ -83,10 +84,10 @@ viewBody model =
         -- Failure error ->
         Failure error ->
             let
-                apiError =
-                    Api.decodeErrors error
+                ( apiError, _ ) =
+                    Errors.decodeErrors error
             in
-            text (Api.errorToString apiError)
+            text (Errors.errorToString apiError)
 
 
 viewDevicesTable devices =

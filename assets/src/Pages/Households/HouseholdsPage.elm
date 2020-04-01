@@ -10,6 +10,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Element.Region as Region
+import Errors
 import Html exposing (Html)
 import Html.Events exposing (..)
 import Http
@@ -103,10 +104,17 @@ update msg model =
     --         model.form
     -- in
     case msg of
-        StudentsResponse households ->
-            ( { model | households = households }
-            , Cmd.none
-            )
+        StudentsResponse response ->
+            case response of
+                Failure error ->
+                    let
+                        ( _, error_msg ) =
+                            Errors.decodeErrors error
+                    in
+                    ( { model | households = response }, error_msg )
+
+                _ ->
+                    ( { model | households = response }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -135,10 +143,10 @@ viewBody model =
 
         Failure error ->
             let
-                apiError =
-                    Api.decodeErrors error
+                ( apiError, _ ) =
+                    Errors.decodeErrors error
             in
-            text (Api.errorToString apiError)
+            text (Errors.errorToString apiError)
 
         Success households ->
             Element.column [ spacing 40 ]

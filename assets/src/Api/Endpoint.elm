@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, buses, createBus, createHousehold, devices, get, households, login, patch, post, registerDevice, signup, trips)
+module Api.Endpoint exposing (Endpoint, bus, buses, createBus, createHousehold, devices, get, households, login, patch, post, registerDevice, signup, trips)
 
 import Http exposing (Body)
 import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
@@ -59,12 +59,12 @@ patch endpoint session body decoder =
 
 login : Endpoint
 login =
-    url [ "auth", "login" ] []
+    url [ "auth", "manager", "login" ] []
 
 
 signup : Endpoint
 signup =
-    url [ "people", "managers" ] []
+    url [ "school", "create" ] []
 
 
 households : Endpoint
@@ -81,7 +81,13 @@ trips { bus_id } =
 
 buses : Endpoint
 buses =
-    url [ "buses" ] []
+    url [ "school", "buses" ] []
+
+
+bus : Int -> Endpoint
+bus busID =
+    url [ "school", "buses", String.fromInt busID ]
+        []
 
 
 devices : Endpoint
@@ -101,7 +107,7 @@ createHousehold =
 
 createBus : Endpoint
 createBus =
-    url [ "buses" ] []
+    url [ "school", "buses" ] []
 
 
 

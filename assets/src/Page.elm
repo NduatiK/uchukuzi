@@ -10,7 +10,7 @@ import Icons
 import Route exposing (Route)
 import Session
 import Style exposing (edges)
-import Template.NavBar exposing (viewHeader)
+import Template.NavBar as NavBar exposing (viewHeader)
 import Template.SideBar exposing (viewSidebar)
 
 
@@ -23,8 +23,11 @@ transformToModelMsg toModel toMsg ( subModel, subCmd ) =
     )
 
 
-frame : Maybe Route -> Element msg -> Session.Session -> Element msg
-frame route body session =
+
+-- frame : Maybe Route -> Element msg -> Session.Session -> Element msg
+
+
+frame route body session toMsg navState headerToMsg =
     let
         sidebarParts =
             if Session.getCredentials session == Nothing || Route.isPublicRoute route then
@@ -46,8 +49,8 @@ frame route body session =
                 )
     in
     column [ width fill, height fill ]
-        [ viewHeader session route
-        , renderedView
+        [ Element.map headerToMsg (viewHeader navState session route)
+        , Element.map toMsg renderedView
         ]
 
 

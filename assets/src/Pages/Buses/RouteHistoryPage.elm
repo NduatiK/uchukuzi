@@ -2,12 +2,14 @@ module Pages.Buses.RouteHistoryPage exposing (Model, Msg, init, update, view)
 
 import Api exposing (get)
 import Api.Endpoint as Endpoint exposing (trips)
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Errors
 import Html.Attributes exposing (class, id)
 import Http
 import Icons
@@ -18,6 +20,7 @@ import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
+import StyledElement
 import Time
 import Utils.Date
 
@@ -111,14 +114,10 @@ update msg model =
                 command =
                     case response of
                         Success _ ->
-                            Ports.initializeMaps ()
+                            Ports.initializeMaps False
 
-                        Failure (Http.BadStatus { status }) ->
-                            if status.code == 401 then
-                                Api.received401 ()
-
-                            else
-                                Cmd.none
+                        Failure error ->
+                            Tuple.second (Errors.decodeErrors error)
 
                         _ ->
                             Cmd.none
@@ -175,10 +174,10 @@ viewBody model =
 
         Failure error ->
             let
-                apiError =
-                    Api.decodeErrors error
+                ( apiError, _ ) =
+                    Errors.decodeErrors error
             in
-            text (Api.errorToString apiError)
+            text (Errors.errorToString apiError)
 
 
 viewMapRegion : Model -> GroupedTrips -> Element Msg
@@ -214,7 +213,7 @@ viewMap model zone =
         , Border.shadow { offset = ( 0, 12 ), size = 0, blur = 32, color = rgba 0 0 0 0.14 }
         , Style.clipStyle
 
-        -- , Background.color Style.purpleColor
+        -- , Background.color Colors.purple
         , Border.rounded 15
         , Border.solid
         , Border.color (rgb255 197 197 197)
@@ -223,15 +222,7 @@ viewMap model zone =
         , Background.color (rgba 0 0 0 0.05)
         , Element.inFront slider
         ]
-        (el
-            ([ height fill
-             , width fill
-             , htmlAttribute (id "google-map")
-             ]
-                ++ mapClasses
-            )
-            none
-        )
+        (StyledElement.googleMap mapClasses)
 
 
 viewSlider : Model -> Time.Zone -> Trip -> Element Msg
@@ -271,7 +262,7 @@ viewSlider model zone trip =
                             Background.color (rgba 1 1 1 0)
 
                           else
-                            Background.color Style.purpleColor
+                            Background.color Colors.purple
                         ]
                         none
             in
@@ -301,7 +292,7 @@ viewSlider model zone trip =
                             -- "Filled track"
                             [ width (fillPortion model.sliderValue)
                             , height (px 3)
-                            , Background.color Style.purpleColor
+                            , Background.color Colors.purple
                             , Border.rounded 2
                             ]
                             Element.none
@@ -310,7 +301,7 @@ viewSlider model zone trip =
                             [ width (fillPortion (max - model.sliderValue))
                             , height (px 3)
                             , alpha 0.38
-                            , Background.color Style.purpleColor
+                            , Background.color Colors.purple
                             , Border.rounded 2
                             ]
                             Element.none
@@ -326,7 +317,7 @@ viewSlider model zone trip =
                 , value = Basics.toFloat model.sliderValue
                 , thumb =
                     Input.thumb
-                        [ Background.color Style.purpleColor
+                        [ Background.color Colors.purple
                         , width (px 16)
                         , height (px 16)
                         , Border.rounded 8
@@ -420,12 +411,12 @@ viewTrip selectedTrip timezone trip =
             ++ selectionStyles
         )
         [ column [ spacing 8 ]
-            [ el (alignRight :: timeStyle ++ [ Font.color Style.darkTextColor ]) (text (String.toUpper (Utils.Date.timeFormatter timezone trip.startTime)))
+            [ el (alignRight :: timeStyle ++ [ Font.color Colors.darkText ]) (text (String.toUpper (Utils.Date.timeFormatter timezone trip.startTime)))
             , el (alignRight :: timeStyle) (text (String.toUpper (Utils.Date.timeFormatter timezone trip.endTime)))
 
             -- , el routeStyle (text trip.route)
             ]
-        , el [ width (px 3), height fill, Background.color Style.darkGreenColor ] none
+        , el [ width (px 3), height fill, Background.color Colors.darkGreen ] none
         , column [ spacing 8 ]
             [ el routeStyle (text trip.route)
 

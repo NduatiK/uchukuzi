@@ -1,15 +1,22 @@
 module Pages.Buses.BusDetailsPage exposing (Model, Msg, init, update, view)
 
+import Api
+import Api.Endpoint as Endpoint
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
 import Icons
+import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
+import Json.Decode.Pipeline exposing (optional, required)
+import Models.Bus exposing (Bus)
 import Page
 import Pages.Buses.AboutBus as About
 import Pages.Buses.BusDevicePage as BusDevice
 import Pages.Buses.FuelHistoryPage as FuelHistory
 import Pages.Buses.RouteHistoryPage as RouteHistory
+import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style
 import Views.Divider exposing (viewDivider)
@@ -20,6 +27,7 @@ type alias Model =
     , currentPage : Page
     , pages : List ( Icon, ( Page, Cmd Msg ) )
     , pageIndex : Int
+    , bus : WebData Bus
     }
 
 
@@ -71,6 +79,7 @@ type Msg
     | GotFuelHistoryMsg FuelHistory.Msg
     | GotBusDeviceMsg BusDevice.Msg
     | SelectedPage Int
+    | ServerResponse (WebData Bus)
 
 
 init : Int -> Session -> ( Model, Cmd Msg )
@@ -87,9 +96,9 @@ init busID session =
                 Just ( _, ( page, msg ) ) ->
                     ( page, msg )
     in
-    ( Model session initialPage allPages_ (List.length allPages_ - 1)
+    ( Model session initialPage allPages_ (List.length allPages_ - 1) Loading
     , Cmd.batch
-        [ initialMsg ]
+        [ initialMsg, fetchBus busID session ]
     )
 
 
@@ -114,6 +123,9 @@ update msg model =
 
         SelectedPage selectedPage ->
             changeCurrentPage selectedPage model
+
+        ServerResponse response ->
+            ( { model | bus = response }, Cmd.none )
 
 
 changeCurrentPage : Int -> Model -> ( Model, Cmd Msg )
@@ -169,31 +181,44 @@ updatePage msg fullModel =
 
 view : Model -> Element Msg
 view model =
+    case model.bus of
+        Success bus ->
+            viewLoaded model bus
+
+        _ ->
+            Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
+
+
+
+-- _ ->
+
+
+viewLoaded model bus =
     Element.row
         [ width fill
         , paddingXY 24 8
         , spacing 26
         ]
         [ viewSidebar model
-        , viewBody model
+        , viewBody model bus
         ]
 
 
-viewHeading : Element msg
-viewHeading =
+viewHeading : Bus -> Element msg
+viewHeading bus =
     Element.column
         [ width fill ]
-        [ el Style.headerStyle (text "Bus 45 • KAU 354P")
+        [ el Style.headerStyle (text bus.numberPlate)
         , el Style.captionLabelStyle (text "Ngong Road Route")
         , viewDivider
         ]
 
 
-viewBody : Model -> Element Msg
-viewBody model =
+viewBody : Model -> Bus -> Element Msg
+viewBody model bus =
     Element.column
         [ height fill, width fill, spacing 40 ]
-        [ viewHeading
+        [ viewHeading bus
         , viewSubPage model.currentPage
         ]
 
@@ -277,22 +302,22 @@ iconForPage pageIcon page currentPage =
         iconFillColor =
             case ( page, currentPage ) of
                 ( RouteHistory _, RouteHistory _ ) ->
-                    [ Style.fillColorPurple
+                    [ Colors.fillPurple
                     , alpha 1
                     ]
 
                 ( About _, About _ ) ->
-                    [ Style.fillColorPurple
+                    [ Colors.fillPurple
                     , alpha 1
                     ]
 
                 ( FuelHistory _, FuelHistory _ ) ->
-                    [ Style.fillColorPurple
+                    [ Colors.fillPurple
                     , alpha 1
                     ]
 
                 ( BusDevice _, BusDevice _ ) ->
-                    [ Style.fillColorPurple
+                    [ Colors.fillPurple
                     , alpha 1
                     ]
 
@@ -313,3 +338,19 @@ iconForPage pageIcon page currentPage =
                 )
             )
         )
+
+
+fetchBus : Int -> Session -> Cmd Msg
+fetchBus busID session =
+    Api.get session (Endpoint.bus busID) busDecoder
+        |> Cmd.map ServerResponse
+
+
+busDecoder : Decoder Bus
+busDecoder =
+    Decode.succeed Bus
+        |> required "id" int
+        |> required "number_plate" string
+        |> required "seats_available" int
+        |> required "vehicle_type" string
+        |> required "stated_milage" float

@@ -1,9 +1,12 @@
-port module Ports exposing (deselectPoint, disableCamera, initializeCamera, initializeMaps, noCameraFoundError, receiveCameraActive, scannedDeviceCode, selectPoint, setFrameFrozen)
+port module Ports exposing (deselectPoint, disableCamera, initializeCamera, initializeMaps, noCameraFoundError, receiveCameraActive, receivedMapClickLocation, requestGeoLocation, scannedDeviceCode, selectPoint, setFrameFrozen)
 
 -- OUTGOING
 
 
-port initializeMaps : () -> Cmd msg
+port initializeMaps : (Bool) -> Cmd msg
+
+
+port requestGeoLocation : () -> Cmd msg
 
 
 port selectPoint : { lat : Float, lng : Float } -> Cmd msg
@@ -32,3 +35,6 @@ port scannedDeviceCode : (String -> msg) -> Sub msg
 
 
 port noCameraFoundError : (Bool -> msg) -> Sub msg
+
+
+port receivedMapClickLocation : (Maybe { lat : Float, lng : Float, radius : Float } -> msg) -> Sub msg

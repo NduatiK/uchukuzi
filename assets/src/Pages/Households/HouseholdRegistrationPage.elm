@@ -2,6 +2,7 @@ module Pages.Households.HouseholdRegistrationPage exposing (Model, Msg, init, up
 
 import Api
 import Api.Endpoint as Endpoint
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -117,7 +118,7 @@ emptyForm session =
 
 init : Session -> ( Model, Cmd msg )
 init session =
-    ( emptyForm session, Ports.initializeMaps () )
+    ( emptyForm session, Ports.initializeMaps False )
 
 
 
@@ -321,19 +322,17 @@ viewBody model =
 
 google_map : Model -> Element Msg
 google_map model =
-    el
+    StyledElement.googleMap
         [ width
             (fill
                 |> maximum 300
             )
         , height (px 400)
         , width fill
-        , Background.color Style.darkGreenColor
-        , htmlAttribute (id "google-map")
+        , Background.color Colors.darkGreen
         , Border.width 1
         , inFront (google_map_search model)
         ]
-        none
 
 
 google_map_search : Model -> Element Msg
@@ -415,7 +414,7 @@ viewStudentsInput current_student_name students =
                 , title = "Student Name"
                 , value = current_student_name
                 }
-            , Input.button [ padding 8, alignBottom, Background.color Style.purpleColor, Border.rounded 8 ]
+            , Input.button [ padding 8, alignBottom, Background.color Colors.purple, Border.rounded 8 ]
                 { label = Icons.addWhite []
                 , onPress = Just SaveStudentPressed
                 }

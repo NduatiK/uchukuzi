@@ -1,21 +1,24 @@
-module Pages.Signup exposing (Model, Msg, init, update, view)
+module Pages.Signup exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Errors exposing (Errors, InputError)
 import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, float, int, list, string)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required, resolve)
 import Json.Encode as Encode
+import Ports
 import RemoteData exposing (..)
 import Route exposing (LoginRedirect, Route)
 import Session exposing (Session)
 import Style
-import StyledElement exposing (Errors)
+import StyledElement
 import Utils.Validator exposing (..)
 
 
@@ -27,6 +30,7 @@ type alias Model =
     { session : Session
     , form : Form
     , status : WebData Session.Cred
+    , loadingGeocode : Bool
     }
 
 
@@ -42,18 +46,28 @@ type Name
     = Name String
 
 
+type alias Location =
+    { lat : Float, lng : Float, radius : Float }
+
+
 type alias ManagerDetailsForm =
     { firstName : Name
     , lastName : Name
-    , schoolName : Name
     , email : Email
     , password : Password
     }
 
 
+type alias ValidManagerForm =
+    { name : String
+    , email : String
+    , password : String
+    }
+
+
 type alias SchoolDetailsForm =
     { schoolName : Name
-    , location : Name
+    , location : Maybe Location
     }
 
 
@@ -72,26 +86,6 @@ type Pages
     | SchoolDetails
 
 
-pageAfter : Pages -> Maybe Pages
-pageAfter page =
-    case page of
-        ManagerDetails ->
-            Just SchoolDetails
-
-        SchoolDetails ->
-            Nothing
-
-
-pageBefore : Pages -> Maybe Pages
-pageBefore page =
-    case page of
-        SchoolDetails ->
-            Just ManagerDetails
-
-        ManagerDetails ->
-            Nothing
-
-
 type alias Form =
     { manager : ManagerDetailsForm
     , school : SchoolDetailsForm
@@ -100,13 +94,15 @@ type alias Form =
     }
 
 
+type alias ValidSchoolForm =
+    { schoolName : String
+    , schoolLocation : Location
+    }
+
+
 type alias ValidForm =
-    { firstName : String
-    , lastName : String
-    , schoolName : String
-    , schoolLocation : String
-    , email : String
-    , password : String
+    { manager : ValidManagerForm
+    , school : ValidSchoolForm
     }
 
 
@@ -116,18 +112,18 @@ init session =
         { manager =
             { firstName = Name ""
             , lastName = Name ""
-            , schoolName = Name ""
             , email = Email ""
             , password = Password ""
             }
         , school =
             { schoolName = Name ""
-            , location = Name ""
+            , location = Nothing
             }
         , page = ManagerDetails
         , problems = []
         }
         NotAsked
+        False
     , Cmd.none
     )
 
@@ -142,8 +138,10 @@ type Msg
     | UpdatedSchoolName Name
     | UpdatedEmail Email
     | UpdatedPassword Password
-    | NextForm
-    | PreviousForm
+    | RequestGeoLocation
+    | LocationSelected (Maybe Location)
+    | ToManagerForm
+    | ToSchoolForm
     | SubmittedForm
     | SignupResponse (WebData Session.Cred)
 
@@ -201,26 +199,32 @@ update msg model =
             , Cmd.none
             )
 
-        NextForm ->
-            case pageAfter form.page of
-                Nothing ->
-                    ( model, Cmd.none )
+        RequestGeoLocation ->
+            ( { model | loadingGeocode = True }, Ports.requestGeoLocation () )
 
-                Just page ->
-                    case validateForm form of
-                        Ok _ ->
-                            ( { model | form = { form | page = page } }, Cmd.none )
+        LocationSelected location ->
+            ( { model
+                | form =
+                    { form
+                        | school = { school | location = location }
+                    }
+                , loadingGeocode = False
+              }
+            , Cmd.none
+            )
 
-                        Err problems ->
-                            ( { model | form = { form | problems = StyledElement.toClientSideErrors problems } }, Cmd.none )
+        ToSchoolForm ->
+            case validateManagerForm form.manager of
+                Ok _ ->
+                    ( { model | form = { form | page = SchoolDetails } }
+                    , Ports.initializeMaps True
+                    )
 
-        PreviousForm ->
-            case pageBefore form.page of
-                Nothing ->
-                    ( model, Cmd.none )
+                Err problems ->
+                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
-                Just page ->
-                    ( { model | form = { form | page = page } }, Cmd.none )
+        ToManagerForm ->
+            ( { model | form = { form | page = ManagerDetails } }, Cmd.none )
 
         SubmittedForm ->
             case validateForm form of
@@ -228,7 +232,7 @@ update msg model =
                     ( { model | form = { form | problems = [] } }, signup model.session validForm )
 
                 Err problems ->
-                    ( { model | form = { form | problems = StyledElement.toClientSideErrors problems } }, Cmd.none )
+                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
         SignupResponse requestStatus ->
             let
@@ -246,19 +250,12 @@ updateStatus model msg =
 
         Failure error ->
             let
-                apiError =
-                    Api.decodeErrors error
+                ( _, error_msg ) =
+                    Errors.decodeErrors error
 
                 apiFormErrors =
-                    StyledElement.toServerSideErrors
-                        (Api.decodeFormErrors
-                            [ "phone_number"
-                            , "email"
-                            , "name"
-                            , "password"
-                            ]
-                            error
-                        )
+                    Errors.toServerSideErrors
+                        error
 
                 form =
                     model.form
@@ -266,7 +263,7 @@ updateStatus model msg =
                 updatedForm =
                     { form | problems = form.problems ++ apiFormErrors }
             in
-            ( { model | form = updatedForm }, Api.handleError model apiError )
+            ( { model | form = updatedForm }, error_msg )
 
         NotAsked ->
             ( model, Cmd.none )
@@ -297,7 +294,6 @@ view model =
 
         -- option2 ->
     in
-    -- column [ centerX, centerY, width (fill |> maximum 500), spacing 10, paddingXY 30 0 ]
     column [ centerX, centerY, spacing 10, paddingXY 30 0 ]
         [ el (alignLeft :: Style.headerStyle) (text "Sign Up")
         , formPage model
@@ -332,7 +328,33 @@ viewSchoolForm model =
             model.form
 
         errorMapper =
-            StyledElement.inputErrorsFor form.problems
+            Errors.inputErrorsFor form.problems
+
+        hasMapError =
+            List.any
+                (\x ->
+                    case x of
+                        Errors.ClientSideError y _ ->
+                            y == EmptySchoolLocation
+
+                        _ ->
+                            False
+                )
+                form.problems
+
+        mapCaptionStyle =
+            if hasMapError then
+                Style.errorStyle
+
+            else
+                Style.captionLabelStyle
+
+        mapBorderStyle =
+            if hasMapError then
+                [ Border.color Colors.errorRed, Border.width 2, padding 2 ]
+
+            else
+                [ Border.color Colors.white, Border.width 2, padding 2 ]
     in
     column [ centerX, alignTop, width (fill |> maximum 600), spacing 10 ]
         [ formPageHeader "School Details" "(2/2)"
@@ -347,14 +369,54 @@ viewSchoolForm model =
             , icon = Nothing
             }
         , spacer
-        , el
+        , el mapBorderStyle (viewMap model.loadingGeocode)
+        , row [ spacing 8 ]
+            [ el mapCaptionStyle (text "Click on your school to mark its location")
+            , Icons.help
+                [ width (px 16)
+                , height (px 16)
+                , alpha 1
+                , Element.pointer
+                , inFront
+                    (el
+                        [ centerX
+                        , alpha 0
+                        , mouseOver [ alpha 1 ]
+                        ]
+                        (el ([ moveDown 24, Background.color Colors.white, Style.elevated2, padding 8, mouseOver [ alpha 0 ] ] ++ Style.captionLabelStyle)
+                            (text "This allows us to know when your vehicle has left or arrived at the school compound")
+                        )
+                    )
+                ]
+            ]
+        , spacer
+        ]
+
+
+viewMap : Bool -> Element Msg
+viewMap isLoading =
+    let
+        loadingView =
+            if isLoading then
+                Icons.loading [ alignRight, width (px 46), height (px 46) ]
+
+            else
+                StyledElement.button
+                    [ Background.color Colors.teal, Font.color Colors.darkText, padding 50 ]
+                    { label = text "Use my location"
+                    , onPress = Just RequestGeoLocation
+                    }
+    in
+    el
+        [ inFront
+            (el [ padding 20, alignBottom, alignRight ] loadingView)
+        ]
+        (StyledElement.googleMap
             [ height (px 400)
             , width (px 600)
             , Background.color (rgb 0 0 1)
             ]
-            none
-        , spacer
-        ]
+        )
 
 
 viewManagerForm : Model -> Element Msg
@@ -364,7 +426,7 @@ viewManagerForm model =
             model.form
 
         errorMapper =
-            StyledElement.inputErrorsFor form.problems
+            Errors.inputErrorsFor form.problems
     in
     column [ centerX, alignTop, width (fill |> maximum 500), spacing 10 ]
         [ formPageHeader "Your Details" "(1/2)"
@@ -432,7 +494,7 @@ viewFooter =
             [ el (Font.size 15 :: Style.labelStyle)
                 (text "Already have an account?")
             , row [ spacing 8 ]
-                [ StyledElement.textLink [ Font.color Style.darkGreenColor, Font.size 15, Font.bold ] { label = text "Login", route = Route.Login Nothing }
+                [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15, Font.bold ] { label = text "Login", route = Route.Login Nothing }
                 , Icons.chevronDown [ rotate (-pi / 2) ]
                 ]
             ]
@@ -456,22 +518,22 @@ viewDivider =
         Element.none
 
 
-validateForm : Form -> Result (List ( Problem, String )) ValidForm
-validateForm form =
+validateManagerForm : ManagerDetailsForm -> Result (List ( Problem, String )) ValidManagerForm
+validateManagerForm manager =
     let
-        managerProblems manager =
+        managerProblems =
             List.concat
                 [ if isValidEmail (emailString manager.email) then
                     []
 
                   else
                     [ ( InvalidEmail, "There's something wrong with this email" ) ]
-                , if manager.firstName == Name "" then
+                , if String.isEmpty (String.trim (nameString manager.firstName)) then
                     [ ( EmptyFirstName, "Required" ) ]
 
                   else
                     []
-                , if manager.lastName == Name "" then
+                , if String.isEmpty (String.trim (nameString manager.lastName)) then
                     [ ( EmptyLastName, "Required" ) ]
 
                   else
@@ -485,41 +547,57 @@ validateForm form =
                   else
                     []
                 ]
+    in
+    case managerProblems of
+        [] ->
+            Ok
+                { name = nameString manager.firstName ++ " " ++ nameString manager.lastName
+                , email = emailString manager.email
+                , password = passwordString manager.password
+                }
 
-        schoolProblems school =
+        problems ->
+            Err problems
+
+
+validateSchoolForm : SchoolDetailsForm -> Result (List ( Problem, String )) ValidSchoolForm
+validateSchoolForm school =
+    let
+        schoolProblems =
             List.concat
                 [ if school.schoolName == Name "" then
                     [ ( EmptySchoolName, "Required" ) ]
 
                   else
                     []
-                , if school.location == Name "" then
+                , if school.location == Nothing then
                     [ ( EmptySchoolLocation, "Required" ) ]
 
                   else
                     []
                 ]
-
-        problems =
-            case form.page of
-                ManagerDetails ->
-                    managerProblems form.manager
-
-                SchoolDetails ->
-                    schoolProblems form.school
     in
-    case problems of
-        [] ->
+    case ( schoolProblems, school.location ) of
+        ( [], Just location ) ->
             Ok
-                { firstName = nameString form.manager.firstName
-                , lastName = nameString form.manager.lastName
-                , email = emailString form.manager.email
-                , password = passwordString form.manager.password
-                , schoolLocation = nameString form.school.location
-                , schoolName = nameString form.school.schoolName
+                { schoolLocation = location
+                , schoolName = nameString school.schoolName
                 }
 
-        _ ->
+        ( problems, _ ) ->
+            Err problems
+
+
+validateForm : Form -> Result (List ( Problem, String )) ValidForm
+validateForm form =
+    case ( validateManagerForm form.manager, validateSchoolForm form.school ) of
+        ( Ok manager, Ok school ) ->
+            Ok (ValidForm manager school)
+
+        ( Err problems, _ ) ->
+            Err problems
+
+        ( _, Err problems ) ->
             Err problems
 
 
@@ -550,12 +628,25 @@ viewButtons model =
             Icons.loading [ alignRight, width (px 46), height (px 46) ]
 
         _ ->
+            let
+                ( borderStyle, label ) =
+                    if Errors.containsErrorFor [ "name", "email", "password" ] model.form.problems then
+                        ( [ Border.color Colors.errorRed, Border.width 2 ]
+                        , row [ spacing 4 ]
+                            [ Icons.chevronDown [ rotate (pi / 2), Colors.fillErrorRed, alpha 1 ]
+                            , text "Back"
+                            ]
+                        )
+
+                    else
+                        ( [], text "Back" )
+            in
             row [ width fill ]
                 [ if model.form.page == SchoolDetails then
                     StyledElement.button
-                        [ alignLeft, Background.color (rgba 0 0 0 0), Font.color Style.darkTextColor ]
-                        { label = text "Back"
-                        , onPress = Just PreviousForm
+                        ([ alignLeft, Background.color (rgba 0 0 0 0), Font.color Colors.darkText ] ++ borderStyle)
+                        { label = label
+                        , onPress = Just ToManagerForm
                         }
 
                   else
@@ -575,7 +666,7 @@ viewButtons model =
                                 SubmittedForm
 
                              else
-                                NextForm
+                                ToSchoolForm
                             )
                     }
                 ]
@@ -589,24 +680,38 @@ loginDecoder =
 signup : Session -> ValidForm -> Cmd Msg
 signup session form =
     let
+        schoolParams =
+            Encode.object
+                [ ( "name", Encode.string form.school.schoolName )
+                , ( "geo"
+                  , Encode.object
+                        [ ( "lat", Encode.float form.school.schoolLocation.lat )
+                        , ( "lon", Encode.float form.school.schoolLocation.lng )
+                        , ( "radius", Encode.float form.school.schoolLocation.radius )
+                        ]
+                  )
+                ]
+
         managerParams =
             Encode.object
-                [ ( "email", Encode.string form.email )
-                , ( "name", Encode.string (form.firstName ++ " " ++ form.lastName) )
-                , ( "password", Encode.string form.password )
+                [ ( "email", Encode.string form.manager.email )
+                , ( "name", Encode.string form.manager.name )
+                , ( "password", Encode.string form.manager.password )
                 ]
 
         params =
             Encode.object
                 [ ( "manager", managerParams )
-                , ( "school"
-                  , Encode.object
-                        [ ( "school_name", Encode.string form.schoolName )
-                        , ( "school_location", Encode.string form.schoolLocation )
-                        ]
-                  )
+                , ( "school", schoolParams )
                 ]
                 |> Http.jsonBody
     in
     Api.post session Endpoint.signup params Api.credDecoder
         |> Cmd.map SignupResponse
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Ports.receivedMapClickLocation LocationSelected
+        ]

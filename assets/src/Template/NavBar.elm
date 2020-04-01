@@ -1,9 +1,12 @@
-module Template.NavBar exposing (..)
+module Template.NavBar exposing (Model, Msg, init, update, viewHeader)
 
+import Api
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Element.Input as Input
 import Element.Region as Region
 import Icons
 import Route exposing (Route)
@@ -12,17 +15,41 @@ import Style
 import StyledElement
 
 
-viewHeader : Session.Session -> Maybe Route -> Element msg
-viewHeader session route =
+type Model
+    = Model
+        { dropdownVisible : Bool
+        , session : Session.Session
+        }
+
+
+init : Session.Session -> Model
+init session =
+    Model { dropdownVisible = False, session = session }
+
+
+internals model =
+    case model of
+        Model i ->
+            i
+
+
+type Msg
+    = Logout
+    | Dashboard
+    | ToggleDropDown
+
+
+viewHeader : Model -> Session.Session -> Maybe Route -> Element Msg
+viewHeader model session route =
     case Session.getCredentials session of
         Nothing ->
             viewGuestHeader route
 
         Just cred ->
-            viewLoggedInHeader cred
+            viewLoggedInHeader model cred
 
 
-viewGuestHeader : Maybe Route -> Element msg
+viewGuestHeader : Maybe Route -> Element Msg
 viewGuestHeader route =
     row
         [ Region.navigation
@@ -37,12 +64,12 @@ viewGuestHeader route =
         ]
 
 
-viewLoginOptions : Maybe Route -> Element msg
+viewLoginOptions : Maybe Route -> Element Msg
 viewLoginOptions route =
     let
         ghostAttrs =
             [ Background.color (rgba 0 0 0 0)
-            , Font.color Style.darkTextColor
+            , Font.color Colors.darkText
             ]
 
         signUp =
@@ -76,23 +103,25 @@ viewLoginOptions route =
         loginOptions
 
 
-viewLoggedInHeader : Session.Cred -> Element msg
-viewLoggedInHeader creds =
+viewLoggedInHeader : Model -> Session.Cred -> Element Msg
+viewLoggedInHeader model creds =
     row
         [ Region.navigation
         , width fill
         , Background.color (rgb 1 1 1)
         , height (px 70)
         , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.14 }
-        , spacing 24
+        , spacing 8
         , Element.inFront viewFlotillaLogo
         ]
         [ viewBusesLogo
-        , viewHeaderProfileData creds
+        , el [ width (px 24) ] none
+        , viewHeaderProfileData model creds
+        , el [ width (px 1) ] none
         ]
 
 
-viewBusesLogo : Element msg
+viewBusesLogo : Element Msg
 viewBusesLogo =
     let
         logo =
@@ -103,18 +132,104 @@ viewBusesLogo =
         { label = logo, url = Route.href Route.Home }
 
 
-viewFlotillaLogo : Element msg
+viewFlotillaLogo : Element Msg
 viewFlotillaLogo =
     image
         [ height (px 30), centerX, centerY, Style.mobileHidden ]
         { src = "images/logo-name.png", description = "Flotilla Name" }
 
 
-viewHeaderProfileData : Session.Cred -> Element msg
-viewHeaderProfileData cred =
-    row [ alignRight, paddingXY 24 0, spacing 16 ]
-        [ el (Style.labelStyle ++ [ Font.color (rgb255 104 104 104) ]) (text cred.name)
-        , el [ height (px 48), width (px 48), Background.color (rgb255 228 228 228), Border.rounded 24 ] Element.none
+viewHeaderProfileData : Model -> Session.Cred -> Element Msg
+viewHeaderProfileData model cred =
+    let
+        dropdownVisible =
+            .dropdownVisible (internals model)
 
-        -- , Icons.chevronDown []
+        elementBelow =
+            if dropdownVisible then
+                column
+                    [ width fill
+                    , moveUp 8
+                    , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 5, color = rgba 0 0 0 0.14 }
+                    ]
+                    [ dropdownOption "Go to Dashboard" (Just Dashboard)
+                    , dropdownOption "Settings" (Just Logout)
+                    , dropdownOption "Logout" (Just Logout)
+                    ]
+
+            else
+                none
+    in
+    row
+        [ alignRight
+        , below elementBelow
         ]
+        [ el (Style.labelStyle ++ [ Font.color (rgb255 104 104 104) ]) (text cred.name)
+
+        -- , el [ height (px 48), width (px 48), Background.color (rgb255 228 228 228), Border.rounded 24 ] Element.none
+        , Input.button
+            [ height (px 48)
+            , width (px 48)
+            ]
+            { onPress = Just ToggleDropDown
+            , label =
+                Icons.chevronDown
+                    (if dropdownVisible then
+                        [ rotate pi ]
+
+                     else
+                        []
+                    )
+            }
+        ]
+
+
+dropdownOption optionText action =
+    let
+        alphaValue =
+            1
+    in
+    Input.button
+        [ Background.color Colors.white
+        , alignRight
+        , paddingXY 10 10
+        , width fill
+        , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.24 }
+        , Style.animatesAll
+        , alpha alphaValue
+        ]
+        { onPress = action
+        , label =
+            el
+                ([]
+                    ++ Style.captionLabelStyle
+                )
+                (text optionText)
+        }
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    let
+        internalData =
+            internals model
+    in
+    case msg of
+        ToggleDropDown ->
+            ( Model { internalData | dropdownVisible = not internalData.dropdownVisible }, Cmd.none )
+
+        Dashboard ->
+            ( model
+            , Cmd.batch
+                [ -- sendLogout
+                  Route.rerouteTo internalData Route.Dashboard
+                ]
+            )
+
+        Logout ->
+            ( model
+            , Cmd.batch
+                [ -- sendLogout
+                  Api.logout
+                ]
+            )
