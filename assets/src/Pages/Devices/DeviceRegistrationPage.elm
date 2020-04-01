@@ -38,6 +38,7 @@ type alias Model =
     , busDropDownState : Dropdown.State Bus
     , buses : WebData (List Bus)
     , requestState : WebData ValidForm
+    , preselectedBus : Maybe Int
     }
 
 
@@ -90,9 +91,10 @@ type Msg
     | DropdownMsg (Dropdown.Msg Bus)
 
 
-init : Session -> ( Model, Cmd Msg )
-init session =
+init : Session -> Maybe Int -> ( Model, Cmd Msg )
+init session busID =
     ( { session = session
+      , preselectedBus = busID
       , form =
             { imei = ""
             , selectedBus = Nothing
@@ -233,9 +235,16 @@ update msg model =
                             buses
                                 |> List.filter (.hasDevice >> not)
                                 |> List.sortBy .numberPlate
-                                |> Success
+
+                        selectedBus =
+                            Maybe.andThen
+                                (\bus_id ->
+                                    List.head
+                                        (List.filter (\bus -> bus.id == bus_id) filteredBuses)
+                                )
+                                model.preselectedBus
                     in
-                    ( { model | buses = filteredBuses }, Cmd.none )
+                    ( { model | buses = Success filteredBuses, form = { form | selectedBus = Debug.log "selectedBus" selectedBus } }, Cmd.none )
 
                 _ ->
                     ( { model | buses = response }, Cmd.none )
@@ -315,7 +324,11 @@ viewForm model =
                 , onPress = Just ToggleCamera
                 }
             ]
-        , toDropDownView <| busDropdown model
+        , if model.preselectedBus == Nothing then
+            toDropDownView <| busDropdown model
+
+          else
+            none
         , viewButton
         ]
 
@@ -431,7 +444,7 @@ viewDivider =
 
 viewButton : Element Msg
 viewButton =
-    StyledElement.button [ alignRight ]
+    StyledElement.button [ centerX ]
         { onPress = Just SubmitButtonMsg
         , label = text "Register"
         }
@@ -531,6 +544,7 @@ submit session form =
                 Just bus_id ->
                     Encode.object
                         [ ( "bus_id", Encode.int bus_id )
+                        , ( "imei", Encode.string form.imei )
                         ]
 
                 Nothing ->
@@ -538,5 +552,5 @@ submit session form =
             )
                 |> Http.jsonBody
     in
-    Api.patch session (Endpoint.registerDevice form.imei) params (Decode.succeed form)
+    Api.post session Endpoint.registerDevice params (Decode.succeed form)
         |> Cmd.map RegisterResponse

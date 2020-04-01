@@ -54,6 +54,9 @@ toNavigationPage route =
         Route.BusRegistration ->
             Buses
 
+        Route.BusDeviceRegistration _ ->
+            Buses
+
         Route.HouseholdList ->
             HouseholdList
 

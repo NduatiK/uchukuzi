@@ -16,6 +16,8 @@ import Json.Decode as Decode exposing (Decoder, float, int, list, string)
 import Json.Decode.Pipeline exposing (optional, required, resolve)
 import Ports
 import RemoteData exposing (..)
+import Route
+import Session exposing (Session)
 import Style exposing (edges)
 import Time
 import Utils.Date
@@ -24,16 +26,17 @@ import Utils.Date
 type alias Model =
     { showGeofence : Bool
     , busID : Int
+    , session : Session
     }
 
 
 type Msg
-    = AdjustedValue Int
+    = AddDevice
 
 
-init : Int -> ( Model, Cmd Msg )
-init busID =
-    ( Model True busID
+init : Session -> Int -> ( Model, Cmd Msg )
+init session busID =
+    ( Model True busID session
     , Cmd.batch []
     )
 
@@ -45,15 +48,15 @@ init busID =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AdjustedValue sliderValue ->
-            ( model, Cmd.none )
+        AddDevice ->
+            ( model, Route.rerouteTo model (Route.BusDeviceRegistration model.busID) )
 
 
 
 -- VIEW
 
 
-view : Model -> Element msg
+view : Model -> Element Msg
 view model =
     wrappedRow
         -- [ height (px 10)
@@ -75,7 +78,7 @@ view model =
 
 viewAddDevice model =
     Input.button []
-        { onPress = Nothing
+        { onPress = Just AddDevice
         , label =
             el
                 [ height (px 100)
@@ -88,9 +91,18 @@ viewAddDevice model =
                 , Border.rounded 3
                 , Border.width 1
                 ]
-                (column [ padding 8 ]
+                (column
+                    [ padding 8
+                    , width fill
+                    , height fill
+
+                    -- , Border.width 1
+                    -- , Border.color Colors.white
+                    -- -- , Background.color Colors.purple
+                    ]
                     [ Icons.hardware []
-                    , el (alignBottom :: Style.header2Style ++ [ Font.color Colors.semiDarkText ]) (text "Add a device")
+                    , el (alignBottom :: Style.header2Style ++ [ Font.color Colors.semiDarkText ])
+                        (text "Add a device")
                     ]
                 )
         }

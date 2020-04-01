@@ -18,13 +18,18 @@ function parse(string) {
 const storageKey = 'credentials'
 const storedState = localStorage.getItem(storageKey);
 const startingState = parse(storedState)
+const windowSize = {
+    width: window.innerWidth,
+    height: window.innerHeight
+}
+
 
 function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time))
 }
 
 var app = Elm.Main.init({
-    flags: startingState,
+    flags: { state: startingState, window: windowSize},
     node: document.getElementById("elm")
 })
 

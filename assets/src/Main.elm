@@ -402,6 +402,10 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     BusRegistration.init session
                         |> updateWith BusRegistration GotBusRegistrationMsg
 
+                Just (Route.BusDeviceRegistration busID) ->
+                    DeviceRegistration.init session (Just busID)
+                        |> updateWith DeviceRegistration GotDeviceRegistrationMsg
+
                 Just (Route.Bus busID) ->
                     BusDetailsPage.init busID session
                         |> updateWith BusDetailsPage GotBusDetailsPageMsg
@@ -419,7 +423,7 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                         |> updateWith DevicesList GotDevicesListMsg
 
                 Just Route.DeviceRegistration ->
-                    DeviceRegistration.init session
+                    DeviceRegistration.init session Nothing
                         |> updateWith DeviceRegistration GotDeviceRegistrationMsg
 
                 Just Route.StudentRegistration ->

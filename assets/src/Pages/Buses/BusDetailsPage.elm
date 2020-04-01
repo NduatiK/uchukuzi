@@ -72,7 +72,7 @@ allPagesFromSession busID session =
 
 aboutPage : Int -> Session -> ( Page, Cmd Msg )
 aboutPage busID session =
-    Page.transformToModelMsg About GotAboutMsg (About.init busID)
+    Page.transformToModelMsg About GotAboutMsg (About.init session busID)
 
 
 routePage : Int -> Session -> ( Page, Cmd Msg )

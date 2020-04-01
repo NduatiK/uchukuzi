@@ -92,12 +92,12 @@ bus busID =
 
 devices : Endpoint
 devices =
-    url [ "devices" ] []
+    url [ "school", "devices" ] []
 
 
-registerDevice : String -> Endpoint
-registerDevice imei =
-    url [ "devices", imei ] []
+registerDevice : Endpoint
+registerDevice =
+    url [ "school", "devices" ] []
 
 
 createHousehold : Endpoint

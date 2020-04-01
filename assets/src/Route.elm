@@ -29,20 +29,8 @@ type Route
     | BusRegistration
     | Bus Int
     | DeviceList
+    | BusDeviceRegistration Int
     | DeviceRegistration
-
-
-
--- = Home
--- | Root
--- | Login
--- | Logout
--- | Register
--- | Settings
--- | Article Slug
--- | Profile Username
--- | NewArticle
--- | EditArticle Slug
 
 
 loggedInParser : Parser (Route -> a) a
@@ -55,7 +43,8 @@ loggedInParser =
         , Parser.map Bus (s (routeName (Bus 0)) </> int)
         , Parser.map BusRegistration (s (routeName Buses) </> s (routeName BusRegistration))
         , buildParser DeviceList
-        , Parser.map DeviceRegistration (s (routeName DeviceList) </> s (routeName DeviceRegistration))
+        , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
+        , Parser.map DeviceRegistration (s (routeName DeviceList) </> s "new")
         ]
 
 
@@ -206,6 +195,9 @@ routeToString page =
                 DeviceRegistration ->
                     [ routeName DeviceList, routeName page ]
 
+                BusDeviceRegistration busID ->
+                    [ routeName Buses, String.fromInt busID, routeName page ]
+
                 Buses ->
                     [ routeName Buses ]
 
@@ -244,6 +236,9 @@ routeName page =
 
         DeviceRegistration ->
             "new"
+
+        BusDeviceRegistration _ ->
+            "register_device"
 
         StudentRegistration ->
             "new"
