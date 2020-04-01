@@ -49,5 +49,6 @@ npm-debug.log
 /assets/.cache/
 
 /assets/elm-stuff/
+/assets/src/elm-stuff/
 
 /.elixir_ls/

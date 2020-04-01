@@ -24,6 +24,8 @@ defmodule UchukuziInterfaceWeb do
       import Plug.Conn
       import UchukuziInterfaceWeb.Gettext
       alias UchukuziInterfaceWeb.Router.Helpers, as: Routes
+      alias UchukuziInterfaceWeb.AuthManager
+      alias Uchukuzi.Repo
     end
   end
 
@@ -50,6 +52,9 @@ defmodule UchukuziInterfaceWeb do
       use Phoenix.Router
       import Plug.Conn
       import Phoenix.Controller
+      alias UchukuziInterfaceWeb.AuthManager
+
+      import UchukuziInterfaceWeb.AuthManager, only: [authenticate_manager: 2]
     end
   end
 

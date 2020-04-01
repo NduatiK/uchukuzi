@@ -47,7 +47,7 @@ config :uchukuzi_interface, UchukuziInterfaceWeb.Endpoint,
 config :uchukuzi_interface, UchukuziInterfaceWeb.Endpoint,
   live_reload: [
     patterns: [
-      ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
+      # ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
       ~r{priv/gettext/.*(po)$},
       ~r{lib/uchukuzi_interface_web/views/.*(ex)$},
       ~r{lib/uchukuzi_interface_web/templates/.*(eex)$}

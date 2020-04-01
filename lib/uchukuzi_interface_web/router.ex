@@ -9,18 +9,35 @@ defmodule UchukuziInterfaceWeb.Router do
     plug :put_secure_browser_headers
   end
 
-  pipeline :api do
-    plug :accepts, ["json"]
-  end
-
   scope "/", UchukuziInterfaceWeb do
     pipe_through :browser
-
     get "/", PageController, :index
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", UchukuziInterfaceWeb do
-  #   pipe_through :api
-  # end
+  pipeline :api do
+    plug :accepts, ["json"]
+    plug AuthManager
+  end
+
+  scope "/api", UchukuziInterfaceWeb do
+    pipe_through :api
+
+    post "/school/create", SchoolController, :create_school
+  end
+
+  scope "/api/auth", UchukuziInterfaceWeb do
+    pipe_through :api
+
+    post "/manager/login", AuthController, :login_manager
+  end
+
+  scope "/api/school", UchukuziInterfaceWeb do
+    pipe_through [:api, :authenticate_manager]
+
+    get "/buses", SchoolController, :list_buses
+    get "/buses/:bus_id", SchoolController, :get_bus
+    post "/buses", SchoolController, :create_bus
+
+    post "/devices", SchoolController, :register_device
+  end
 end
