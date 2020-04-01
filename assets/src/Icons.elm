@@ -154,6 +154,12 @@ timeline attrs =
         { src = "images/timeline.svg", description = "" }
 
 
+repairs : List (Attribute msg) -> Element msg
+repairs attrs =
+    image (alpha 0.54 :: attrs)
+        { src = "images/repairs.svg", description = "" }
+
+
 hardware : List (Attribute msg) -> Element msg
 hardware attrs =
     image (alpha 0.54 :: attrs)

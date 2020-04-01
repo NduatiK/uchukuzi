@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Api
 import Browser
+import Browser.Events
 import Browser.Navigation as Nav
 import Element exposing (..)
 import Html.Attributes exposing (src)
@@ -37,6 +38,7 @@ type alias Model =
     { page : PageModel
     , route : Maybe Route
     , navState : NavBar.Model
+    , windowHeight : Int
     }
 
 
@@ -60,10 +62,41 @@ type PageModel
 
 
 init : Maybe Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init maybeCreds url navKey =
+init args url navKey =
     let
         creds =
-            Api.parseCreds maybeCreds
+            Maybe.andThen
+                (\x ->
+                    case
+                        Json.Decode.decodeValue
+                            (Json.Decode.at [ "state" ] Api.credDecoder)
+                            x
+                    of
+                        Ok a ->
+                            Just a
+
+                        _ ->
+                            Nothing
+                )
+                args
+
+        height =
+            Maybe.withDefault 100
+                (Maybe.andThen
+                    (\x ->
+                        case
+                            Json.Decode.decodeValue
+                                (Json.Decode.at [ "window", "height" ] Json.Decode.int)
+                                x
+                        of
+                            Ok a ->
+                                Just a
+
+                            _ ->
+                                Nothing
+                    )
+                    args
+                )
 
         session =
             Session.fromCredentials navKey Time.utc creds
@@ -73,6 +106,7 @@ init maybeCreds url navKey =
             (Redirect session)
             Nothing
             (NavBar.init session)
+            height
         )
 
 
@@ -84,6 +118,7 @@ type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | ReceivedCreds (Maybe Session.Cred)
+    | WindowResized Int Int
       ------------
       -- | UpdatedSessionCred (Maybe Session.Cred)
       ------------
@@ -110,13 +145,13 @@ type Msg
 
 
 view : Model -> Browser.Document Msg
-view { page, route, navState } =
+view { page, route, navState, windowHeight } =
     let
         viewEmptyPage pageContents =
             viewPage pageContents GotHomeMsg
 
         viewPage pageContents toMsg =
-            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg
+            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg windowHeight
 
         -- viewEmptyPage =
         renderedView =
@@ -183,6 +218,9 @@ view { page, route, navState } =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        WindowResized _ height ->
+            ( { model | windowHeight = height }, Cmd.none )
+
         LinkClicked urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
@@ -419,7 +457,8 @@ subscriptions model_ =
     in
     Sub.batch
         [ matching
-        , Api.onStoreChange (Debug.log "parseCreds" >> Api.parseCreds >> ReceivedCreds)
+        , Api.onStoreChange (Api.parseCreds >> ReceivedCreds)
+        , Browser.Events.onResize WindowResized
         ]
 
 

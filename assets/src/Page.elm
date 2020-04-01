@@ -1,17 +1,11 @@
 module Page exposing (frame, transformToModelMsg)
 
 import Element exposing (..)
-import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font
-import Element.Lazy exposing (lazy)
-import Element.Region as Region
-import Icons
 import Route exposing (Route)
 import Session
-import Style exposing (edges)
 import Template.NavBar as NavBar exposing (viewHeader)
-import Template.SideBar exposing (viewSidebar)
+import Template.TabBar as TabBar
 
 
 {-| Transforms a (foreign model, foreign msg) into a (local model, msg)
@@ -23,47 +17,30 @@ transformToModelMsg toModel toMsg ( subModel, subCmd ) =
     )
 
 
-
--- frame : Maybe Route -> Element msg -> Session.Session -> Element msg
-
-
-frame route body session toMsg navState headerToMsg =
+frame : Maybe Route -> Element a -> Session.Session -> (a -> msg) -> NavBar.Model -> (NavBar.Msg -> msg) -> Int -> Element msg
+frame route body session toMsg navState headerToMsg pageHeight =
     let
-        sidebarParts =
+        bottomBar =
             if Session.getCredentials session == Nothing || Route.isPublicRoute route then
-                []
+                none
 
             else
-                [ viewSidebar route, viewSidebarDivider ]
+                TabBar.view route
 
-        renderedView =
-            row [ width fill, height fill, spacingXY 5 0 ]
-                (sidebarParts
-                    ++ [ el
-                            [ width fill
-                            , alignTop
-                            , height fill
-                            ]
-                            body
-                       ]
-                )
+        renderedBody =
+            el
+                [ width fill
+                , height (px (pageHeight - NavBar.maxHeight - TabBar.maxHeight - 5))
+                , alignTop
+                , scrollbarY
+                ]
+                (Element.map toMsg body)
+
+        renderedHeader =
+            Element.map headerToMsg (viewHeader navState session route)
     in
     column [ width fill, height fill ]
-        [ Element.map headerToMsg (viewHeader navState session route)
-        , Element.map toMsg renderedView
+        [ renderedHeader
+        , renderedBody
+        , bottomBar
         ]
-
-
-viewSidebarDivider : Element msg
-viewSidebarDivider =
-    el
-        [ height fill
-        , paddingEach { edges | top = 10, bottom = 10 }
-        ]
-        (el
-            [ height fill
-            , Border.width 1
-            , Border.color (rgb255 243 243 243)
-            ]
-            none
-        )

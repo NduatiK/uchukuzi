@@ -1,4 +1,4 @@
-module Template.NavBar exposing (Model, Msg, init, update, viewHeader)
+module Template.NavBar exposing (Model, Msg, init, maxHeight, update, viewHeader)
 
 import Api
 import Colors
@@ -13,6 +13,11 @@ import Route exposing (Route)
 import Session
 import Style
 import StyledElement
+
+
+maxHeight : Int
+maxHeight =
+    70
 
 
 type Model
@@ -58,6 +63,7 @@ viewGuestHeader route =
         , height (px 70)
         , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.14 }
         , Element.inFront viewFlotillaLogo
+        , height (px 71)
         ]
         [ viewBusesLogo
         , viewLoginOptions route
@@ -109,7 +115,7 @@ viewLoggedInHeader model creds =
         [ Region.navigation
         , width fill
         , Background.color (rgb 1 1 1)
-        , height (px 70)
+        , height (px maxHeight)
         , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.14 }
         , spacing 8
         , Element.inFront viewFlotillaLogo

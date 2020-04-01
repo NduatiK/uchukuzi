@@ -6,11 +6,12 @@ import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input
 import Icons
 import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (optional, required)
-import Models.Bus exposing (Bus)
+import Models.Bus exposing (Bus, Route)
 import Page
 import Pages.Buses.AboutBus as About
 import Pages.Buses.BusDevicePage as BusDevice
@@ -44,11 +45,27 @@ type Page
     | BusDevice BusDevice.Model
 
 
+pageName page =
+    case page of
+        About _ ->
+            "Summary"
+
+        RouteHistory _ ->
+            "Trips"
+
+        FuelHistory _ ->
+            "Fuel Log"
+
+        BusDevice _ ->
+            "Device"
+
+
 allPagesFromSession : Int -> Session -> List ( Icon, ( Page, Cmd Msg ) )
 allPagesFromSession busID session =
     [ ( Icons.info, aboutPage busID session )
     , ( Icons.timeline, routePage busID session )
     , ( Icons.fuel, fuelPage busID session )
+    , ( Icons.repairs, devicePage busID session )
     , ( Icons.hardware, devicePage busID session )
     ]
 
@@ -185,42 +202,71 @@ view model =
         Success bus ->
             viewLoaded model bus
 
+        Failure error ->
+            let
+                e =
+                    Debug.log "e" error
+            in
+            paragraph (centerX :: centerY :: Style.labelStyle) [ text "Something went wrong please reload the page" ]
+
         _ ->
             Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
 
 
-
--- _ ->
-
-
 viewLoaded model bus =
-    Element.row
-        [ width fill
-        , paddingXY 24 8
-        , spacing 26
-        ]
-        [ viewSidebar model
-        , viewBody model bus
-        ]
-
-
-viewHeading : Bus -> Element msg
-viewHeading bus =
     Element.column
-        [ width fill ]
-        [ el Style.headerStyle (text bus.numberPlate)
-        , el Style.captionLabelStyle (text "Ngong Road Route")
-        , viewDivider
+        [ height fill
+        , width fill
+        , spacing 24
+        , paddingXY 24 8
+        ]
+        [ viewHeading model bus
+        , Element.row
+            [ width fill
+            , height fill
+            , spacing 26
+            ]
+            [ viewSidebar model
+            , viewBody model bus
+            ]
+        ]
+
+
+viewHeading : Model -> Bus -> Element msg
+viewHeading model bus =
+    Element.column
+        [ width fill, paddingXY 8 8 ]
+        [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold ])
+            [ el [] (text (pageName model.currentPage))
+            , text " for "
+            , el
+                [ Font.color Colors.semiDarkText
+                , Font.semiBold
+                , below
+                    (el
+                        [ Background.color (Colors.withAlpha Colors.semiDarkText 0.2)
+                        , width fill
+                        , height (px 2)
+                        ]
+                        none
+                    )
+                ]
+                (text bus.numberPlate)
+            ]
+        , case bus.route of
+            Nothing ->
+                none
+
+            Just route ->
+                el Style.captionLabelStyle (text route.name)
+
+        -- , viewDivider
         ]
 
 
 viewBody : Model -> Bus -> Element Msg
 viewBody model bus =
-    Element.column
-        [ height fill, width fill, spacing 40 ]
-        [ viewHeading bus
-        , viewSubPage model.currentPage
-        ]
+    viewSubPage model.currentPage
 
 
 viewSubPage : Page -> Element Msg
@@ -255,7 +301,7 @@ viewSidebar model =
         iconize ( icon, ( page, _ ) ) =
             iconForPage icon page model.currentPage
     in
-    el [ paddingXY 0 300, alignTop ]
+    el [ centerY ]
         (column
             [ Background.color (rgb255 233 233 243)
             , padding 7
@@ -354,3 +400,11 @@ busDecoder =
         |> required "seats_available" int
         |> required "vehicle_type" string
         |> required "stated_milage" float
+        |> required "route" (nullable routeDecoder)
+
+
+routeDecoder : Decoder Route
+routeDecoder =
+    Decode.succeed Route
+        |> required "id" string
+        |> required "name" string

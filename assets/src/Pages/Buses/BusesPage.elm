@@ -238,7 +238,7 @@ viewBuses buses filterText =
                 , spacing 20
                 , scrollbarY
                 ]
-                (List.map busView (someBuses ))
+                (List.map busView someBuses)
 
 
 google_map : Maybe (List Bus) -> Element Msg
