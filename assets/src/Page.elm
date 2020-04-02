@@ -1,7 +1,6 @@
-module Page exposing (frame, transformToModelMsg)
+module Page exposing (frame, transformToModelMsg, viewHeight)
 
 import Element exposing (..)
-import Element.Border as Border
 import Route exposing (Route)
 import Session
 import Template.NavBar as NavBar exposing (viewHeader)
@@ -17,6 +16,11 @@ transformToModelMsg toModel toMsg ( subModel, subCmd ) =
     )
 
 
+viewHeight : Int -> Int
+viewHeight pageHeight =
+    pageHeight - NavBar.maxHeight - TabBar.maxHeight
+
+
 frame : Maybe Route -> Element a -> Session.Session -> (a -> msg) -> NavBar.Model -> (NavBar.Msg -> msg) -> Int -> Element msg
 frame route body session toMsg navState headerToMsg pageHeight =
     let
@@ -30,7 +34,7 @@ frame route body session toMsg navState headerToMsg pageHeight =
         renderedBody =
             el
                 [ width fill
-                , height (px (pageHeight - NavBar.maxHeight - TabBar.maxHeight - 5))
+                , height (px (viewHeight pageHeight))
                 , alignTop
                 , scrollbarY
                 ]

@@ -1,4 +1,4 @@
-module Pages.Buses.BusDevicePage exposing (Model, Msg, init, update, view)
+module Pages.Buses.BusRepairsPage exposing (Model, Msg, init, update, view)
 
 import Api exposing (get)
 import Api.Endpoint as Endpoint exposing (trips)

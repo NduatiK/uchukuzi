@@ -9,7 +9,7 @@ import Html.Attributes exposing (src)
 import Json.Decode exposing (Value)
 import Page exposing (..)
 import Pages.Blank
-import Pages.Buses.BusDetailsPage as BusDetailsPage
+import Pages.Buses.BusPage as BusDetailsPage
 import Pages.Buses.BusRegistrationPage as BusRegistration
 import Pages.Buses.BusesPage as BusesList
 import Pages.DashboardPage as Dashboard
@@ -395,7 +395,7 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                         |> updateWith Home GotHomeMsg
 
                 Just Route.Buses ->
-                    BusesList.init session
+                    BusesList.init session (Page.viewHeight model.windowHeight)
                         |> updateWith BusesList GotBusesListMsg
 
                 Just Route.BusRegistration ->

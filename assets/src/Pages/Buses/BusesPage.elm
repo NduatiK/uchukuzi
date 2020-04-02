@@ -29,6 +29,7 @@ type alias Model =
     { session : Session
     , buses : WebData (List Bus)
     , filterText : String
+    , height : Int
     }
 
 
@@ -56,9 +57,9 @@ type Msg
     | ServerResponse (WebData (List Bus))
 
 
-init : Session -> ( Model, Cmd Msg )
-init session =
-    ( Model session Loading ""
+init : Session -> Int -> ( Model, Cmd Msg )
+init session height =
+    ( Model session Loading "" height
     , Cmd.batch [ fetchBuses session, Ports.initializeMaps False ]
     )
 
@@ -100,17 +101,17 @@ update msg model =
 
 view : Model -> Element Msg
 view model =
-    column
+    wrappedRow
         [ width fill
-        , height fill
+        , height (px model.height)
         ]
-        [ google_map (busesFromModel model.buses)
-        , el
+        [ el
             [ paddingEach { edges | right = 10 }
             , width fill
-            , height (fillPortion 1)
+            , height fill
             ]
             (viewBody model)
+        , google_map (busesFromModel model.buses)
         ]
 
 
@@ -147,9 +148,7 @@ viewBody model =
         (Element.column
             [ paddingXY 10 0
             , spacing 40
-
-            -- , explain Debug.todo
-            , width fill
+            , width (fillPortion 2 |> minimum 400)
             ]
             [ el [] none
             , viewHeading "All Buses" model.filterText
@@ -170,10 +169,10 @@ viewHeading title filterText =
             , caption = Nothing
             , errorCaption = Nothing
             , value = filterText
-            , onChange = ChangedFilterText
+            , onChange = String.toUpper >> ChangedFilterText
             , placeholder = Just (Input.placeholder [] (text "Search"))
             , ariaLabel = "Filter buses"
-            , icon = Just Icons.filter
+            , icon = Just Icons.search
             }
         , StyledElement.iconButton [ centerY ]
             { onPress = Just CreateBus
@@ -225,11 +224,14 @@ viewBuses buses filterText =
                         ]
                 }
     in
-    case filteredBuses of
-        [] ->
-            text "No buses created yet"
+    case ( filteredBuses, filterText ) of
+        ( [], "" ) ->
+            el [ padding 30 ] (text "No buses created yet")
 
-        someBuses ->
+        ( [], _ ) ->
+            el [ padding 30 ] (text ("No matches for " ++ filterText))
+
+        ( someBuses, _ ) ->
             wrappedRow
                 [ padding 30
                 , width fill
@@ -244,7 +246,7 @@ viewBuses buses filterText =
 google_map : Maybe (List Bus) -> Element Msg
 google_map buses =
     StyledElement.googleMap
-        [ width fill
+        [ width (fillPortion 1 |> minimum 400)
         , height (fill |> minimum 400)
         ]
 

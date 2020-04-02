@@ -14,6 +14,7 @@ import Icons
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, float, int, list, string)
 import Json.Decode.Pipeline exposing (optional, required, resolve)
+import Models.Bus exposing (Bus)
 import Ports
 import RemoteData exposing (..)
 import Route
@@ -25,7 +26,7 @@ import Utils.Date
 
 type alias Model =
     { showGeofence : Bool
-    , busID : Int
+    , bus : Bus
     , session : Session
     }
 
@@ -34,9 +35,9 @@ type Msg
     = AddDevice
 
 
-init : Session -> Int -> ( Model, Cmd Msg )
-init session busID =
-    ( Model True busID session
+init : Session -> Bus -> ( Model, Cmd Msg )
+init session bus =
+    ( Model True bus session
     , Cmd.batch []
     )
 
@@ -49,30 +50,30 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         AddDevice ->
-            ( model, Route.rerouteTo model (Route.BusDeviceRegistration model.busID) )
+            ( model, Route.rerouteTo model (Route.BusDeviceRegistration model.bus.id) )
 
 
 
 -- VIEW
 
 
-view : Model -> Element Msg
+view : Model -> ( Element Msg, Element Msg )
 view model =
+    ( viewBody model, viewBody model )
+
+
+viewBody model =
     wrappedRow
-        -- [ height (px 10)
-        -- , width fill
-        -- , Style.clipStyle
-        -- , Border.solid
-        -- , Border.color (rgb255 197 197 197)
-        -- , Border.width 1
-        -- , clip
-        -- , Background.color (rgba 0 0 0 0.05)
-        -- ]
         [ height fill
         , width fill
         , paddingXY 0 10
+        , Background.color Colors.black
         ]
-        [ viewAddDevice model
+        [ if model.bus.device == Nothing then
+            viewAddDevice model
+
+          else
+            none
         ]
 
 

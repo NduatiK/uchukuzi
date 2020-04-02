@@ -64,10 +64,10 @@ type Msg
     | ClickedOn Trip
 
 
-init : Session -> Int -> ( Model, Cmd Msg )
-init session busID =
+init : Session -> { bus | id : Int } -> ( Model, Cmd Msg )
+init session bus =
     ( Model 0 True True RemoteData.Loading [] Nothing (Session.timeZone session)
-    , Cmd.batch [ fetchTripsForBus session busID ]
+    , Cmd.batch [ fetchTripsForBus session bus.id ]
     )
 
 
@@ -432,10 +432,10 @@ viewTrip selectedTrip timezone trip =
 
 
 fetchTripsForBus : Session -> Int -> Cmd Msg
-fetchTripsForBus session bus =
+fetchTripsForBus session bus_id =
     let
         params =
-            { bus_id = String.fromInt bus }
+            { bus_id = bus_id }
     in
     Api.get session (Endpoint.trips params) (list tripDecoder)
         |> Cmd.map TripsResponse

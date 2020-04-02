@@ -27,8 +27,8 @@ type Msg
     = AdjustedValue Int
 
 
-init : Int -> Time.Zone -> ( Model, Cmd Msg )
-init bus_id timezone =
+init : { bus | id : Int } -> Time.Zone -> ( Model, Cmd Msg )
+init bus timezone =
     ( Model
     , Cmd.none
     )

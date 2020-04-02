@@ -72,10 +72,10 @@ households =
     url [ "households" ] []
 
 
-trips : { bus | bus_id : String } -> Endpoint
+trips : { bus | bus_id : Int } -> Endpoint
 trips { bus_id } =
     url [ "trips" ]
-        [ Url.Builder.string "bus_id" bus_id
+        [ Url.Builder.string "bus_id" (String.fromInt bus_id)
         ]
 
 

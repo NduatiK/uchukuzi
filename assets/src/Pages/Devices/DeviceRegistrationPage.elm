@@ -237,12 +237,14 @@ update msg model =
                                 |> List.sortBy .numberPlate
 
                         selectedBus =
-                            Maybe.andThen
-                                (\bus_id ->
-                                    List.head
-                                        (List.filter (\bus -> bus.id == bus_id) filteredBuses)
+                            Debug.log "selectedBus"
+                                (Maybe.andThen
+                                    (\bus_id ->
+                                        List.head
+                                            (List.filter (\bus -> bus.id == bus_id) filteredBuses)
+                                    )
+                                    model.preselectedBus
                                 )
-                                model.preselectedBus
                     in
                     ( { model | buses = Success filteredBuses, form = { form | selectedBus = Debug.log "selectedBus" selectedBus } }, Cmd.none )
 

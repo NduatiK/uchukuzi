@@ -1,4 +1,4 @@
-module Models.Bus exposing (Bus, Route)
+module Models.Bus exposing (Bus, Device, Route)
 
 
 type alias Bus =
@@ -8,6 +8,7 @@ type alias Bus =
     , vehicleType : String
     , stated_milage : Float
     , route : Maybe Route
+    , device : Maybe Device
 
     -- , current_location : Maybe Location
     }
@@ -17,3 +18,13 @@ type alias Route =
     { id : String
     , name : String
     }
+
+
+type alias Device =
+    String
+
+
+
+-- { id : String
+-- , name : String
+-- }
