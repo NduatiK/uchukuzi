@@ -23,7 +23,7 @@ defmodule Uchukuzi.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :httpoison],
       mod: {Uchukuzi.Application, []}
     ]
   end
@@ -35,6 +35,9 @@ defmodule Uchukuzi.MixProject do
       {:distance, "~> 0.2.1"},
       {:envelope, "~> 1.1"},
 
+      # ----- WEATHER --------
+      {:httpoison, "~> 0.4"},
+      {:jason, "~> 1.0"},
 
       # ----- CRYPTO --------
       {:pbkdf2_elixir, "~> 1.1"},

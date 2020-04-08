@@ -9,7 +9,7 @@ defmodule Uchukuzi.Application do
     children = [
       {Uchukuzi.Repo, []},
       {Registry, keys: :unique, name: Uchukuzi.Registry},
-      Uchukuzi.School.BusesSupervisor,
+      Uchukuzi.Tracking.BusesSupervisor,
       Uchukuzi.World.WorldSupervisor
     ]
 

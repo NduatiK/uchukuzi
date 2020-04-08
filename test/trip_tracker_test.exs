@@ -12,8 +12,8 @@ defmodule TripTrackerTest do
   alias Uchukuzi.Tracking.StudentActivity
   alias Uchukuzi.Roles.Student
   alias Uchukuzi.Roles.Assistant
-  alias Uchukuzi.School.BusesSupervisor
-  alias Uchukuzi.School.BusSupervisor
+  alias Uchukuzi.Tracking.BusesSupervisor
+  alias Uchukuzi.Tracking.BusSupervisor
 
   setup do
     try do

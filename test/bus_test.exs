@@ -6,7 +6,7 @@ defmodule TripTrackerTest do
   alias Uchukuzi.Common.Location
   alias Uchukuzi.Common.Report
   alias Uchukuzi.School.Bus
-  alias Uchukuzi.School.BusServer
+  alias Uchukuzi.Tracking.BusServer
 
   def bus(),
     do: %Bus{id: 1, number_plate: "KAU944P", device: [], route: [], assistants: []}
