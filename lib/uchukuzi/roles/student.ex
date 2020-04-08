@@ -22,6 +22,7 @@ defmodule Uchukuzi.Roles.Student do
     field(:travel_time, :string)
 
     belongs_to(:school, Uchukuzi.School.School)
+    belongs_to(:guardian, Guardian)
 
     timestamps()
   end
