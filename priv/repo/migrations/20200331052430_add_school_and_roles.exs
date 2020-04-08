@@ -14,9 +14,6 @@ defmodule Uchukuzi.Repo.Migrations.AddSchoolAndRoles do
       add(:email, :string)
       add(:password_hash, :string)
 
-      add(:auth_token, :string)
-      add(:auth_token_expires_at, :utc_datetime_usec)
-
       add(:school_id, references("schools"))
 
       timestamps()
@@ -28,12 +25,11 @@ defmodule Uchukuzi.Repo.Migrations.AddSchoolAndRoles do
 
     create table("assistants") do
       add(:name, :string)
+
       add(:email, :string)
       add(:phone_number, :string)
-      add(:password_hash, :string)
 
-      add(:auth_token, :string)
-      add :auth_token_expires_at, :utc_datetime_usec
+      add(:password_hash, :string)
 
       add(:school_id, references("schools"))
 
@@ -46,14 +42,10 @@ defmodule Uchukuzi.Repo.Migrations.AddSchoolAndRoles do
 
     create table("guardians") do
       add(:name, :string)
-      add(:travel_time, :string)
 
       add(:email, :string)
       add(:phone_number, :string)
       add(:password_hash, :string)
-
-      add(:auth_token, :string)
-      add(:auth_token_expires_at, :utc_datetime_usec)
 
       add(:school_id, references("schools"))
 
@@ -73,9 +65,6 @@ defmodule Uchukuzi.Repo.Migrations.AddSchoolAndRoles do
 
       add(:email, :string)
       add(:password_hash, :string)
-
-      add(:auth_token, :string)
-      add :auth_token_expires_at, :utc_datetime_usec
 
       add(:school_id, references("schools"))
       add(:guardian_id, references("guardians"))

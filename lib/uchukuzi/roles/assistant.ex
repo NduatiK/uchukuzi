@@ -3,12 +3,44 @@ defmodule Uchukuzi.Roles.Assistant do
   An employee of a school assigned to a bus who records the
   boarding and exiting of students from a bus
   """
-  alias __MODULE__
+  use Uchukuzi.Roles.Model
 
-  @enforce_keys [:name, :email, :password]
-  defstruct [:name, :email, :password]
+  schema "assistants" do
+    field(:name, :string)
+    field(:email, :string)
+    field(:phone_number, :string)
 
-  def new(name, email, password) do
-    %Assistant{name: name, email: email, password: password}
+    field(:password, :string, virtual: true)
+    field(:password_hash, :string)
+
+    belongs_to(:school, Uchukuzi.School.School)
+
+    timestamps()
+  end
+
+  def new(name, email, phone_number, password) do
+    %Assistant{}
+    |> registration_changeset(%{
+      name: name,
+      email: email,
+      password: password,
+      phone_number: phone_number
+    })
+  end
+
+  defp changeset(schema, params) do
+    schema
+    |> cast(params, __MODULE__.__schema__(:fields))
+    |> validate_required([:name, :email, :password])
+    |> Validation.validate_email()
+    |> Validation.validate_phone_number()
+    |> unique_constraint(:email)
+  end
+
+  def registration_changeset(model, params) do
+    model
+    |> changeset(params)
+    |> validate_length(:password, min: 6, max: 100)
+    |> put_pass_hash()
   end
 end

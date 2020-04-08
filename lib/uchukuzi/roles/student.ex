@@ -8,16 +8,34 @@ defmodule Uchukuzi.Roles.Student do
     Enum.reduce(@travel_times, &(&2 <> ", " <> &1)) |> String.replace_suffix(",", "")
   })
 
-  A student may be granted access to bus details by their `Guardian`
+  A student may be granted access to bus details by their `Guardian` through their email
   """
-  alias __MODULE__
+  use Uchukuzi.Roles.Model
 
-  @enforce_keys [:name, :travel_time]
-  defstruct [:name, :email, :password, :travel_time]
+  schema "students" do
+    field(:name, :string)
+    field(:email, :string)
 
-  @spec new(any, any) :: Uchukuzi.Roles.Student.t()
-  def new(name, travel_time) when travel_time in @travel_times,
-    do: %Student{name: name, travel_time: travel_time}
+    field(:password, :string, virtual: true)
+    field(:password_hash, :string)
+
+    field(:travel_time, :string)
+
+    belongs_to(:school, Uchukuzi.School.School)
+
+    timestamps()
+  end
+
+  def new(school, name, travel_time, email \\ nil),
+    do: changeset(%{name: name, travel_time: travel_time, email: email, school_id: school})
+
+  defp changeset(schema \\ %Student{}, params) do
+    schema
+    |> cast(params, __MODULE__.__schema__(:fields))
+    |> validate_required([:name, :travel_time])
+    |> Validation.validate_email()
+    |> unique_constraint(:email)
+  end
 
   def is_student(%Student{}), do: true
   def is_student(_), do: false
