@@ -9,6 +9,7 @@ defmodule Uchukuzi.School.School do
     embeds_one(:perimeter, Geofence)
 
     has_one(:manager, Uchukuzi.Roles.Manager)
+    has_many(:buses, Bus, foreign_key: :school_id)
   end
 
   def new(name, perimeter) do

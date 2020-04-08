@@ -28,7 +28,8 @@ defmodule Uchukuzi.School.Model do
 
       alias Uchukuzi.Common.{
         Geofence,
-        Location
+        Location,
+        Validation
       }
     end
   end
