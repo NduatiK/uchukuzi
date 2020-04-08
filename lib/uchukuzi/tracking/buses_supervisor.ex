@@ -1,8 +1,8 @@
-defmodule Uchukuzi.School.BusesSupervisor do
+defmodule Uchukuzi.Tracking.BusesSupervisor do
   use DynamicSupervisor
 
   alias Uchukuzi.School.Bus
-  alias Uchukuzi.School.BusSupervisor
+  alias Uchukuzi.Tracking.BusSupervisor
 
   def start_link(_options) do
     DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)

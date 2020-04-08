@@ -1,8 +1,9 @@
-defmodule Uchukuzi.School.BusSupervisor do
+defmodule Uchukuzi.Tracking.BusSupervisor do
   use Supervisor, restart: :transient
 
   alias Uchukuzi.School.Bus
-  alias Uchukuzi.School.BusServer
+  alias Uchukuzi.Tracking.BusServer
+  alias Uchukuzi.Tracking.TripSupervisor
 
   def start_link(bus) do
     Supervisor.start_link(__MODULE__, bus, name: via_tuple(bus))

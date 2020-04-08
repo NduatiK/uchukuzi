@@ -8,12 +8,13 @@ defmodule Uchukuzi.Tracking do
   """
 
   alias Uchukuzi.School.Bus
-  alias Uchukuzi.School.BusServer
 
   alias Uchukuzi.Roles.Assistant
   alias Uchukuzi.Roles.Student
 
+  alias Uchukuzi.Tracking
   alias Uchukuzi.Tracking.TripTracker
+  alias Uchukuzi.Tracking.BusServer
 
   alias Uchukuzi.Common.Report
 

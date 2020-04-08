@@ -10,7 +10,7 @@ defmodule Uchukuzi.World.TileServer do
   alias Uchukuzi.Common.Location
   alias Uchukuzi.World.Tile
   alias Uchukuzi.World.WorldManager
-  alias Uchukuzi.School.BusServer
+  alias Uchukuzi.Tracking.BusServer
 
   defmodule BusState do
     @enforce_keys [:pid, :enter_time, :position, :ref]
