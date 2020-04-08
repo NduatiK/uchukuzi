@@ -13,7 +13,6 @@ defmodule Uchukuzi.MixProject do
 
       aliases: aliases(),
 
-
       # DOCS - mix docs
       name: "Uchukuzi",
       docs: docs()
@@ -34,6 +33,8 @@ defmodule Uchukuzi.MixProject do
       {:topo, "~> 0.4.0"},
       {:distance, "~> 0.2.1"},
       {:envelope, "~> 1.1"},
+      {:penelope, "~> 0.4"},
+      {:eqrcode, "~> 0.1.7"},
 
       # ----- WEATHER --------
       {:httpoison, "~> 0.4"},
@@ -62,11 +63,11 @@ defmodule Uchukuzi.MixProject do
           Uchukuzi.School.Bus.FuelRecord,
           Uchukuzi.School.Bus.PerformedRepair,
           Uchukuzi.School.Bus.ScheduledRepair,
-          Uchukuzi.School.BusServer,
-          Uchukuzi.School.BusServer.State,
+          Uchukuzi.Tracking.BusServer,
+          Uchukuzi.Tracking.BusServer.State,
           Uchukuzi.School.BusStop,
-          Uchukuzi.School.BusSupervisor,
-          Uchukuzi.School.BusesSupervisor,
+          Uchukuzi.Tracking.BusSupervisor,
+          Uchukuzi.Tracking.BusesSupervisor,
           Uchukuzi.School.Device,
           Uchukuzi.School.Route,
           Uchukuzi.School.School
