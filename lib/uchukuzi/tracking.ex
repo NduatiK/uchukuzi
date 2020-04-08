@@ -34,6 +34,34 @@ defmodule Uchukuzi.Tracking do
     # TODO: Where do trips come in?
     BusServer.move(bus_server, report)
 
-    World.update(bus_server, previous_report, report)
+    # World.update(bus_server, previous_report, report)
+  end
+
+  def where_is(%Bus{} = bus) do
+    bus
+    |> BusServer.pid_from()
+    |> BusServer.last_seen()
+  end
+
+  def in_school?(%Bus{} = bus) do
+    bus_server = BusServer.pid_from(bus)
+    BusServer.in_school?(bus_server)
+  end
+
+  def add_location_to_buses(buses) do
+    buses
+    |> Enum.map(
+      &{
+        &1,
+        Tracking.where_is(&1)
+      }
+    )
+    |> Enum.map(fn {bus, report} ->
+      %{
+        bus: bus.id,
+        loc: if(is_nil(report), do: nil, else: report.location)
+      }
+    end)
+    |> IO.inspect()
   end
 end
