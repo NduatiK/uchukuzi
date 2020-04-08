@@ -65,11 +65,11 @@ defmodule Uchukuzi.World.Tile do
     polygon = %Geo.Polygon{
       coordinates: [
         [
-          {coordinate.lon, coordinate.lat},
-          {opposite_coordinate.lon, coordinate.lat},
-          {opposite_coordinate.lon, opposite_coordinate.lat},
-          {coordinate.lon, opposite_coordinate.lat},
-          {coordinate.lon, coordinate.lat}
+          {coordinate.lng, coordinate.lat},
+          {opposite_coordinate.lng, coordinate.lat},
+          {opposite_coordinate.lng, opposite_coordinate.lat},
+          {coordinate.lng, opposite_coordinate.lat},
+          {coordinate.lng, coordinate.lat}
         ]
       ]
     }
@@ -85,17 +85,14 @@ defmodule Uchukuzi.World.Tile do
         origin.lat + offset
       end
 
-    lon =
-      if origin.lon + offset > 180 do
+    lng =
+      if origin.lng + offset > 180 do
         180
       else
-        origin.lon + offset
+        origin.lng + offset
       end
 
-    %Location{
-      lat: lat,
-      lon: lon
-    }
+    Location.new(lng, lat)
   end
 
   @doc """
@@ -106,10 +103,10 @@ defmodule Uchukuzi.World.Tile do
 
     # Use floor so as to always move down and left,
     # even on negative coordinates
-    %Location{
-      lat: :math.floor(point.lat / size) * size,
-      lon: :math.floor(point.lon / size) * size
-    }
+    Location.new(
+      :math.floor(point.lng / size) * size,
+      :math.floor(point.lat / size) * size
+    )
   end
 
   @doc """
@@ -194,7 +191,7 @@ defmodule Uchukuzi.World.Tile do
       end
 
     {top_tile, bottom_tile} =
-      if start_tile.coordinate.lon >= end_tile.coordinate.lon do
+      if start_tile.coordinate.lng >= end_tile.coordinate.lng do
         {start_tile, end_tile}
       else
         {end_tile, start_tile}
@@ -202,14 +199,14 @@ defmodule Uchukuzi.World.Tile do
 
     horizontal = round((right_tile.coordinate.lat - left_tile.coordinate.lat) / size)
 
-    vertical = round((top_tile.coordinate.lon - bottom_tile.coordinate.lon) / size)
+    vertical = round((top_tile.coordinate.lng - bottom_tile.coordinate.lng) / size)
 
     grouped_tiles =
       for lat <- 0..horizontal do
-        for lon <- 0..vertical do
+        for lng <- 0..vertical do
           {:ok, location} =
             Location.new(
-              bottom_tile.coordinate.lon + lon * size,
+              bottom_tile.coordinate.lng + lng * size,
               left_tile.coordinate.lat + lat * size
             )
 

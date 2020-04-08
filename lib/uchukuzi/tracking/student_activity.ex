@@ -4,19 +4,18 @@ defmodule Uchukuzi.Tracking.StudentActivity do
   alias Uchukuzi.Common.Location
   alias Uchukuzi.Roles.Assistant
 
-
   @activities [:boarded_vehicle, :exited_vehicle]
 
   @enforce_keys [:student, :activity, :time, :reported_by]
   defstruct [:student, :activity, :time, :infered_location, :reported_by]
 
-  def boarded(student, time \\ nil,  %Assistant{} = assistant),
+  def boarded(student, time \\ nil, %Assistant{} = assistant),
     do: new(student, :boarded_vehicle, time, assistant)
 
-  def exited(student, time \\ nil,  %Assistant{} = assistant),
+  def exited(student, time \\ nil, %Assistant{} = assistant),
     do: new(student, :exited_vehicle, time, assistant)
 
-  defp new(student, activity, time,  %Assistant{} = assistant)
+  defp new(student, activity, time, %Assistant{} = assistant)
        when activity in @activities,
        do: %StudentActivity{
          student: student,
@@ -47,10 +46,10 @@ defmodule Uchukuzi.Tracking.StudentActivity do
     if report_before == nil and report_after == nil do
       nil
     else
-      %Location{
-        lon: (report_after.location.lon + report_before.location.lon) / 2,
-        lat: (report_after.location.lat + report_before.location.lat) / 2
-      }
+      Location.new(
+        (report_after.location.lng + report_before.location.lng) / 2,
+        (report_after.location.lat + report_before.location.lat) / 2
+      )
     end
   end
 

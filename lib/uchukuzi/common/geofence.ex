@@ -7,7 +7,7 @@ defmodule Uchukuzi.Common.Geofence do
 
   # @enforce_keys [:type]
   # defstruct [:type, :perimeter, :center, :radius]
-
+  @primary_key false
   embedded_schema do
     field(:type, :string)
     embeds_many(:perimeter, Location)
@@ -44,7 +44,7 @@ defmodule Uchukuzi.Common.Geofence do
   #   end
   # end
 
-  def new_school_fence(%{latitude: latitude, longitude: longitude} = center, radius)
+  def new_school_fence(%{lng: lng, lng: lng} = center, radius)
       when is_number(radius) do
     %Geofence{}
     |> changeset(%{type: :school, center: center, radius: radius})
@@ -76,7 +76,7 @@ defmodule Uchukuzi.Common.Geofence do
     perimeter_points =
       geofence.perimeter
       |> Enum.map(fn point ->
-        {point.lon, point.lat}
+        Location.to_coord(point)
       end)
 
     perimeter = %Geo.Polygon{coordinates: [perimeter_points]}
@@ -85,7 +85,7 @@ defmodule Uchukuzi.Common.Geofence do
       perimeter
       |> Envelope.from_geo()
 
-    location = %Geo.Point{coordinates: {location.lon, location.lat}}
+    location = %Geo.Point{coordinates: {location.lng, location.lat}}
 
     location_env =
       location
