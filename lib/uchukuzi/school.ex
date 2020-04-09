@@ -130,4 +130,55 @@ defmodule Uchukuzi.School do
   # end
 
   # ********* Routes *********
+
+  # ********* HOUSEHOLDS *********
+  def create_household(
+        school_id,
+        guardian_params,
+        students_params,
+        pickup_location,
+        home_location,
+        route_id
+      ) do
+    Multi.new()
+    # Build Guardian
+    |> Multi.insert(:guardian, Guardian.changeset(%Guardian{}, guardian_params))
+    # Recursively build student
+    |> Multi.merge(fn %{guardian: guardian} ->
+      students_params
+      |> Enum.with_index()
+      |> Enum.reduce(Multi.new(), fn {student_params, idx}, multi ->
+        multi
+        |> Multi.insert(
+          "student" <> Integer.to_string(idx),
+          guardian
+          |> Ecto.build_assoc(:students)
+          |> Student.changeset(
+            student_params,
+            pickup_location,
+            home_location,
+            school_id,
+            route_id
+          )
+        )
+      end)
+    end)
+    |> Repo.transaction()
+  end
+
+  def guardians_for(school_id) do
+    Repo.all(
+      from(g in Guardian,
+        join: s in assoc(g, :students),
+        where: s.school_id == ^school_id,
+        preload: [students: s]
+      )
+    )
+
+    # Guardian
+    # |> join(:left, [g], s in Student, on: s.guardian_id == g.id and s.school_id == ^school_id)
+    # |> select([g, s], {g, s})
+    # |> Repo.all()
+    # |> IO.inspect
+  end
 end

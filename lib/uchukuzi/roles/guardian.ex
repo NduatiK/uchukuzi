@@ -11,7 +11,7 @@ defmodule Uchukuzi.Roles.Guardian do
     field(:password, :string, virtual: true)
     field(:password_hash, :string)
 
-    has_many(:children, Student)
+    has_many(:students, Student)
 
     timestamps()
   end
@@ -21,10 +21,10 @@ defmodule Uchukuzi.Roles.Guardian do
     |> registration_changeset(%{name: name, email: email, password: password})
   end
 
-  defp changeset(schema, params) do
+  def changeset(schema, params) do
     schema
     |> cast(params, __MODULE__.__schema__(:fields))
-    |> validate_required([:name, :email, :password])
+    |> validate_required([:name, :email])
     |> Validation.validate_email()
     |> unique_constraint(:email)
   end

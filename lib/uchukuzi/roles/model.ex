@@ -9,7 +9,10 @@ defmodule Uchukuzi.Roles.Model do
 
       alias Uchukuzi.Repo
 
-      alias Uchukuzi.Common.Validation
+      alias Uchukuzi.Common.{
+        Validation,
+        Location
+      }
 
       alias Uchukuzi.Roles.{
         Manager,

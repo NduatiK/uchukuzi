@@ -21,19 +21,35 @@ defmodule Uchukuzi.Roles.Student do
 
     field(:travel_time, :string)
 
+    embeds_one(:pickup_location, Location)
+    embeds_one(:home_location, Location)
+
     belongs_to(:school, Uchukuzi.School.School)
     belongs_to(:guardian, Guardian)
 
     timestamps()
   end
 
-  def new(school, name, travel_time, email \\ nil),
-    do: changeset(%{name: name, travel_time: travel_time, email: email, school_id: school})
+  # def new(school, name, travel_time, email \\ nil),
+  #   do: changeset(%{name: name, travel_time: travel_time, email: email, school_id: school})
 
-  defp changeset(schema \\ %Student{}, params) do
+  def changeset(schema \\ %Student{}, params, pickup_location, home_location, school_id, route_id) do
+    params =
+      params
+      |> Map.put("pickup_location", pickup_location)
+      |> Map.put("home_location", home_location)
+      |> Map.put("school_id", school_id)
+      |> Map.put("route_id", route_id)
+
+    changeset(schema, params)
+  end
+
+  def changeset(schema \\ %Student{}, params) do
     schema
-    |> cast(params, __MODULE__.__schema__(:fields))
+    |> cast(params, [:name, :email, :school_id, :guardian_id, :travel_time, :password])
     |> validate_required([:name, :travel_time])
+    |> cast_embed(:pickup_location, with: &Location.changeset/2)
+    |> cast_embed(:home_location, with: &Location.changeset/2)
     |> Validation.validate_email()
     |> unique_constraint(:email)
   end
