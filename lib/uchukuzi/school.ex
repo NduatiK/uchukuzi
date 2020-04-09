@@ -128,6 +128,17 @@ defmodule Uchukuzi.School do
 
   # ********* Routes *********
 
+  def create_route(school_id, name, path) do
+    %{
+      school_id: school_id,
+      name: name,
+      path: path
+    }
+    |> Route.changeset()
+    |> Repo.insert()
+  end
+
+
   # ********* HOUSEHOLDS *********
   def create_household(
         school_id,
