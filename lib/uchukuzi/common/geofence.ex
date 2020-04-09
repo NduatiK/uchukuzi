@@ -15,19 +15,19 @@ defmodule Uchukuzi.Common.Geofence do
     field(:radius, :float)
   end
 
-  def school_changeset(schema \\ __MODULE__, params),
+  def school_changeset(schema \\ %__MODULE__{}, params),
     do: changeset(schema, Map.put(params, :type, "school"))
 
-  def changeset(schema \\ __MODULE__, params)
+  def changeset(schema \\ %__MODULE__{}, params)
 
-  def changeset(schema, %{type: type, radius: radius, center: center} = params) do
+  def changeset(schema, %{type: _type, radius: _radius, center: _center} = params) do
     schema
     |> cast(params, [:type, :radius])
     |> validate_required([:type, :radius])
     |> cast_embed(:center, with: &Location.changeset/2)
   end
 
-  def changeset(schema, %{type: type, perimeter: perimeter} = params) do
+  def changeset(schema, %{type: _type, perimeter: _perimeter} = params) do
     schema
     |> cast(params, [:type])
     |> validate_required([:type])
@@ -44,7 +44,7 @@ defmodule Uchukuzi.Common.Geofence do
   #   end
   # end
 
-  def new_school_fence(%{lng: lng, lng: lng} = center, radius)
+  def new_school_fence(%{lat: lat, lng: lng} = center, radius)
       when is_number(radius) do
     %Geofence{}
     |> changeset(%{type: :school, center: center, radius: radius})

@@ -8,19 +8,16 @@ defmodule Uchukuzi.School do
   alias Ecto.Multi
 
   use Uchukuzi.School.Model
+  use Uchukuzi.Roles.Model
 
   # ********* SCHOOL *********
-
-  def create_school(%School{} = school, %Manager{} = manager) do
-    School.set_manager(school, manager)
-  end
 
   def create_school(school_changeset, manager) do
     Multi.new()
     |> Multi.insert(:school, school_changeset)
     |> Multi.insert(:manager, fn %{school: school} ->
       Ecto.build_assoc(school, :manager)
-      |> Manager.registration_changeset(manager)
+      |> Manager.changeset(manager)
     end)
     |> Repo.transaction()
   end

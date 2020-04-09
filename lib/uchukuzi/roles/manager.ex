@@ -17,7 +17,7 @@ defmodule Uchukuzi.Roles.Manager do
     |> registration_changeset(%{name: name, email: email, password: password})
   end
 
-  defp changeset(schema, params) do
+  def changeset(schema, params) do
     schema
     |> cast(params, [:password | __MODULE__.__schema__(:fields)])
     |> validate_required([:name, :email, :password])
