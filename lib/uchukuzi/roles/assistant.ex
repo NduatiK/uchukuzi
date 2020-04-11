@@ -10,9 +10,6 @@ defmodule Uchukuzi.Roles.Assistant do
     field(:email, :string)
     field(:phone_number, :string)
 
-    field(:password, :string, virtual: true)
-    field(:password_hash, :string)
-
     belongs_to(:school, Uchukuzi.School.School)
 
     timestamps()
@@ -41,6 +38,5 @@ defmodule Uchukuzi.Roles.Assistant do
     model
     |> changeset(params)
     |> validate_length(:password, min: 6, max: 100)
-    |> put_pass_hash()
   end
 end
