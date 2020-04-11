@@ -18,6 +18,7 @@ defmodule Uchukuzi.Roles.Model do
         Manager,
         Guardian,
         Student,
+        Driver,
         Household,
         Assistant
       }

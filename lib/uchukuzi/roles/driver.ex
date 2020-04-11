@@ -1,11 +1,10 @@
-defmodule Uchukuzi.Roles.Assistant do
+defmodule Uchukuzi.Roles.Driver do
   @moduledoc """
-  An employee of a school assigned to a bus who records the
-  boarding and exiting of students from a bus
+  An bus driver
   """
   use Uchukuzi.Roles.Model
 
-  schema "assistants" do
+  schema "drivers" do
     field(:name, :string)
     field(:email, :string)
     field(:phone_number, :string)
@@ -17,7 +16,7 @@ defmodule Uchukuzi.Roles.Assistant do
   end
 
   def new(name, email, phone_number) do
-    %Assistant{}
+    %Driver{}
     |> changeset(%{
       name: name,
       email: email,
@@ -28,7 +27,7 @@ defmodule Uchukuzi.Roles.Assistant do
   defp changeset(schema, params) do
     schema
     |> cast(params, __MODULE__.__schema__(:fields))
-    |> validate_required([:name, :email])
+    |> validate_required([:name, :email, :password])
     |> Validation.validate_email()
     |> Validation.validate_phone_number()
     |> unique_constraint(:email)
