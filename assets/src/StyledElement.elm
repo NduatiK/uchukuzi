@@ -11,7 +11,11 @@ module StyledElement exposing
     , passwordInput
     , textInput
     , textLink
+    , textStack
+    , textStackWithColor
+    , textStackWithSpacing
     , toDropDownView
+    , unstyledIconButton
     , wrappedInput
     )
 
@@ -25,16 +29,40 @@ import Errors exposing (InputError)
 import Html.Attributes exposing (id)
 import Http
 import Icons exposing (IconBuilder)
+import Json.Encode as Encode
+import Navigation
 import Regex
-import Route
 import Style exposing (..)
-import Views.CustomDropDown as Dropdown
+import StyledElement.DropDown as Dropdown
 
 
-navigationLink : List (Attribute msg) -> { label : Element msg, route : Route.Route } -> Element msg
+customTextStack : String -> String -> Int -> Color -> Element msg
+customTextStack title body spacing highlightColor =
+    column (Style.header2Style ++ [ width fill, Font.color Colors.black ])
+        [ paragraph [ alignLeft, paddingXY 0 spacing ] [ text title ]
+        , paragraph [ alignLeft, Font.color highlightColor ] [ text body ]
+        ]
+
+
+textStackWithColor : String -> String -> Color -> Element msg
+textStackWithColor title body highlightColor =
+    customTextStack title body 0 highlightColor
+
+
+textStackWithSpacing : String -> String -> Int -> Element msg
+textStackWithSpacing title body spacing =
+    customTextStack title body spacing Colors.darkGreen
+
+
+textStack : String -> String -> Element msg
+textStack title body =
+    textStackWithSpacing title body 0
+
+
+navigationLink : List (Attribute msg) -> { label : Element msg, route : Navigation.Route } -> Element msg
 navigationLink attrs config =
     Element.link
-        (textFontStyle
+        (defaultFontFace
             ++ [ paddingXY 27 10
                , Font.size 19
                , Font.color Colors.purple
@@ -44,37 +72,61 @@ navigationLink attrs config =
 
                --    , Font.medium
                ]
-            ++ labelFontStyle
+            ++ defaultFontFace
             ++ attrs
         )
-        { url = Route.href config.route
+        { url = Navigation.href config.route
         , label = config.label
         }
 
 
-buttonLink : { label : Element msg, route : Route.Route } -> Element msg
-buttonLink config =
+buttonLink :
+    List (Attribute msg)
+    -> { label : Element msg, route : Navigation.Route }
+    -> Element msg
+buttonLink attributes config =
     Element.link
-        (textFontStyle
-            ++ [ Background.color Colors.purple
+        ([ Background.color Colors.purple
+         , htmlAttribute (Html.Attributes.class "button-link")
 
-               --    , paddingXY 38 10
-               --    , Font.color (Element.rgb 1 1 1)
-               --    , Font.size 18
-               --    , Border.rounded 3
-               , Element.mouseOver
-                    [ alpha 0.9 ]
-               ]
+         -- Primarily controlled by css
+         , height (px 46)
+         , Font.color (Element.rgb 1 1 1)
+         , Font.size 18
+         , Border.rounded 3
+         , Style.animatesAll
+         , Style.cssResponsive
+         , Element.mouseOver
+            [ moveUp 1
+            , Border.shadow { offset = ( 0, 4 ), size = 0, blur = 8, color = rgba 0 0 0 0.14 }
+            ]
+         ]
+            ++ Style.defaultFontFace
+            ++ attributes
         )
-        { url = Route.href config.route
+        { url = Navigation.href config.route
         , label = config.label
         }
 
 
-textLink : List (Attribute msg) -> { label : Element msg, route : Route.Route } -> Element msg
+
+-- Element.link
+--     (defaultFontFace
+--         ++ [ Background.color Colors.purple
+--            , Element.mouseOver
+--                 [ alpha 0.9 ]
+--            , padding 20
+--            ]
+--     )
+--     { url = Navigation.href config.route
+--     , label = config.label
+--     }
+
+
+textLink : List (Attribute msg) -> { label : Element msg, route : Navigation.Route } -> Element msg
 textLink attributes config =
     link
-        (textFontStyle
+        (defaultFontFace
             ++ [ Font.color Colors.purple
                , Font.size 18
                , Border.rounded 3
@@ -83,7 +135,7 @@ textLink attributes config =
                ]
             ++ attributes
         )
-        { url = Route.href config.route
+        { url = Navigation.href config.route
         , label = config.label
         }
 
@@ -108,11 +160,36 @@ button attributes config =
             , Border.shadow { offset = ( 0, 4 ), size = 0, blur = 8, color = rgba 0 0 0 0.14 }
             ]
          ]
-            ++ Style.textFontStyle
+            ++ Style.defaultFontFace
             ++ attributes
         )
         { onPress = config.onPress
         , label = config.label
+        }
+
+
+unstyledIconButton :
+    List (Attribute msg)
+    ->
+        { icon : IconBuilder msg
+        , iconAttrs : List (Attribute msg)
+        , onPress : Maybe msg
+        }
+    -> Element msg
+unstyledIconButton attributes { onPress, iconAttrs, icon } =
+    Input.button
+        ([ padding 12
+         , alignBottom
+         , Style.animatesAll
+         , Element.mouseOver
+            [ moveUp 1
+            , Border.shadow { offset = ( 2, 4 ), size = 0, blur = 8, color = rgba 0 0 0 0.14 }
+            ]
+         ]
+            ++ attributes
+        )
+        { onPress = onPress
+        , label = icon iconAttrs
         }
 
 
@@ -210,13 +287,15 @@ dropDown :
         , onSelect : Maybe item -> msg
         , toString : item -> String
         , dropdownState : Dropdown.State item
+        , isLoading : Bool
+        , prompt : Maybe String
         }
     -> ( Element msg, Dropdown.Config item msg, List item )
-dropDown attributes { title, caption, dropdownState, dropDownMsg, onSelect, errorCaption, options, ariaLabel, icon, toString } =
+dropDown attributes { title, caption, dropdownState, dropDownMsg, onSelect, errorCaption, options, ariaLabel, icon, toString, isLoading, prompt } =
     let
         config : Dropdown.Config item msg
         config =
-            Dropdown.dropDownConfig dropDownMsg onSelect toString icon
+            Dropdown.dropDownConfig dropDownMsg onSelect toString icon isLoading (Maybe.withDefault "Pick one" prompt)
 
         input =
             Dropdown.view config dropdownState options

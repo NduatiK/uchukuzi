@@ -7,8 +7,8 @@ import Errors
 import Icons
 import Json.Decode exposing (Decoder, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required)
+import Navigation exposing (Route)
 import RemoteData exposing (..)
-import Route exposing (Route)
 import Session exposing (Session)
 import Style
 import StyledElement
@@ -60,8 +60,8 @@ view model =
     column [ width fill, spacing 40, paddingXY 24 8 ]
         [ viewHeading "*Devices****" (Just "Place this within the bus")
         , Element.column []
-            [ StyledElement.buttonLink
-                { route = Route.DeviceRegistration
+            [ StyledElement.buttonLink []
+                { route = Navigation.DeviceRegistration
                 , label = text "Add a device"
                 }
             , viewBody model
@@ -118,7 +118,7 @@ viewDevicesTable devices =
                             Just bus ->
                                 StyledElement.textLink []
                                     { label = text bus.numberPlate
-                                    , route = Route.Bus bus.id
+                                    , route = Navigation.Bus bus.id (Just "Device")
                                     }
 
                             Nothing ->

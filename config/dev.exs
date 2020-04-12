@@ -49,6 +49,7 @@ config :uchukuzi_interface, UchukuziInterfaceWeb.Endpoint,
     patterns: [
       # ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
       ~r{priv/gettext/.*(po)$},
+      ~r{lib/uchukuzi_interface_web/channels/.*(ex)$},
       ~r{lib/uchukuzi_interface_web/views/.*(ex)$},
       ~r{lib/uchukuzi_interface_web/templates/.*(eex)$}
     ]
@@ -63,3 +64,6 @@ config :phoenix, :stacktrace_depth, 20
 
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
+
+config :uchukuzi_interface, UchukuziInterfaceWeb.Email.Mailer,
+       adapter: Bamboo.LocalAdapter

@@ -1,7 +1,7 @@
-module Api.Endpoint exposing (Endpoint, bus, buses, createBus, createHousehold, devices, get, households, login, patch, post, registerDevice, signup, trips)
+module Api.Endpoint exposing (Endpoint, bus, buses, crewAssignmentChanges, crewMembers, crewMembersAndBuses, devices, get, households, login, patch, post, signup, trips)
 
 import Http exposing (Body)
-import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
+import Json.Decode exposing (Decoder, string)
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Url.Builder exposing (QueryParameter)
@@ -67,9 +67,24 @@ signup =
     url [ "school", "create" ] []
 
 
+crewMembers : Endpoint
+crewMembers =
+    url [ "school", "crew" ] []
+
+
+crewMembersAndBuses : Endpoint
+crewMembersAndBuses =
+    url [ "school", "crew_and_buses" ] []
+
+
+crewAssignmentChanges : Endpoint
+crewAssignmentChanges =
+    url [ "school", "crew_and_buses" ] []
+
+
 households : Endpoint
 households =
-    url [ "households" ] []
+    url [ "school", "households" ] []
 
 
 trips : { bus | bus_id : Int } -> Endpoint
@@ -93,21 +108,6 @@ bus busID =
 devices : Endpoint
 devices =
     url [ "school", "devices" ] []
-
-
-registerDevice : Endpoint
-registerDevice =
-    url [ "school", "devices" ] []
-
-
-createHousehold : Endpoint
-createHousehold =
-    url [ "households" ] []
-
-
-createBus : Endpoint
-createBus =
-    url [ "school", "buses" ] []
 
 
 

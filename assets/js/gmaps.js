@@ -1,37 +1,70 @@
 import mapStyles from './mapStyles'
+import { isDevelopment } from './env'
 
 
-function sleep(time) {
-    return new Promise((resolve) => setTimeout(resolve, time))
+// Prevent duplicate loads
+let runningRequest = null
+let initializingMapsChain = null
+
+function initializeMaps(app, _clickable, numberOfRetries, schoolLocation) {
+    if (schoolLocation) {
+        defaultLocation = { center: schoolLocation, zoom: 10 }
+        console.log(defaultLocation)
+    }
+
+    // Piggyback on existing request if necessary
+    const scriptRequest = runningRequest ? () => { return runningRequest } : loadMapAPI
+
+    if (isDevelopment) {
+        console.log("initializeMaps")
+    }
+    initializingMapsChain = scriptRequest()
+        .then(createMapDom)
+        .then(cleanMap)
+        .then(insertMap)
+        .then(setupMapCallbacks(app, _clickable))
+        .then(addDrawTools(app))
+        .catch(() => {
+            runningRequest = null
+        })
+        .then(() => { initializingMapsChain = null })
 }
 
-let MapInstance
-let DomElement
-let markers
-let schoolCircle
-let clickable = false
-
-const loadMapsApi = () => {
+/**
+ * Loads the Google Maps API script (or loads a local version)
+ */
+function loadMapAPI() {
+    // only load if google has not loaded
     if (typeof google !== typeof undefined) {
-        // console.log("loadMapsApi cache")
-
-        return Promise.resolve()
+        return sleep(300).then(() => {
+            return Promise.resolve(google)
+        })
     }
-    // console.log("loadMapsApi no google")
 
-    return new Promise((resolve, reject) => {
+    runningRequest = new Promise((resolve, reject) => {
         const script = document.createElement('script')
         script.type = 'text/javascript'
-        script.onload = resolve
+        script.onload = () => { resolve(google) }
+        script.onerror = reject
         document.getElementsByTagName('head')[0].appendChild(script)
-        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyB6wUhsk2tL7ihoORGBfeqc8UCRA3XRVsw"
+        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyB6wUhsk2tL7ihoORGBfeqc8UCRA3XRVsw&libraries=drawing"
     })
+    return runningRequest
 }
 
-const createMapElement = (opt) => (geoResult) => {
+let MapLibraryInstance = null
+let MapDomElement = null
+let defaultLocation = { center: { lat: -1.2921, lng: 36.8219 }, zoom: 10 }
+function createMapDom(google) {
+    runningRequest = null
+    if (MapDomElement && MapLibraryInstance) {
+        // Reset location
+        MapLibraryInstance.panTo(new google.maps.LatLng(defaultLocation.center))
+        MapLibraryInstance.setZoom(defaultLocation.zoom)
+        return Promise.resolve({ dom: MapDomElement, map: MapLibraryInstance })
+    }
+
     var mapOptions = {
-        styles: mapStyles,
-        zoom: 7,
         panControl: false,
         zoomControl: true,
         zoomControlOptions: {
@@ -41,111 +74,165 @@ const createMapElement = (opt) => (geoResult) => {
         mapTypeControl: false,
         streetViewControl: false,
         overviewMapControl: false,
-        ...opt,
-        style: mapStyles,
-        center: new google.maps.LatLng(opt.lat, opt.lng)
-
+        ...defaultLocation,
+        styles: mapStyles,
+        // gestureHandling: 'cooperative'
     }
 
     const newElement = document.createElement('google-map-cached')
-    MapInstance = new google.maps.Map(newElement, mapOptions)
-    DomElement = newElement
+    MapLibraryInstance = new google.maps.Map(newElement, mapOptions)
+    MapDomElement = newElement
 
-    return {
-        dom: DomElement
-    }
+
+
+    return Promise.resolve({ dom: MapDomElement, map: MapLibraryInstance })
 }
 
-const getMapElement = () => {
+let markers = []
+let drawingManager = null
+let schoolCircle = null
+function cleanMap(data) {
+    const { dom, map } = data
+    markers.forEach((x) => {
+        x.setMap(null)
+    })
+    markers = []
 
-    if (!DomElement) {
-
-        return loadMapsApi()
-            .then(createMapElement({ lat: -1.2921, lng: 36.8219, zoom: 10 }))
-    } else {
-
-        return Promise.resolve({
-            dom: DomElement
-        })
+    if (schoolCircle) {
+        schoolCircle.setMap(null)
     }
+    return Promise.resolve(data)
 }
 
-function initializeMaps(app, _clickable, numberOfRetries) {
-    clickable = _clickable
+function insertMap(data) {
+    const { dom, map } = data
+
     var mapDiv = document.getElementById('google-map')
 
-    if (mapDiv === null) {
-        numberOfRetries -= 1
-
-        if (numberOfRetries > 0) {
-            sleep(500).then(() => {
-                initializeMaps(app, numberOfRetries - 1)
-            })
-        }
-
-        return
+    if (dom.parentNode) {
+        dom.parentNode.removeChild(dom)
     }
+    mapDiv.prepend(dom)
 
-    getMapElement()
-        .then(({ dom }) => {
-
-            mapDiv.prepend(dom)
-
-            clearMap()
-
-            // outgoing Port: User clicks a button | elm -> js
-            app.ports.deselectPoint.subscribe(function () {
-                markers.forEach((x) => {
-                    x.setMap(null)
-                })
-                markers = []
-            })
-
-            app.ports.selectPoint.subscribe(function (gmPos) {
-                markers.forEach((marker, i, a) => {
-                    marker.setMap(null)
-                })
-                var marker = new google.maps.Marker({
-                    position: gmPos,
-                    map: MapInstance,
-                    title: 'Golden Gate Bridge',
-                    icon: "/images/buses/E.png"
-
-
-                })
-                markers.push(marker)
-                var myLatlng = new google.maps.LatLng(gmPos)
-                MapInstance.panTo(myLatlng)
-            })
-
-            if (!google.maps.event.hasListeners(MapInstance, 'click')) {
-
-                google.maps.event.addListener(MapInstance, 'click', function (args) {
-                    const pos = {
-                        lat: args.latLng.lat(),
-                        lng: args.latLng.lng()
-                    }
-                    insertCircle(pos, app)
-
-                })
-            }
-        })
-
-
-
+    return Promise.resolve(data)
 }
 
-function clearMap() {
-    if (!markers) {
-        markers = []
-    } else {
-        markers.forEach((x) => {
-            x.setMap(null)
+let hasSetup = false
+let clickListener = null
+const setupMapCallbacks = (app, clickable) => (data) => {
+    const { dom, map } = data
+
+    if (!hasSetup) {
+        // One time actions, we don't want too many subscriptions
+        const updateMarker = function (update) {
+            if (isDevelopment) {
+                console.log("updateMarker")
+            }
+            let { bus, location } = update
+            let marker = markers.find((value, _indx, _list) => {
+                return value.id == bus
+            })
+
+            var image = {
+                url: `/images/buses/${getCardinalDirection(update.bearing)}.svg`,
+                size: new google.maps.Size(90, 90),
+                // origin: new google.maps.Point(0, 0),
+                // anchor: new google.maps.Point(16, 16),
+                scaledSize: new google.maps.Size(90, 90)
+            }
+
+            // var image = {
+            //     url: `/images/buses/${getCardinalDirection(update.bearing)}.png`,
+            //   } 
+
+            if (marker === undefined) {
+                marker = new google.maps.Marker({
+                    id: bus,
+                    map: map,
+                    title: "Bus"
+                })
+                markers.push(marker)
+            }
+            marker.setPosition(location)
+            marker.setIcon(image)
+        }
+
+        app.ports.updateBusMap.subscribe((update) => {
+
+            sleep(100).then(() => {
+
+                if (initializingMapsChain) {
+                    initializingMapsChain.then(() => {
+                        updateMarker(update)
+                    })
+                } else {
+                    updateMarker(update)
+                }
+            })
         })
-        markers = []
+
+        app.ports.bulkUpdateBusMap.subscribe((updates) => {
+            sleep(100).then(() => {
+                if (initializingMapsChain) {
+                    initializingMapsChain.then(() => {
+                        updates.forEach(updateMarker)
+                    })
+                } else {
+                    updates.forEach(updateMarker)
+                }
+            })
+        })
+
+
+        // Trips Map Callbacks
+        app.ports.deselectPoint.subscribe(function () {
+            markers.forEach((x) => {
+                x.setMap(null)
+            })
+            markers = []
+        })
+        app.ports.selectPoint.subscribe(function (gmPos) {
+            markers.forEach((marker, i, a) => {
+                marker.setMap(null)
+            })
+            markers = []
+            var marker = new google.maps.Marker({
+                position: gmPos,
+                map: map,
+                title: 'Golden Gate Bridge',
+                icon: "/images/map_bus.svg"
+            })
+            markers.push(marker)
+            map.panTo(gmPos)
+        })
     }
 
-    
+
+    if (clickable) {
+        if (!google.maps.event.hasListeners(map, 'click')) {
+            google.maps.event.addListener(map, 'click', function (args) {
+                const pos = {
+                    lat: args.latLng.lat(),
+                    lng: args.latLng.lng()
+                }
+                // insertCircle(pos, app)
+            })
+        }
+    } else {
+        if (clickListener) {
+            google.maps.event.removeListener(clickListener)
+        }
+    }
+    hasSetup = true
+
+    app.ports.mapReady.send(true)
+
+    return Promise.resolve(data)
+}
+
+function getCardinalDirection(angle) {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+    return directions[Math.round(angle / 45) % 8]
 }
 
 function insertCircle(pos, app) {
@@ -154,7 +241,6 @@ function insertCircle(pos, app) {
     if (schoolCircle) {
         radius = schoolCircle.getRadius()
         schoolCircle.setMap(null)
-
     }
     getMapElement()
         .then(() => {
@@ -189,12 +275,42 @@ function insertCircle(pos, app) {
                     sendSchoolCircle(schoolCircle)
                 })
             }
-            MapInstance.panTo(schoolCircle.center);
-            MapInstance.setZoom(16);
+            MapInstance.panTo(schoolCircle.center)
+            MapInstance.setZoom(16)
             sendSchoolCircle(schoolCircle)
         })
-
 }
+
+let polylineListener = null
+const addDrawTools = (app) => (data) => {
+    const { dom, map } = data
+
+
+    if (!drawingManager) {
+        drawingManager = new google.maps.drawing.DrawingManager({
+            drawingControl: true,
+            drawingControlOptions: {
+                position: google.maps.ControlPosition.TOP_CENTER,
+                drawingModes: ['polyline']
+            }
+        })
+
+    } else {
+        drawingManager.setMap(null)
+        google.maps.event.removeListener(polylineListener)
+    }
+    polylineListener = google.maps.event.addListener(drawingControl, 'polylinecomplete', function (polyline) {
+        polylines.push(polyline);
+    });
+
+    console.log("drawingManager", drawingManager)
+    drawingManager.setMap(map);
+
+
+    return Promise.resolve()
+}
+
+
 
 function requestGeoLocation(app) {
 
@@ -202,7 +318,7 @@ function requestGeoLocation(app) {
         app.ports.receivedMapClickLocation.send({
             lat: -1.2921, lng: 36.8219, radius: 50
         })
-        return;
+        return
     }
 
     function handleLocationError(error) {
@@ -249,5 +365,11 @@ function requestGeoLocation(app) {
 }
 
 
+
+
+
+function sleep(time) {
+    return new Promise((resolve) => setTimeout(resolve, time))
+}
 
 export { initializeMaps, requestGeoLocation }

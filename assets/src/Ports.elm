@@ -1,9 +1,20 @@
-port module Ports exposing (deselectPoint, disableCamera, initializeCamera, initializeMaps, noCameraFoundError, receiveCameraActive, receivedMapClickLocation, requestGeoLocation, scannedDeviceCode, selectPoint, setFrameFrozen)
+port module Ports exposing (..)
+
+{-| -}
+
+import Models.Bus exposing (LocationUpdate)
+
+
 
 -- OUTGOING
 
 
-port initializeMaps : (Bool) -> Cmd msg
+{-| Accepts bool `is clickable` which when true allows creating a circle
+-}
+port initializeLiveView : () -> Cmd msg
+
+
+port initializeMaps : Bool -> Cmd msg
 
 
 port requestGeoLocation : () -> Cmd msg
@@ -24,6 +35,12 @@ port disableCamera : Int -> Cmd msg
 port setFrameFrozen : Bool -> Cmd msg
 
 
+port updateBusMap : LocationUpdate -> Cmd msg
+
+
+port bulkUpdateBusMap : List LocationUpdate -> Cmd msg
+
+
 
 -- INCOMING
 
@@ -38,3 +55,9 @@ port noCameraFoundError : (Bool -> msg) -> Sub msg
 
 
 port receivedMapClickLocation : (Maybe { lat : Float, lng : Float, radius : Float } -> msg) -> Sub msg
+
+
+port onBusMove : (LocationUpdate -> msg) -> Sub msg
+
+
+port mapReady : (Bool -> msg) -> Sub msg

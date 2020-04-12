@@ -29,8 +29,8 @@ van attrs =
         { src = "images/busOutlines/van.svg", description = "" }
 
 
-shuttleVehicle : List (Attribute msg) -> Element msg
-shuttleVehicle attrs =
+shuttle : List (Attribute msg) -> Element msg
+shuttle attrs =
     image
         -- ([ width <| px 332, height <| px 126 ]
         ([ width <| px 176, height <| px 73 ]
@@ -54,10 +54,22 @@ add attrs =
         { src = "images/add.svg", description = "" }
 
 
+edit : List (Attribute msg) -> Element msg
+edit attrs =
+    image attrs
+        { src = "images/edit.svg", description = "" }
+
+
 subtract : List (Attribute msg) -> Element msg
 subtract attrs =
     image attrs
         { src = "images/subtract.svg", description = "" }
+
+
+steeringWheel : List (Attribute msg) -> Element msg
+steeringWheel attrs =
+    image attrs
+        { src = "images/stearing_wheel.svg", description = "" }
 
 
 addWhite : List (Attribute msg) -> Element msg
@@ -107,6 +119,12 @@ seat attrs =
         { src = "images/seat.svg", description = "" }
 
 
+people : List (Attribute msg) -> Element msg
+people attrs =
+    image (alpha 0.54 :: attrs)
+        { src = "images/people.svg", description = "" }
+
+
 phone : List (Attribute msg) -> Element msg
 phone attrs =
     image (alpha 0.54 :: attrs)
@@ -140,8 +158,8 @@ help attrs =
 loading : List (Attribute msg) -> Element msg
 loading attrs =
     image
-        (width (px 80)
-            :: height (px 80)
+        (width (px 48)
+            :: height (px 48)
             -- :: alpha 0.54
             :: attrs
         )
@@ -178,8 +196,8 @@ check attrs =
         { src = "images/check.svg", description = "" }
 
 
-shuttle : List (Attribute msg) -> Element msg
-shuttle attrs =
+vehicle : List (Attribute msg) -> Element msg
+vehicle attrs =
     image (alpha 0.54 :: attrs)
         { src = "images/shuttle.svg", description = "" }
 
@@ -200,3 +218,30 @@ occupiedSeat : List (Attribute msg) -> Element msg
 occupiedSeat attrs =
     image (alpha 0.54 :: attrs)
         { src = "images/seat-occupied.svg", description = "" }
+
+
+dashedBox : List (Attribute msg) -> Element msg
+dashedBox attrs =
+    image (alpha 0.54 :: attrs)
+        { src = "images/dotted_box.svg", description = "" }
+
+
+iconNamed : String -> List (Attribute msg) -> Element msg
+iconNamed name attrs =
+    image (alpha 0.54 :: attrs)
+        { src = name, description = "" }
+
+
+close : List (Attribute msg) -> Element msg
+close =
+    iconNamed "images/close.svg"
+
+
+box : List (Attribute msg) -> Element msg
+box =
+    iconNamed "images/box.svg"
+
+
+save : List (Attribute msg) -> Element msg
+save =
+    iconNamed "images/save.svg"

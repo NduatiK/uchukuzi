@@ -12,7 +12,7 @@ import Html exposing (Html)
 import Html.Events exposing (..)
 import Icons
 import Json.Decode as Decode
-import Route exposing (href)
+import Navigation exposing (href)
 import Session exposing (Session)
 import Style exposing (edges)
 import Views.Heading exposing (viewHeading)

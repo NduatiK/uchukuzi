@@ -17,8 +17,9 @@ import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (optional, required)
+import Models.Household exposing (Household, Location, Student, householdDecoder)
+import Navigation
 import RemoteData exposing (RemoteData(..), WebData)
-import Route
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
@@ -31,23 +32,6 @@ import Views.Heading exposing (viewHeading)
 
 type alias Model =
     { session : Session, households : WebData (List Household) }
-
-
-type alias Household =
-    { id : Int
-    , students : List Student
-    , guardian : Guardian
-    , can_track : Bool
-    , home_location : Location
-    , pickup_location : Location
-    , route : String
-    }
-
-
-type alias Student =
-    { name : String
-    , time : String
-    }
 
 
 type alias StudentViewModel =
@@ -63,13 +47,6 @@ type TripTime
     = TwoWay
     | Morning
     | Evening
-
-
-type alias Guardian =
-    { name : String
-    , phone_number : String
-    , email : Maybe String
-    }
 
 
 type alias Location =
@@ -133,6 +110,29 @@ view model =
         ]
 
 
+viewHeading : String -> Maybe String -> Element Msg
+viewHeading title subLine =
+    row [ spacing 16 ]
+        [ Element.column
+            [ width fill ]
+            [ el
+                Style.headerStyle
+                (text title)
+            , case subLine of
+                Nothing ->
+                    none
+
+                Just caption ->
+                    el Style.captionLabelStyle (text caption)
+            ]
+        , StyledElement.iconButton []
+            { icon = Icons.addWhite
+            , iconAttrs = []
+            , onPress = Nothing
+            }
+        ]
+
+
 viewBody model =
     case model of
         NotAsked ->
@@ -150,14 +150,11 @@ viewBody model =
 
         Success households ->
             Element.column [ spacing 40 ]
-                [ StyledElement.buttonLink
-                    { route = Route.StudentRegistration
-                    , label = text "Add a household"
-                    }
-                , viewHouseholdsTable households
+                [ viewHouseholdsTable households
                 ]
 
 
+viewHouseholdsTable : List Household -> Element Msg
 viewHouseholdsTable households =
     let
         includesMorningTrip time =
@@ -182,18 +179,13 @@ viewHouseholdsTable households =
                     \household ->
                         el rowTextStyle (Element.text household.guardian.name)
               }
-            , { header = tableHeader "ROUTE"
-              , width = fill
-              , view =
-                    \household ->
-                        el rowTextStyle (Element.text household.route)
-              }
-            , { header = tableHeader "PICKUP LOCATION"
-              , width = fill
-              , view =
-                    \household ->
-                        el rowTextStyle (Element.text household.pickup_location.name)
-              }
+
+            -- , { header = tableHeader "ROUTE"
+            --   , width = fill
+            --   , view =
+            --         \household ->
+            --             el rowTextStyle (Element.text household.route)
+            --   }
             , { header = tableHeader "MORNING"
               , width = fill
               , view =
@@ -234,46 +226,3 @@ fetchHouseholds : Session -> Cmd Msg
 fetchHouseholds session =
     Api.get session Endpoint.households (list householdDecoder)
         |> Cmd.map StudentsResponse
-
-
-householdDecoder : Decoder Household
-householdDecoder =
-    Decode.succeed Household
-        |> required "id" int
-        |> required "students" (list studentDecoder)
-        |> required "guardian" guardianDecoder
-        |> required "can_track" bool
-        |> required "home_location" locationDecoder
-        |> required "pickup_location" locationDecoder
-        |> optional "route" string "View on map"
-
-
-
--- |> required "home_location" locationDecoder
-
-
-guardianDecoder : Decoder Guardian
-guardianDecoder =
-    Decode.succeed Guardian
-        |> required "name" string
-        |> required "phone_number" string
-        |> required "email" (nullable string)
-
-
-studentDecoder : Decoder Student
-studentDecoder =
-    Decode.succeed Student
-        |> required "name" string
-        |> required "travel_time" string
-
-
-locationDecoder : Decoder Location
-locationDecoder =
-    Decode.succeed Location
-        |> required "longitude" float
-        |> required "latitude" float
-        |> optional "name" string "Unnamed"
-
-
-
--- tripTimeDecoder : Decoder Student

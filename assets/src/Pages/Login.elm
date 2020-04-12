@@ -1,6 +1,6 @@
 module Pages.Login exposing (Model, Msg, init, update, view)
 
-import Api
+import Api exposing (SuccessfulLogin)
 import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
@@ -13,8 +13,9 @@ import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
+import Models.Location exposing (Location, locationDecoder)
+import Navigation exposing (LoginRedirect, Route)
 import RemoteData exposing (..)
-import Route exposing (LoginRedirect, Route)
 import Session exposing (Session)
 import Style
 import StyledElement
@@ -29,7 +30,7 @@ type alias Model =
     , form : Form
     , error : Maybe String
     , message : Maybe String
-    , status : WebData Session.Cred
+    , status : WebData SuccessfulLogin
     }
 
 
@@ -47,7 +48,7 @@ init session redirect =
                 Nothing ->
                     Nothing
 
-                Just Route.ConfirmEmail ->
+                Just Navigation.ConfirmEmail ->
                     Just "We have sent you an email, please verify your account before logging in"
     in
     ( Model session { email = "", password = "" } Nothing message NotAsked
@@ -64,7 +65,7 @@ type Msg
     = UpdatedEmail String
     | UpdatedPassword String
     | SubmittedForm
-    | LoginResponse (WebData Session.Cred)
+    | LoginResponse (WebData SuccessfulLogin)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -91,7 +92,7 @@ update msg model =
             updateStatus updatedModel requestStatus
 
 
-updateStatus : Model -> WebData Session.Cred -> ( Model, Cmd Msg )
+updateStatus : Model -> WebData SuccessfulLogin -> ( Model, Cmd Msg )
 updateStatus model msg =
     case msg of
         Loading ->
@@ -107,11 +108,12 @@ updateStatus model msg =
         NotAsked ->
             ( model, Cmd.none )
 
-        Success cred ->
-            ( { model | session = Session.withCredentials model.session (Just cred) }
+        Success data ->
+            ( { model | session = Session.withCredentials model.session (Just data.creds) }
             , Cmd.batch
-                [ Api.storeCredentials cred
-                , Route.rerouteTo model Route.Dashboard
+                [ Api.storeCredentials data.creds
+                , Models.Location.storeSchoolLocation data.location
+                , Navigation.rerouteTo model Navigation.Buses
                 ]
             )
 
@@ -195,13 +197,13 @@ viewFooter =
             [ el (Font.size 15 :: Style.labelStyle)
                 (text "Don’t have an account?")
             , row [ spacing 8 ]
-                [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15 ] { label = text "Sign up with Flotilla", route = Route.Signup }
+                [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15 ] { label = text "Sign up with Flotilla", route = Navigation.Signup }
                 , Icons.chevronDown [ rotate (-pi / 2) ]
                 ]
             ]
 
         -- , row [ spacing 8 ]
-        --     [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15 ] { label = text "Forgot your password?", route = Route.Home }
+        --     [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15 ] { label = text "Forgot your password?", route = Navigation.Home }
         --     , Icons.chevronDown [ rotate (-pi / 2) ]
         --     ]
         ]
@@ -234,7 +236,7 @@ login session form =
                 ]
                 |> Http.jsonBody
     in
-    Api.post session Endpoint.login params Api.credDecoder
+    Api.post session Endpoint.login params Api.loginDecoder
         |> Cmd.map LoginResponse
 
 

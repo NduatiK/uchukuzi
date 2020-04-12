@@ -7,7 +7,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Region as Region
 import Icons
-import Route exposing (Route)
+import Navigation exposing (Route)
 import Style exposing (edges)
 
 
@@ -16,70 +16,24 @@ maxHeight =
     50
 
 
+
+-- Section
+
+
+tabSections : List (TabItem msg)
+tabSections =
+    [ TabItem "Fleet" Icons.vehicle Buses
+    , TabItem "Students" Icons.seat HouseholdList
+    , TabItem "Crew" Icons.people CrewMembers
+    , TabItem "Routes" Icons.pin Routes
+    ]
+
+
 type NavigationPage
-    = Dashboard
-    | Buses
+    = Buses
     | HouseholdList
-    | DeviceList
-
-
-toRoute : NavigationPage -> Route
-toRoute navPage =
-    case navPage of
-        Dashboard ->
-            Route.Dashboard
-
-        Buses ->
-            Route.Buses
-
-        HouseholdList ->
-            Route.HouseholdList
-
-        DeviceList ->
-            Route.DeviceList
-
-
-toNavigationPage : Route -> NavigationPage
-toNavigationPage route =
-    case route of
-        Route.Dashboard ->
-            Dashboard
-
-        Route.Buses ->
-            Buses
-
-        Route.Bus _ ->
-            Buses
-
-        Route.BusRegistration ->
-            Buses
-
-        Route.BusDeviceRegistration _ ->
-            Buses
-
-        Route.HouseholdList ->
-            HouseholdList
-
-        Route.StudentRegistration ->
-            HouseholdList
-
-        Route.DeviceList ->
-            DeviceList
-
-        Route.Home ->
-            Dashboard
-
-        Route.Login _ ->
-            Dashboard
-
-        Route.Logout ->
-            Dashboard
-
-        Route.Signup ->
-            Dashboard
-
-        Route.DeviceRegistration ->
-            DeviceList
+    | CrewMembers
+    | Routes
 
 
 
@@ -92,19 +46,6 @@ type alias TabItem msg =
     , icon : Icons.IconBuilder msg
     , navPage : NavigationPage
     }
-
-
-
--- Section
-
-
-tabSections : List (TabItem msg)
-tabSections =
-    [ TabItem "Dashboard" Icons.dashboard Dashboard
-    , TabItem "Fleet" Icons.shuttle Buses
-    , TabItem "Students" Icons.seat HouseholdList
-    , TabItem "Routes" Icons.pin HouseholdList
-    ]
 
 
 view : Maybe Route -> Element msg
@@ -153,7 +94,7 @@ viewTabItem item backgroundColor =
                     none
                 )
             ]
-            { url = Route.href (toRoute item.navPage)
+            { url = Navigation.href (toRoute item.navPage)
             , label =
                 row (paddingXY 0 4 :: centerX :: spacing 12 :: Font.size 18 :: sideBarSubSectionStyle)
                     [ el [ height (px 32), width (px 32) ] (item.icon [ centerX, centerY ])
@@ -198,3 +139,68 @@ hoverColor =
             toRgb highlightColor
     in
     fromRgb { color | alpha = 0.9 }
+
+
+toRoute : NavigationPage -> Route
+toRoute navPage =
+    case navPage of
+        Buses ->
+            Navigation.Buses
+
+        HouseholdList ->
+            Navigation.HouseholdList
+
+        CrewMembers ->
+            Navigation.CrewMembers
+
+        Routes ->
+            Navigation.Routes
+
+
+toNavigationPage : Route -> NavigationPage
+toNavigationPage route =
+    case route of
+        Navigation.Buses ->
+            Buses
+
+        Navigation.Bus _ _ ->
+            Buses
+
+        Navigation.BusRegistration ->
+            Buses
+
+        Navigation.BusDeviceRegistration _ ->
+            Buses
+
+        Navigation.HouseholdList ->
+            HouseholdList
+
+        Navigation.StudentRegistration ->
+            HouseholdList
+
+        Navigation.Home ->
+            Buses
+
+        Navigation.Login _ ->
+            Buses
+
+        Navigation.Logout ->
+            Buses
+
+        Navigation.Signup ->
+            Buses
+
+        Navigation.DeviceRegistration ->
+            Buses
+
+        Navigation.DeviceList ->
+            Buses
+
+        Navigation.Routes ->
+            Routes
+
+        Navigation.CrewMembers ->
+            CrewMembers
+
+        Navigation.CrewMemberRegistration ->
+            CrewMembers

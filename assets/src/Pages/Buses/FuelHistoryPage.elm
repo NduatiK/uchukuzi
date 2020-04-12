@@ -1,7 +1,8 @@
-module Pages.Buses.FuelHistoryPage exposing (Model, Msg, init, update, view)
+module Pages.Buses.FuelHistoryPage exposing (Model, Msg, init, update, view, viewFooter)
 
 import Api exposing (get)
 import Api.Endpoint as Endpoint exposing (trips)
+import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -15,21 +16,38 @@ import Json.Decode.Pipeline exposing (optional, required, resolve)
 import Ports
 import RemoteData exposing (..)
 import Style exposing (edges)
+import StyledElement.Footer as Footer
 import Time
 import Utils.Date
 
 
 type alias Model =
-    {}
+    { currentPage : Page }
+
+
+type Page
+    = Summary
+    | ConsumptionSpikes
+
+
+pageToString page =
+    case page of
+        Summary ->
+            "Summary"
+
+        ConsumptionSpikes ->
+            "Consumption Spikes"
 
 
 type Msg
-    = AdjustedValue Int
+    = ClickedSummaryPage
+      --------------------
+    | ClickedConsumptionSpikesPage
 
 
 init : { bus | id : Int } -> Time.Zone -> ( Model, Cmd Msg )
 init bus timezone =
-    ( Model
+    ( Model Summary
     , Cmd.none
     )
 
@@ -41,8 +59,11 @@ init bus timezone =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AdjustedValue sliderValue ->
-            ( model, Cmd.none )
+        ClickedSummaryPage ->
+            ( { model | currentPage = Summary }, Cmd.none )
+
+        ClickedConsumptionSpikesPage ->
+            ( { model | currentPage = ConsumptionSpikes }, Cmd.none )
 
 
 
@@ -65,3 +86,12 @@ view model =
             []
             none
         )
+
+
+viewFooter : Model -> Element Msg
+viewFooter model =
+    Footer.coloredView model.currentPage
+        pageToString
+        [ { page = Summary, body = "", action = ClickedSummaryPage, highlightColor = Colors.darkGreen }
+        , { page = ConsumptionSpikes, body = "3", action = ClickedConsumptionSpikesPage, highlightColor = Colors.errorRed }
+        ]

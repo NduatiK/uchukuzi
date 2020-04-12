@@ -1,4 +1,4 @@
-module Pages.Buses.RouteHistoryPage exposing (Model, Msg, init, update, view)
+module Pages.Buses.TripsHistoryPage exposing (Model, Msg, init, update, view, viewFooter)
 
 import Api exposing (get)
 import Api.Endpoint as Endpoint exposing (trips)
@@ -67,7 +67,7 @@ type Msg
 init : Session -> { bus | id : Int } -> ( Model, Cmd Msg )
 init session bus =
     ( Model 0 True True RemoteData.Loading [] Nothing (Session.timeZone session)
-    , Cmd.batch [ fetchTripsForBus session bus.id ]
+    , Cmd.batch [ fetchTripsForBus session bus.id, Ports.initializeMaps False ]
     )
 
 
@@ -236,7 +236,7 @@ viewSlider model zone trip =
         currentPointTimeElement =
             let
                 routeStyle =
-                    Style.textFontStyle
+                    Style.defaultFontFace
                         ++ [ Font.color (rgb255 85 88 98)
                            , Font.size 14
                            , Font.bold
@@ -362,7 +362,7 @@ viewTrips selectedTrip groupedTrips timezone =
 viewGroupedTrips : Maybe Trip -> Time.Zone -> ( String, List Trip ) -> Element Msg
 viewGroupedTrips selectedTrip timezone ( month, trips ) =
     column [ spacing 8 ]
-        [ el (Font.size 20 :: Font.bold :: Style.textFontStyle) (text month)
+        [ el (Font.size 20 :: Font.bold :: Style.defaultFontFace) (text month)
         , wrappedRow [ spacing 12 ] (List.map (viewTrip selectedTrip timezone) trips)
         ]
 
@@ -371,13 +371,13 @@ viewTrip : Maybe Trip -> Time.Zone -> Trip -> Element Msg
 viewTrip selectedTrip timezone trip =
     let
         timeStyle =
-            Style.textFontStyle
+            Style.defaultFontFace
                 ++ [ Font.color (rgb255 119 122 129)
                    , Font.size 13
                    ]
 
         routeStyle =
-            Style.textFontStyle
+            Style.defaultFontFace
                 ++ [ Font.color (rgb255 85 88 98)
                    , Font.size 14
 
@@ -424,6 +424,18 @@ viewTrip selectedTrip timezone trip =
             -- , el (alignRight :: timeStyle) (text (Utils.Date.timeFormatter timezone trip.endTime))
             -- , el routeStyle (text trip.route)
             ]
+        ]
+
+
+viewFooter : Model -> Element Msg
+viewFooter model =
+    column
+        [ height fill
+        , width fill
+
+        -- , paddingXY 0 10
+        ]
+        [ el [ width fill, height (px 2), Background.color Colors.semiDarkText ] none
         ]
 
 

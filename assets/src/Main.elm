@@ -4,14 +4,19 @@ import Api
 import Browser
 import Browser.Events
 import Browser.Navigation as Nav
+import Dict exposing (Dict)
 import Element exposing (..)
 import Html.Attributes exposing (src)
 import Json.Decode exposing (Value)
+import Models.Bus exposing (LocationUpdate)
+import Navigation exposing (Route)
 import Page exposing (..)
 import Pages.Blank
 import Pages.Buses.BusPage as BusDetailsPage
 import Pages.Buses.BusRegistrationPage as BusRegistration
 import Pages.Buses.BusesPage as BusesList
+import Pages.Crew.CrewMemberRegistrationPage as CrewMemberRegistration
+import Pages.Crew.CrewMembersPage as CrewMembers
 import Pages.DashboardPage as Dashboard
 import Pages.Devices.DeviceRegistrationPage as DeviceRegistration
 import Pages.Devices.DevicesPage as DevicesList
@@ -21,8 +26,9 @@ import Pages.Households.HouseholdsPage as HouseholdList
 import Pages.Login as Login
 import Pages.Logout as Logout
 import Pages.NotFound as NotFound
+import Pages.Routes.Routes as RoutesList
 import Pages.Signup as Signup
-import Route exposing (Route)
+import Ports
 import Session exposing (Session)
 import Style
 import Template.NavBar as NavBar exposing (viewHeader)
@@ -39,6 +45,9 @@ type alias Model =
     , route : Maybe Route
     , navState : NavBar.Model
     , windowHeight : Int
+    , url : Url.Url
+    , locationUpdates : Dict Int LocationUpdate
+    , allowReroute : Bool
     }
 
 
@@ -51,6 +60,7 @@ type PageModel
     | Dashboard Dashboard.Model
     | Login Login.Model
     | Logout Logout.Model
+    | RoutesList RoutesList.Model
     | HouseholdList HouseholdList.Model
     | StudentRegistration StudentRegistration.Model
     | BusesList BusesList.Model
@@ -58,6 +68,8 @@ type PageModel
     | BusRegistration BusRegistration.Model
     | DevicesList DevicesList.Model
     | Signup Signup.Model
+    | CrewMembers CrewMembers.Model
+    | CrewMemberRegistration CrewMemberRegistration.Model
     | DeviceRegistration DeviceRegistration.Model
 
 
@@ -69,7 +81,7 @@ init args url navKey =
                 (\x ->
                     case
                         Json.Decode.decodeValue
-                            (Json.Decode.at [ "state" ] Api.credDecoder)
+                            (Json.Decode.at [ "credentials" ] Api.credDecoder)
                             x
                     of
                         Ok a ->
@@ -101,12 +113,15 @@ init args url navKey =
         session =
             Session.fromCredentials navKey Time.utc creds
     in
-    changeRouteTo (Route.fromUrl url session)
+    changeRouteTo (Navigation.fromUrl url session)
         (Model
             (Redirect session)
             Nothing
             (NavBar.init session)
             height
+            url
+            (Dict.fromList [])
+            True
         )
 
 
@@ -115,7 +130,7 @@ init args url navKey =
 
 
 type Msg
-    = LinkClicked Browser.UrlRequest
+    = UrlRequested Browser.UrlRequest
     | UrlChanged Url.Url
     | ReceivedCreds (Maybe Session.Cred)
     | WindowResized Int Int
@@ -130,6 +145,8 @@ type Msg
     | GotLogoutMsg ()
     | GotSignupMsg Signup.Msg
       ------------
+    | GotRoutesListMsg RoutesList.Msg
+      ------------
     | GotBusesListMsg BusesList.Msg
     | GotBusDetailsPageMsg BusDetailsPage.Msg
     | GotBusRegistrationMsg BusRegistration.Msg
@@ -138,6 +155,11 @@ type Msg
     | GotDashboardMsg Dashboard.Msg
     | GotDevicesListMsg DevicesList.Msg
     | GotDeviceRegistrationMsg DeviceRegistration.Msg
+      ------------
+    | GotCrewMembersMsg CrewMembers.Msg
+    | GotCrewMemberRegistrationMsg CrewMemberRegistration.Msg
+      ------------
+    | BusMoved LocationUpdate
 
 
 
@@ -197,6 +219,15 @@ view { page, route, navState, windowHeight } =
 
                 DeviceRegistration model ->
                     viewPage (DeviceRegistration.view model) GotDeviceRegistrationMsg
+
+                RoutesList model ->
+                    viewPage (RoutesList.view model) GotRoutesListMsg
+
+                CrewMembers model ->
+                    viewPage (CrewMembers.view model) GotCrewMembersMsg
+
+                CrewMemberRegistration model ->
+                    viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg
     in
     { title = "Uchukuzi"
     , body =
@@ -209,7 +240,7 @@ view { page, route, navState, windowHeight } =
                     }
                 ]
             }
-            Style.textFontStyle
+            Style.defaultFontFace
             renderedView
         ]
     }
@@ -221,36 +252,61 @@ update msg model =
         WindowResized _ height ->
             ( { model | windowHeight = height }, Cmd.none )
 
-        LinkClicked urlRequest ->
+        UrlRequested urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
                     case url.fragment of
                         Nothing ->
                             ( model, Cmd.none )
 
+                        -- ( { model | url = url }, Cmd.none )
                         Just _ ->
+                            -- let
+                            --     isSamePage =
+                            --         Navigation.isSamePage model.url url
+                            --     newModel =
+                            --         { model | allowReroute = not isSamePage }
+                            -- in
+                            -- if newModel.allowReroute then
                             ( model
                             , Nav.pushUrl (Session.navKey (toSession model.page)) (Url.toString url)
                             )
 
+                -- else
+                --     ( newModel, Cmd.none )
                 Browser.External href ->
                     ( model
                     , Nav.load href
                     )
 
         UrlChanged url ->
-            changeRouteTo (Route.fromUrl url (toSession model.page)) model
+            -- let
+            --     isSamePage =
+            --         Navigation.isSamePage model.url url
+            -- in
+            -- if model.allowReroute && not isSamePage then
+            changeRouteTo (Navigation.fromUrl url (toSession model.page))
+                model
 
+        -- else
+        -- ( model, Cmd.none )
         ReceivedCreds cred ->
             let
                 session =
                     Session.withCredentials (toSession model.page) cred
             in
             if cred == Nothing then
-                changeRouteWithUpdatedSessionTo (Just (Route.Login Nothing)) model session
+                changeRouteWithUpdatedSessionTo (Just (Navigation.Login Nothing)) model session
 
             else
-                changeRouteWithUpdatedSessionTo (Just Route.Dashboard) model session
+                changeRouteWithUpdatedSessionTo (Navigation.fromUrl model.url session) model session
+
+        BusMoved locUpdate ->
+            let
+                newModel =
+                    { model | locationUpdates = Dict.insert locUpdate.bus locUpdate model.locationUpdates }
+            in
+            updatePage msg newModel
 
         _ ->
             updatePage msg model
@@ -267,13 +323,33 @@ updatePage page_msg fullModel =
             Page.transformToModelMsg (pageModelMapper >> modelMapper) pageMsgMapper ( subModel, subCmd )
     in
     case ( page_msg, fullModel.page ) of
+        ( BusMoved _, BusesList model ) ->
+            BusesList.update (BusesList.locationUpdateMsg fullModel.locationUpdates) model
+                |> mapModelAndMsg BusesList GotBusesListMsg
+
+        ( BusMoved _, BusDetailsPage model ) ->
+            case Dict.get model.busID fullModel.locationUpdates of
+                Just locationUpdate ->
+                    BusDetailsPage.update (BusDetailsPage.locationUpdateMsg locationUpdate) model
+                        |> mapModelAndMsg BusDetailsPage GotBusDetailsPageMsg
+
+                Nothing ->
+                    ( fullModel, Cmd.none )
+
         ( GotNavBarMsg msg, _ ) ->
             let
                 ( newNavState, navMsg ) =
                     NavBar.update msg fullModel.navState
             in
             ( { fullModel | navState = newNavState }
-            , Cmd.map GotNavBarMsg navMsg
+            , Cmd.batch
+                [ Cmd.map GotNavBarMsg navMsg
+                , if NavBar.isVisible fullModel.navState then
+                    Cmd.map GotNavBarMsg NavBar.hideNavBarMsg
+
+                  else
+                    Cmd.none
+                ]
             )
 
         ( GotHouseholdListMsg msg, HouseholdList model ) ->
@@ -311,6 +387,18 @@ updatePage page_msg fullModel =
         ( GotDeviceRegistrationMsg msg, DeviceRegistration model ) ->
             DeviceRegistration.update msg model
                 |> mapModelAndMsg DeviceRegistration GotDeviceRegistrationMsg
+
+        ( GotRoutesListMsg msg, RoutesList model ) ->
+            RoutesList.update msg model
+                |> mapModelAndMsg RoutesList GotRoutesListMsg
+
+        ( GotCrewMembersMsg msg, CrewMembers model ) ->
+            CrewMembers.update msg model
+                |> mapModelAndMsg CrewMembers GotCrewMembersMsg
+
+        ( GotCrewMemberRegistrationMsg msg, CrewMemberRegistration model ) ->
+            CrewMemberRegistration.update msg model
+                |> mapModelAndMsg CrewMemberRegistration GotCrewMemberRegistrationMsg
 
         ( _, _ ) ->
             ( fullModel, Cmd.none )
@@ -366,6 +454,15 @@ toSession pageModel =
         DeviceRegistration subModel ->
             subModel.session
 
+        RoutesList subModel ->
+            subModel.session
+
+        CrewMembers subModel ->
+            subModel.session
+
+        CrewMemberRegistration subModel ->
+            subModel.session
+
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
@@ -390,57 +487,68 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                 Nothing ->
                     ( NotFound session, Cmd.none )
 
-                Just Route.Home ->
+                Just Navigation.Home ->
                     Home.init session
                         |> updateWith Home GotHomeMsg
 
-                Just Route.Buses ->
-                    BusesList.init session (Page.viewHeight model.windowHeight)
+                Just Navigation.Buses ->
+                    BusesList.init session (Page.viewHeight model.windowHeight) model.locationUpdates
                         |> updateWith BusesList GotBusesListMsg
 
-                Just Route.BusRegistration ->
+                Just Navigation.BusRegistration ->
                     BusRegistration.init session
                         |> updateWith BusRegistration GotBusRegistrationMsg
 
-                Just (Route.BusDeviceRegistration busID) ->
+                Just (Navigation.BusDeviceRegistration busID) ->
                     DeviceRegistration.init session (Just busID)
                         |> updateWith DeviceRegistration GotDeviceRegistrationMsg
 
-                Just (Route.Bus busID) ->
-                    BusDetailsPage.init busID session
+                Just (Navigation.Bus busID preferredPage) ->
+                    BusDetailsPage.init busID session (Page.viewHeight model.windowHeight) (Dict.get busID model.locationUpdates) preferredPage
                         |> updateWith BusDetailsPage GotBusDetailsPageMsg
 
-                Just Route.Dashboard ->
-                    Dashboard.init session
-                        |> updateWith Dashboard GotDashboardMsg
-
-                Just Route.HouseholdList ->
+                -- Just Navigation.Dashboard ->
+                --     Dashboard.init session
+                --         |> updateWith Dashboard GotDashboardMsg
+                Just Navigation.HouseholdList ->
                     HouseholdList.init session
                         |> updateWith HouseholdList GotHouseholdListMsg
 
-                Just Route.DeviceList ->
+                Just Navigation.DeviceList ->
                     DevicesList.init session
                         |> updateWith DevicesList GotDevicesListMsg
 
-                Just Route.DeviceRegistration ->
+                Just Navigation.DeviceRegistration ->
                     DeviceRegistration.init session Nothing
                         |> updateWith DeviceRegistration GotDeviceRegistrationMsg
 
-                Just Route.StudentRegistration ->
+                Just Navigation.StudentRegistration ->
                     StudentRegistration.init session
                         |> updateWith StudentRegistration GotStudentRegistrationMsg
 
-                Just (Route.Login redirect) ->
+                Just (Navigation.Login redirect) ->
                     Login.init session redirect
                         |> updateWith Login GotLoginMsg
 
-                Just Route.Logout ->
+                Just Navigation.Logout ->
                     Logout.init session
                         |> updateWith Logout GotLogoutMsg
 
-                Just Route.Signup ->
+                Just Navigation.Signup ->
                     Signup.init session
                         |> updateWith Signup GotSignupMsg
+
+                Just Navigation.Routes ->
+                    RoutesList.init session
+                        |> updateWith RoutesList GotRoutesListMsg
+
+                Just Navigation.CrewMembers ->
+                    CrewMembers.init session (Page.viewHeight model.windowHeight)
+                        |> updateWith CrewMembers GotCrewMembersMsg
+
+                Just Navigation.CrewMemberRegistration ->
+                    CrewMemberRegistration.init session
+                        |> updateWith CrewMemberRegistration GotCrewMemberRegistrationMsg
     in
     ( { model | page = updatedPage, route = maybeRoute }, msg )
 
@@ -456,6 +564,12 @@ subscriptions model_ =
                 Signup model ->
                     Sub.map GotSignupMsg (Signup.subscriptions model)
 
+                BusesList model ->
+                    Sub.map GotBusesListMsg (BusesList.subscriptions model)
+
+                BusDetailsPage model ->
+                    Sub.map GotBusDetailsPageMsg (BusDetailsPage.subscriptions model)
+
                 _ ->
                     Sub.none
     in
@@ -463,6 +577,7 @@ subscriptions model_ =
         [ matching
         , Api.onStoreChange (Api.parseCreds >> ReceivedCreds)
         , Browser.Events.onResize WindowResized
+        , Ports.onBusMove BusMoved
         ]
 
 
@@ -474,5 +589,5 @@ main =
         , update = update
         , subscriptions = subscriptions
         , onUrlChange = UrlChanged
-        , onUrlRequest = LinkClicked
+        , onUrlRequest = UrlRequested
         }

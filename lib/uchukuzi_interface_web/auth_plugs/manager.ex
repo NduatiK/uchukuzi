@@ -1,4 +1,4 @@
-defmodule UchukuziInterfaceWeb.AuthManager do
+defmodule UchukuziInterfaceWeb.AuthPlugs.ManagerAuth do
   import Plug.Conn
 
   def init(opts), do: opts

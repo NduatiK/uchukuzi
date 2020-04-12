@@ -1,4 +1,4 @@
-module Route exposing (LoginRedirect(..), Route(..), fromUrl, href, isPublicRoute, replaceUrl, rerouteTo)
+module Navigation exposing (LoginRedirect(..), Route(..), fromUrl, href, isPublicRoute, isSamePage, pushUrl, replaceUrl, rerouteTo)
 
 import Browser.Navigation as Nav
 import Html exposing (Attribute)
@@ -6,7 +6,8 @@ import Html.Attributes as Attr
 import Json.Decode as Decode exposing (Decoder)
 import Session exposing (Session)
 import Url exposing (Url)
-import Url.Parser as Parser exposing ((</>), Parser, int, oneOf, s, string)
+import Url.Parser as Parser exposing ((</>), (<?>), Parser, int, oneOf, s, string)
+import Url.Parser.Query as Query
 
 
 
@@ -23,11 +24,14 @@ type Route
     | Login (Maybe LoginRedirect)
     | Logout
     | Signup
-    | Dashboard
+    | Routes
+    | CrewMembers
+    | CrewMemberRegistration
+      -- | Dashboard
     | HouseholdList
     | Buses
     | BusRegistration
-    | Bus Int
+    | Bus Int (Maybe String)
     | DeviceList
     | BusDeviceRegistration Int
     | DeviceRegistration
@@ -36,16 +40,19 @@ type Route
 loggedInParser : Parser (Route -> a) a
 loggedInParser =
     oneOf
-        [ buildParser Dashboard
-        , buildParser HouseholdList
-        , Parser.map StudentRegistration (s (routeName HouseholdList) </> s (routeName StudentRegistration))
-        , buildParser Buses
-        , Parser.map Bus (s (routeName (Bus 0)) </> int)
-        , Parser.map BusRegistration (s (routeName Buses) </> s (routeName BusRegistration))
-        , buildParser DeviceList
-        , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
-        , Parser.map DeviceRegistration (s (routeName DeviceList) </> s "new")
-        ]
+        (Parser.map Buses Parser.top
+            :: parsersFor [ Buses, Routes, HouseholdList, DeviceList, CrewMembers ]
+            ++ parsersFor2
+                [ ( HouseholdList, StudentRegistration )
+                , ( CrewMembers, CrewMemberRegistration )
+                , ( Buses, BusRegistration )
+                , ( DeviceList, DeviceRegistration )
+                ]
+            ++ [ -- http://localhost:4000/#/fleet/1/?page=trips
+                 Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
+               , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
+               ]
+        )
 
 
 notLoggedInParser : Parser (Route -> a) a
@@ -60,8 +67,8 @@ notLoggedInParser =
 publicParser : Parser (Route -> a) a
 publicParser =
     oneOf
-        [ Parser.map Home Parser.top
-        ]
+        -- [ Parser.map Home Parser.top
+        []
 
 
 isPublicRoute : Maybe Route -> Bool
@@ -75,17 +82,23 @@ isPublicRoute route =
 
 
 
--- buildParser : Route -> Parser
+-- buildParser : Route -> Parser (String -> )Route
+
+
+parsersFor : List Route -> List (Parser (Route -> c) c)
+parsersFor routes =
+    List.map buildParser routes
+
+
+parsersFor2 : List ( Route, Route ) -> List (Parser (Route -> c) c)
+parsersFor2 routes =
+    List.map
+        (\r -> Parser.map (Tuple.second r) (s (routeName (Tuple.first r)) </> s (routeName (Tuple.second r))))
+        routes
 
 
 buildParser route =
     Parser.map route (s (routeName route))
-
-
-
--- busUrlParser : Parser (String -> a) a
--- busUrlParser =
---     Parser.custom "String" (\str -> Just str)
 
 
 loginUrlParser : Parser (Maybe LoginRedirect -> a) a
@@ -103,25 +116,74 @@ href targetRoute =
     routeToString targetRoute
 
 
+{-| replaceUrl : Key -> String -> Cmd msg
+Change the URL, but do not trigger a page load.
+
+This will not add a new entry to the browser history.
+
+This can be useful if you have search box and you want the ?search=hats in
+the URL to match without adding a history entry for every single key
+stroke. Imagine how annoying it would be to click back
+thirty times and still be on the same page!
+
+-}
 replaceUrl : Nav.Key -> Route -> Cmd msg
 replaceUrl key route =
     Nav.replaceUrl key (routeToString route)
 
 
+{-| Change the URL, but do not trigger a page load.
+
+This will add a new entry to the browser history.
+
+**Note:** If the user has gone `back` a few pages, there will be &ldquo;future
+pages&rdquo; that the user can go `forward` to. Adding a new URL in that
+scenario will clear out any future pages. It is like going back in time and
+making a different choice.
+
+-}
+pushUrl : Nav.Key -> Route -> Cmd msg
+pushUrl key route =
+    Nav.pushUrl key (routeToString route)
+
+
+parseUrl url =
+    let
+        parts =
+            case url.fragment of
+                Just fragment ->
+                    String.split "?" fragment
+
+                Nothing ->
+                    [ "", "" ]
+
+        query =
+            Maybe.withDefault "" (List.head (List.drop 1 parts))
+
+        path =
+            Maybe.withDefault "" (List.head parts)
+    in
+    { url | path = path, fragment = Nothing, query = Just query }
+
+
+isSamePage url1 url2 =
+    (parseUrl url1).path == (parseUrl url2).path
+
+
 fromUrl : Url -> Session -> Maybe Route
 fromUrl url session =
     let
-        path =
-            { url | path = Maybe.withDefault "" url.fragment, fragment = Nothing }
+        newUrl =
+            parseUrl url
 
         loggedInRoute =
-            Parser.parse loggedInParser path
+            Parser.parse loggedInParser newUrl
 
         publicRoute =
-            Parser.parse publicParser path
+            Parser.parse publicParser newUrl
 
         guestRoute =
-            Parser.parse notLoggedInParser path
+            Parser.parse notLoggedInParser newUrl
     in
     if publicRoute /= Nothing then
         -- Always match the public route
@@ -132,7 +194,7 @@ fromUrl url session =
             ( Just matchedGuestRoute, _ ) ->
                 Just matchedGuestRoute
 
-            ( _, Just matchedLoggedInRoute ) ->
+            ( _, Just _ ) ->
                 -- Redirect url cheats to Login
                 Just (Login Nothing)
 
@@ -143,7 +205,7 @@ fromUrl url session =
         case ( guestRoute, loggedInRoute ) of
             ( Just _, _ ) ->
                 -- Redirect non guests to login
-                Just Dashboard
+                Just Buses
 
             ( _, Just matchedLoggedInRoute ) ->
                 Just matchedLoggedInRoute
@@ -171,9 +233,8 @@ routeToString page =
                 Home ->
                     []
 
-                Dashboard ->
-                    [ routeName page ]
-
+                -- Dashboard ->
+                --     [ routeName page ]
                 Login redirect ->
                     [ routeName page, loginRedirectToString redirect ]
 
@@ -201,11 +262,25 @@ routeToString page =
                 Buses ->
                     [ routeName Buses ]
 
-                Bus busID ->
-                    [ routeName Buses, String.fromInt busID ]
+                Bus busID pageStr ->
+                    case pageStr of
+                        Nothing ->
+                            [ routeName Buses, String.fromInt busID ]
+
+                        Just pageStr_ ->
+                            [ routeName Buses, String.fromInt busID, "?page=" ++ String.toLower pageStr_ ]
 
                 BusRegistration ->
                     [ routeName Buses, routeName BusRegistration ]
+
+                Routes ->
+                    [ routeName Routes ]
+
+                CrewMembers ->
+                    [ routeName CrewMembers ]
+
+                CrewMemberRegistration ->
+                    [ routeName CrewMembers, routeName page ]
     in
     "#/" ++ String.join "/" pieces
 
@@ -215,9 +290,6 @@ routeName page =
     case page of
         Home ->
             ""
-
-        Dashboard ->
-            "dashboard"
 
         Login _ ->
             "login"
@@ -246,10 +318,19 @@ routeName page =
         Buses ->
             "fleet"
 
-        Bus _ ->
+        Bus _ _ ->
             "fleet"
 
         BusRegistration ->
+            "new"
+
+        Routes ->
+            "routes"
+
+        CrewMembers ->
+            "crew"
+
+        CrewMemberRegistration ->
             "new"
 
 

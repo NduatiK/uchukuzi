@@ -1,6 +1,6 @@
 module Pages.Signup exposing (Model, Msg, init, subscriptions, update, view)
 
-import Api
+import Api exposing (SuccessfulLogin, loginDecoder)
 import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
@@ -13,9 +13,10 @@ import Icons
 import Json.Decode as Decode exposing (Decoder, float, int, list, string)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required, resolve)
 import Json.Encode as Encode
+import Models.Location as Location
+import Navigation exposing (LoginRedirect, Route)
 import Ports
 import RemoteData exposing (..)
-import Route exposing (LoginRedirect, Route)
 import Session exposing (Session)
 import Style
 import StyledElement
@@ -29,7 +30,7 @@ import Utils.Validator exposing (..)
 type alias Model =
     { session : Session
     , form : Form
-    , status : WebData Session.Cred
+    , status : WebData SuccessfulLogin
     , loadingGeocode : Bool
     }
 
@@ -143,7 +144,7 @@ type Msg
     | ToManagerForm
     | ToSchoolForm
     | SubmittedForm
-    | SignupResponse (WebData Session.Cred)
+    | SignupResponse (WebData SuccessfulLogin)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -242,7 +243,7 @@ update msg model =
             updateStatus updatedModel requestStatus
 
 
-updateStatus : Model -> WebData Session.Cred -> ( Model, Cmd Msg )
+updateStatus : Model -> WebData SuccessfulLogin -> ( Model, Cmd Msg )
 updateStatus model msg =
     case msg of
         Loading ->
@@ -268,11 +269,12 @@ updateStatus model msg =
         NotAsked ->
             ( model, Cmd.none )
 
-        Success creds ->
+        Success data ->
             ( model
             , Cmd.batch
-                [ Route.rerouteTo model (Route.Login (Just Route.ConfirmEmail))
-                , Api.storeCredentials creds
+                [ Navigation.rerouteTo model (Navigation.Login (Just Navigation.ConfirmEmail))
+                , Api.storeCredentials data.creds
+                , Location.storeSchoolLocation data.location
                 ]
             )
 
@@ -435,7 +437,7 @@ viewManagerForm model =
                 { title = "First Name"
                 , caption = Nothing
                 , errorCaption =
-                    errorMapper "name"
+                    errorMapper "manager_name"
                         [ EmptyFirstName ]
                 , value = nameString form.manager.firstName
                 , onChange = Name >> UpdatedFirstName
@@ -447,7 +449,7 @@ viewManagerForm model =
                 { title = "Last Name"
                 , caption = Nothing
                 , errorCaption =
-                    errorMapper "name"
+                    errorMapper "manager_name"
                         [ EmptyLastName ]
                 , value = nameString form.manager.lastName
                 , onChange = Name >> UpdatedLastName
@@ -461,7 +463,7 @@ viewManagerForm model =
         , StyledElement.emailInput [ centerX ]
             { title = "Email Address"
             , caption = Just "Your official email address"
-            , errorCaption = errorMapper "email" [ InvalidEmail ]
+            , errorCaption = errorMapper "manager_email" [ InvalidEmail ]
             , value = emailString form.manager.email
             , onChange = Email >> UpdatedEmail
             , placeholder = Nothing
@@ -473,7 +475,7 @@ viewManagerForm model =
             { title = "New Password"
             , caption = Nothing
             , errorCaption =
-                errorMapper "password"
+                errorMapper "manager_password"
                     [ PasswordIsEmpty
                     , PasswordIsTooShort
                     ]
@@ -494,7 +496,7 @@ viewFooter =
             [ el (Font.size 15 :: Style.labelStyle)
                 (text "Already have an account?")
             , row [ spacing 8 ]
-                [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15, Font.bold ] { label = text "Login", route = Route.Login Nothing }
+                [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15, Font.bold ] { label = text "Login", route = Navigation.Login Nothing }
                 , Icons.chevronDown [ rotate (-pi / 2) ]
                 ]
             ]
@@ -630,7 +632,7 @@ viewButtons model =
         _ ->
             let
                 ( borderStyle, label ) =
-                    if Errors.containsErrorFor [ "name", "email", "password" ] model.form.problems then
+                    if Errors.containsErrorFor [ "manager_name", "manager_email", "manager_password" ] model.form.problems then
                         ( [ Border.color Colors.errorRed, Border.width 2 ]
                         , row [ spacing 4 ]
                             [ Icons.chevronDown [ rotate (pi / 2), Colors.fillErrorRed, alpha 1 ]
@@ -672,11 +674,6 @@ viewButtons model =
                 ]
 
 
-loginDecoder : Decoder String
-loginDecoder =
-    Decode.field "message" string
-
-
 signup : Session -> ValidForm -> Cmd Msg
 signup session form =
     let
@@ -686,7 +683,7 @@ signup session form =
                 , ( "geo"
                   , Encode.object
                         [ ( "lat", Encode.float form.school.schoolLocation.lat )
-                        , ( "lon", Encode.float form.school.schoolLocation.lng )
+                        , ( "lng", Encode.float form.school.schoolLocation.lng )
                         , ( "radius", Encode.float form.school.schoolLocation.radius )
                         ]
                   )
@@ -706,7 +703,7 @@ signup session form =
                 ]
                 |> Http.jsonBody
     in
-    Api.post session Endpoint.signup params Api.credDecoder
+    Api.post session Endpoint.signup params loginDecoder
         |> Cmd.map SignupResponse
 
 

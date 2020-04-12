@@ -1,10 +1,10 @@
-module Views.CustomDropDown exposing
+module StyledElement.DropDown exposing
     ( State, init
     , Msg
     , Config, basic, filterable
     , withContainerAttributes, withPromptElement, withSelectAttributes, withSearchAttributes, withOpenCloseButtons, withListAttributes
     , update, view
-    , dropDownConfig, selectOption
+    , dropDownConfig, filterText, selectOption
     )
 
 {-| Elm UI Dropdown.
@@ -71,6 +71,11 @@ type alias InternalState item =
     }
 
 
+filterText : State a -> String
+filterText (State state) =
+    state.filterText
+
+
 {-| Opaque type that holds the current state
 
     type alias Model =
@@ -98,6 +103,7 @@ type alias InternalConfig item msg =
     , closeButton : Element msg
     , itemToText : item -> String
     , icon : Maybe (Element msg)
+    , isLoading : Bool
     }
 
 
@@ -180,12 +186,13 @@ basic dropdownMsg onSelectMsg itemToPrompt itemToElement =
         , closeButton = text "▲"
         , itemToText = always ""
         , icon = Nothing
+        , isLoading = False
         }
 
 
 {-| -}
-dropDownConfig : (Msg item -> msg) -> (Maybe item -> msg) -> (item -> String) -> Maybe (List (Attribute msg) -> Element msg) -> Config item msg
-dropDownConfig dropDownMsgWrapper onPickMsg toString icon =
+dropDownConfig : (Msg item -> msg) -> (Maybe item -> msg) -> (item -> String) -> Maybe (List (Attribute msg) -> Element msg) -> Bool -> String -> Config item msg
+dropDownConfig dropDownMsgWrapper onPickMsg toString icon isLoading prompt =
     let
         containerAttrs =
             [ width fill
@@ -267,11 +274,12 @@ dropDownConfig dropDownMsgWrapper onPickMsg toString icon =
         |> withSelectAttributes selectAttrs
         |> withListAttributes listAttrs
         |> withSearchAttributes searchAttrs
-        |> withPromptElement (el [ Font.color (rgb255 123 123 123) ] <| text "Pick one")
+        |> withPromptElement (el [ Font.color (rgb255 123 123 123) ] <| text prompt)
         |> withOpenCloseButtons
             { openButton = Icons.chevronDown [ alpha 1 ]
             , closeButton = Icons.chevronDown [ rotate pi, alpha 1 ]
             }
+        |> withLoadingStatus isLoading
 
 
 {-| Create a filterable configuration. This takes:
@@ -307,6 +315,7 @@ filterable dropdownMsg onSelectMsg itemToPrompt itemToElement itemToText icon =
         , closeButton = text "▲"
         , itemToText = itemToText
         , icon = Maybe.map (\x -> x iconAttrs) icon
+        , isLoading = False
         }
 
 
@@ -358,6 +367,16 @@ withSearchAttributes attrs (Config config) =
 withOpenCloseButtons : { openButton : Element msg, closeButton : Element msg } -> Config item msg -> Config item msg
 withOpenCloseButtons { openButton, closeButton } (Config config) =
     Config { config | openButton = openButton, closeButton = closeButton }
+
+
+{-| Sets the whether or not to display a loading animation, default is false
+
+    Dropdown.withLoadingStatus True config
+
+-}
+withLoadingStatus : Bool -> Config item msg -> Config item msg
+withLoadingStatus isLoading (Config config) =
+    Config { config | isLoading = isLoading }
 
 
 {-| Sets the item list visual attributes, default is empty
@@ -574,7 +593,15 @@ bodyView config state data =
             items =
                 column
                     config.listAttributes
-                    (List.indexedMap (itemView config state) data)
+                    (List.concat
+                        [ List.indexedMap (itemView config state) data
+                        , if config.isLoading then
+                            [ Icons.loading [ centerX ] ]
+
+                          else
+                            []
+                        ]
+                    )
 
             body =
                 el

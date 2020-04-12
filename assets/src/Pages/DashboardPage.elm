@@ -58,7 +58,7 @@ update msg model =
                     ( model, Cmd.none )
 
                 Failure _ ->
-                    ( model, Cmd.none ) 
+                    ( model, Cmd.none )
 
                 Success _ ->
                     ( model, Cmd.none )
@@ -71,32 +71,3 @@ update msg model =
 view : Model -> Element Msg
 view model =
     row [] []
-
-
-
--- HTTP
-
-
-fetchTripsForBus : Session -> String -> Cmd Msg
-fetchTripsForBus session bus =
-    let
-        params =
-            { bus_id = bus }
-    in
-    Api.get session Endpoint.buses (list busDecoder)
-        |> Cmd.map BusesResponse
-
-
-busDecoder : Decoder Bus
-busDecoder =
-    Decode.succeed Bus
-        |> required "numberPlate" string
-        |> required "route" string
-        |> required "location" locationDecoder
-
-
-locationDecoder : Decoder Location
-locationDecoder =
-    Decode.succeed Location
-        |> required "longitude" float
-        |> required "latitude" float

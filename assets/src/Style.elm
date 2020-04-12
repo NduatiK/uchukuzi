@@ -2,26 +2,27 @@ module Style exposing
     ( animatesAll
     , animatesAll20Seconds
     , animatesAllDelayed
+    , animatesNone
     , animatesShadow
     , blurredStyle
     , borderedContainer
     , captionLabelStyle
     , clipStyle
     , cssResponsive
+    , defaultFontFace
     , edges
     , elevated
     , elevated2
+    , elevatedTile
     , errorStyle
     , header2Style
     , headerStyle
     , inputStyle
-    , labelFontStyle
     , labelStyle
     , mobileHidden
     , stickyStyle
     , tableElementStyle
     , tableHeaderStyle
-    , textFontStyle
     )
 
 import Colors exposing (..)
@@ -33,7 +34,7 @@ import Element.Input as Input
 import Element.Region as Region
 import Hex
 import Html.Attributes
-import Route
+import Navigation
 
 
 elevated =
@@ -42,6 +43,10 @@ elevated =
 
 elevated2 =
     Border.shadow { offset = ( 0, 0 ), size = 0, blur = 10, color = rgba 0 0 0 0.24 }
+
+
+elevatedTile =
+    Border.shadow { offset = ( 0, 2 ), size = 0, blur = 24, color = Colors.withAlpha Colors.sassyGrey 0.37 }
 
 
 
@@ -91,7 +96,7 @@ captionLabelStyle =
     [ Font.size 13
     , Font.color (Colors.withAlpha (rgb255 4 30 37) 0.69)
     ]
-        ++ labelFontStyle
+        ++ defaultFontFace
 
 
 errorStyle : List (Attribute msg)
@@ -101,10 +106,11 @@ errorStyle =
 
 labelStyle : List (Attribute msg)
 labelStyle =
-    [ Font.size 15
-    , Font.color (rgb255 51 63 78)
+    [ --     Font.size 16
+      -- ,
+      Font.color (rgb255 51 63 78)
     ]
-        ++ labelFontStyle
+        ++ defaultFontFace
 
 
 inputStyle : List (Attribute msg)
@@ -124,7 +130,7 @@ inputStyle =
             |> minimum 46
         )
     ]
-        ++ textFontStyle
+        ++ defaultFontFace
 
 
 tableHeaderStyle : List (Attribute msg)
@@ -136,7 +142,7 @@ tableHeaderStyle =
     , Font.bold
     , alignLeft
     ]
-        ++ textFontStyle
+        ++ defaultFontFace
 
 
 tableElementStyle : List (Attribute msg)
@@ -146,22 +152,13 @@ tableElementStyle =
     , Font.color (rgb255 96 96 96)
     , alignLeft
     ]
-        ++ textFontStyle
+        ++ defaultFontFace
 
 
 {-| Sets Font.family to custom font
 -}
-textFontStyle : List (Attribute msg)
-textFontStyle =
-    [ Font.family
-        [ Font.typeface "SF Pro Display"
-        , Font.sansSerif
-        ]
-    ]
-
-
-labelFontStyle : List (Attribute msg)
-labelFontStyle =
+defaultFontFace : List (Attribute msg)
+defaultFontFace =
     [ Font.family
         [ Font.typeface "SF Pro Text"
         , Font.sansSerif
@@ -201,6 +198,11 @@ animatesShadow =
 animatesAll : Attribute msg
 animatesAll =
     classAttr "animatesAll"
+
+
+animatesNone : Attribute msg
+animatesNone =
+    classAttr "animatesNone"
 
 
 cssResponsive : Attribute msg

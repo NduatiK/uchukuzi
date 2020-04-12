@@ -2,6 +2,7 @@ module Errors exposing
     ( Errors(..)
     , InputError(..)
     , containsErrorFor
+    , customInputErrorsFor
     , decodeErrors
     , errorToString
     , handleError
@@ -17,7 +18,7 @@ import Element exposing (..)
 import Html.Attributes exposing (id)
 import Http
 import Json.Decode as Decode exposing (Decoder, decodeString, dict, list, string)
-import Route
+import Navigation
 import Session exposing (Session)
 import Style exposing (..)
 
@@ -35,8 +36,8 @@ type Errors internalError
     | ServerSideError FieldName (List String)
 
 
-inputErrorsFor : List (Errors clientError) -> String -> List clientError -> Maybe InputError
-inputErrorsFor formProblems fieldName errorsToMatch =
+customInputErrorsFor : List (Errors clientError) -> String -> String -> List clientError -> Maybe InputError
+customInputErrorsFor formProblems fieldName visibleName errorsToMatch =
     let
         clientSideErrors =
             List.map (\x -> ClientSideError x "") errorsToMatch
@@ -46,7 +47,13 @@ inputErrorsFor formProblems fieldName errorsToMatch =
             clientSideErrors
             formProblems
             fieldName
+            visibleName
         )
+
+
+inputErrorsFor : List (Errors clientError) -> String -> List clientError -> Maybe InputError
+inputErrorsFor formProblems fieldName errorsToMatch =
+    customInputErrorsFor formProblems fieldName fieldName errorsToMatch
 
 
 toClientSideError : ( a, String ) -> Errors a
@@ -81,8 +88,8 @@ contains anError listOfErrors =
         listOfErrors
 
 
-errorWhenContains : List (Errors e) -> List (Errors e) -> String -> Maybe (List String)
-errorWhenContains matchFields formProblems fieldName =
+errorWhenContains : List (Errors e) -> List (Errors e) -> String -> String -> Maybe (List String)
+errorWhenContains matchFields formProblems fieldName visibleFieldName =
     let
         errorsForField =
             List.filter (\x -> contains x (ServerSideError fieldName [] :: matchFields)) formProblems
@@ -94,7 +101,7 @@ errorWhenContains matchFields formProblems fieldName =
                         [ string ]
 
                     ServerSideError fieldName2 strings ->
-                        List.map (\str -> "The " ++ String.replace "_" " " fieldName2 ++ " " ++ str) strings
+                        List.map (\str -> "The " ++ String.replace "_" " " visibleFieldName ++ " " ++ str) strings
     in
     case List.concatMap beautifyError errorsForField of
         [] ->

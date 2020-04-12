@@ -16,14 +16,14 @@ import Icons
 import Json.Decode as Decode exposing (Decoder, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required, resolve)
 import Json.Encode as Encode
+import Navigation
 import Ports
 import RemoteData exposing (..)
-import Route
 import Session exposing (Session)
 import Style
 import StyledElement exposing (toDropDownView, wrappedInput)
+import StyledElement.DropDown as Dropdown
 import Utils.Validator as Validator
-import Views.CustomDropDown as Dropdown
 import Views.Heading exposing (viewHeading)
 
 
@@ -42,8 +42,15 @@ type alias Model =
     }
 
 
+type alias Form =
+    { serial : String
+    , selectedBus : Maybe Bus
+    , problems : List (Errors.Errors Problem)
+    }
+
+
 type Problem
-    = InvalidIMEI
+    = InvalidSerial
     | CameraOpenError
     | ServerError String (List String)
 
@@ -62,24 +69,14 @@ type CameraState
     | CameraClosing
 
 
-type alias Form =
-    { imei : String
-    , selectedBus : Maybe Bus
-    , problems : List (Errors.Errors Problem)
-
-    -- , problems : List Problem
-    -- , serverErrors : List ( String, List String )
-    }
-
-
 type alias ValidForm =
-    { imei : String
+    { serial : String
     , bus_id : Maybe Int
     }
 
 
 type Msg
-    = ChangedDeviceIMEI String
+    = ChangedDeviceSerial String
     | SubmitButtonMsg
     | BusesServerResponse (WebData (List Bus))
     | RegisterResponse (WebData ValidForm)
@@ -96,7 +93,7 @@ init session busID =
     ( { session = session
       , preselectedBus = busID
       , form =
-            { imei = ""
+            { serial = ""
             , selectedBus = Nothing
             , problems = []
             }
@@ -120,10 +117,10 @@ update msg model =
             model.form
     in
     case msg of
-        ChangedDeviceIMEI imei ->
+        ChangedDeviceSerial serial ->
             let
                 updated_form =
-                    { form | imei = imei }
+                    { form | serial = serial }
             in
             ( { model | form = updated_form }, Cmd.none )
 
@@ -194,21 +191,21 @@ update msg model =
             , Cmd.none
             )
 
-        ReceivedCode scannedIMEI ->
+        ReceivedCode scannedSerial ->
             let
                 updated_form =
-                    { form | imei = scannedIMEI }
+                    { form | serial = scannedSerial }
             in
-            if Validator.isValidImei scannedIMEI then
+            if Validator.isValidImei scannedSerial then
                 ( { model | form = updated_form, cameraState = CameraClosing }
                 , Cmd.batch
-                    [ Ports.disableCamera 1500
+                    [ Ports.disableCamera 500
                     , Ports.setFrameFrozen True
                     ]
                 )
 
             else
-                ( { model | form = { form | imei = "" } }
+                ( { model | form = { form | serial = "" } }
                 , Cmd.batch
                     [ Ports.setFrameFrozen False
                     ]
@@ -237,16 +234,14 @@ update msg model =
                                 |> List.sortBy .numberPlate
 
                         selectedBus =
-                            Debug.log "selectedBus"
-                                (Maybe.andThen
-                                    (\bus_id ->
-                                        List.head
-                                            (List.filter (\bus -> bus.id == bus_id) filteredBuses)
-                                    )
-                                    model.preselectedBus
+                            Maybe.andThen
+                                (\bus_id ->
+                                    List.head
+                                        (List.filter (\bus -> bus.id == bus_id) filteredBuses)
                                 )
+                                model.preselectedBus
                     in
-                    ( { model | buses = Success filteredBuses, form = { form | selectedBus = Debug.log "selectedBus" selectedBus } }, Cmd.none )
+                    ( { model | buses = Success filteredBuses, form = { form | selectedBus = selectedBus } }, Cmd.none )
 
                 _ ->
                     ( { model | buses = response }, Cmd.none )
@@ -258,7 +253,7 @@ update msg model =
             in
             case response of
                 Success _ ->
-                    ( newModel, Route.rerouteTo newModel Route.DeviceList )
+                    ( newModel, Navigation.rerouteTo newModel Navigation.DeviceList )
 
                 Failure error ->
                     let
@@ -313,7 +308,7 @@ viewForm model =
           else
             none
         , row [ spacing 36, width shrink, height shrink ]
-            [ viewDeviceIMEIInput form.imei form.problems
+            [ viewDeviceSerialInput form.serial form.problems
             , Input.button [ padding 8, centerY, Background.color Colors.purple, Border.rounded 8 ]
                 { label =
                     el []
@@ -331,7 +326,7 @@ viewForm model =
 
           else
             none
-        , viewButton
+        , viewButton (model.form.selectedBus /= Nothing)
         ]
 
 
@@ -404,11 +399,11 @@ viewScanner cameraState =
         ]
 
 
-viewDeviceIMEIInput : String -> List (Errors.Errors Problem) -> Element Msg
-viewDeviceIMEIInput imei problems =
+viewDeviceSerialInput : String -> List (Errors.Errors Problem) -> Element Msg
+viewDeviceSerialInput serial problems =
     let
         errorMapper =
-            Errors.inputErrorsFor problems
+            Errors.customInputErrorsFor problems
 
         inputError errorText =
             Errors.InputError [ errorText ]
@@ -424,14 +419,15 @@ viewDeviceIMEIInput imei problems =
         , caption = Just "You can find this on the side of the device"
         , errorCaption =
             errorMapper "imei"
-                [ InvalidIMEI
+                "serial"
+                [ InvalidSerial
                 , CameraOpenError
                 ]
         , icon = Nothing
-        , onChange = ChangedDeviceIMEI
+        , onChange = ChangedDeviceSerial
         , placeholder = Nothing
         , title = "Device Serial"
-        , value = imei
+        , value = serial
         }
 
 
@@ -444,10 +440,23 @@ viewDivider =
         none
 
 
-viewButton : Element Msg
-viewButton =
-    StyledElement.button [ centerX ]
-        { onPress = Just SubmitButtonMsg
+viewButton : Bool -> Element Msg
+viewButton enabled =
+    StyledElement.button
+        (centerX
+            :: (if enabled then
+                    []
+
+                else
+                    [ Background.color (Colors.withAlpha Colors.black 0.5), mouseOver [], pointer ]
+               )
+        )
+        { onPress =
+            if enabled then
+                Just SubmitButtonMsg
+
+            else
+                Nothing
         , label = text "Register"
         }
 
@@ -459,14 +468,16 @@ busDropdown model =
             StyledElement.dropDown []
                 { ariaLabel = "Select bus dropdown"
                 , caption = Just "Select the bus you will attach the device to"
+                , prompt = Nothing
                 , dropDownMsg = DropdownMsg
                 , dropdownState = model.busDropDownState
                 , errorCaption = Nothing
-                , icon = Just Icons.shuttle
+                , icon = Just Icons.vehicle
                 , onSelect = BusPicked
                 , options = buses
                 , title = "Bus"
                 , toString = \x -> x.numberPlate
+                , isLoading = False
                 }
     in
     case model.buses of
@@ -521,16 +532,16 @@ validateForm : Form -> Result (List ( Problem, String )) ValidForm
 validateForm form =
     let
         problems =
-            if Validator.isValidImei form.imei then
+            if Validator.isValidImei form.serial then
                 []
 
             else
-                [ ( InvalidIMEI, "This value does not have the correct format, please enter it again" ) ]
+                [ ( InvalidSerial, "This value does not have the correct format, please enter it again" ) ]
     in
     case problems of
         [] ->
             Ok
-                { imei = form.imei
+                { serial = form.serial
                 , bus_id = Maybe.map .id form.selectedBus
                 }
 
@@ -546,7 +557,7 @@ submit session form =
                 Just bus_id ->
                     Encode.object
                         [ ( "bus_id", Encode.int bus_id )
-                        , ( "imei", Encode.string form.imei )
+                        , ( "imei", Encode.string form.serial )
                         ]
 
                 Nothing ->
@@ -554,5 +565,5 @@ submit session form =
             )
                 |> Http.jsonBody
     in
-    Api.post session Endpoint.registerDevice params (Decode.succeed form)
+    Api.post session Endpoint.devices params (Decode.succeed form)
         |> Cmd.map RegisterResponse

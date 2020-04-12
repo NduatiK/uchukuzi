@@ -8,6 +8,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Errors exposing (Errors, InputError)
 import Html.Attributes exposing (id)
 import Html.Events exposing (..)
 import Http
@@ -15,12 +16,14 @@ import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (hardcoded)
 import Json.Encode as Encode
+import Navigation exposing (..)
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement exposing (toDropDownView)
-import Views.CustomDropDown as Dropdown
+import StyledElement.DropDown as Dropdown
+import Utils.Validator exposing (..)
 import Views.Heading exposing (viewHeading)
 
 
@@ -30,20 +33,43 @@ import Views.Heading exposing (viewHeading)
 
 type alias Model =
     { session : Session
-    , form : Household
+    , form : Form
     , routeDropdownState : Dropdown.State String
-    , searchDropdownState : Dropdown.State String
+    , searchDropdownState : Dropdown.State Location
     }
 
 
-type alias Household =
-    { current_student_name : String
+type alias Form =
+    { currentStudent : String
     , students : List Student
     , guardian : Guardian
-    , can_track : Bool
-    , home_location : Location
-    , pickup_location : Location
+    , canTrack : Bool
+    , homeLocation : Maybe Location
+    , pickupLocation : Maybe Location
     , route : Maybe String
+    , problems : List (Errors Problem)
+    }
+
+
+type Problem
+    = EmptyGuardianName
+    | EmptyGuardianEmail
+    | InvalidGuardianEmail
+    | EmptyGuardianPhoneNumber
+    | InvalidGuardianPhoneNumber
+    | EmptyStudentsList
+    | EmptyPickupLocation
+    | EmptyHomeLocation
+    | EmptyRoute
+
+
+type alias ValidForm =
+    { students : ( Student, List Student )
+    , guardian : Guardian
+    , canTrack : Bool
+    , homeLocation : Location
+    , pickupLocation : Location
+    , route : String
     }
 
 
@@ -61,7 +87,7 @@ type TripTime
 
 type alias Guardian =
     { name : String
-    , phone_number : String
+    , phoneNumber : String
     , email : String
     }
 
@@ -69,14 +95,13 @@ type alias Guardian =
 type alias Location =
     { longitude : Float
     , latitude : Float
-    , name : String -- You are not going to display coordinates are you?
     }
 
 
 type Field
     = CurrentStudentName String
     | GuardianName String
-    | HomeLocation (Maybe String)
+    | HomeLocation (Maybe Location)
     | Email String
     | PhoneNumber String
     | Route (Maybe String)
@@ -87,11 +112,11 @@ type Field
 type Msg
     = Changed Field
     | DropdownMsg (Dropdown.Msg String)
-    | SearchDropdownMsg (Dropdown.Msg String)
+    | SearchDropdownMsg (Dropdown.Msg Location)
     | SaveStudentPressed
     | DeleteStudentMsg Student
     | SubmitButtonMsg
-    | ServerResponse (WebData Household)
+    | ServerResponse (WebData Int)
 
 
 emptyForm : Session -> Model
@@ -100,18 +125,22 @@ emptyForm session =
     , routeDropdownState = Dropdown.init "routeDropdown"
     , searchDropdownState = Dropdown.init "searchDropdown"
     , form =
-        { current_student_name = ""
+        { currentStudent = ""
         , students =
             []
         , guardian =
             { name = ""
-            , phone_number = ""
+            , phoneNumber = ""
             , email = ""
             }
-        , can_track = True
-        , home_location = { latitude = 0, longitude = 0, name = "" }
-        , pickup_location = { latitude = 0, longitude = 0, name = "" }
+        , canTrack = True
+        , homeLocation = Just { latitude = 1, longitude = 2 }
+        , pickupLocation = Just { latitude = 0, longitude = 0 }
+
+        -- , homeLocation = Nothing
+        -- , pickupLocation = Nothing
         , route = Nothing
+        , problems = []
         }
     }
 
@@ -156,23 +185,28 @@ update msg model =
             ( { model | searchDropdownState = state }, cmd )
 
         SubmitButtonMsg ->
-            ( model, submit model.session form )
+            case validateForm form of
+                Ok validForm ->
+                    ( { model | form = { form | problems = [] } }, submit model.session validForm )
+
+                Err problems ->
+                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
         SaveStudentPressed ->
             let
                 newStudent =
-                    { name = form.current_student_name
+                    { name = form.currentStudent
                     , time = TwoWay
                     }
 
                 updated_form =
-                    if form.current_student_name == "" then
+                    if form.currentStudent == "" then
                         form
 
                     else
                         { form
                             | students = newStudent :: form.students
-                            , current_student_name = ""
+                            , currentStudent = ""
                         }
             in
             ( { model | form = updated_form }, Cmd.none )
@@ -187,8 +221,40 @@ update msg model =
             in
             ( { model | form = updated_form }, Cmd.none )
 
-        ServerResponse _ ->
+        ServerResponse response ->
+            updateStatus model response
+
+
+updateStatus : Model -> WebData Int -> ( Model, Cmd Msg )
+updateStatus model webData =
+    case webData of
+        Loading ->
             ( model, Cmd.none )
+
+        Failure error ->
+            let
+                ( _, error_msg ) =
+                    Errors.decodeErrors error
+
+                apiFormErrors =
+                    Errors.toServerSideErrors
+                        error
+
+                form =
+                    model.form
+
+                updatedForm =
+                    { form | problems = form.problems ++ apiFormErrors }
+            in
+            ( { model | form = updatedForm }, error_msg )
+
+        NotAsked ->
+            ( model, Cmd.none )
+
+        Success creds ->
+            ( model
+            , Navigation.rerouteTo model Navigation.HouseholdList
+            )
 
 
 updateField field model =
@@ -200,7 +266,7 @@ updateField field model =
         CurrentStudentName name ->
             let
                 updated_form =
-                    { form | current_student_name = name }
+                    { form | currentStudent = name }
             in
             ( { model | form = updated_form }, Cmd.none )
 
@@ -214,13 +280,13 @@ updateField field model =
             in
             ( { model | form = updated_form }, Cmd.none )
 
-        PhoneNumber phone_number ->
+        PhoneNumber phoneNumber ->
             let
                 guardian =
                     form.guardian
 
                 updated_form =
-                    { form | guardian = { guardian | phone_number = phone_number } }
+                    { form | guardian = { guardian | phoneNumber = phoneNumber } }
             in
             ( { model | form = updated_form }, Cmd.none )
 
@@ -241,18 +307,17 @@ updateField field model =
             in
             ( { model | form = updated_form }, Cmd.none )
 
-        HomeLocation _ ->
-            -- let
-            --     updated_form =
-            --         { form | route = route }
-            -- in
-            -- ( { model | form = updated_form }, Cmd.none )
-            ( model, Cmd.none )
+        HomeLocation homeLocation ->
+            let
+                updated_form =
+                    { form | homeLocation = homeLocation }
+            in
+            ( { model | form = updated_form }, Cmd.none )
 
         CanTrack checked ->
             let
                 updated_form =
-                    { form | can_track = checked }
+                    { form | canTrack = checked }
             in
             ( { model | form = updated_form }, Cmd.none )
 
@@ -304,11 +369,69 @@ view model =
         [ width fill
         , height fill
         , spacing 24
-        , paddingEach { edges | top = 8, left = 24, bottom = 24 }
+        , padding 24
         ]
-        [ viewHeading "Register Students" (Just "From a single home")
-        , google_map model
+        [ viewHeading "Register Household" Nothing
+        , googleMap model
         , viewBody model
+        ]
+
+
+googleMap_search : Model -> Element Msg
+googleMap_search model =
+    el [ padding 40, width (fill |> maximum 400) ]
+        (toDropDownView <| gmapDropDown model)
+
+
+googleMap : Model -> Element Msg
+googleMap model =
+    let
+        hasMapError =
+            List.any
+                (\x ->
+                    case x of
+                        Errors.ClientSideError y _ ->
+                            y == EmptyHomeLocation || y == EmptyPickupLocation
+
+                        _ ->
+                            False
+                )
+                model.form.problems
+
+        mapCaptionStyle =
+            if hasMapError then
+                Style.errorStyle
+
+            else
+                Style.captionLabelStyle
+
+        mapBorderStyle =
+            if hasMapError then
+                [ Border.color Colors.errorRed, Border.width 2, padding 2 ]
+
+            else
+                [ Border.color Colors.white, Border.width 2, padding 2 ]
+    in
+    column
+        [ width fill
+        , spacing 8
+        ]
+        [ el
+            [ width fill
+            , height (px 400)
+            , inFront (googleMap_search model)
+            ]
+            (StyledElement.googleMap
+                ([ width fill
+                 , height fill
+
+                 --  , Background.color Colors.darkGreen
+                 , Border.width 1
+                 ]
+                    ++ mapBorderStyle
+                )
+            )
+        , el mapCaptionStyle (text "Click on the map to mark the home location")
         ]
 
 
@@ -318,27 +441,6 @@ viewBody model =
         [ width fill, spacing 40, alignTop ]
         [ viewForm model
         ]
-
-
-google_map : Model -> Element Msg
-google_map model =
-    StyledElement.googleMap
-        [ width
-            (fill
-                |> maximum 300
-            )
-        , height (px 400)
-        , width fill
-        , Background.color Colors.darkGreen
-        , Border.width 1
-        , inFront (google_map_search model)
-        ]
-
-
-google_map_search : Model -> Element Msg
-google_map_search model =
-    el [ padding 40, htmlAttribute <| Html.Attributes.style "z-index" "10" ]
-        (toDropDownView <| gmapDropDown model)
 
 
 viewForm : Model -> Element Msg
@@ -354,22 +456,24 @@ viewForm model =
         , el Style.header2Style (text "Students")
 
         -- , viewLocationInput household.home_location
-        , viewStudentsInput household.current_student_name household.students
+        , viewStudentsInput model.form
         , viewDivider
         , el Style.header2Style
             (text "Guardian's contacts")
-        , viewGuardianNameInput household.guardian.name
-        , wrappedRow [ spacing 24 ]
-            [ viewEmailInput household.guardian.email
-            , viewPhoneInput household.guardian.phone_number
-            ]
-        , viewShareLocationInput model.form.can_track
+        , viewGuardianNameInput model.form.problems household.guardian.name
+        , -- wrappedRow [ spacing 24 ]
+          -- [
+          viewEmailInput model.form.problems household.guardian.email
+        , viewPhoneInput model.form.problems household.guardian.phoneNumber
+
+        -- ]
+        -- , viewShareLocationInput model.form.canTrack
         , viewButton
         ]
 
 
-viewStudentsInput : String -> List Student -> Element Msg
-viewStudentsInput current_student_name students =
+viewStudentsInput : Form -> Element Msg
+viewStudentsInput { students, problems, currentStudent } =
     let
         onEnter msg =
             Element.htmlAttribute
@@ -392,6 +496,9 @@ viewStudentsInput current_student_name students =
 
             else
                 Element.none
+
+        errorMapper =
+            Errors.inputErrorsFor problems
     in
     Element.column
         [ spacing 10
@@ -407,12 +514,12 @@ viewStudentsInput current_student_name students =
                 ]
                 { ariaLabel = "Student Name"
                 , caption = Nothing
-                , errorCaption = Nothing
+                , errorCaption = errorMapper "student" [ EmptyStudentsList ]
                 , icon = Nothing
                 , onChange = CurrentStudentName >> Changed
                 , placeholder = Nothing
                 , title = "Student Name"
-                , value = current_student_name
+                , value = currentStudent
                 }
             , Input.button [ padding 8, alignBottom, Background.color Colors.purple, Border.rounded 8 ]
                 { label = Icons.addWhite []
@@ -530,8 +637,8 @@ viewRouteInput route =
         ]
 
 
-viewPhoneInput : String -> Element Msg
-viewPhoneInput phone_number =
+viewPhoneInput : List (Errors Problem) -> String -> Element Msg
+viewPhoneInput problems phone_number =
     StyledElement.textInput
         [ alignTop
         , width
@@ -541,7 +648,7 @@ viewPhoneInput phone_number =
         ]
         { ariaLabel = "Guardian's Phone Number"
         , caption = Nothing
-        , errorCaption = Nothing
+        , errorCaption = Errors.inputErrorsFor problems "guardian_phone_number" [ EmptyGuardianPhoneNumber, InvalidGuardianPhoneNumber ]
         , icon = Just Icons.phone
         , onChange = PhoneNumber >> Changed
         , placeholder = Nothing
@@ -550,8 +657,8 @@ viewPhoneInput phone_number =
         }
 
 
-viewGuardianNameInput : String -> Element Msg
-viewGuardianNameInput name =
+viewGuardianNameInput : List (Errors Problem) -> String -> Element Msg
+viewGuardianNameInput problems name =
     StyledElement.emailInput
         [ width
             (fill
@@ -560,7 +667,7 @@ viewGuardianNameInput name =
         ]
         { ariaLabel = "Guardian's Name"
         , caption = Nothing
-        , errorCaption = Nothing
+        , errorCaption = Errors.inputErrorsFor problems "guardian_name" [ EmptyGuardianName ]
         , icon = Nothing
         , onChange = GuardianName >> Changed
         , placeholder = Nothing
@@ -569,8 +676,8 @@ viewGuardianNameInput name =
         }
 
 
-viewEmailInput : String -> Element Msg
-viewEmailInput email =
+viewEmailInput : List (Errors Problem) -> String -> Element Msg
+viewEmailInput problems email =
     StyledElement.emailInput
         [ width
             (fill
@@ -579,7 +686,7 @@ viewEmailInput email =
         ]
         { ariaLabel = "Guardian's Email Address"
         , caption = Just "Used to connect the parent to the mobile app"
-        , errorCaption = Nothing
+        , errorCaption = Errors.inputErrorsFor problems "guardian_email" [ EmptyGuardianEmail, InvalidGuardianEmail ]
         , icon = Just Icons.email
         , onChange = Email >> Changed
         , placeholder = Nothing
@@ -622,36 +729,35 @@ routeDropDown model =
     StyledElement.dropDown []
         { ariaLabel = "Select route dropdown"
         , caption = Nothing
+        , prompt = Nothing
         , dropDownMsg = DropdownMsg
         , dropdownState = model.routeDropdownState
-        , errorCaption = Nothing
-        , icon = Just Icons.shuttle
+        , errorCaption = Errors.inputErrorsFor model.form.problems "route" [ EmptyRoute ]
+        , icon = Just Icons.vehicle
         , onSelect = Route >> Changed
         , options = [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10" ]
         , title = "Route"
         , toString = identity
+        , isLoading = False
         }
 
 
-gmapDropDown : Model -> ( Element Msg, Dropdown.Config String Msg, List String )
+gmapDropDown : Model -> ( Element Msg, Dropdown.Config Location Msg, List Location )
 gmapDropDown model =
-    StyledElement.dropDown []
+    StyledElement.dropDown [ Style.elevated2 ]
         { ariaLabel = "Search for household on the map"
         , caption = Nothing
+        , prompt = Just "Search for area"
         , dropDownMsg = SearchDropdownMsg
         , dropdownState = model.searchDropdownState
         , errorCaption = Nothing
         , icon = Just Icons.search
         , onSelect = HomeLocation >> Changed
-        , options = [ "Location 1" ]
+        , options = []
         , title = ""
-        , toString = identity
+        , toString = \x -> "Home"
+        , isLoading = True
         }
-
-
-viewFuelTypeDropDown : Model -> Element Msg
-viewFuelTypeDropDown model =
-    StyledElement.toDropDownView (gmapDropDown model)
 
 
 viewButton : Element Msg
@@ -664,38 +770,39 @@ viewButton =
         )
 
 
-submit : Session -> Household -> Cmd Msg
+submit : Session -> ValidForm -> Cmd Msg
 submit session household =
     let
+        guardian =
+            Encode.object
+                [ ( "name", Encode.string household.guardian.name )
+                , ( "phone_number", Encode.string household.guardian.phoneNumber )
+                , ( "email", Encode.string household.guardian.email )
+                ]
+
         params =
             Encode.object
-                [ ( "guardian_name", Encode.string household.guardian.name )
-                , ( "phone_number", Encode.string household.guardian.phone_number )
-                , ( "email", Encode.string household.guardian.email )
-                , ( "route_id", Encode.string "household.route" )
-                , ( "home_location", encodeLocation household.home_location )
-                , ( "pickup_location", encodeLocation household.pickup_location )
-                , ( "students", Encode.list encodeStudent household.students )
+                [ ( "guardian", guardian )
+                , ( "students", Encode.list encodeStudent (Tuple.first household.students :: Tuple.second household.students) )
+                , ( "route", Encode.string "household.route" )
+                , ( "home_location", encodeLocation household.homeLocation )
+                , ( "pickup_location", encodeLocation household.pickupLocation )
                 ]
                 |> Http.jsonBody
     in
-    Api.post session Endpoint.createHousehold params (householdDecoder household)
+    Api.post session Endpoint.households params aDecoder
         |> Cmd.map ServerResponse
 
 
-householdDecoder : Household -> Decoder Household
-householdDecoder household =
-    Decode.succeed household
-
-
-
--- |> hardcoded household
+aDecoder : Decoder Int
+aDecoder =
+    Decode.succeed 0
 
 
 encodeLocation location =
     Encode.object
-        [ ( "latitude", Encode.float location.latitude )
-        , ( "longitude", Encode.float location.longitude )
+        [ ( "lat", Encode.float location.latitude )
+        , ( "lng", Encode.float location.longitude )
         ]
 
 
@@ -718,21 +825,85 @@ encodeStudent student =
         ]
 
 
+validateForm : Form -> Result (List ( Problem, String )) ValidForm
+validateForm form =
+    let
+        problems =
+            List.concat
+                [ if String.isEmpty (String.trim form.guardian.name) then
+                    [ ( EmptyGuardianName, "Required" ) ]
 
--- validateForm : Form -> Result (List Problem) ValidForm
--- validateForm form =
---     let
---         problems =
---             if Validator.isValidImei form.imei then
---                 []
---             else
---                 [ InvalidIMEI ]
---     in
---     case problems of
---         [] ->
---             Ok
---                 { imei = form.imei
---                 , bus_id = Maybe.map .id form.bus
---                 }
---         _ ->
---             Err problems
+                  else
+                    []
+                , if String.isEmpty (String.trim form.guardian.email) then
+                    [ ( EmptyGuardianEmail, "Required" ) ]
+
+                  else if not (isValidEmail form.guardian.email) then
+                    [ ( InvalidGuardianEmail, "There's something wrong with this email" ) ]
+
+                  else
+                    []
+                , if String.isEmpty (String.trim form.guardian.phoneNumber) then
+                    [ ( EmptyGuardianPhoneNumber, "Required" ) ]
+
+                  else if not (isValidPhoneNumber form.guardian.phoneNumber) then
+                    [ ( InvalidGuardianPhoneNumber, "There's something wrong with this phone number" ) ]
+
+                  else
+                    []
+                ]
+
+        unwrapNullables =
+            case ( form.pickupLocation, form.homeLocation, form.route ) of
+                ( Just pickupLocation, Just homeLocation, Just route ) ->
+                    Ok ( pickupLocation, homeLocation, route )
+
+                _ ->
+                    Err
+                        (List.concat
+                            [ if form.pickupLocation == Nothing then
+                                [ ( EmptyPickupLocation, "Required" ) ]
+
+                              else
+                                []
+                            , if form.homeLocation == Nothing then
+                                [ ( EmptyHomeLocation, "Required" ) ]
+
+                              else
+                                []
+                            , if form.route == Nothing then
+                                [ ( EmptyRoute, "Required" ) ]
+
+                              else
+                                []
+                            ]
+                        )
+    in
+    case ( List.head form.students, problems, unwrapNullables ) of
+        ( Just student, [], Ok ( pickupLocation, homeLocation, route ) ) ->
+            Ok
+                { students = ( student, List.drop 1 form.students )
+                , guardian = form.guardian
+                , canTrack = form.canTrack
+                , homeLocation = homeLocation
+                , pickupLocation = pickupLocation
+                , route = route
+                }
+
+        ( firstStudent, _, nullableResult ) ->
+            Err
+                (problems
+                    ++ (if firstStudent == Nothing then
+                            [ ( EmptyStudentsList, "Provide at least one student" ) ]
+
+                        else
+                            []
+                       )
+                    ++ (case nullableResult of
+                            Err moreProblems ->
+                                moreProblems
+
+                            _ ->
+                                []
+                       )
+                )

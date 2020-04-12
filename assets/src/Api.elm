@@ -5,8 +5,9 @@ import Http exposing (Body)
 import Json.Decode as Decode exposing (Decoder, Value, bool, decodeString, dict, field, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required, requiredAt, resolve)
 import Json.Encode as Encode
+import Models.Location exposing (Location, locationDecoder)
+import Navigation exposing (LoginRedirect, Route)
 import RemoteData exposing (RemoteData(..), WebData)
-import Route exposing (LoginRedirect, Route)
 import Session exposing (Cred, Session)
 
 
@@ -53,9 +54,22 @@ credEncoder { name, email, token } =
         ]
 
 
+type alias SuccessfulLogin =
+    { location : Location, creds : Session.Cred }
+
+
 logout : Cmd msg
 logout =
-    storeCache Nothing
+    Cmd.batch
+        [ storeCache Nothing
+        , Models.Location.clearSchoolLocation
+        ]
+
+
+loginDecoder =
+    Decode.succeed SuccessfulLogin
+        |> required "location" locationDecoder
+        |> required "creds" credDecoder
 
 
 storeCredentials : Cred -> Cmd msg

@@ -1,18 +1,4 @@
-module Colors exposing
-    ( black
-    , darkGreen
-    , darkText
-    , errorRed
-    , fillDarkGreen
-    , fillErrorRed
-    , fillPurple
-    , fillWhite
-    , purple
-    , semiDarkText
-    , teal
-    , white
-    , withAlpha
-    )
+module Colors exposing (..)
 
 import Element exposing (..)
 import Html.Attributes
@@ -36,6 +22,11 @@ semiDarkText =
     withAlpha (rgb255 4 30 37) 0.69
 
 
+transparent : Color
+transparent =
+    Element.rgba 0 0 0 0
+
+
 black : Color
 black =
     Element.rgb 0 0 0
@@ -51,6 +42,14 @@ purple =
     Element.rgb255 89 79 238
 
 
+simpleGrey : Color
+simpleGrey =
+    Element.rgb255 224 224 224
+sassyGrey : Color
+sassyGrey =
+    Element.rgb255 163 175 190
+
+
 teal : Color
 teal =
     Element.rgb255 102 218 213
@@ -58,12 +57,17 @@ teal =
 
 darkGreen : Color
 darkGreen =
-    Element.rgb255 97 165 145
+    Element.rgb255 30 165 145
 
 
 darkText : Color
 darkText =
     Element.rgb255 4 31 38
+
+
+darkness : Color
+darkness =
+    Element.rgb255 51 63 78
 
 
 errorRed : Color

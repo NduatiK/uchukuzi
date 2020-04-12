@@ -1,4 +1,4 @@
-module Template.NavBar exposing (Model, Msg, init, maxHeight, update, viewHeader)
+module Template.NavBar exposing (Model, Msg, hideNavBarMsg, init, isVisible, maxHeight, update, viewHeader)
 
 import Api
 import Colors
@@ -9,10 +9,11 @@ import Element.Font as Font
 import Element.Input as Input
 import Element.Region as Region
 import Icons
-import Route exposing (Route)
+import Navigation exposing (Route)
 import Session
 import Style
 import StyledElement
+import Task
 
 
 maxHeight : Int
@@ -40,8 +41,8 @@ internals model =
 
 type Msg
     = Logout
-    | Dashboard
     | ToggleDropDown
+    | HideDropDown
 
 
 viewHeader : Model -> Session.Session -> Maybe Route -> Element Msg
@@ -80,26 +81,26 @@ viewLoginOptions route =
 
         signUp =
             StyledElement.navigationLink ghostAttrs
-                { label = text "Sign up", route = Route.Signup }
+                { label = text "Sign up", route = Navigation.Signup }
 
         login =
             StyledElement.navigationLink
-                (if route == Just Route.Signup then
+                (if route == Just Navigation.Signup then
                     ghostAttrs
 
                  else
                     []
                 )
                 { label = text "Login"
-                , route = Route.Login Nothing
+                , route = Navigation.Login Nothing
                 }
 
         loginOptions =
             case route of
-                Just (Route.Login _) ->
+                Just (Navigation.Login _) ->
                     [ signUp ]
 
-                Just Route.Signup ->
+                Just Navigation.Signup ->
                     [ login ]
 
                 _ ->
@@ -135,7 +136,7 @@ viewBusesLogo =
                 { src = "images/logo.png", description = "Flotilla Logo" }
     in
     link []
-        { label = logo, url = Route.href Route.Home }
+        { label = logo, url = Navigation.href Navigation.Home }
 
 
 viewFlotillaLogo : Element Msg
@@ -158,9 +159,11 @@ viewHeaderProfileData model cred =
                     , moveUp 8
                     , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 5, color = rgba 0 0 0 0.14 }
                     ]
-                    [ dropdownOption "Go to Dashboard" (Just Dashboard)
-                    , dropdownOption "Settings" (Just Logout)
-                    , dropdownOption "Logout" (Just Logout)
+                    [ --     dropdownOption "Go to Dashboard" (Just Dashboard)
+                      -- ,
+                      -- dropdownOption "Settings" (Just Logout)
+                      -- ,
+                      dropdownOption "Logout" (Just Logout)
                     ]
 
             else
@@ -224,13 +227,8 @@ update msg model =
         ToggleDropDown ->
             ( Model { internalData | dropdownVisible = not internalData.dropdownVisible }, Cmd.none )
 
-        Dashboard ->
-            ( model
-            , Cmd.batch
-                [ -- sendLogout
-                  Route.rerouteTo internalData Route.Dashboard
-                ]
-            )
+        HideDropDown ->
+            ( Model { internalData | dropdownVisible = False }, Cmd.none )
 
         Logout ->
             ( model
@@ -239,3 +237,11 @@ update msg model =
                   Api.logout
                 ]
             )
+
+
+isVisible (Model model) =
+    model.dropdownVisible
+
+
+hideNavBarMsg =
+    Task.succeed HideDropDown |> Task.perform identity

@@ -14,19 +14,20 @@ import Html.Attributes exposing (id)
 import Html.Events exposing (..)
 import Http
 import Icons
-import Json.Decode as Decode exposing (Decoder, Value, bool, decodeString, dict, field, float, int, list, nullable, string)
+import Json.Decode exposing (Decoder, Value, bool, decodeString, dict, field, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
+import Models.Bus exposing (VehicleType(..))
+import Navigation
 import Ports
 import RemoteData exposing (..)
-import Route
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement exposing (toDropDownView, wrappedInput)
+import StyledElement.DropDown as Dropdown
 import StyledElement.FloatInput as FloatInput exposing (FloatInput)
 import Task
 import Utils.Validator as Validator
-import Views.CustomDropDown as Dropdown
 import Views.Heading exposing (viewHeading)
 
 
@@ -74,12 +75,6 @@ type ConsumptionType
     | Default
 
 
-type VehicleType
-    = Van
-    | Shuttle
-    | Bus
-
-
 type FuelType
     = Gasoline
     | Diesel
@@ -103,7 +98,7 @@ emptyForm : Session -> Model
 emptyForm session =
     let
         defaultVehicle =
-            VehicleClass Bus Diesel
+            VehicleClass SchoolBus Diesel
     in
     { session = session
     , form =
@@ -209,7 +204,7 @@ update msg model =
             in
             case response of
                 Success bus_id ->
-                    ( newModel, Route.rerouteTo newModel (Route.Bus bus_id) )
+                    ( newModel, Navigation.rerouteTo newModel (Navigation.Bus bus_id Nothing) )
 
                 Failure error ->
                     let
@@ -361,7 +356,7 @@ viewForm model =
 viewTypePicker : VehicleClass -> Element Msg
 viewTypePicker vehicleClass =
     wrappedRow [ spacing 32 ]
-        [ viewVehicle Bus vehicleClass
+        [ viewVehicle SchoolBus vehicleClass
         , viewVehicle Shuttle vehicleClass
         , viewVehicle Van vehicleClass
         ]
@@ -384,7 +379,7 @@ viewVehicle vehicleType currentClass =
                 Shuttle ->
                     "Mini Bus / Shuttle"
 
-                Bus ->
+                SchoolBus ->
                     "Bus"
 
         icon =
@@ -532,6 +527,7 @@ consumptionDropDown model =
         , onSelect = justConsumptionType >> FuelConsumptionType >> Changed
         , options = [ Default, Custom ]
         , title = "Fuel Consumption per Kilometer"
+        , prompt = Nothing
         , toString =
             \x ->
                 case x of
@@ -540,6 +536,7 @@ consumptionDropDown model =
 
                     Default ->
                         "Default - " ++ String.fromFloat (defaultConsumption vehicleClass) ++ " Km / Litre"
+        , isLoading = False
         }
 
 
@@ -593,6 +590,7 @@ fuelDropDown model =
         ]
         { ariaLabel = "Select fuel type"
         , caption = Nothing
+        , prompt = Nothing
         , dropDownMsg = FuelDropdownMsg
         , dropdownState = model.fuelDropdownState
         , errorCaption =
@@ -611,6 +609,7 @@ fuelDropDown model =
 
                     Gasoline ->
                         "Gasoline"
+        , isLoading = False
         }
 
 
@@ -630,6 +629,7 @@ routeDropDown model =
         ]
         { ariaLabel = "Select bus dropdown"
         , caption = Just "Which route will the bus ply?"
+        , prompt = Nothing
         , dropDownMsg = RouteDropdownMsg
         , dropdownState = model.routeDropdownState
         , errorCaption = Nothing
@@ -638,6 +638,7 @@ routeDropDown model =
         , options = [ "a", "b", "c", "d", "e", "f" ]
         , title = "Route"
         , toString = identity
+        , isLoading = False
         }
 
 
@@ -669,10 +670,10 @@ defaultConsumption vehicleClass =
         VehicleClass Shuttle Diesel ->
             3.3
 
-        VehicleClass Bus Gasoline ->
+        VehicleClass SchoolBus Gasoline ->
             2.7
 
-        VehicleClass Bus Diesel ->
+        VehicleClass SchoolBus Diesel ->
             3.0
 
 
@@ -685,7 +686,7 @@ defaultSeats vehicleClass =
         VehicleClass Shuttle _ ->
             24
 
-        VehicleClass Bus _ ->
+        VehicleClass SchoolBus _ ->
             48
 
 
@@ -710,9 +711,9 @@ vehicleTypeToIcon vehicleType =
             Icons.van
 
         Shuttle ->
-            Icons.shuttleVehicle
+            Icons.shuttle
 
-        Bus ->
+        SchoolBus ->
             Icons.bus
 
 
@@ -727,15 +728,8 @@ validateForm form =
                 [ ( InvalidNumberPlate, "There's something wrong with this number plate" ) ]
 
         vehicleType =
-            case toVehicleType form.vehicleClass of
-                Van ->
-                    "van"
-
-                Shuttle ->
-                    "shuttle"
-
-                Bus ->
-                    "bus"
+            toVehicleType form.vehicleClass
+                |> Models.Bus.vehicleTypeToString
 
         fuelType =
             case toFuelType form.vehicleClass of
@@ -773,7 +767,7 @@ submit session form =
                 ]
                 |> Http.jsonBody
     in
-    Api.post session Endpoint.createBus params busDecoder
+    Api.post session Endpoint.buses params busDecoder
         |> Cmd.map ServerResponse
 
 

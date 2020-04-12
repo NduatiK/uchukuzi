@@ -1,6 +1,10 @@
 defmodule UchukuziInterfaceWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :uchukuzi_interface
 
+  socket "/socket/manager", UchukuziInterfaceWeb.ManagerSocket,
+    websocket: true,
+    longpoll: false
+
   socket "/socket", UchukuziInterfaceWeb.UserSocket,
     websocket: true,
     longpoll: false

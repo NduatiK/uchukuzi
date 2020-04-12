@@ -1,4 +1,4 @@
-module Pages.Buses.BusPage exposing (Model, Msg, init, update, view)
+module Pages.Buses.BusPage exposing (Model, Msg, init, locationUpdateMsg, subscriptions, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -8,16 +8,19 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Errors
 import Icons
 import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (optional, required)
-import Models.Bus exposing (Bus, Route)
+import Models.Bus exposing (Bus, LocationUpdate, Route, busDecoderWithCallback)
+import Navigation
 import Page
 import Pages.Buses.AboutBus as About
 import Pages.Buses.BusDevicePage as BusDevice
 import Pages.Buses.BusRepairsPage as BusRepairs
 import Pages.Buses.FuelHistoryPage as FuelHistory
-import Pages.Buses.RouteHistoryPage as RouteHistory
+import Pages.Buses.TripsHistoryPage as RouteHistory
+import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style
@@ -27,6 +30,10 @@ import Views.Divider exposing (viewDivider)
 type alias Model =
     { session : Session
     , busData : WebData BusData
+    , height : Int
+    , busID : Int
+    , locationUpdate : Maybe LocationUpdate
+    , preferredPage : Maybe String
     }
 
 
@@ -71,25 +78,72 @@ pageName page =
             "Maintenance"
 
 
-allPagesFromSession : Bus -> Session -> BusData
-allPagesFromSession bus session =
+type Msg
+    = GotAboutMsg About.Msg
+    | GotRouteHistoryMsg RouteHistory.Msg
+    | GotFuelHistoryMsg FuelHistory.Msg
+    | GotBusDeviceMsg BusDevice.Msg
+    | GotBusRepairsMsg BusRepairs.Msg
+    | SelectedPage Int
+    | ServerResponse (WebData BusData)
+      ----------------
+    | LocationUpdate LocationUpdate
+    | MapReady Bool
+
+
+locationUpdateMsg data =
+    LocationUpdate data
+
+
+init : Int -> Session -> Int -> Maybe LocationUpdate -> Maybe String -> ( Model, Cmd Msg )
+init busID session height locationUpdate preferredPage =
+    ( { session = session
+      , busData = Loading
+      , height = height
+      , busID = busID
+      , locationUpdate = locationUpdate
+      , preferredPage = preferredPage
+      }
+    , Cmd.batch
+        [ fetchBus busID session preferredPage
+        , Ports.initializeLiveView ()
+        ]
+    )
+
+
+allPagesFromSession : Bus -> Session -> Maybe String -> BusData
+allPagesFromSession bus session preferredPage =
     let
-        initialPage =
+        defaultPage =
             ( Icons.info, aboutPage bus session )
 
         pages =
-            [ initialPage
+            [ defaultPage
             , ( Icons.timeline, routePage bus session )
             , ( Icons.fuel, fuelPage bus session )
             , ( Icons.repairs, repairsPage bus session )
             , ( Icons.hardware, devicePage bus session )
             ]
+
+        ( pageIndex, initialPage ) =
+            case preferredPage of
+                Just preferredPage_ ->
+                    Maybe.withDefault
+                        ( 0, defaultPage )
+                        (List.head
+                            (List.filter (\( index, ( _, ( page, _ ) ) ) -> String.toLower (pageName page) == String.toLower preferredPage_)
+                                (List.indexedMap Tuple.pair pages)
+                            )
+                        )
+
+                Nothing ->
+                    ( 0, defaultPage )
     in
     { bus = bus
     , currentPage = Tuple.first (Tuple.second initialPage)
     , pendingAction = Tuple.second (Tuple.second initialPage)
     , pages = pages
-    , pageIndex = List.length pages - 1
+    , pageIndex = List.length pages - pageIndex - 1
     }
 
 
@@ -110,32 +164,12 @@ fuelPage bus session =
 
 devicePage : Bus -> Session -> ( Page, Cmd Msg )
 devicePage bus session =
-    Page.transformToModelMsg BusDevice GotBusDeviceMsg (BusDevice.init bus (Session.timeZone session))
+    Page.transformToModelMsg BusDevice GotBusDeviceMsg (BusDevice.init bus session)
 
 
 repairsPage : Bus -> Session -> ( Page, Cmd Msg )
 repairsPage bus session =
     Page.transformToModelMsg BusRepairs GotBusRepairsMsg (BusRepairs.init bus (Session.timeZone session))
-
-
-type Msg
-    = GotAboutMsg About.Msg
-    | GotRouteHistoryMsg RouteHistory.Msg
-    | GotFuelHistoryMsg FuelHistory.Msg
-    | GotBusDeviceMsg BusDevice.Msg
-    | GotBusRepairsMsg BusRepairs.Msg
-    | SelectedPage Int
-    | ServerResponse (WebData BusData)
-
-
-init : Int -> Session -> ( Model, Cmd Msg )
-init busID session =
-    ( { session = session
-      , busData = Loading
-      }
-    , Cmd.batch
-        [ fetchBus busID session ]
-    )
 
 
 
@@ -163,56 +197,131 @@ update msg model =
         SelectedPage selectedPage ->
             changeCurrentPage selectedPage model
 
+        LocationUpdate locationUpdate ->
+            let
+                busData_ =
+                    case model.busData of
+                        Success busData__ ->
+                            Just busData__
+
+                        _ ->
+                            Nothing
+            in
+            case busData_ of
+                Just busData ->
+                    let
+                        bus =
+                            busData.bus
+
+                        ( newModel, busPageMsg ) =
+                            ( { model | busData = Success { busData | bus = { bus | last_seen = Just locationUpdate } } }, Ports.updateBusMap locationUpdate )
+                    in
+                    case busData.currentPage of
+                        About pageModel ->
+                            let
+                                ( newerModel, childMsg ) =
+                                    About.update (About.locationUpdateMsg locationUpdate) pageModel
+                                        |> mapModel newModel About GotAboutMsg
+                            in
+                            ( newerModel, Cmd.batch [ childMsg, busPageMsg ] )
+
+                        _ ->
+                            ( newModel, busPageMsg )
+
+                Nothing ->
+                    ( model, Ports.updateBusMap locationUpdate )
+
         ServerResponse response ->
             let
                 next_msg =
                     case response of
                         Success busData ->
-                            busData.pendingAction
+                            Cmd.batch
+                                [ busData.pendingAction
+                                , case ( model.locationUpdate, busData.bus.last_seen ) of
+                                    ( Just locationUpdate_, _ ) ->
+                                        Ports.updateBusMap locationUpdate_
+
+                                    ( _, Just locationUpdate_ ) ->
+                                        Ports.updateBusMap locationUpdate_
+
+                                    _ ->
+                                        Cmd.none
+                                ]
+
+                        Failure error ->
+                            let
+                                ( _, error_msg ) =
+                                    Errors.decodeErrors error
+                            in
+                            error_msg
 
                         _ ->
                             Cmd.none
             in
             ( { model | busData = response }, next_msg )
 
+        MapReady _ ->
+            let
+                msg_ =
+                    case model.locationUpdate of
+                        Just locationUpdate_ ->
+                            Ports.updateBusMap locationUpdate_
 
-updatePage : Msg -> Model -> ( Model, Cmd Msg )
-updatePage msg fullModel =
+                        _ ->
+                            case model.busData of
+                                Success busData__ ->
+                                    case busData__.bus.last_seen of
+                                        Just locationUpdate_ ->
+                                            Ports.updateBusMap locationUpdate_
+
+                                        _ ->
+                                            Cmd.none
+
+                                _ ->
+                                    Cmd.none
+            in
+            ( model, msg_ )
+
+
+mapModel model pageModelMapper pageMsgMapper ( subModel, subCmd ) =
     let
         modelMapper : Page -> Model
         modelMapper pageModel =
-            case fullModel.busData of
+            case model.busData of
                 Success busData ->
-                    { fullModel | busData = Success { busData | currentPage = pageModel } }
+                    { model | busData = Success { busData | currentPage = pageModel } }
 
                 _ ->
-                    fullModel
-
-        mapModel pageModelMapper pageMsgMapper ( subModel, subCmd ) =
-            Page.transformToModelMsg (pageModelMapper >> modelMapper) pageMsgMapper ( subModel, subCmd )
+                    model
     in
+    Page.transformToModelMsg (pageModelMapper >> modelMapper) pageMsgMapper ( subModel, subCmd )
+
+
+updatePage : Msg -> Model -> ( Model, Cmd Msg )
+updatePage msg fullModel =
     case fullModel.busData of
         Success busData ->
             case ( msg, busData.currentPage ) of
                 ( GotAboutMsg msg_, About model ) ->
                     About.update msg_ model
-                        |> mapModel About GotAboutMsg
+                        |> mapModel fullModel About GotAboutMsg
 
                 ( GotRouteHistoryMsg msg_, RouteHistory model ) ->
                     RouteHistory.update msg_ model
-                        |> mapModel RouteHistory GotRouteHistoryMsg
+                        |> mapModel fullModel RouteHistory GotRouteHistoryMsg
 
                 ( GotFuelHistoryMsg msg_, FuelHistory model ) ->
                     FuelHistory.update msg_ model
-                        |> mapModel FuelHistory GotFuelHistoryMsg
+                        |> mapModel fullModel FuelHistory GotFuelHistoryMsg
 
                 ( GotBusDeviceMsg msg_, BusDevice model ) ->
                     BusDevice.update msg_ model
-                        |> mapModel BusDevice GotBusDeviceMsg
+                        |> mapModel fullModel BusDevice GotBusDeviceMsg
 
                 ( GotBusRepairsMsg msg_, BusRepairs model ) ->
                     BusRepairs.update msg_ model
-                        |> mapModel BusRepairs GotBusRepairsMsg
+                        |> mapModel fullModel BusRepairs GotBusRepairsMsg
 
                 _ ->
                     ( fullModel, Cmd.none )
@@ -248,7 +357,10 @@ changeCurrentPage selectedPageIndex_ model_ =
                             , currentPage = selectedPage
                         }
               }
-            , msg
+            , Cmd.batch
+                [ Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (Just (pageName selectedPage)))
+                , msg
+                ]
             )
 
         _ ->
@@ -259,29 +371,31 @@ view : Model -> Element Msg
 view model =
     case model.busData of
         Success busData ->
-            viewLoaded busData
+            viewLoaded model busData
 
-        Failure error ->
-            let
-                e =
-                    Debug.log "e" error
-            in
-            paragraph (centerX :: centerY :: Style.labelStyle) [ text "Something went wrong please reload the page" ]
+        Failure _ ->
+            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
 
         _ ->
             Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
 
 
-viewLoaded busData =
+viewLoaded : Model -> BusData -> Element Msg
+viewLoaded model busData =
     let
         ( body, footer ) =
-            ( viewBody busData, none )
+            ( viewBody model.height busData, el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData) )
+
+        edges =
+            Style.edges
     in
     Element.column
         [ height fill
         , width fill
-        , spacing 24
-        , paddingXY 24 8
+        , spacing 8
+
+        -- , spacing 24
+        , paddingXY 36 0
         ]
         [ viewHeading busData
         , Element.row
@@ -292,6 +406,7 @@ viewLoaded busData =
             [ viewSidebar busData
             , body
             ]
+        , el [ height (px 16) ] none
         , footer
         ]
 
@@ -323,25 +438,18 @@ viewHeading busData =
 
             Just route ->
                 el Style.captionLabelStyle (text route.name)
-
-        -- , viewDivider
         ]
 
 
-viewBody : BusData -> Element Msg
-viewBody busData =
-    viewSubPage busData.currentPage
-
-
-viewSubPage : Page -> Element Msg
-viewSubPage page =
+viewBody : Int -> BusData -> Element Msg
+viewBody height busData =
     let
         viewPage pageView toMsg =
             Element.map toMsg pageView
     in
-    case page of
+    case busData.currentPage of
         About subPageModel ->
-            viewPage (About.view subPageModel) GotAboutMsg
+            viewPage (About.view subPageModel height) GotAboutMsg
 
         RouteHistory subPageModel ->
             viewPage (RouteHistory.view subPageModel) GotRouteHistoryMsg
@@ -356,6 +464,38 @@ viewSubPage page =
             viewPage (BusRepairs.view subPageModel) GotBusRepairsMsg
 
 
+viewFooter : BusData -> Element Msg
+viewFooter busData =
+    viewSubPageFooter busData.currentPage
+
+
+viewSubPageFooter : Page -> Element Msg
+viewSubPageFooter page =
+    let
+        viewPage pageView toMsg =
+            Element.map toMsg pageView
+    in
+    case page of
+        About subPageModel ->
+            viewPage (About.viewFooter subPageModel) GotAboutMsg
+
+        RouteHistory subPageModel ->
+            viewPage (RouteHistory.viewFooter subPageModel) GotRouteHistoryMsg
+
+        FuelHistory subPageModel ->
+            viewPage (FuelHistory.viewFooter subPageModel) GotFuelHistoryMsg
+
+        BusDevice subPageModel ->
+            viewPage (BusDevice.viewFooter subPageModel) GotBusDeviceMsg
+
+        BusRepairs subPageModel ->
+            viewPage (BusRepairs.viewFooter subPageModel) GotBusRepairsMsg
+
+
+
+-- SIDEBAR
+
+
 viewSidebar : BusData -> Element Msg
 viewSidebar busData =
     let
@@ -368,7 +508,7 @@ viewSidebar busData =
         iconize index ( icon, _ ) =
             iconForPage icon index (List.length busData.pages - busData.pageIndex - 1)
     in
-    el [ centerY, moveUp 40 ]
+    el [ height fill ]
         (column
             [ Background.color (rgb255 233 233 243)
             , padding 7
@@ -437,37 +577,19 @@ iconForPage pageIcon page currentPage =
         )
 
 
-fetchBus : Int -> Session -> Cmd Msg
-fetchBus busID session =
-    Api.get session (Endpoint.bus busID) (busDecoder session)
+
+-- NETWORK
+
+
+fetchBus : Int -> Session -> Maybe String -> Cmd Msg
+fetchBus busID session preferredPage =
+    Api.get session (Endpoint.bus busID) (busDecoder session preferredPage)
         |> Cmd.map ServerResponse
 
 
-
--- a : Int -> Bus
--- a =
---     Bus
-
-
-busDecoder : Session -> Decoder BusData
-busDecoder session =
-    let
-        busDataDecoder id number_plate seats_available vehicle_type stated_milage route device =
-            let
-                bus =
-                    Bus id number_plate seats_available vehicle_type stated_milage route device
-            in
-            Decode.succeed (allPagesFromSession bus session)
-    in
-    Decode.succeed busDataDecoder
-        |> required "id" int
-        |> required "number_plate" string
-        |> required "seats_available" int
-        |> required "vehicle_type" string
-        |> required "stated_milage" float
-        |> required "route" (nullable routeDecoder)
-        |> required "device" (nullable string)
-        |> Json.Decode.Pipeline.resolve
+busDecoder : Session -> Maybe String -> Decoder BusData
+busDecoder session preferredPage =
+    busDecoderWithCallback (\bus -> allPagesFromSession bus session preferredPage)
 
 
 routeDecoder : Decoder Route
@@ -475,3 +597,10 @@ routeDecoder =
     Decode.succeed Route
         |> required "id" string
         |> required "name" string
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Ports.mapReady MapReady
+        ]
