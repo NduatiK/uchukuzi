@@ -5,12 +5,16 @@ defmodule UchukuziInterfaceWeb.AuthController do
   # alias Uchukuzi.Common.{Location, Geofence}
   # alias Uchukuzi.Roles.Manager
   alias Uchukuzi.Roles
+  use Uchukuzi.Roles.Model
+  alias UchukuziInterfaceWeb.Email.{Email, Mailer}
 
   def login_manager(conn, %{"email" => email, "password" => password}) do
     with {:ok, manager} <- Roles.login_manager(email, password) do
+      manager = Repo.preload(manager, :school)
+
       conn
       |> put_view(UchukuziInterfaceWeb.RolesView)
-      |> render("manager.json", manager: manager, token: AuthManager.sign(manager.id))
+      |> render("manager.json", manager: manager, token: ManagerAuth.sign(manager.id))
     else
       {:error, _} ->
         conn
@@ -19,25 +23,48 @@ defmodule UchukuziInterfaceWeb.AuthController do
     end
   end
 
-  # def create_school(conn, %{"manager" => manager_params, "school" => school_params}) do
-  #   with {:ok, center} <-
-  #          Location.new(
-  #            school_params["geo"]["lon"],
-  #            school_params["geo"]["lat"]
-  #          ),
-  #        {:ok, geofence} <- Geofence.new_school_fence(center, school_params["geo"]["radius"]),
-  #        school <- School.School.new(school_params["name"], geofence),
-  #        manager <-
-  #          Manager.new(
-  #            manager_params["name"],
-  #            manager_params["email"],
-  #            manager_params["password"]
-  #          ),
-  #        school <- School.create_school(school, manager) do
-  #     IO.inspect(school)
+  def request_assistant_token(conn, %{"email" => email}) do
+    with assistant when not is_nil(assistant) <- Roles.get_assistant_by(email: email) do
+      send_token_email_to(
+        Repo.preload(assistant, :school),
+        AssistantAuth.sign(assistant.id)
+      )
 
-  #     conn
-  #     |> resp(200, "")
-  #   end
-  # end
+      conn
+      |> resp(200, "{}")
+    else
+      nil ->
+        conn
+        |> resp(:not_found, "Not found")
+        |> send_resp()
+    end
+  end
+
+  def exchange_assistant_token(conn, %{"email_token" => email_token}) do
+    with {:ok, user_id} <- AssistantAuth.verify(email_token, 3600),
+         {:ok, assistant} <- Roles.get_assistant_by(id: user_id) do
+      assistant = Repo.preload(assistant, :school)
+
+      conn
+      |> put_view(UchukuziInterfaceWeb.RolesView)
+      |> render("assistant.json", assistant: assistant, token: AssistantAuth.sign(assistant.id))
+    else
+      {:error, :expired} ->
+        conn
+        |> resp(:unauthorized, "expired")
+        |> send_resp()
+
+      {:error, _} ->
+        conn
+        |> resp(:unauthorized, "Unauthorized")
+        |> send_resp()
+    end
+  end
+
+  def send_token_email_to(assistant, token) do
+    # Create your email
+    Email.send_token_email_to(assistant, token)
+    # Send your email
+    |> Mailer.deliver_now()
+  end
 end
