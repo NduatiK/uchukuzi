@@ -1,13 +1,17 @@
-defmodule Uchukuzi.Roles.Driver do
+defmodule Uchukuzi.Roles.CrewMember do
   @moduledoc """
-  An bus driver
+  An employee of a school assigned to a bus who records the
+  boarding and exiting of students from a bus
   """
   use Uchukuzi.Roles.Model
 
-  schema "drivers" do
+  @roles ["assistant", "driver"]
+
+  schema "crew_members" do
     field(:name, :string)
     field(:email, :string)
     field(:phone_number, :string)
+    field(:role, :string)
 
     belongs_to(:school, Uchukuzi.School.School)
     belongs_to(:bus, Uchukuzi.School.Bus)
@@ -15,19 +19,11 @@ defmodule Uchukuzi.Roles.Driver do
     timestamps()
   end
 
-  def new(name, email, phone_number) do
-    %Driver{}
-    |> changeset(%{
-      name: name,
-      email: email,
-      phone_number: phone_number
-    })
-  end
-
-  defp changeset(schema, params) do
+  def changeset(schema \\ %__MODULE__{}, params) do
     schema
     |> cast(params, __MODULE__.__schema__(:fields))
-    |> validate_required([:name, :email, :password])
+    |> validate_required([:name, :email, :phone_number, :role])
+    |> validate_inclusion(:role, @roles)
     |> Validation.validate_email()
     |> Validation.validate_phone_number()
     |> unique_constraint(:email)

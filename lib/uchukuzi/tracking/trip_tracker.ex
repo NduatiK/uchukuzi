@@ -7,7 +7,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
   alias __MODULE__
 
   alias Uchukuzi.Roles.Student
-  alias Uchukuzi.Roles.Assistant
+  alias Uchukuzi.Roles.CrewMember
 
   alias Uchukuzi.Common.Report
   alias Uchukuzi.Common.Geofence
@@ -61,10 +61,10 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def insert_report(trip_tracker, %Report{} = report),
     do: GenServer.cast(trip_tracker, {:insert_report, report})
 
-  def student_boarded(trip_tracker, %Student{} = student, %Assistant{} = assistant),
-    do: GenServer.cast(trip_tracker, {:student_boarded, student})
+  def student_boarded(trip_tracker, %Student{} = student, %CrewMember{role: "assistant"} = assistant),
+    do: GenServer.cast(trip_tracker, {:student_boarded, student, assistant})
 
-  def student_exited(trip_tracker, %Student{} = student, %Assistant{} = assistant),
+  def student_exited(trip_tracker, %Student{} = student, %CrewMember{role: "assistant"} = assistant),
     do: GenServer.cast(trip_tracker, {:student_exited, student, assistant})
 
   # def current_location(trip_tracker) do

@@ -16,9 +16,6 @@ defmodule Uchukuzi.Roles.Student do
     field(:name, :string)
     field(:email, :string)
 
-    field(:password, :string, virtual: true)
-    field(:password_hash, :string)
-
     field(:travel_time, :string)
 
     embeds_one(:pickup_location, Location)
@@ -46,7 +43,7 @@ defmodule Uchukuzi.Roles.Student do
 
   def changeset(schema \\ %Student{}, params) do
     schema
-    |> cast(params, [:name, :email, :school_id, :guardian_id, :travel_time, :password])
+    |> cast(params, [:name, :email, :school_id, :guardian_id, :travel_time])
     |> validate_required([:name, :travel_time])
     |> cast_embed(:pickup_location, with: &Location.changeset/2)
     |> cast_embed(:home_location, with: &Location.changeset/2)

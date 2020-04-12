@@ -2,20 +2,20 @@ defmodule Uchukuzi.Tracking.StudentActivity do
   alias __MODULE__
   alias Uchukuzi.Tracking.Trip
   alias Uchukuzi.Common.Location
-  alias Uchukuzi.Roles.Assistant
+  alias Uchukuzi.Roles.CrewMember
 
   @activities [:boarded_vehicle, :exited_vehicle]
 
   @enforce_keys [:student, :activity, :time, :reported_by]
   defstruct [:student, :activity, :time, :infered_location, :reported_by]
 
-  def boarded(student, time \\ nil, %Assistant{} = assistant),
+  def boarded(student, time \\ nil, %CrewMember{} = assistant),
     do: new(student, :boarded_vehicle, time, assistant)
 
-  def exited(student, time \\ nil, %Assistant{} = assistant),
+  def exited(student, time \\ nil, %CrewMember{} = assistant),
     do: new(student, :exited_vehicle, time, assistant)
 
-  defp new(student, activity, time, %Assistant{} = assistant)
+  defp new(student, activity, time, %CrewMember{} = assistant)
        when activity in @activities,
        do: %StudentActivity{
          student: student,

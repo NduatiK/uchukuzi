@@ -50,32 +50,44 @@ defmodule Uchukuzi.School do
     end
   end
 
-  # def add_assistant(%School{} = school, %Assistant{} = assistant) do
-  #   School.add_assistant(school, assistant)
-  # end
-
-  # def remove_assistant(%School{} = school, %Assistant{} = assistant) do
-  #   School.remove_assistant(school, assistant)
-  # end
-
-  # def add_bus(%School{} = school, %Bus{} = bus) do
-  #   School.add_bus(school, bus)
-  # end
-
-  # def remove_bus(%School{} = school, %Bus{} = bus) do
-  #   School.remove_bus(school, bus)
-  # end
-
-  # def add_geofence_to_school(%School{} = school, %Geofence{} = geofence) do
-  #   School.add_geofence(school, geofence)
-  # end
-
-  # def delete_geofence_from_school(%School{} = school, %Geofence{} = geofence) do
-  #   School.delete_geofence(school, geofence)
-  # end
-
   def get_school(school_id),
     do: Repo.get(School, school_id)
+
+  def crew_members_for(school_id) do
+    CrewMember
+    |> where(school_id: ^school_id)
+    |> Repo.all()
+  end
+
+  def create_crew_member(school_id, params) do
+    params
+    |> Map.put("school_id", school_id)
+    |> CrewMember.changeset()
+    |> Repo.insert()
+  end
+
+  def update_crew_assignments(school_id, params) do
+    Multi.new()
+    |> Multi.merge(fn _ ->
+      params
+      |> Enum.reverse()
+      |> Enum.with_index()
+      |> Enum.reduce(Multi.new(), fn {param, idx}, multi ->
+        multi
+        |> Multi.update(
+          "change" <> Integer.to_string(idx),
+          if param["change"] == "add" do
+            Repo.get(CrewMember, param["crew_member"], school_id: school_id)
+            |> change(bus_id: param["bus"])
+          else
+            Repo.get_by(CrewMember, id: param["crew_member"], school_id: school_id)
+            |> change(bus_id: nil)
+          end
+        )
+      end)
+    end)
+    |> Repo.transaction()
+  end
 
   # ********* BUS *********
 
@@ -85,46 +97,6 @@ defmodule Uchukuzi.School do
     |> Bus.new()
     |> Repo.insert()
   end
-
-  # def assign_assistant_to_bus(%Bus{} = bus, %Assistant{} = assistant) do
-  #   Bus.assign_assistant(bus, assistant)
-  # end
-
-  # def remove_assistant_from_bus(%Bus{} = bus, %Assistant{} = assistant) do
-  #   Bus.assign_assistant(bus, assistant)
-  # end
-
-  # def set_device(%Bus{} = bus, %Device{} = device) do
-  #   Bus.set_device(bus, device)
-  # end
-
-  # def remove_device(%Bus{} = bus, %Device{} = device) do
-  #   Bus.remove_device(bus, device)
-  # end
-
-  # def create_fuel_record(%Bus{} = bus, %FuelRecord{} = record) do
-  #   Bus.add_fuel_record(bus, record)
-  # end
-
-  # def delete_fuel_record(%Bus{} = bus, %FuelRecord{} = record) do
-  #   Bus.delete_fuel_record(bus, record)
-  # end
-
-  # def schedule_maintenance(%Bus{} = bus, %ScheduledRepair{} = schedule) do
-  #   Bus.schedule_maintenance(bus, schedule)
-  # end
-
-  # def unschedule_maintenance(%Bus{} = bus, %ScheduledRepair{} = schedule) do
-  #   Bus.unschedule_maintenance(bus, schedule)
-  # end
-
-  # def add_maintenance_record(%Bus{} = bus, %PerformedRepair{} = record) do
-  #   Bus.add_maintenance_record(bus, record)
-  # end
-
-  # def delete_maintenance_record(%Bus{} = bus, %PerformedRepair{} = record) do
-  #   Bus.delete_maintenance_record(bus, record)
-  # end
 
   # ********* Routes *********
 
@@ -137,7 +109,6 @@ defmodule Uchukuzi.School do
     |> Route.changeset()
     |> Repo.insert()
   end
-
 
   # ********* HOUSEHOLDS *********
   def create_household(

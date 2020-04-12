@@ -23,7 +23,7 @@ defmodule Uchukuzi.School.Model do
 
       alias Uchukuzi.Roles.{
         Manager,
-        Assistant
+        CrewMember
       }
 
       alias Uchukuzi.Common.{

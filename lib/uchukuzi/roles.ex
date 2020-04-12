@@ -5,25 +5,6 @@ defmodule Uchukuzi.Roles do
 
   use Uchukuzi.Roles.Model
 
-  # def create_manager(_args) do
-  #   Manager.new("name", "email", "password")
-  # end
-
-  # def create_student(_args) do
-  #   Student.new("name", :evening)
-  # end
-
-  # def create_guardian(_args) do
-  #   Guardian.new("name", "email", "password")
-  # end
-
-  # def create_assistant(_args) do
-  #   Assistant.new("name", "email", "password")
-  # end
-
-  # def login(args) do
-  #   true
-  # end
 
   def login_manager(email, password),
     do: login(Manager, email, password)
@@ -45,6 +26,9 @@ defmodule Uchukuzi.Roles do
 
   def get_manager_by(params),
     do: get_by(Manager, params)
+
+  def get_assistant_by(params),
+    do: get_by(CrewMember, Keyword.put(params, :role, "assistant"))
 
   @spec get_by(any, any) :: any
   def get_by(module, params),

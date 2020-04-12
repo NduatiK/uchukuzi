@@ -18,9 +18,8 @@ defmodule Uchukuzi.Roles.Model do
         Manager,
         Guardian,
         Student,
-        Driver,
         Household,
-        Assistant
+        CrewMember
       }
 
       def put_pass_hash(changeset) do

@@ -10,20 +10,7 @@ defmodule Uchukuzi.Tracking.Model do
 
       alias Uchukuzi.School
       alias Uchukuzi.Tracking
-      # alias Uchukuzi.Tracking.{
 
-      # }
-
-      # alias Uchukuzi.School.Bus.{
-      #   FuelRecord,
-      #   ScheduledRepair,
-      #   PerformedRepair
-      # }
-
-      # alias Uchukuzi.Roles.{
-      #   Manager,
-      #   Assistant
-      # }
 
       alias Uchukuzi.Common.{
         Geofence,

@@ -34,9 +34,25 @@ defmodule Uchukuzi.Repo.Migrations.AddBusAndDevice do
     create(unique_index("devices", ["imei"]))
 
     ########### FUEL REPORTS ###########
+
+    create table("crew_members") do
+      add(:name, :string)
+
+      add(:role, :string)
+      add(:email, :string)
+      add(:phone_number, :string)
+
+      add(:school_id, references("schools"))
+      add(:bus_id, references("buses"))
+
+      timestamps()
+    end
+
+    create(unique_index("crew_members", [:email]))
   end
 
   def down do
+    drop(table(:crew_members))
     drop(table(:devices))
     drop(table(:buses))
   end

@@ -7,7 +7,7 @@ defmodule Uchukuzi.Repo.Migrations.AddSchoolAndRoles do
       add(:perimeter, :jsonb, default: "[]")
     end
 
-    ########### MANAGER ###########
+    # *########## MANAGER ###########
 
     create table("managers") do
       add(:name, :string)
@@ -21,31 +21,13 @@ defmodule Uchukuzi.Repo.Migrations.AddSchoolAndRoles do
 
     create(unique_index("managers", [:email]))
 
-    ########### ASSISTANT ###########
-
-    create table("assistants") do
-      add(:name, :string)
-
-      add(:email, :string)
-      add(:phone_number, :string)
-
-      add(:password_hash, :string)
-
-      add(:school_id, references("schools"))
-
-      timestamps()
-    end
-
-    create(unique_index("assistants", [:email]))
-
-    ########### GUARDIANS ###########
+    # *########## GUARDIANS ###########
 
     create table("guardians") do
       add(:name, :string)
 
       add(:email, :string)
       add(:phone_number, :string)
-      add(:password_hash, :string)
 
       add(:school_id, references("schools"))
 
@@ -54,17 +36,16 @@ defmodule Uchukuzi.Repo.Migrations.AddSchoolAndRoles do
 
     create(unique_index("guardians", [:email]))
 
-    ########### STUDENT ###########
+    # *########## STUDENT ###########
 
     create table("students") do
       add(:name, :string)
 
       add(:travel_time, :string)
-      add(:pickup_location, :jsonb, default: "[]")
-      add(:home_location, :jsonb, default: "[]")
+      add(:pickup_location, :jsonb, default: "{}")
+      add(:home_location, :jsonb, default: "{}")
 
       add(:email, :string)
-      add(:password_hash, :string)
 
       add(:school_id, references("schools"))
       add(:guardian_id, references("guardians"))
@@ -78,7 +59,6 @@ defmodule Uchukuzi.Repo.Migrations.AddSchoolAndRoles do
   def down do
     drop(table(:students))
     drop(table(:guardians))
-    drop(table(:assistants))
     drop(table(:managers))
     drop(table(:schools))
   end
