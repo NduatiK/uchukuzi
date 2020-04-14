@@ -106,9 +106,8 @@ errorStyle =
 
 labelStyle : List (Attribute msg)
 labelStyle =
-    [ --     Font.size 16
-      -- ,
-      Font.color (rgb255 51 63 78)
+    [ Font.size 16
+    , Font.color (rgb255 51 63 78)
     ]
         ++ defaultFontFace
 

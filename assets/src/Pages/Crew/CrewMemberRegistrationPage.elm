@@ -17,7 +17,7 @@ import Icons
 import Json.Decode as Decode exposing (Decoder, Value, bool, decodeString, dict, field, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
-import Models.CrewMember exposing (Role(..))
+import Models.CrewMember exposing (CrewMember, Role(..))
 import Navigation
 import Ports
 import RemoteData exposing (..)
@@ -47,6 +47,18 @@ type alias Model =
     , form : Form
     , roleDropdownState : Dropdown.State Role
     , requestState : WebData ()
+    , editState : Maybe EditState
+    }
+
+
+isEditing : Model -> Bool
+isEditing model =
+    model.editState /= Nothing
+
+
+type alias EditState =
+    { requestState : WebData CrewMember
+    , crewMemberID : Int
     }
 
 
@@ -86,26 +98,29 @@ roleToString role =
             "Assistant"
 
 
-emptyForm : Session -> Model
-emptyForm session =
-    { session = session
-    , form =
-        { name = ""
-        , email = ""
-        , phoneNumber = ""
-        , role = Just Assistant
-        , problems = []
-        }
-    , roleDropdownState = Dropdown.init "rolesDropdown"
-    , requestState = NotAsked
-    }
-
-
-init : Session -> ( Model, Cmd Msg )
-init session =
-    ( emptyForm session
+init : Session -> Maybe Int -> ( Model, Cmd Msg )
+init session id =
+    ( { session = session
+      , form =
+            { name = ""
+            , email = ""
+            , phoneNumber = ""
+            , role = Just Assistant
+            , problems = []
+            }
+      , roleDropdownState = Dropdown.init "rolesDropdown"
+      , requestState = NotAsked
+      , editState =
+            Maybe.andThen (EditState Loading >> Just) id
+      }
     , Cmd.batch
         [ Task.succeed (RoleDropdownMsg (Dropdown.selectOption Assistant)) |> Task.perform identity
+        , case id of
+            Just id_ ->
+                fetchCrewMember session id_
+
+            Nothing ->
+                Cmd.none
         ]
     )
 
@@ -118,6 +133,7 @@ type Msg
     = Changed Field
     | SubmitButtonMsg
     | ServerResponse (WebData ())
+    | CrewMemberResponse (WebData CrewMember)
     | RoleDropdownMsg (Dropdown.Msg Role)
 
 
@@ -148,7 +164,7 @@ update msg model =
                         | form = { form | problems = [] }
                         , requestState = Loading
                       }
-                    , submit model.session validForm
+                    , submit model.session validForm (Maybe.andThen (.crewMemberID >> Just) model.editState)
                     )
 
                 Err problems ->
@@ -182,6 +198,30 @@ update msg model =
 
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
+
+        CrewMemberResponse response ->
+            let
+                editState =
+                    model.editState
+
+                newModel =
+                    { model | editState = Maybe.andThen (\x -> Just { x | requestState = response }) editState }
+            in
+            case response of
+                Success crewMember ->
+                    let
+                        form =
+                            { name = crewMember.name
+                            , email = crewMember.email
+                            , phoneNumber = crewMember.phoneNumber
+                            , role = Just crewMember.role
+                            , problems = []
+                            }
+                    in
+                    ( { newModel | form = form }, Task.succeed (RoleDropdownMsg (Dropdown.selectOption crewMember.role)) |> Task.perform identity )
+
+                _ ->
+                    ( newModel, Cmd.none )
 
 
 updateField : Field -> Model -> ( Model, Cmd Msg )
@@ -227,16 +267,28 @@ updateField field model =
 view : Model -> Element Msg
 view model =
     row [ width fill, height fill ]
-        [ viewBody model
-        ]
+        [ Element.column
+            [ width fill, spacing 40, paddingXY 24 8, alignTop, height fill ]
+            [ if isEditing model then
+                viewHeading "Edit Crew Member" Nothing
 
+              else
+                viewHeading "Add a Crew Member" Nothing
+            , case model.editState of
+                Just state ->
+                    case state.requestState of
+                        Success _ ->
+                            viewForm model
 
-viewBody : Model -> Element Msg
-viewBody model =
-    Element.column
-        [ width fill, spacing 40, paddingXY 24 8, alignTop ]
-        [ viewHeading "Add a Vehicle" Nothing
-        , viewForm model
+                        Loading ->
+                            el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
+
+                        _ ->
+                            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+
+                Nothing ->
+                    viewForm model
+            ]
         ]
 
 
@@ -322,6 +374,16 @@ viewButton requestState =
             case requestState of
                 Loading ->
                     Icons.loading [ alignRight, width (px 46), height (px 46) ]
+
+                Failure _ ->
+                    StyledElement.button
+                        [ alignRight, Background.color Colors.errorRed ]
+                        { label =
+                            row [ spacing 8 ]
+                                [ el [ centerY ] (text "Try Again")
+                                ]
+                        , onPress = Just SubmitButtonMsg
+                        }
 
                 _ ->
                     StyledElement.button [ alignRight ]
@@ -414,8 +476,8 @@ validateForm form =
             Err problems
 
 
-submit : Session -> ValidForm -> Cmd Msg
-submit session form =
+submit : Session -> ValidForm -> Maybe Int -> Cmd Msg
+submit session form editingID =
     let
         params =
             Encode.object
@@ -426,10 +488,21 @@ submit session form =
                 ]
                 |> Http.jsonBody
     in
-    Api.post session Endpoint.crewMembers params decoder
-        |> Cmd.map ServerResponse
+    case editingID of
+        Just id ->
+            Api.patch session (Endpoint.crewMember id) params decoder
+                |> Cmd.map ServerResponse
+
+        Nothing ->
+            Api.post session Endpoint.crewMembers params decoder
+                |> Cmd.map ServerResponse
 
 
 decoder : Decoder ()
 decoder =
     Decode.succeed ()
+
+
+fetchCrewMember session id =
+    Api.get session (Endpoint.crewMember id) Models.CrewMember.crewDecoder
+        |> Cmd.map CrewMemberResponse

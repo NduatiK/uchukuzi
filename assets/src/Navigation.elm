@@ -27,6 +27,7 @@ type Route
     | Routes
     | CrewMembers
     | CrewMemberRegistration
+    | EditCrewMember Int
       -- | Dashboard
     | HouseholdList
     | Buses
@@ -50,6 +51,7 @@ loggedInParser =
                 ]
             ++ [ -- http://localhost:4000/#/fleet/1/?page=trips
                  Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
+               , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s "edit")
                , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
                ]
         )
@@ -281,6 +283,9 @@ routeToString page =
 
                 CrewMemberRegistration ->
                     [ routeName CrewMembers, routeName page ]
+
+                EditCrewMember id ->
+                    [ routeName CrewMembers, String.fromInt id, "edit" ]
     in
     "#/" ++ String.join "/" pieces
 
@@ -332,6 +337,9 @@ routeName page =
 
         CrewMemberRegistration ->
             "new"
+
+        EditCrewMember _ ->
+            "edit"
 
 
 loginRedirectToString : Maybe LoginRedirect -> String

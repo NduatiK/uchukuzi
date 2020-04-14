@@ -79,8 +79,8 @@ viewHeading title subLine =
             [ centerY
             , alignRight
             ]
-            { icon = Icons.addWhite
-            , iconAttrs = []
+            { icon = Icons.add
+            , iconAttrs = [ Colors.fillWhite ]
             , onPress = Nothing
             }
         ]

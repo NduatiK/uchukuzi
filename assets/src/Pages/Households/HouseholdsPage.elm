@@ -3,6 +3,7 @@ module Pages.Households.HouseholdsPage exposing (Model, Msg, init, update, view)
 import Api
 import Api.Endpoint as Endpoint
 import Browser
+import Colors
 import Dropdown
 import Element exposing (..)
 import Element.Background as Background
@@ -126,8 +127,8 @@ viewHeading title subLine =
                     el Style.captionLabelStyle (text caption)
             ]
         , StyledElement.iconButton []
-            { icon = Icons.addWhite
-            , iconAttrs = []
+            { icon = Icons.add
+            , iconAttrs = [ Colors.fillWhite ]
             , onPress = Nothing
             }
         ]

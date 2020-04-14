@@ -1,12 +1,17 @@
 module Icons exposing (..)
 
-import Colors
 import Element exposing (Attribute, Element, alpha, height, image, px, width)
-import Style
+import Html.Attributes
 
 
 type alias IconBuilder msg =
     List (Attribute msg) -> Element msg
+
+
+iconNamed : String -> List (Attribute msg) -> Element msg
+iconNamed name attrs =
+    image (alpha 0.54 :: Element.htmlAttribute (Html.Attributes.style "pointer-events" "none") :: attrs)
+        { src = name, description = "" }
 
 
 bus : List (Attribute msg) -> Element msg
@@ -50,186 +55,142 @@ qrBox attrs =
 
 add : List (Attribute msg) -> Element msg
 add attrs =
-    image attrs
-        { src = "images/add.svg", description = "" }
+    iconNamed "images/add.svg" (alpha 1 :: attrs)
 
 
 edit : List (Attribute msg) -> Element msg
 edit attrs =
-    image attrs
-        { src = "images/edit.svg", description = "" }
+    iconNamed "images/edit.svg" (alpha 1 :: attrs)
 
 
 subtract : List (Attribute msg) -> Element msg
 subtract attrs =
-    image attrs
-        { src = "images/subtract.svg", description = "" }
+    iconNamed "images/subtract.svg" (alpha 1 :: attrs)
 
 
 steeringWheel : List (Attribute msg) -> Element msg
 steeringWheel attrs =
-    image attrs
-        { src = "images/stearing_wheel.svg", description = "" }
-
-
-addWhite : List (Attribute msg) -> Element msg
-addWhite attrs =
-    add (attrs ++ [ Colors.fillWhite ])
+    iconNamed "images/stearing_wheel.svg" (alpha 1 :: attrs)
 
 
 camera : List (Attribute msg) -> Element msg
 camera attrs =
-    image attrs
-        { src = "images/camera.svg", description = "" }
+    iconNamed "images/camera.svg" (alpha 1 :: attrs)
 
 
 cameraOff : List (Attribute msg) -> Element msg
 cameraOff attrs =
-    image attrs
-        { src = "images/camera_off.svg", description = "" }
+    iconNamed "images/camera_off.svg" (alpha 1 :: attrs)
 
 
 chevronDown : List (Attribute msg) -> Element msg
-chevronDown attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/chevron_down.svg", description = "" }
+chevronDown =
+    iconNamed "images/chevron_down.svg"
 
 
 dashboard : List (Attribute msg) -> Element msg
-dashboard attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/dashboard.svg", description = "" }
+dashboard =
+    iconNamed "images/dashboard.svg"
 
 
 filter : List (Attribute msg) -> Element msg
-filter attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/filter.svg", description = "" }
+filter =
+    iconNamed "images/filter.svg"
 
 
 pin : List (Attribute msg) -> Element msg
-pin attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/pin.svg", description = "" }
+pin =
+    iconNamed "images/pin.svg"
 
 
 seat : List (Attribute msg) -> Element msg
-seat attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/seat.svg", description = "" }
+seat =
+    iconNamed "images/seat.svg"
 
 
 people : List (Attribute msg) -> Element msg
-people attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/people.svg", description = "" }
+people =
+    iconNamed "images/people.svg"
 
 
 phone : List (Attribute msg) -> Element msg
-phone attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/phone.svg", description = "" }
+phone =
+    iconNamed "images/phone.svg"
 
 
 email : List (Attribute msg) -> Element msg
-email attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/email.svg", description = "" }
+email =
+    iconNamed "images/email.svg"
 
 
 trash : List (Attribute msg) -> Element msg
-trash attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/trash.svg", description = "" }
+trash =
+    iconNamed "images/trash.svg"
 
 
 info : List (Attribute msg) -> Element msg
-info attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/info.svg", description = "" }
+info =
+    iconNamed "images/info.svg"
 
 
 help : List (Attribute msg) -> Element msg
-help attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/help.svg", description = "" }
+help =
+    iconNamed "images/help.svg"
 
 
 loading : List (Attribute msg) -> Element msg
 loading attrs =
-    image
-        (width (px 48)
-            :: height (px 48)
-            -- :: alpha 0.54
-            :: attrs
-        )
-        { src = "images/loading.svg", description = "" }
+    iconNamed "images/loading.svg" (width (px 48) :: height (px 48) :: attrs)
 
 
 timeline : List (Attribute msg) -> Element msg
-timeline attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/timeline.svg", description = "" }
+timeline =
+    iconNamed "images/timeline.svg"
 
 
 repairs : List (Attribute msg) -> Element msg
-repairs attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/repairs.svg", description = "" }
+repairs =
+    iconNamed "images/repairs.svg"
 
 
 hardware : List (Attribute msg) -> Element msg
-hardware attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/hardware.svg", description = "" }
+hardware =
+    iconNamed "images/hardware.svg"
 
 
 search : List (Attribute msg) -> Element msg
-search attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/search.svg", description = "" }
+search =
+    iconNamed "images/search.svg"
 
 
 check : List (Attribute msg) -> Element msg
 check attrs =
-    image attrs
-        { src = "images/check.svg", description = "" }
+    iconNamed "images/check.svg" (alpha 1 :: attrs)
 
 
 vehicle : List (Attribute msg) -> Element msg
-vehicle attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/shuttle.svg", description = "" }
+vehicle =
+    iconNamed "images/shuttle.svg"
 
 
 fuel : List (Attribute msg) -> Element msg
-fuel attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/fuel.svg", description = "" }
+fuel =
+    iconNamed "images/fuel.svg"
 
 
 emptySeat : List (Attribute msg) -> Element msg
-emptySeat attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/seat-empty.svg", description = "" }
+emptySeat =
+    iconNamed "images/seat-empty.svg"
 
 
 occupiedSeat : List (Attribute msg) -> Element msg
-occupiedSeat attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/seat-occupied.svg", description = "" }
+occupiedSeat =
+    iconNamed "images/seat-occupied.svg"
 
 
 dashedBox : List (Attribute msg) -> Element msg
-dashedBox attrs =
-    image (alpha 0.54 :: attrs)
-        { src = "images/dotted_box.svg", description = "" }
-
-
-iconNamed : String -> List (Attribute msg) -> Element msg
-iconNamed name attrs =
-    image (alpha 0.54 :: attrs)
-        { src = name, description = "" }
+dashedBox =
+    iconNamed "images/dotted_box.svg"
 
 
 close : List (Attribute msg) -> Element msg

@@ -62,6 +62,9 @@ defmodule UchukuziInterfaceWeb.Router do
     post "/households", SchoolController, :create_houshold
 
     get "/crew", SchoolController, :list_crew_members
+    get "/crew/:crew_member_id", SchoolController, :get_crew_member
+    patch "/crew/:crew_member_id", SchoolController, :update_crew_member
+
     post "/crew", SchoolController, :create_crew_member
 
     get "/crew_and_buses", SchoolController, :list_crew_and_buses

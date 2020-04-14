@@ -51,4 +51,7 @@ npm-debug.log
 /assets/elm-stuff/
 /assets/src/elm-stuff/
 
+/models/
 /.elixir_ls/
+Elixir.Uchukuzi.DiskDB
+Elixir.Uchukuzi.World.WorldManager

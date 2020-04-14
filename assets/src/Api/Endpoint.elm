@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, bus, buses, crewAssignmentChanges, crewMembers, crewMembersAndBuses, devices, get, households, login, patch, post, signup, trips)
+module Api.Endpoint exposing (Endpoint, bus, buses, crewAssignmentChanges, crewMember, crewMembers, crewMembersAndBuses, devices, get, households, login, patch, post, signup, trips)
 
 import Http exposing (Body)
 import Json.Decode exposing (Decoder, string)
@@ -65,6 +65,11 @@ login =
 signup : Endpoint
 signup =
     url [ "school", "create" ] []
+
+
+crewMember : Int -> Endpoint
+crewMember id =
+    url [ "school", "crew", String.fromInt id ] []
 
 
 crewMembers : Endpoint

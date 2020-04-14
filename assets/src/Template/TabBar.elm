@@ -204,3 +204,6 @@ toNavigationPage route =
 
         Navigation.CrewMemberRegistration ->
             CrewMembers
+
+        Navigation.EditCrewMember _ ->
+            CrewMembers

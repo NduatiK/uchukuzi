@@ -82,7 +82,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def list_buses(conn, _) do
     buses =
       for bus <- School.buses_for(conn.assigns.manager.school_id) do
-        {Repo.preload(bus, :device), Uchukuzi.Tracking.where_is(bus)}
+        {Repo.preload(bus, :device), Uchukuzi.Tracking.status_of(bus)}
       end
 
     conn
@@ -93,7 +93,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     with {bus_id, ""} <- Integer.parse(bus_id),
          {:ok, bus} <- School.bus_for(conn.assigns.manager.school_id, bus_id) do
       bus = Repo.preload(bus, :device)
-      last_seen = Uchukuzi.Tracking.where_is(bus) |> IO.inspect()
+      last_seen = Uchukuzi.Tracking.status_of(bus) |> IO.inspect()
 
       conn
       |> render("bus.json", bus: bus, last_seen: last_seen)
@@ -126,7 +126,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
 
     buses =
       for bus <- School.buses_for(conn.assigns.manager.school_id) do
-        {Repo.preload(bus, :device), Uchukuzi.Tracking.where_is(bus)}
+        {Repo.preload(bus, :device), Uchukuzi.Tracking.status_of(bus)}
       end
 
     conn
@@ -137,6 +137,23 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def update_crew_assignments(conn, %{"_json" => changes}) do
     with {:ok, _} <- School.update_crew_assignments(conn.assigns.manager.school_id, changes) do
       list_crew_and_buses(conn, %{})
+    end
+  end
+
+  def get_crew_member(conn, %{"crew_member_id" => crew_member_id}) do
+    with crew_member <- School.crew_member_for(conn.assigns.manager.school_id, crew_member_id) do
+      conn
+      |> put_view(UchukuziInterfaceWeb.RolesView)
+      |> render("crew_member.json", crew_member: crew_member)
+    end
+  end
+
+  def update_crew_member(conn, %{"crew_member_id" => crew_member_id} = params) do
+    with {:ok, crew_member} <-
+           School.update_crew_member_for(conn.assigns.manager.school_id, crew_member_id, params) do
+      conn
+      |> put_view(UchukuziInterfaceWeb.RolesView)
+      |> render("crew_member.json", crew_member: crew_member)
     end
   end
 

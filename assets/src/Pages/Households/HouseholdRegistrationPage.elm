@@ -522,7 +522,7 @@ viewStudentsInput { students, problems, currentStudent } =
                 , value = currentStudent
                 }
             , Input.button [ padding 8, alignBottom, Background.color Colors.purple, Border.rounded 8 ]
-                { label = Icons.addWhite []
+                { label = Icons.add [ Colors.fillWhite ]
                 , onPress = Just SaveStudentPressed
                 }
             ]

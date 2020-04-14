@@ -228,10 +228,8 @@ view { page, route, navState, windowHeight } =
 
                 CrewMemberRegistration model ->
                     viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg
-    in
-    { title = "Uchukuzi"
-    , body =
-        [ Element.layoutWith
+
+        layoutOptions =
             { options =
                 [ focusStyle
                     { borderColor = Nothing
@@ -240,9 +238,10 @@ view { page, route, navState, windowHeight } =
                     }
                 ]
             }
-            Style.defaultFontFace
-            renderedView
-        ]
+    in
+    { title = "Uchukuzi"
+    , body =
+        [ Element.layoutWith layoutOptions Style.labelStyle renderedView ]
     }
 
 
@@ -547,7 +546,11 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                         |> updateWith CrewMembers GotCrewMembersMsg
 
                 Just Navigation.CrewMemberRegistration ->
-                    CrewMemberRegistration.init session
+                    CrewMemberRegistration.init session Nothing
+                        |> updateWith CrewMemberRegistration GotCrewMemberRegistrationMsg
+
+                Just (Navigation.EditCrewMember id) ->
+                    CrewMemberRegistration.init session (Just id)
                         |> updateWith CrewMemberRegistration GotCrewMemberRegistrationMsg
     in
     ( { model | page = updatedPage, route = maybeRoute }, msg )

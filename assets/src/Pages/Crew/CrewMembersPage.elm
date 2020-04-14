@@ -68,6 +68,7 @@ type Msg
     | SaveChanges
       ------------
     | SelectedCrewMember (Maybe CrewMember)
+    | EditCrewMember CrewMember
       ------------
     | StartedDragging CrewMember
     | StoppedDragging CrewMember
@@ -254,6 +255,9 @@ update msg model =
         SelectedCrewMember crewMember ->
             ( { model | selectedCrewMember = crewMember }, Cmd.none )
 
+        EditCrewMember crewMember ->
+            ( model, Navigation.rerouteTo model (Navigation.EditCrewMember crewMember.id) )
+
 
 
 -- VIEW
@@ -309,7 +313,7 @@ viewOverlay { selectedCrewMember } =
                     , inFront
                         (el [ Background.color Colors.white, Border.rounded 5, Style.elevated2, centerX, centerY, width (fill |> maximum 600), Style.animatesNone ]
                             (column [ spacing 8, paddingXY 0 24, width fill ]
-                                [ row [ width fill ]
+                                [ row [ width fill, paddingXY 8 0 ]
                                     [ column [ paddingXY 20 0, spacing 8 ]
                                         [ el (Style.header2Style ++ [ padding 0 ]) (text crewMember.name)
                                         , el Style.captionLabelStyle (text (roleToString crewMember.role))
@@ -320,7 +324,7 @@ viewOverlay { selectedCrewMember } =
                                                 [ Icons.edit [ Colors.fillPurple ]
                                                 , el [ centerY, Font.color Colors.purple ] (text "Edit details")
                                                 ]
-                                        , onPress = Nothing
+                                        , onPress = Just (EditCrewMember crewMember)
                                         }
                                     ]
                                 , el [ width fill, height (px 2), Background.color Colors.darkness ] none
@@ -402,7 +406,7 @@ viewHeading { data, inEditingMode } =
             , StyledElement.buttonLink [ alignRight ]
                 { label =
                     row [ spacing 8 ]
-                        [ Icons.addWhite []
+                        [ Icons.add [ Colors.fillWhite ]
                         , el [ centerY ] (text "Add Crew Member")
                         ]
                 , route = Navigation.CrewMemberRegistration
@@ -543,8 +547,9 @@ viewCrew bus drivers assistants inEditingMode aboveRole =
                             provideView
                     }
     in
-    wrappedRow
-        [ spacing 24 ]
+    -- wrappedRow
+    row
+        [ spacing 16, alignBottom ]
         [ case List.head drivers of
             Just driver ->
                 viewCrewMember driver
@@ -559,7 +564,10 @@ viewCrew bus drivers assistants inEditingMode aboveRole =
                     ]
         , case List.head assistants of
             Just assistant ->
-                viewCrewMember assistant [ text assistant.name ]
+                viewCrewMember assistant
+                    [ Icons.people [ alpha 0.54 ]
+                    , text assistant.name
+                    ]
 
             Nothing ->
                 viewCrewMemberSlot Assistant
