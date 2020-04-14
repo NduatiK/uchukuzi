@@ -46,10 +46,13 @@ defmodule Uchukuzi.Tracking.StudentActivity do
     if report_before == nil and report_after == nil do
       nil
     else
-      Location.new(
-        (report_after.location.lng + report_before.location.lng) / 2,
-        (report_after.location.lat + report_before.location.lat) / 2
-      )
+      {:ok, location} =
+        Location.new(
+          (report_after.location.lng + report_before.location.lng) / 2,
+          (report_after.location.lat + report_before.location.lat) / 2
+        )
+
+      location
     end
   end
 

@@ -1,65 +1,69 @@
 defmodule Uchukuzi.World do
   alias Uchukuzi.Common.Report
   alias Uchukuzi.Common.Location
+  alias Uchukuzi.World.WorldManager
   alias Uchukuzi.World.TileServer
   alias Uchukuzi.World.TileSupervisor
   alias Uchukuzi.World.Tile
 
   # TODO: What happens when these updates are within the school
-  def update(bus_server, %Report{} = previous_report, %Report{} = current_report) do
-    current_tile = tile_server_for(current_report)
-    previous_tile = tile_server_for(previous_report)
+  @spec update(any, Uchukuzi.Common.Report.t(), Uchukuzi.Common.Report.t()) :: :ok
+  def update(bus_server, previous_report, current_report) do
+    current_tile = tile_for(current_report)
 
-    if current_tile == previous_tile do
-      moved(current_tile, bus_server, current_report)
+    if previous_report == nil do
+      TileSupervisor.join(bus_server, current_tile, current_report)
     else
-      tiles = crossed_tiles(previous_report, current_report)
+      current_report = Report.to_report(current_report)
+      previous_report = Report.to_report(previous_report)
+      previous_tile = tile_for(previous_report)
 
-      {time_exiting, average_cross_time, time_entering} =
-        calculate_time(
-          previous_report,
-          current_report,
-          tile_for(previous_report),
-          tiles,
-          tile_for(current_report)
+      if current_tile == previous_tile do
+        TileSupervisor.move(bus_server, current_tile, current_report)
+      else
+
+        crossed_tiles = crossed_tiles(previous_report, current_report)
+        # IO.inspect("crossed_tiles = crossed_tiles")
+
+        {exit_time, average_cross_time, entry_time} =
+          calculate_time(
+            previous_report,
+            current_report,
+            previous_tile,
+            crossed_tiles,
+            current_tile
+          )
+          # IO.inspect("leave")
+
+        TileSupervisor.leave(bus_server, previous_tile, exit_time)
+
+        time_of_day =
+          DateTime.diff(current_report.time, previous_report.time, :millisecond)
+          |> (fn diff -> round(diff / 2) end).()
+          |> (fn diff -> DateTime.add(previous_report.time, diff, :millisecond) end).()
+
+        WorldManager.crossed_tiles(
+          crossed_tiles,
+          bus_server,
+          average_cross_time,
+          time_of_day
         )
 
-      exited(previous_tile, bus_server, previous_report.time + time_exiting)
-      crossed(tiles, bus_server, average_cross_time)
-
-      entered(
-        current_tile,
-        bus_server,
-        current_report.time - time_entering,
-        current_report.location
-      )
+        TileSupervisor.enter(
+          bus_server,
+          current_tile,
+          entry_time,
+          current_report.location
+        )
+      end
     end
   end
 
-  defp tile_for(%Report{} = report),
-    do: tile_for(report.location)
+  defp tile_for(%{location: %Location{} = location}),
+    do: tile_for(location)
 
   defp tile_for(%Location{} = location) do
     Tile.new(location)
-  end
-
-  defp tile_server_for(%Report{} = report),
-    do: tile_server_for(report.location)
-
-  defp tile_server_for(%Location{} = location) do
-    TileSupervisor.tile_for(location)
-  end
-
-  defp moved(tile_server, bus_server, %Report{} = current_report) do
-    TileServer.moved(tile_server, bus_server, current_report)
-  end
-
-  defp exited(tile_server, bus_server, time) do
-    TileServer.exited(tile_server, bus_server, time)
-  end
-
-  defp entered(tile_server, bus_server, time, location) do
-    TileServer.entered(tile_server, bus_server, time, location)
   end
 
   defp crossed_tiles(previous_report, current_report) do
@@ -77,15 +81,7 @@ defmodule Uchukuzi.World do
     |> Enum.filter(&Tile.intesects?(&1, path))
   end
 
-  defp crossed(tiles, bus_server, average_time) do
-    tiles
-    |> Enum.map(&TileSupervisor.tile_for/1)
-    |> Enum.map(&TileServer.crossed(&1, bus_server, average_time))
-  end
-
-  @spec calculate_time(Uchukuzi.Common.Report.t(), Uchukuzi.Common.Report.t(), any, any, any) ::
-          {float, float, float}
-  defp calculate_time(previous_report, current_report, previous_tile, tiles, current_tile) do
+  defp calculate_time(previous_report, current_report, previous_tile, crossed_tiles, current_tile) do
     path = %Geo.LineString{
       coordinates: [
         Report.to_coord(previous_report),
@@ -99,26 +95,36 @@ defmodule Uchukuzi.World do
         Report.to_coord(current_report)
       )
 
-    distance_exiting = Tile.distance_inside(previous_tile, path, true)
+    case DateTime.diff(current_report.time, previous_report.time) do
+      0 ->
+        {0, 0, 0}
 
-    distance_entering = Tile.distance_inside(current_tile, path, false)
+      total_time ->
+        average_speed = total_distance / total_time
 
-    tiles_crossed =
-      tiles
-      |> Enum.count()
+        distance_exiting = Tile.distance_inside(previous_tile, path, true)
 
-    distance_crossing = total_distance - distance_exiting - distance_entering
+        distance_entering = Tile.distance_inside(current_tile, path, false)
 
-    total_time = current_report.time - previous_report.time
+        tiles_crossed =
+          crossed_tiles
+          |> Enum.count()
 
-    average_time =
-      if tiles_crossed == 0 do
-        0
-      else
-        total_time * distance_crossing / total_distance / tiles_crossed
-      end
+        distance_crossing = total_distance - distance_exiting - distance_entering
 
-    {total_time * distance_exiting / total_distance, average_time,
-     total_time * distance_entering / total_distance}
+        average_time =
+          if tiles_crossed == 0 do
+            0
+          else
+            total_time * (distance_crossing / total_distance) / tiles_crossed
+          end
+
+        time_exiting = distance_exiting / average_speed
+        time_entering = distance_entering / average_speed
+
+        {DateTime.add(previous_report.time, round(time_exiting * 1000), :millisecond),
+         average_time,
+         DateTime.add(current_report.time, round(-time_entering * 1000), :millisecond)}
+    end
   end
 end

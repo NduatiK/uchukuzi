@@ -1,0 +1,4 @@
+l = %Uchukuzi.Common.Location{"lng": -6.178856, "lat": 53.402767000000004}
+t = Uchukuzi.World.Tile.new(l)
+data = Uchukuzi.DiskDB.get(t.coordinate, Uchukuzi.World.WorldManager) 
+Uchukuzi.ETA.LearnerWorker.learn(t.coordinate, data)

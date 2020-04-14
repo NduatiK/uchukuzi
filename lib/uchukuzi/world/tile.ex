@@ -92,7 +92,8 @@ defmodule Uchukuzi.World.Tile do
         origin.lng + offset
       end
 
-    Location.new(lng, lat)
+      {:ok, location} = Location.new(lng, lat)
+      location
   end
 
   @doc """
@@ -103,10 +104,11 @@ defmodule Uchukuzi.World.Tile do
 
     # Use floor so as to always move down and left,
     # even on negative coordinates
-    Location.new(
+    {:ok, location} = Location.new(
       :math.floor(point.lng / size) * size,
       :math.floor(point.lat / size) * size
     )
+    location
   end
 
   @doc """

@@ -9,24 +9,21 @@ defmodule Uchukuzi.World.TileServer do
   # alias __MODULE__
   alias Uchukuzi.Common.Location
   alias Uchukuzi.World.Tile
+  alias Uchukuzi.World.TileSupervisor
   alias Uchukuzi.World.WorldManager
   alias Uchukuzi.Tracking.BusServer
-
-  defmodule BusState do
-    @enforce_keys [:pid, :enter_time, :position, :ref]
-    defstruct [:pid, :enter_time, :position, :ref]
-  end
 
   def start_link(%Location{} = location) do
     GenServer.start_link(__MODULE__, Tile.new(location).coordinate, name: via_tuple(location))
   end
 
   @impl true
-  @spec init(Uchukuzi.Common.Location.t()) :: {:ok, %{buses: %{}, location: Uchukuzi.Common.Location.t()}}
+  @spec init(Uchukuzi.Common.Location.t()) ::
+          {:ok, %{pids: %{}, location: Uchukuzi.Common.Location.t()}}
   def init(%Location{} = location) do
     state = %{
       location: location,
-      buses: %{}
+      pids: %{}
     }
 
     {:ok, state}
@@ -35,112 +32,75 @@ defmodule Uchukuzi.World.TileServer do
   def via_tuple(%Location{} = location),
     do: Uchukuzi.service_name({__MODULE__, location |> Tile.origin_of_tile()})
 
-  def moved(tile_server, bus_pid, current_report) do
-    GenServer.cast(tile_server, {:moved, bus_pid, current_report})
-  end
-
-  def entered(tile_server, bus_pid, exit_time, location) do
-    GenServer.cast(tile_server, {:entered, bus_pid, exit_time, location})
-  end
-
-  def exited(tile_server, bus_pid, exit_time) do
-    GenServer.cast(tile_server, {:exited, bus_pid, exit_time})
-  end
-
-  def crossed(tile_server, bus_pid, average_time) do
-    GenServer.cast(tile_server, {:crossed, bus_pid, average_time})
-  end
-
   @impl true
-  def handle_cast({:moved, bus_pid, current_report}, state) do
-    with bus_state when bus_state != nil <- Map.get(state.buses, bus_pid),
-         true <- bus_state.enter_time < current_report.time do
-      bus_state = %{
-        bus_state
-        | position: current_report.location
-      }
-
-      state
-      |> put_in([:buses, bus_pid], bus_state)
-      |> save_state()
-    else
-      # First appearance in grid
-      nil ->
-        bus_state = %BusState{
-          pid: bus_pid,
-          enter_time: current_report.time,
-          position: current_report.location,
-          ref: Process.monitor(bus_pid)
-        }
-
-        state
-        |> put_in([:buses, bus_pid], bus_state)
-        |> save_state()
-
-      # Late message
-      false ->
-        state |> save_state()
-    end
-  end
-
-  @impl true
-  def handle_cast({:exited, bus_pid, exit_time}, state) do
-    time_inside = exit_time - state.buses[bus_pid].enter_time
-
-    # TODO: Learn
-    # IO.inspect(time_inside, label: "#{self()}: time_inside")
-
-    # Uchukuzi.ETA.time_in(self(), bus_pid, time_inside)
-    state
-    |> remove(bus_pid)
-    |> save_state()
-  end
-
-  @impl true
-  def handle_cast({:entered, bus_pid, entry_time, location}, state) do
-    bus_state = %BusState{
-      pid: bus_pid,
-      enter_time: entry_time,
-      position: location,
-      ref: Process.monitor(bus_pid)
+  def handle_call({:join, pid, report}, _from, state) do
+    record = %{
+      location: report.location,
+      entry_time: report.time,
+      ref: Process.monitor(pid)
     }
 
-    state
-    |> put_in([:buses, bus_pid], bus_state)
-    |> save_state()
+    # IO.inspect(self())
+    # IO.inspect(record, label: "join")
+
+    {:reply, :ok, put_in(state, [:pids, pid], record)}
   end
 
   @impl true
-  def handle_cast({:crossed, bus_pid, average_time}, state) do
-    # TODO: Learn
-    bus = BusServer.bus(bus_pid)
-    WorldManager.bus_crossed_tile(bus, state.tile, average_time)
-    # .time_in(self(), bus_pid, average_time)
-    IO.inspect(average_time, label: "cross time")
+  def handle_call({:enter, pid, entry_time, location}, _from, state) do
+    record = %{
+      location: location,
+      entry_time: entry_time,
+      ref: Process.monitor(pid)
+    }
 
-    state
-    |> save_state()
+    # IO.inspect(self())
+    # IO.inspect(record, label: "enter")
+
+    {:reply, :ok, put_in(state, [:pids, pid], record)}
   end
 
   @impl true
-  def handle_info({:DOWN, _ref, :process, bus, _reason}, state) do
-    state
-    |> remove(bus)
-    |> save_state()
+  def handle_call({:move, pid, report}, _from, state) do
+    # IO.inspect(self())
+    # IO.inspect(state.pids, label: "move")
+
+    {
+      :reply,
+      :ok,
+      put_in(state, [:pids, pid, :location], report.location)
+    }
   end
 
-  defp remove(state, bus) do
-    Process.demonitor(state.buses[bus].ref)
+  @impl true
+  def handle_call({:leave, pid, exit_time}, _from, state) do
+    # IO.inspect(self())
+    # IO.inspect(state.pids, label: "leave")
 
-    %{state | buses: Map.delete(state.buses, bus)}
-  end
+    WorldManager.crossed_tile(
+      Tile.new(state.location),
+      pid,
+      DateTime.diff(exit_time, state.pids[pid].entry_time),
+      state.pids[pid].entry_time
+    )
 
-  def save_state(state) do
-    if state.buses == %{} do
-      # Die when empty
-      {:stop, :normal, state}
+    state = remove(state, pid)
+
+    if state.pids == %{} do
+      {:stop, :normal, :ok, state}
     else
-      {:noreply, state}
+      {:reply, :ok, state}
     end
+  end
+
+  @impl true
+  def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
+    {:noreply, remove(state, pid)}
+  end
+
+  defp remove(state, pid) do
+    Process.demonitor(state.pids[pid].ref)
+
+    %{state | pids: Map.delete(state.pids, pid)}
   end
 end

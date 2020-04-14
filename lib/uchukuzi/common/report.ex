@@ -14,6 +14,8 @@ defmodule Uchukuzi.Common.Report do
   def is_report(%__MODULE__{}), do: true
   def is_report(_), do: false
 
-  def to_coord(%Report{} = report),
-    do: Location.to_coord(report.location)
+  def to_report(%{location: %Location{} = location, time: time}), do: new(time, location)
+
+  def to_coord(%{location: %Location{} = location}),
+    do: Location.to_coord(location)
 end

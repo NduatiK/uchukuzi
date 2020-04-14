@@ -5,12 +5,8 @@ defmodule Uchukuzi.Roles do
 
   use Uchukuzi.Roles.Model
 
-
-  def login_manager(email, password),
-    do: login(Manager, email, password)
-
-  def login(module, email, password) do
-    person = get_by(module, email: email)
+  def login_manager(email, password) do
+    person = get_by(Manager, email: email)
 
     cond do
       person && person.password_hash && Pbkdf2.verify_pass(password, person.password_hash) ->

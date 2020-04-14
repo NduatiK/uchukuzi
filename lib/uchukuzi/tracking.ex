@@ -32,25 +32,37 @@ defmodule Uchukuzi.Tracking do
   end
 
   def move(%Bus{} = bus, %Report{} = report) do
+    # IO.inspect(report)
     bus_server = BusServer.pid_from(bus)
 
-    previous_report = BusServer.last_seen(bus_server) || report
+    previous_report = BusServer.last_seen_status(bus_server)
 
     # Only perform World updates when the bus is outside school,
     # This avoids tracking its presence in the school as being inside a tile for a long time
-    if not in_school?(bus) do
+    # if not in_school?(bus) do
+    if previous_report == nil or DateTime.compare(report.time, previous_report.time) == :gt do
       World.update(bus_server, previous_report, report)
     end
 
-    BusServer.move(bus_server, report)
+    # else
+    #   IO.puts("inschool")
+    # end
 
+    BusServer.move(bus_server, report)
+    # IO.puts("----")
     # TODO: Where do trips come in?
+  end
+
+  def status_of(%Bus{} = bus) do
+    bus
+    |> BusServer.pid_from()
+    |> BusServer.last_seen_status()
   end
 
   def where_is(%Bus{} = bus) do
     bus
     |> BusServer.pid_from()
-    |> BusServer.last_seen()
+    |> BusServer.last_seen_location()
   end
 
   def in_school?(%Bus{} = bus) do
@@ -61,8 +73,8 @@ defmodule Uchukuzi.Tracking do
   def add_location_to_buses(buses) do
     buses
     |> Enum.map(&{1, Tracking.where_is(&1)})
-    |> Enum.map(fn {bus, report} ->
-      %{bus: bus.id, loc: if(is_nil(report), do: nil, else: report.location)}
+    |> Enum.map(fn {bus, location} ->
+      %{bus: bus.id, loc: if(is_nil(location), do: nil, else: location)}
     end)
   end
 end

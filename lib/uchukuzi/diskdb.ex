@@ -11,7 +11,7 @@ defmodule Uchukuzi.DiskDB do
 
   def createTable(table_name) do
     :dets.open_file(table_name, type: :set)
-    :dets.insert(table_name, {"count", 0, "metadata"})
+    # :dets.insert(table_name, {"count", 0, "metadata"})
 
     {:ok, catalogue} = :dets.open_file(__MODULE__, type: :set)
     :dets.insert(catalogue, {table_name, table_name})
@@ -69,14 +69,15 @@ defmodule Uchukuzi.DiskDB do
   end
 
   def insert(record, table, at) do
-    case :dets.lookup(table, "count") do
-      [{_key, count, tag} | _] ->
-        :dets.insert(table, {"count", count + 1, tag})
-        :dets.insert(table, {at || count + 1, %{record: record, id: count}})
+    :dets.insert(table, {at, record})
+    # case :dets.lookup(table, "count") do
+      # [{_key, count, tag} | _] ->
+        # :dets.insert(table, {"count", count + 1, tag})
+        # :dets.insert(table, {at || count + 1, %{record: record, id: count}})
 
-      _ ->
-        {:error, "does not exist"}
-    end
+      # _ ->
+      #   {:error, "does not exist"}
+    # end
   end
 
   @doc """

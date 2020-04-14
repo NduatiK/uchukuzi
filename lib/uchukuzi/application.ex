@@ -10,7 +10,8 @@ defmodule Uchukuzi.Application do
       {Uchukuzi.Repo, []},
       {Registry, keys: :unique, name: Uchukuzi.Registry},
       Uchukuzi.Tracking.BusesSupervisor,
-      Uchukuzi.World.WorldSupervisor
+      Uchukuzi.World.WorldSupervisor,
+      Uchukuzi.ETA.ETASupervisor
     ]
 
     :ets.new(Uchukuzi.Tracking.TripTracker.tableName(), [:public, :named_table])

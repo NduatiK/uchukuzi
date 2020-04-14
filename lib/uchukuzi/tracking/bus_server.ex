@@ -11,7 +11,7 @@ defmodule Uchukuzi.Tracking.BusServer do
 
   defmodule State do
     alias __MODULE__
-    defstruct [:last_seen, :bus, :school, :speed, :bearing]
+    defstruct [:bus, :school, last_seen: nil, speed: 0, bearing: 0]
 
     @spec set_location(Uchukuzi.Tracking.BusServer.State.t(), Uchukuzi.Common.Report.t()) ::
             Uchukuzi.Tracking.BusServer.State.t()
@@ -24,6 +24,13 @@ defmodule Uchukuzi.Tracking.BusServer do
         s = if(t == 0, do: 0, else: d / t)
 
         bearing = Location.bearing(last_seen.location, report.location)
+
+        bearing =
+          if bearing < 0 do
+            bearing + 360
+          else
+            bearing
+          end
 
         %{
           state
@@ -62,9 +69,10 @@ defmodule Uchukuzi.Tracking.BusServer do
     end
 
     def in_school?(%State{} = state) do
-      case state.school do
-        nil -> true
-        school -> School.contains_point?(school, state.last_seen.location)
+      case {state.school, state.last_seen} do
+        {_, nil} -> true
+        {nil, _} -> true
+        {school, _} -> School.contains_point?(school, state.last_seen.location)
       end
     end
   end
@@ -103,9 +111,12 @@ defmodule Uchukuzi.Tracking.BusServer do
     do: GenServer.cast(bus_server, {:bus})
 
   def move(bus_server, %Report{} = report),
-    do: GenServer.cast(bus_server, {:move, report})
+    do: GenServer.call(bus_server, {:move, report})
 
-  def last_seen(bus_server),
+  def last_seen_location(bus_server),
+    do: GenServer.call(bus_server, :last_seen).location
+
+  def last_seen_status(bus_server),
     do: GenServer.call(bus_server, :last_seen)
 
   def broadcast_location_data(bus_server),
@@ -116,8 +127,15 @@ defmodule Uchukuzi.Tracking.BusServer do
 
   # *************************** SERVER ***************************#
 
-  def handle_cast({:move, report}, state) do
-    {:noreply, State.set_location(state, report)}
+  @impl true
+  def handle_call({:move, report}, _from, state) do
+    state = State.set_location(state, report)
+
+    if State.in_school?(state) do
+      {:stop, {:in_school, report}, state, state}
+    else
+      {:reply, state, state}
+    end
   end
 
   def handle_call(:last_seen, _from, state) do

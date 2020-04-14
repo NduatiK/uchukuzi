@@ -17,16 +17,37 @@ defmodule Uchukuzi.World.TileSupervisor do
 
   def tile_for(%Location{} = location) do
     with nil <- GenServer.whereis(TileServer.via_tuple(location)) do
-      {:ok, child} =
-        DynamicSupervisor.start_child(
-          __MODULE__,
-          {TileServer, location}
-        )
-
-      child
+      with {:ok, child} <-
+             DynamicSupervisor.start_child(
+               __MODULE__,
+               {TileServer, location}
+             ) do
+        child
+      else
+        {:error, {:already_started, pid}} ->
+          pid
+      end
     end
   end
 
   def tile_for(%Tile{} = tile),
     do: tile_for(tile.coordinate)
+
+  def join(pid, tile, report),
+    do: call_cell(tile, {:join, pid, report})
+
+  def enter(pid, tile, entry_time, location),
+    do: call_cell(tile, {:enter, pid, entry_time, location})
+
+  def leave(pid, tile, exit_time),
+    do: call_cell(tile, {:leave, pid, exit_time})
+
+  def move(pid, tile, current_report),
+    do: call_cell(tile, {:move, pid, current_report})
+
+  defp call_cell(tile, arguments) do
+    tile.coordinate
+    |> tile_for()
+    |> GenServer.call(arguments)
+  end
 end

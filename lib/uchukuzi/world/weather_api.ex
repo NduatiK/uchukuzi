@@ -42,8 +42,8 @@ defmodule Uchukuzi.World.WeatherAPI do
   # HTTPPoison
   alias Uchukuzi.Common.Location
 
-  def weather_at(server, %Location{} = location) do
-    GenServer.call(server, {:get_weather, location})
+  def weather_at(%Location{} = location) do
+    GenServer.call(GenServer.whereis(Uchukuzi.World.WeatherAPI), {:get_weather, location})
   end
 
   def handle_call({:get_weather, %Location{} = location}, _from, state) do
@@ -90,7 +90,7 @@ defmodule Uchukuzi.World.WeatherAPI do
        }}
     else
       e ->
-        IO.inspect(e)
+        # IO.inspect(e)
         :error
     end
   end

@@ -2,6 +2,7 @@ defmodule Uchukuzi.World.WorldManager do
   use GenServer
 
   alias Uchukuzi.School.Route
+  alias Uchukuzi.DiskDB, as: DB
 
   @moduledoc """
   Keeps track of the world and provides the following fuctionality:
@@ -25,17 +26,61 @@ defmodule Uchukuzi.World.WorldManager do
 
   def init(_arg) do
     state = []
+    DB.createTable(__MODULE__)
+    # send(self(), :train)
     {:ok, state}
   end
 
-  def bus_crossed_tile(bus, tile, time) do
-    GenServer.cast(GenServer.whereis(@name), {:crossed, bus, tile, time})
+  def handle_call(
+        {:crossed_tiles, tiles, _bus_server, average_cross_time, time_of_day},
+        _from,
+        state
+      ) do
+    time_value = time_of_day.hour + time_of_day.minute / 60
+
+    for tile <- tiles do
+      with {:ok, dataset} <- DB.get(tile.coordinate, @name) do
+        [[time_value, average_cross_time] | dataset]
+        |> Enum.take(1000)
+        |> DB.insert(@name, tile.coordinate)
+      else
+        {:error, "does not exist"} ->
+          [[time_value, average_cross_time]]
+          |> DB.insert(@name, tile.coordinate)
+      end
+    end
+
+    {:reply, state, state}
   end
 
-  def arrived_at_stop(server, route_stop, tile, time_in_tile) do
+  def handle_call({:crossed_tile, tile, _bus_server, cross_time, time_of_day}, _from, state) do
+    time_value = time_of_day.hour + time_of_day.minute / 60
+
+    with {:ok, dataset} <- DB.get(tile.coordinate, @name) do
+      [[time_value, cross_time] | dataset]
+      |> Enum.take(1000)
+      |> DB.insert(@name, tile.coordinate)
+    else
+      {:error, "does not exist"} ->
+        [[time_value, cross_time]]
+        |> DB.insert(@name, tile.coordinate)
+    end
+
+    {:reply, state, state}
   end
 
-  @spec predict_time_to_tile(any, any, any) :: nil
-  def predict_time_to_tile(server, current_tile, tile) do
+  # ******** Client API ********
+  def crossed_tile(tile, bus_server, cross_time, time_of_day) do
+    GenServer.call(
+      GenServer.whereis(@name),
+      {:crossed_tile, tile, bus_server, cross_time, time_of_day}
+    )
+  end
+
+  def crossed_tiles(tiles, bus_server, average_cross_time, time_of_day) do
+    GenServer.call(
+      GenServer.whereis(@name),
+      {:crossed_tiles, tiles, bus_server, average_cross_time, time_of_day}
+    )
   end
 end

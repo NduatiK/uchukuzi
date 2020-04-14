@@ -17,7 +17,7 @@ defmodule Uchukuzi.School do
     |> Multi.insert(:school, school_changeset)
     |> Multi.insert(:manager, fn %{school: school} ->
       Ecto.build_assoc(school, :manager)
-      |> Manager.changeset(manager)
+      |> Manager.registration_changeset(manager)
     end)
     |> Repo.transaction()
   end
@@ -52,6 +52,20 @@ defmodule Uchukuzi.School do
 
   def get_school(school_id),
     do: Repo.get(School, school_id)
+
+  def crew_member_for(school_id, crew_member_id) do
+    CrewMember
+    |> where(school_id: ^school_id, id: ^crew_member_id)
+    |> Repo.one()
+  end
+
+  def update_crew_member_for(school_id, crew_member_id, params) do
+    CrewMember
+    |> where(school_id: ^school_id, id: ^crew_member_id)
+    |> Repo.one()
+    |> CrewMember.changeset(params)
+    |> Repo.update()
+  end
 
   def crew_members_for(school_id) do
     CrewMember

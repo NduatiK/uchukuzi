@@ -33,8 +33,12 @@ defmodule Uchukuzi.MixProject do
       {:topo, "~> 0.4.0"},
       {:distance, "~> 0.2.1"},
       {:envelope, "~> 1.1"},
-      {:penelope, "~> 0.4"},
       {:eqrcode, "~> 0.1.7"},
+
+
+      # ----- PYTHON for ML --------
+      {:export, "~> 0.1.0"},
+      {:poolboy, "~> 1.5.1"},
 
       # ----- WEATHER --------
       {:httpoison, "~> 0.4"},
