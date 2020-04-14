@@ -1,4 +1,4 @@
-defmodule Uchukuzi.ETA.LearnerWorker do
+defmodule Uchukuzi.ETA.PredictionWorker do
   use GenServer
   use Export.Python
 

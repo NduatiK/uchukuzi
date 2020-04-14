@@ -24,3 +24,5 @@ uchukuzi_backend-*.tar
 
 # Ignore elixir language server files
 /.elixir_ls/
+
+/lib/python/__pycache__
