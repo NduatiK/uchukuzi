@@ -62,8 +62,8 @@ google-map-cached {
   backdrop-filter: blur(4px);
 }
 
-a.button-link,
-div.cssResponsive[role='button'] {
+a.button-link:not(.ignoreCss),
+div.cssResponsive[role='button']:not(.ignoreCss) {
   text-align: center;
   text-decoration: none;
   font-weight: 700;

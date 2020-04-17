@@ -17,6 +17,7 @@ module Style exposing
     , errorStyle
     , header2Style
     , headerStyle
+    , ignoreCss
     , inputStyle
     , labelStyle
     , mobileHidden
@@ -202,6 +203,11 @@ animatesAll =
 animatesNone : Attribute msg
 animatesNone =
     classAttr "animatesNone"
+
+
+ignoreCss : Attribute msg
+ignoreCss =
+    classAttr "ignoreCss"
 
 
 cssResponsive : Attribute msg
