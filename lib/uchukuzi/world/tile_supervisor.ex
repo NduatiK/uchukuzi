@@ -33,17 +33,11 @@ defmodule Uchukuzi.World.TileSupervisor do
   def tile_for(%Tile{} = tile),
     do: tile_for(tile.coordinate)
 
-  def join(pid, tile, report),
-    do: call_cell(tile, {:join, pid, report})
-
-  def enter(pid, tile, entry_time, location),
-    do: call_cell(tile, {:enter, pid, entry_time, location})
+  def enter(pid, tile, entry_time),
+    do: call_cell(tile, {:enter, pid, entry_time})
 
   def leave(pid, tile, exit_time),
     do: call_cell(tile, {:leave, pid, exit_time})
-
-  def move(pid, tile, current_report),
-    do: call_cell(tile, {:move, pid, current_report})
 
   defp call_cell(tile, arguments) do
     tile.coordinate

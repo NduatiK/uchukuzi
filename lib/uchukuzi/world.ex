@@ -7,23 +7,21 @@ defmodule Uchukuzi.World do
   alias Uchukuzi.World.Tile
 
   # TODO: What happens when these updates are within the school
-  @spec update(any, Uchukuzi.Common.Report.t(), Uchukuzi.Common.Report.t()) :: :ok
   def update(bus_server, previous_report, current_report) do
     current_tile = tile_for(current_report)
 
     if previous_report == nil do
-      TileSupervisor.join(bus_server, current_tile, current_report)
+      TileSupervisor.enter(bus_server, current_tile, current_report.time)
+      [current_tile]
     else
       current_report = Report.to_report(current_report)
       previous_report = Report.to_report(previous_report)
       previous_tile = tile_for(previous_report)
 
       if current_tile == previous_tile do
-        TileSupervisor.move(bus_server, current_tile, current_report)
+        []
       else
-
         crossed_tiles = crossed_tiles(previous_report, current_report)
-        # IO.inspect("crossed_tiles = crossed_tiles")
 
         {exit_time, average_cross_time, entry_time} =
           calculate_time(
@@ -33,7 +31,8 @@ defmodule Uchukuzi.World do
             crossed_tiles,
             current_tile
           )
-          # IO.inspect("leave")
+
+        # IO.inspect("leave")
 
         TileSupervisor.leave(bus_server, previous_tile, exit_time)
 
@@ -52,9 +51,10 @@ defmodule Uchukuzi.World do
         TileSupervisor.enter(
           bus_server,
           current_tile,
-          entry_time,
-          current_report.location
+          entry_time
         )
+
+        [previous_tile] ++ crossed_tiles ++ [current_tile]
       end
     end
   end
@@ -78,7 +78,18 @@ defmodule Uchukuzi.World do
     }
 
     Tile.tiles_between(start_tile, end_tile)
-    |> Enum.filter(&Tile.intesects?(&1, path))
+    |> Enum.map(&{&1, Tile.distance_inside(&1, path)})
+    # Filter out non intersecting
+    |> Enum.flat_map(fn {tile, result} ->
+      case result do
+        {:ok, distance} -> [{tile, distance}]
+        _ -> []
+      end
+    end)
+    # Sort nearest to farthest
+    |> Enum.sort_by(fn {_, distance} -> distance end)
+    # Map to tile
+    |> Enum.map(fn {tile, _} -> tile end)
   end
 
   defp calculate_time(previous_report, current_report, previous_tile, crossed_tiles, current_tile) do
@@ -102,9 +113,9 @@ defmodule Uchukuzi.World do
       total_time ->
         average_speed = total_distance / total_time
 
-        distance_exiting = Tile.distance_inside(previous_tile, path, true)
+        {:ok, distance_exiting} = Tile.distance_inside(previous_tile, path, true)
 
-        distance_entering = Tile.distance_inside(current_tile, path, false)
+        {:ok, distance_entering} = Tile.distance_inside(current_tile, path, false)
 
         tiles_crossed =
           crossed_tiles

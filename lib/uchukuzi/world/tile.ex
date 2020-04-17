@@ -92,8 +92,8 @@ defmodule Uchukuzi.World.Tile do
         origin.lng + offset
       end
 
-      {:ok, location} = Location.new(lng, lat)
-      location
+    {:ok, location} = Location.new(lng, lat)
+    location
   end
 
   @doc """
@@ -104,22 +104,33 @@ defmodule Uchukuzi.World.Tile do
 
     # Use floor so as to always move down and left,
     # even on negative coordinates
-    {:ok, location} = Location.new(
-      :math.floor(point.lng / size) * size,
-      :math.floor(point.lat / size) * size
-    )
+    {:ok, location} =
+      Location.new(
+        :math.floor(point.lng / size) * size,
+        :math.floor(point.lat / size) * size
+      )
+
     location
   end
 
   @doc """
   Determines the distance covered by a vehicle as it was moving into or out of a Tile
   """
-  def distance_inside(tile, %Geo.LineString{} = path, is_leaving) do
+  def distance_inside(tile, %Geo.LineString{} = path, is_leaving \\ false) do
     tile.polygon
     |> to_paths
     |> distances_for_intersecting_paths(path, is_leaving)
     |> Enum.sort(&>=/2)
-    |> hd()
+    |> (fn
+          x ->
+            case x do
+              [head | _] ->
+                {:ok, head}
+
+              [] ->
+                :error
+            end
+        end).()
   end
 
   @doc """
@@ -159,21 +170,6 @@ defmodule Uchukuzi.World.Tile do
 
         _ ->
           []
-      end
-    end)
-  end
-
-  @doc """
-  Determines whether a line passes through a tile
-  """
-  def intesects?(%Tile{polygon: polygon}, %Geo.LineString{coordinates: [p1, p2]}) do
-    polygon
-    |> to_paths
-    |> Enum.any?(fn %Geo.LineString{coordinates: [q1, q2]} ->
-      with {true, :interior, {_, _}} <- SegSeg.intersection(p1, p2, q1, q2) do
-        true
-      else
-        _ -> false
       end
     end)
   end
