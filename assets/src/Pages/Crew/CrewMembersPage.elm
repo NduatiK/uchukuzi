@@ -461,7 +461,10 @@ viewBus editedData edits inEditingMode bus =
     in
     column
         ((if inEditingMode then
-            List.map htmlAttribute (droppable (DroppedCrewMemberOnto bus) (DraggedCrewMemberAbove bus.id))
+            droppable
+                { onDrop = DroppedCrewMemberOnto bus
+                , onDragOver = DraggedCrewMemberAbove bus.id
+                }
 
           else
             []
@@ -541,7 +544,10 @@ viewCrew bus drivers assistants inEditingMode aboveRole =
                              , Border.rounded 3
                              , Background.color (Colors.withAlpha Colors.darkGreen 0.2)
                              ]
-                                ++ List.map htmlAttribute (draggable (StartedDragging x) (StoppedDragging x))
+                                ++ draggable
+                                    { onDragStart = StartedDragging x
+                                    , onDragEnd = StoppedDragging x
+                                    }
                                 ++ Style.labelStyle
                             )
                             provideView
@@ -608,7 +614,10 @@ viewUnassignedCrewMembers data windowHeight inEditingMode =
                     , label =
                         el
                             ((if inEditingMode then
-                                List.map htmlAttribute (draggable (StartedDragging x) (StoppedDragging x))
+                                draggable
+                                    { onDragStart = StartedDragging x
+                                    , onDragEnd = StoppedDragging x
+                                    }
 
                               else
                                 []
@@ -624,7 +633,10 @@ viewUnassignedCrewMembers data windowHeight inEditingMode =
     column
         ([ width fill, height fill, spacing 8 ]
             ++ (if inEditingMode then
-                    List.map htmlAttribute (droppable DroppedCrewMemberOntoUnassigned DraggedCrewMemberAboveUnassigned)
+                    droppable
+                        { onDrop = DroppedCrewMemberOntoUnassigned
+                        , onDragOver = DraggedCrewMemberAboveUnassigned
+                        }
 
                 else
                     []

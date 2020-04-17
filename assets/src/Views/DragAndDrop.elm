@@ -1,6 +1,6 @@
 module Views.DragAndDrop exposing (Config, draggable, droppable)
 
-import Html exposing (..)
+import Element exposing (htmlAttribute)
 import Html.Attributes exposing (attribute)
 import Html.Events exposing (custom, on)
 import Json.Decode as Json
@@ -16,25 +16,31 @@ type alias Config msg dragData dropData =
 
 {-| Add this to things that can be dragged
 
-draggable dragStartMsg dragEndMsg
+    draggable
+        { onDragStart = ...
+        , onDragEnd = ...
+        }
 
 -}
-draggable : msg -> msg -> List (Attribute msg)
-draggable dragStartMsg dragEndMsg =
-    [ attribute "draggable" "true"
-    , on "dragstart" <| Json.succeed <| dragStartMsg
-    , on "dragend" <| Json.succeed <| dragEndMsg
+draggable : { a | onDragStart : msg, onDragEnd : msg } -> List (Element.Attribute msg)
+draggable { onDragStart, onDragEnd } =
+    [ htmlAttribute (attribute "draggable" "true")
+    , htmlAttribute (on "dragstart" <| Json.succeed <| onDragStart)
+    , htmlAttribute (on "dragend" <| Json.succeed <| onDragEnd)
     ]
 
 
 {-| Add this to things that can have things dropped on them
 
-droppable dropOntoMeMsg draggedOverMeMsg
+    droppable
+        { onDrop = DroppedCrewMemberOntoUnassigned
+        , onDragOver = DraggedCrewMemberAboveUnassigned
+        }
 
 -}
-droppable : msg -> msg -> List (Attribute msg)
-droppable dropMsg dragOverMsg =
-    [ attribute "droppable" "true"
-    , custom "drop" <| Json.succeed { message = dropMsg, preventDefault = True, stopPropagation = True }
-    , custom "dragover" <| Json.succeed { message = dragOverMsg, preventDefault = True, stopPropagation = True }
+droppable : { a | onDrop : msg, onDragOver : msg } -> List (Element.Attribute msg)
+droppable { onDrop, onDragOver } =
+    [ htmlAttribute (attribute "droppable" "true")
+    , htmlAttribute (custom "drop" <| Json.succeed { message = onDrop, preventDefault = True, stopPropagation = True })
+    , htmlAttribute (custom "dragover" <| Json.succeed { message = onDragOver, preventDefault = True, stopPropagation = True })
     ]
