@@ -1,7 +1,7 @@
 module Models.Household exposing (Household, Location, Student, householdDecoder)
 
-import Json.Decode as Decode exposing (Decoder, float, int, list, nullable, string, succeed)
-import Json.Decode.Pipeline exposing (optional, required, resolve)
+import Json.Decode as Decode exposing (Decoder, float, int, list, string, succeed)
+import Json.Decode.Pipeline exposing (required, resolve)
 
 
 type alias Household =
@@ -9,6 +9,16 @@ type alias Household =
     , guardian : Guardian
     , students : List Student
     }
+
+
+
+-- type alias StudentViewModel =
+--     { name : String
+--     , pickup_location : Location
+--     , time : String
+--     , household_id : Int
+--     , route : String
+--     }
 
 
 type alias Guardian =

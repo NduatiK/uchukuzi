@@ -1,19 +1,12 @@
 module Pages.Buses.BusDevicePage exposing (Model, Msg, init, update, view, viewFooter)
 
-import Api exposing (get)
-import Api.Endpoint as Endpoint exposing (trips)
 import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
-import Html.Attributes exposing (class, id)
 import Icons
-import Iso8601
-import Json.Decode as Decode exposing (Decoder, float, int, list, string)
-import Json.Decode.Pipeline exposing (optional, required, resolve)
 import Models.Bus exposing (Bus)
 import Navigation
 import Ports
@@ -22,8 +15,6 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.Footer as Footer
-import Time
-import Utils.Date
 
 
 type alias Model =
@@ -38,6 +29,7 @@ type Page
     | Features
 
 
+pageToString : Page -> String
 pageToString page =
     case page of
         About ->
@@ -49,6 +41,7 @@ pageToString page =
 
 type Msg
     = AddDevice
+    | RemoveDevice
       ------
     | ClickedAboutPage
     | ClickedFeaturesPage
@@ -77,6 +70,9 @@ update msg model =
         ClickedFeaturesPage ->
             ( { model | currentPage = Features }, Cmd.none )
 
+        RemoveDevice ->
+            ( model, Cmd.none )
+
 
 
 -- VIEW
@@ -97,15 +93,29 @@ view model =
             viewDeviceRegistration model
 
 
+viewDeviceRegistration : Model -> Element Msg
 viewDeviceRegistration model =
     column
-        [ spacing 80
+        [ spacing 60
+        , centerX
         ]
-        [ Icons.dashedBox [ Background.color Colors.white ]
-        , el [] none
+        [ column [ spacing 30, centerX ]
+            [ Icons.dashedBox [ Background.color Colors.white ]
+            , el (centerX :: Style.labelStyle) (text "You have not yet linked a device to this bus")
+            ]
+        , StyledElement.button
+            [ Background.color Colors.purple, alignBottom, centerX ]
+            { label =
+                row [ spacing 8 ]
+                    [ Icons.add [ centerY, Colors.fillWhite, alpha 1 ]
+                    , el [ centerY, paddingEach { edges | top = 2 } ] (text "Add device")
+                    ]
+            , onPress = Just AddDevice
+            }
         ]
 
 
+viewDevice : Models.Bus.Device -> Element Msg
 viewDevice device =
     let
         take4 : List String -> String -> List String
@@ -136,12 +146,13 @@ viewDevice device =
                 { label =
                     row [ spacing 8 ]
                         [ Icons.trash [ centerY, Colors.fillWhite, alpha 1 ], el [ centerY, paddingEach { edges | top = 2 } ] (text "Remove from bus") ]
-                , onPress = Just AddDevice
+                , onPress = Just RemoveDevice
                 }
             )
         ]
 
 
+viewDeviceFeatures : Models.Bus.Device -> Element Msg
 viewDeviceFeatures device =
     column [ width fill, height fill ]
         [ row
@@ -161,7 +172,7 @@ viewDeviceFeatures device =
                 { label =
                     row [ spacing 8 ]
                         [ Icons.trash [ centerY, Colors.fillWhite, alpha 1 ], el [ centerY, paddingEach { edges | top = 2 } ] (text "Remove from bus") ]
-                , onPress = Just AddDevice
+                , onPress = Just RemoveDevice
                 }
             )
         ]
@@ -184,6 +195,7 @@ viewFooter model =
             none
 
 
+viewAddDevice : Model -> Element Msg
 viewAddDevice model =
     Input.button []
         { onPress = Just AddDevice

@@ -8,10 +8,13 @@ module Models.Bus exposing
     , VehicleType(..)
     , busDecoder
     , busDecoderWithCallback
+    , imageForPart
     , titleForPart
     , vehicleTypeToString
     )
 
+import Element
+import Icons.Repairs
 import Json.Decode as Decode exposing (Decoder, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required, resolve)
 import Models.Location exposing (Location, locationDecoder)
@@ -48,10 +51,11 @@ type alias LocationUpdate =
     }
 
 
-type alias Student =
-    { id : String
-    , name : String
-    }
+
+-- type alias Student =
+--     { id : String
+--     , name : String
+--     }
 
 
 type VehicleType
@@ -60,6 +64,7 @@ type VehicleType
     | SchoolBus
 
 
+vehicleTypeToString : VehicleType -> String
 vehicleTypeToString vehicleType =
     case vehicleType of
         Van ->
@@ -89,6 +94,34 @@ type Part
     | FrontCrossAxis
     | RearCrossAxis
     | VerticalAxis
+
+
+imageForPart : Part -> List (Element.Attribute msg) -> Element.Element msg
+imageForPart part =
+    case part of
+        VerticalAxis ->
+            Icons.Repairs.verticalAxisRepair
+
+        Engine ->
+            Icons.Repairs.engineRepair
+
+        FrontLeftTire ->
+            Icons.Repairs.frontLeftTireRepair
+
+        FrontRightTire ->
+            Icons.Repairs.frontRightTireRepair
+
+        RearLeftTire ->
+            Icons.Repairs.rearLeftTireRepair
+
+        RearRightTire ->
+            Icons.Repairs.rearRightTireRepair
+
+        FrontCrossAxis ->
+            Icons.Repairs.frontCrossAxisRepair
+
+        RearCrossAxis ->
+            Icons.Repairs.rearCrossAxisRepair
 
 
 toPart : String -> Part

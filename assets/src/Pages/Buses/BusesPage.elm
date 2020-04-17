@@ -6,15 +6,10 @@ import Colors
 import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as Background
-import Element.Border as Border
 import Element.Font as Font
-import Element.Input as Input
 import Errors
-import Html exposing (Html)
-import Html.Attributes exposing (id)
 import Icons
-import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
-import Json.Decode.Pipeline exposing (optional, required)
+import Json.Decode exposing (list)
 import Models.Bus exposing (Bus, LocationUpdate, busDecoder, vehicleTypeToString)
 import Models.Location exposing (Location)
 import Navigation
@@ -409,6 +404,7 @@ fetchBuses session =
         |> Cmd.map ServerResponse
 
 
+busesFromModel : WebData (List Bus) -> Maybe (List Bus)
 busesFromModel model =
     case model of
         Success buses ->

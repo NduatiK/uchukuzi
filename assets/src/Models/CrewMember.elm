@@ -21,8 +21,9 @@ type Role
     | Assistant
 
 
-roleToString vehicleType =
-    case vehicleType of
+roleToString : Role -> String
+roleToString role =
+    case role of
         Driver ->
             "Driver"
 
@@ -30,6 +31,7 @@ roleToString vehicleType =
             "Assistant"
 
 
+crewDecoder : Decoder CrewMember
 crewDecoder =
     let
         decoder id name role_ email phoneNumber bus =
@@ -100,7 +102,7 @@ applyChanges changes data =
                                 )
                                 editedData.crew
 
-                        Remove crewMember_id bus ->
+                        Remove crewMember_id _ ->
                             List.map
                                 (\c ->
                                     if crewMember_id == c.id then
@@ -146,6 +148,7 @@ trimChanges dataOld dataNew =
     changes
 
 
+encodeChanges : List Change -> Http.Body
 encodeChanges changes =
     let
         objectEncoder change =
@@ -159,6 +162,7 @@ encodeChanges changes =
         |> Http.jsonBody
 
 
+changeToString : Change -> String
 changeToString change =
     case change of
         Add _ _ ->
@@ -168,6 +172,7 @@ changeToString change =
             "remove"
 
 
+changeToBusID : Change -> Int
 changeToBusID change =
     case change of
         Add _ bus_id ->
@@ -177,6 +182,7 @@ changeToBusID change =
             bus_id
 
 
+changeToCrewID : Change -> Int
 changeToCrewID change =
     case change of
         Add crew_id _ ->

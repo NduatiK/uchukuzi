@@ -1,18 +1,9 @@
 module Pages.Home exposing (Model, init, view)
 
-import Browser
-import Dropdown
 import Element exposing (..)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Font as Font
-import Element.Input as Input
-import Element.Region as Region
 import Html exposing (Html)
 import Html.Events exposing (..)
 import Icons
-import Json.Decode as Decode
-import Navigation exposing (href)
 import Session exposing (Session)
 import Style exposing (edges)
 import Views.Heading exposing (viewHeading)

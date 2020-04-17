@@ -10,12 +10,8 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Errors
-import Html.Attributes exposing (class, id)
-import Http
 import Icons
-import Iso8601
-import Json.Decode as Decode exposing (Decoder, float, int, list, string)
-import Json.Decode.Pipeline exposing (optional, required, resolve)
+import Json.Decode exposing (list)
 import Models.Trip exposing (Report, StudentActivity, Trip, tripDecoder)
 import Ports
 import RemoteData exposing (..)

@@ -5,7 +5,7 @@ port module Models.Location exposing
     , storeSchoolLocation
     )
 
-import Json.Decode as Decode exposing (Decoder, float, int, nullable, string)
+import Json.Decode as Decode exposing (Decoder, float)
 import Json.Decode.Pipeline exposing (required)
 
 

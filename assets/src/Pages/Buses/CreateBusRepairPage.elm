@@ -1,31 +1,25 @@
 module Pages.Buses.CreateBusRepairPage exposing (Model, Msg, init, update, view)
 
-import Api exposing (get)
-import Api.Endpoint as Endpoint exposing (trips)
+import Api
+import Api.Endpoint as Endpoint
 import Browser.Dom
 import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
-import Element.Input as Input
 import Errors
-import Html.Attributes exposing (class, id)
+import Html.Attributes exposing (id)
 import Http
 import Icons
 import Icons.Repairs
-import Iso8601
-import Json.Decode as Decode exposing (Decoder, float, int, list, string)
-import Json.Decode.Pipeline exposing (optional, required, resolve)
+import Json.Decode as Decode exposing (Decoder, int, list, string)
 import Json.Encode as Encode
-import Models.Bus exposing (Part(..), RepairRecord, titleForPart)
+import Models.Bus exposing (Part(..), RepairRecord, imageForPart, titleForPart)
 import Navigation
-import Pages.Buses.BusPage
-import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
-import Style exposing (edges)
+import Style
 import StyledElement
 import Task
 import Views.DragAndDrop exposing (draggable, droppable)
@@ -247,10 +241,12 @@ view model =
         ]
 
 
+viewRecordsID : String
 viewRecordsID =
     "viewRecords"
 
 
+viewRecords : Model -> Element Msg
 viewRecords model =
     column [ height fill, width (fillPortion 4), centerX, centerY, spacing 10 ]
         [ column [ htmlAttribute (id viewRecordsID), scrollbarY, width fill, spacing 10 ] (List.map (viewRecord model.problems) model.repairs)
@@ -277,6 +273,7 @@ viewRecords model =
         ]
 
 
+viewRecord : List (Errors.Errors Problem) -> RepairRecord -> Element Msg
 viewRecord problems repair =
     let
         errorMapper field match =
@@ -290,7 +287,7 @@ viewRecord problems repair =
         ]
         (row [ width fill ]
             [ el [ width (px 250) ]
-                (imageFor repair.part
+                (imageForPart repair.part
                     ([ padding 0, alignLeft ]
                         ++ draggable
                             { onDragStart = StartedDragging (Record repair.id)
@@ -345,7 +342,7 @@ viewVehicle model =
         viewImage part =
             if model.pickedUpItem /= Just (Part part) && not (List.member part visibleParts) then
                 inFront
-                    (imageFor part
+                    (imageForPart part
                         (draggable
                             { onDragStart = StartedDragging (Part part)
                             , onDragEnd = StoppedDragging
@@ -424,33 +421,6 @@ viewButton requestState =
     in
     el (Style.labelStyle ++ [ width fill ])
         buttonView
-
-
-imageFor part =
-    case part of
-        VerticalAxis ->
-            Icons.Repairs.verticalAxisRepair
-
-        Engine ->
-            Icons.Repairs.engineRepair
-
-        FrontLeftTire ->
-            Icons.Repairs.frontLeftTireRepair
-
-        FrontRightTire ->
-            Icons.Repairs.frontRightTireRepair
-
-        RearLeftTire ->
-            Icons.Repairs.rearLeftTireRepair
-
-        RearRightTire ->
-            Icons.Repairs.rearRightTireRepair
-
-        FrontCrossAxis ->
-            Icons.Repairs.frontCrossAxisRepair
-
-        RearCrossAxis ->
-            Icons.Repairs.rearCrossAxisRepair
 
 
 

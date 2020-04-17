@@ -1,30 +1,20 @@
 module Pages.Buses.AboutBus exposing (Model, Msg, init, locationUpdateMsg, update, view, viewFooter)
 
-import Api exposing (get)
-import Api.Endpoint as Endpoint exposing (trips)
 import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Element.Lazy
-import Html.Attributes exposing (class, id)
 import Icons
-import Iso8601
-import Json.Decode as Decode exposing (Decoder, float, int, list, string)
-import Json.Decode.Pipeline exposing (optional, required, resolve)
-import Models.Bus exposing (Bus, LocationUpdate, Route, busDecoderWithCallback)
+import Models.Bus exposing (Bus, LocationUpdate, Route)
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement exposing (textStack, textStackWithSpacing)
 import StyledElement.Footer as Footer
-import Task
-import Time
-import Utils.Date
 
 
 type alias Model =
@@ -42,6 +32,7 @@ type Page
     | Crew
 
 
+pageToString : Page -> String
 pageToString page =
     case page of
         Statistics ->
@@ -108,6 +99,7 @@ update msg model =
             ( { model | bus = { currentBus | last_seen = Just locationUpdate } }, Cmd.none )
 
 
+locationUpdateMsg : LocationUpdate -> Msg
 locationUpdateMsg =
     LocationUpdate
 
@@ -132,10 +124,12 @@ view model viewHeight =
             viewCrewPage model
 
 
+viewGMAP : Element Msg
 viewGMAP =
     Element.Lazy.lazy StyledElement.googleMap [ height (fill |> minimum 300), width (fillPortion 2) ]
 
 
+viewStatisticsPage : Model -> Element Msg
 viewStatisticsPage model =
     let
         sidebarViews =
@@ -160,6 +154,7 @@ viewStatisticsPage model =
         ]
 
 
+viewStudentsPage : Model -> Int -> Element Msg
 viewStudentsPage model viewHeight =
     let
         viewStudent index student =
@@ -193,13 +188,7 @@ viewStudentsPage model viewHeight =
                 (el
                     [ height (px 36)
                     , width fill
-                    , Background.gradient
-                        { angle = pi
-                        , steps =
-                            [ Colors.withAlpha Colors.white 0
-                            , Colors.white
-                            ]
-                        }
+                    , Colors.withGradient pi Colors.white
                     ]
                     none
                 )
@@ -213,8 +202,6 @@ viewStudentsPage model viewHeight =
                 }
             , el
                 [ width fill
-
-                -- , explain Debug.todo
                 , height (fill |> maximum (viewHeight // 2))
                 , Border.color Colors.darkGreen
                 , Border.width 0
@@ -253,11 +240,13 @@ viewStudentsPage model viewHeight =
         ]
 
 
+viewRoutePage : Model -> Element Msg
 viewRoutePage model =
     wrappedRow [ width fill, height fill, spacing 24 ]
         [ viewGMAP ]
 
 
+viewCrewPage : Model -> Element Msg
 viewCrewPage model =
     let
         viewEmployee role name phone email =

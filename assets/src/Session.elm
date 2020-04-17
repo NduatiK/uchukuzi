@@ -18,6 +18,7 @@ type alias Cred =
     { name : String
     , email : String
     , token : String
+    , school_id : Int
     }
 
 

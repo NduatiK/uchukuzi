@@ -43,19 +43,23 @@ credDecoder =
         |> requiredAt [ "name" ] Decode.string
         |> requiredAt [ "email" ] Decode.string
         |> requiredAt [ "token" ] Decode.string
+        |> requiredAt [ "school_id" ] Decode.int
 
 
 credEncoder : Cred -> Value
-credEncoder { name, email, token } =
+credEncoder { name, email, token, school_id } =
     Encode.object
         [ ( "email", Encode.string email )
         , ( "token", Encode.string token )
         , ( "name", Encode.string name )
+        , ( "school_id", Encode.int school_id )
         ]
 
 
 type alias SuccessfulLogin =
-    { location : Location, creds : Session.Cred }
+    { location : Location
+    , creds : Session.Cred
+    }
 
 
 logout : Cmd msg

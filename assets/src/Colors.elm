@@ -1,11 +1,20 @@
 module Colors exposing (..)
 
 import Element exposing (..)
+import Element.Background as Background
 import Html.Attributes
 
 
 
 -- COLORS
+
+
+withGradient : Float -> Color -> Attr decorative msg
+withGradient radius color =
+    Background.gradient
+        { angle = radius
+        , steps = [ color, withAlpha color 0, withAlpha color 0 ]
+        }
 
 
 withAlpha : Color -> Float -> Color
@@ -45,6 +54,8 @@ purple =
 simpleGrey : Color
 simpleGrey =
     Element.rgb255 224 224 224
+
+
 sassyGrey : Color
 sassyGrey =
     Element.rgb255 163 175 190

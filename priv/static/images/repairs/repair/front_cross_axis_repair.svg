@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="202px" height="66px" viewBox="0 0 202 66" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>front_cross_axis_repair</title>
+    <desc>Created with Sketch.</desc>
+    <g id="front_cross_axis_repair" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M100.915842,39 C95.9679531,39 91.4882542,41.0151244 88.2456761,44.2738347 C84.7868427,47.7498762 82.7358083,52.6410709 83.0274619,58.0093326 L118.819676,57.6675427 C119.010146,52.3713494 116.92244,47.5625879 113.464341,44.1527201 C110.231819,40.9652823 105.802141,39 100.915842,39 Z" id="Rectangle-2" stroke="#000000" stroke-width="2" fill="#95C3B5"></path>
+        <g id="Group-2-Copy" transform="translate(1.000000, 41.000000)">
+            <g id="Group-3-Copy">
+                <g id="Group" transform="translate(82.222551, 0.000000)"></g>
+                <rect id="Rectangle-Copy-3" stroke="#000000" stroke-width="2" fill="#95C3B5" x="0" y="17" width="200" height="7"></rect>
+                <rect id="Rectangle" stroke="#000000" stroke-width="2" fill="#95C3B5" x="0" y="17" width="75.2475248" height="7"></rect>
+                <rect id="Rectangle-Copy-2" stroke="#000000" stroke-width="2" fill="#95C3B5" x="124.752475" y="17" width="75.2475248" height="7"></rect>
+            </g>
+        </g>
+    </g>
+</svg>

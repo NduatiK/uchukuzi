@@ -6,9 +6,11 @@ module StyledElement exposing
     , emailInput
     , googleMap
     , iconButton
+    , multilineInput
     , navigationLink
     , numberInput
     , passwordInput
+    , plainButton
     , textInput
     , textLink
     , textStack
@@ -105,22 +107,8 @@ buttonLink attributes config =
             ++ attributes
         )
         { url = Navigation.href config.route
-        , label = config.label
+        , label = el [ centerY ] config.label
         }
-
-
-
--- Element.link
---     (defaultFontFace
---         ++ [ Background.color Colors.purple
---            , Element.mouseOver
---                 [ alpha 0.9 ]
---            , padding 20
---            ]
---     )
---     { url = Navigation.href config.route
---     , label = config.label
---     }
 
 
 textLink : List (Attribute msg) -> { label : Element msg, route : Navigation.Route } -> Element msg
@@ -140,21 +128,31 @@ textLink attributes config =
         }
 
 
+plainButton :
+    List (Attribute msg)
+    -> { label : Element msg, onPress : Maybe msg }
+    -> Element msg
+plainButton attributes config =
+    Input.button
+        attributes
+        { onPress = config.onPress
+        , label = config.label
+        }
+
+
 button :
     List (Attribute msg)
     -> { label : Element msg, onPress : Maybe msg }
     -> Element msg
 button attributes config =
-    Input.button
+    plainButton
         ([ Background.color Colors.purple
-
-         -- Primarily controlled by css
          , height (px 46)
          , Font.color (Element.rgb 1 1 1)
          , Font.size 18
+         , Style.cssResponsive
          , Border.rounded 3
          , Style.animatesAll
-         , Style.cssResponsive
          , Element.mouseOver
             [ moveUp 1
             , Border.shadow { offset = ( 0, 4 ), size = 0, blur = 8, color = rgba 0 0 0 0.14 }
@@ -163,9 +161,7 @@ button attributes config =
             ++ Style.defaultFontFace
             ++ attributes
         )
-        { onPress = config.onPress
-        , label = config.label
-        }
+        config
 
 
 unstyledIconButton :
@@ -242,6 +238,34 @@ textInput attributes { title, caption, errorCaption, value, onChange, placeholde
                 , text = value
                 , placeholder = placeholder
                 , label = Input.labelHidden ariaLabel
+                }
+    in
+    wrappedInput input title caption errorCaption icon attributes []
+
+
+multilineInput :
+    List (Attribute msg)
+    ->
+        { title : String
+        , caption : Maybe String
+        , errorCaption : Maybe InputError
+        , value : String
+        , onChange : String -> msg
+        , placeholder : Maybe (Input.Placeholder msg)
+        , ariaLabel : String
+        , icon : Maybe (IconBuilder msg)
+        }
+    -> Element msg
+multilineInput attributes { title, caption, errorCaption, value, onChange, placeholder, ariaLabel, icon } =
+    let
+        input =
+            Input.multiline
+                (Style.labelStyle ++ [ height fill, centerY, Border.width 0, Background.color (rgba 0 0 0 0) ])
+                { onChange = onChange
+                , text = value
+                , placeholder = placeholder
+                , label = Input.labelHidden ariaLabel
+                , spellcheck = True
                 }
     in
     wrappedInput input title caption errorCaption icon attributes []
@@ -360,6 +384,8 @@ errorBorder hideBorder =
         [ Border.color Colors.errorRed, Border.solid, Border.width 2 ]
 
 
+{-| wrappedInput input title caption errorCaption icon attributes trailingElements
+-}
 wrappedInput : Element msg -> String -> Maybe String -> Maybe InputError -> Maybe (IconBuilder msg) -> List (Attribute msg) -> List (Element msg) -> Element msg
 wrappedInput input title caption errorCaption icon attributes trailingElements =
     let

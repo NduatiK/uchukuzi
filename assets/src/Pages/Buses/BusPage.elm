@@ -1,4 +1,4 @@
-module Pages.Buses.BusPage exposing (Model, Msg, init, locationUpdateMsg, subscriptions, update, view)
+module Pages.Buses.BusPage exposing (Model, Msg, Page(..), init, locationUpdateMsg, pageName, subscriptions, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -10,10 +10,8 @@ import Element.Font as Font
 import Element.Input as Input
 import Errors
 import Icons
-import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
-import Json.Decode.Pipeline exposing (optional, required)
-import Models.Bus exposing (Bus, LocationUpdate, Route, busDecoderWithCallback)
-import Navigation
+import Json.Decode exposing (Decoder)
+import Models.Bus exposing (Bus, LocationUpdate, busDecoderWithCallback)
 import Page
 import Pages.Buses.AboutBus as About
 import Pages.Buses.BusDevicePage as BusDevice
@@ -24,7 +22,6 @@ import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style
-import Views.Divider exposing (viewDivider)
 
 
 type alias Model =
@@ -60,6 +57,7 @@ type Page
     | BusRepairs BusRepairs.Model
 
 
+pageName : Page -> String
 pageName page =
     case page of
         About _ ->
@@ -84,6 +82,7 @@ type Msg
     | GotFuelHistoryMsg FuelHistory.Msg
     | GotBusDeviceMsg BusDevice.Msg
     | GotBusRepairsMsg BusRepairs.Msg
+      ----------------
     | SelectedPage Int
     | ServerResponse (WebData BusData)
       ----------------
@@ -131,7 +130,7 @@ allPagesFromSession bus session preferredPage =
                     Maybe.withDefault
                         ( 0, defaultPage )
                         (List.head
-                            (List.filter (\( index, ( _, ( page, _ ) ) ) -> String.toLower (pageName page) == String.toLower preferredPage_)
+                            (List.filter (\( index, ( _, ( page, _ ) ) ) -> String.toLower (pageName page) == String.toLower (String.replace "%20" " " preferredPage_))
                                 (List.indexedMap Tuple.pair pages)
                             )
                         )
@@ -169,7 +168,7 @@ devicePage bus session =
 
 repairsPage : Bus -> Session -> ( Page, Cmd Msg )
 repairsPage bus session =
-    Page.transformToModelMsg BusRepairs GotBusRepairsMsg (BusRepairs.init bus (Session.timeZone session))
+    Page.transformToModelMsg BusRepairs GotBusRepairsMsg (BusRepairs.init bus.id bus.repairs)
 
 
 
@@ -237,8 +236,7 @@ update msg model =
                     case response of
                         Success busData ->
                             Cmd.batch
-                                [ busData.pendingAction
-                                , case ( model.locationUpdate, busData.bus.last_seen ) of
+                                [ case ( model.locationUpdate, busData.bus.last_seen ) of
                                     ( Just locationUpdate_, _ ) ->
                                         Ports.updateBusMap locationUpdate_
 
@@ -284,6 +282,7 @@ update msg model =
             ( model, msg_ )
 
 
+mapModel : Model -> (subModel -> Page) -> (subCmd -> Msg) -> ( subModel, Cmd subCmd ) -> ( Model, Cmd Msg )
 mapModel model pageModelMapper pageMsgMapper ( subModel, subCmd ) =
     let
         modelMapper : Page -> Model
@@ -357,10 +356,11 @@ changeCurrentPage selectedPageIndex_ model_ =
                             , currentPage = selectedPage
                         }
               }
-            , Cmd.batch
-                [ Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (Just (pageName selectedPage)))
-                , msg
-                ]
+            , msg
+              -- [ Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (Just (pageName selectedPage)))
+              -- [ Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (Just (pageName selectedPage)))
+              -- , msg
+              -- ]
             )
 
         _ ->
@@ -590,13 +590,6 @@ fetchBus busID session preferredPage =
 busDecoder : Session -> Maybe String -> Decoder BusData
 busDecoder session preferredPage =
     busDecoderWithCallback (\bus -> allPagesFromSession bus session preferredPage)
-
-
-routeDecoder : Decoder Route
-routeDecoder =
-    Decode.succeed Route
-        |> required "id" string
-        |> required "name" string
 
 
 subscriptions : Model -> Sub Msg

@@ -18,7 +18,7 @@ module Api.Endpoint exposing
     )
 
 import Http exposing (Body)
-import Json.Decode exposing (Decoder, string)
+import Json.Decode exposing (Decoder)
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Url.Builder exposing (QueryParameter)

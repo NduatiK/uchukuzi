@@ -137,7 +137,7 @@ const setupMapCallbacks = (app, clickable) => (data) => {
                 url: `/images/buses/${getCardinalDirection(update.bearing)}.svg`,
                 size: new google.maps.Size(90, 90),
                 // origin: new google.maps.Point(0, 0),
-                // anchor: new google.maps.Point(16, 16),
+                anchor: new google.maps.Point(45, 45),
                 scaledSize: new google.maps.Size(90, 90)
             }
 
@@ -196,12 +196,22 @@ const setupMapCallbacks = (app, clickable) => (data) => {
                 marker.setMap(null)
             })
             markers = []
+
+            var image = {
+                url: "/images/map_bus.svg",
+                size: new google.maps.Size(64, 64),
+                // origin: new google.maps.Point(0, 0),
+                anchor: new google.maps.Point(32, 32),
+                // scaledSize: new google.maps.Size(64, 64)
+            }
+
             var marker = new google.maps.Marker({
                 position: gmPos,
                 map: map,
-                title: 'Golden Gate Bridge',
-                icon: "/images/map_bus.svg"
+                icon: image
             })
+            map.setZoom(16)
+
             markers.push(marker)
             map.panTo(gmPos)
         })

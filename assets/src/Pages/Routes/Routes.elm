@@ -3,7 +3,6 @@ module Pages.Routes.Routes exposing (Model, Msg, init, update, view)
 import Colors
 import Element exposing (..)
 import Element.Background as Background
-import Element.Border as Border
 import Element.Input as Input
 import Icons
 import Models.Route exposing (Route)

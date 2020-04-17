@@ -18,14 +18,14 @@ let socket
 
 function initializeLiveView(app) {
 
-    let { token } = JSON.parse(localStorage.getItem('credentials'))
+    let { token, school_id } = JSON.parse(localStorage.getItem('credentials'))
 
     if (token && !socket) {
 
         socket = new Socket("/socket/manager", { params: { token: token } })
         socket.connect()
 
-        let channel = socket.channel("school:1", {})
+        let channel = socket.channel(`school:${school_id}`, {})
         channel.join()
             .receive("ok", on_join(channel, app))
             .receive("error", resp => { console.log("Unable to join", resp) })

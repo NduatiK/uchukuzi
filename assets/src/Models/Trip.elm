@@ -8,7 +8,7 @@ module Models.Trip exposing
     )
 
 import Iso8601
-import Json.Decode as Decode exposing (Decoder, float, int, list, nullable, string)
+import Json.Decode as Decode exposing (Decoder, float, int, list, string)
 import Json.Decode.Pipeline exposing (optional, required, resolve)
 import Models.Location exposing (Location, locationDecoder)
 import Time

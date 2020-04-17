@@ -1,29 +1,16 @@
 module Pages.Buses.BusRepairsPage exposing (Model, Msg, init, update, view, viewFooter)
 
-import Api exposing (get)
-import Api.Endpoint as Endpoint exposing (trips)
+import Api
 import Colors
 import Element exposing (..)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Events as Events
-import Element.Font as Font
-import Element.Input as Input
-import Html.Attributes exposing (class, id)
 import Icons
 import Icons.Repairs
-import Iso8601
-import Json.Decode as Decode exposing (Decoder, float, int, list, string)
-import Json.Decode.Pipeline exposing (optional, required, resolve)
 import Models.Bus exposing (RepairRecord)
 import Navigation
-import Ports
 import RemoteData exposing (..)
-import Style exposing (edges)
+import Style
 import StyledElement
 import StyledElement.Footer as Footer
-import Time
-import Utils.DateFormatter
 
 
 type alias Model =

@@ -18,7 +18,6 @@ import Pages.Buses.BusesPage as BusesList
 import Pages.Buses.CreateBusRepairPage as CreateBusRepair
 import Pages.Crew.CrewMemberRegistrationPage as CrewMemberRegistration
 import Pages.Crew.CrewMembersPage as CrewMembers
-import Pages.DashboardPage as Dashboard
 import Pages.Devices.DeviceRegistrationPage as DeviceRegistration
 import Pages.Devices.DevicesPage as DevicesList
 import Pages.Home as Home
@@ -59,7 +58,7 @@ type PageModel
     = Redirect Session
     | NotFound Session
     | Home Home.Model
-    | Dashboard Dashboard.Model
+      -- | Dashboard Dashboard.Model
     | Login Login.Model
     | Logout Logout.Model
     | RoutesList RoutesList.Model
@@ -163,7 +162,7 @@ type Msg
     | GotCreateBusRepairMsg CreateBusRepair.Msg
       ------------
     | GotStudentRegistrationMsg StudentRegistration.Msg
-    | GotDashboardMsg Dashboard.Msg
+      -- | GotDashboardMsg Dashboard.Msg
     | GotDevicesListMsg DevicesList.Msg
     | GotDeviceRegistrationMsg DeviceRegistration.Msg
       ------------
@@ -207,9 +206,8 @@ view { page, route, navState, windowHeight } =
                 NotFound _ ->
                     viewEmptyPage NotFound.view
 
-                Dashboard model ->
-                    viewPage (Dashboard.view model) GotDashboardMsg
-
+                -- Dashboard model ->
+                --     viewPage (Dashboard.view model) GotDashboardMsg
                 HouseholdList model ->
                     viewPage (HouseholdList.view model) GotHouseholdListMsg
 
@@ -459,9 +457,8 @@ toSession pageModel =
         NotFound session ->
             session
 
-        Dashboard subModel ->
-            subModel.session
-
+        -- Dashboard subModel ->
+        --     subModel.session
         HouseholdList subModel ->
             subModel.session
 

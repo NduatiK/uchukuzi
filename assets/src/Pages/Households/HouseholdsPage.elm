@@ -2,24 +2,15 @@ module Pages.Households.HouseholdsPage exposing (Model, Msg, init, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
-import Browser
 import Colors
-import Dropdown
 import Element exposing (..)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Font as Font
 import Element.Input as Input
-import Element.Region as Region
 import Errors
 import Html exposing (Html)
 import Html.Events exposing (..)
-import Http
 import Icons
-import Json.Decode as Decode exposing (Decoder, bool, float, int, list, nullable, string)
-import Json.Decode.Pipeline exposing (optional, required)
-import Models.Household exposing (Household, Location, Student, householdDecoder)
-import Navigation
+import Json.Decode exposing (list)
+import Models.Household exposing (Household, Student, householdDecoder)
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
@@ -32,15 +23,8 @@ import Views.Heading exposing (viewHeading)
 
 
 type alias Model =
-    { session : Session, households : WebData (List Household) }
-
-
-type alias StudentViewModel =
-    { name : String
-    , pickup_location : Location
-    , time : String
-    , household_id : Int
-    , route : String
+    { session : Session
+    , households : WebData (List Household)
     }
 
 
@@ -48,13 +32,6 @@ type TripTime
     = TwoWay
     | Morning
     | Evening
-
-
-type alias Location =
-    { longitude : Float
-    , latitude : Float
-    , name : String
-    }
 
 
 type Msg

@@ -33,21 +33,21 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Element.Input as Input
 import Element.Region as Region
-import Hex
 import Html.Attributes
-import Navigation
 
 
+elevated : Attr decorative msg
 elevated =
     Border.shadow { offset = ( 0, 0 ), size = 0, blur = 5, color = rgba 0 0 0 0.14 }
 
 
+elevated2 : Attr decorative msg
 elevated2 =
     Border.shadow { offset = ( 0, 0 ), size = 0, blur = 10, color = rgba 0 0 0 0.24 }
 
 
+elevatedTile : Attr decorative msg
 elevatedTile =
     Border.shadow { offset = ( 0, 2 ), size = 0, blur = 24, color = Colors.withAlpha Colors.sassyGrey 0.37 }
 

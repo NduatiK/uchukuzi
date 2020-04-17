@@ -36,6 +36,8 @@ type Errors internalError
     | ServerSideError FieldName (List String)
 
 
+{-| customInputErrorsFor formProblems fieldName visibleName errorsToMatch
+-}
 customInputErrorsFor : List (Errors clientError) -> String -> String -> List clientError -> Maybe InputError
 customInputErrorsFor formProblems fieldName visibleName errorsToMatch =
     let

@@ -1,0 +1,108 @@
+@keyframes pulsate {
+  from {
+    -webkit-transform: scale(0.25);
+    opacity: 1.0;
+  }
+
+  95% {
+    -webkit-transform: scale(1.3);
+    opacity: 0;
+  }
+
+  to {
+    -webkit-transform: scale(0.3);
+    opacity: 0;
+  }
+}
+
+google-map-cached div div div div div div div[title="Bus"] {
+  animation: pulsate 1.5s ease-in-out infinite;
+  border: 3pt solid rgba(97, 165, 145, 0.507);
+  z-index: 1;
+  border-radius: 51px;
+  box-shadow: inset 0 0 5px #61A591, inset 0 0 5px #61A591, inset 0 0 5px #61A591, 0 0 5px #61A591, 0 0 5px #61A591, 0 0 5px #61A591;
+  height: 51px !important;
+  margin: 8px 0 0 15px;
+  width: 51px !important;
+}
+
+google-map-cached div div div div div div div[title="Bus"] img {
+  display: none;
+}body {
+  margin: 0;
+  color: #293c4b;
+  overflow: hidden;
+}
+
+.blurred {
+  backdrop-filter: blur(4px);
+}
+
+.animatesShadow:not(.animatesNone) {
+  transition: box-shadow, transform, border 250ms 50ms;
+  transition-timing-function: var(--cubic)
+}
+
+.animatesAll20Seconds:not(.animatesNone) {
+  transition: all 20000ms 50ms;
+  transition-timing-function: linear;
+}
+
+.animatesAll:not(.animatesNone) {
+  transition: all 250ms 0ms;
+  transition-timing-function: var(--cubic)
+}
+
+.animatesAllDelayed:not(.animatesNone) {
+  transition: all 250ms 100ms;
+  transition-timing-function: var(--cubic)
+}
+
+.safari-clip {
+  transform: perspective(0);
+}
+
+
+/* Push Google Logo up for attribution 
+  reasons when the slider is visible (google-map is selevted)*/
+
+#google-map.selected div div a[target='_blank'] div {
+  margin-bottom: 100px;
+}
+
+google-map-cached {
+  width: 100%;
+  flex-grow: 100000;
+  display: flex;
+  flex-direction: column;
+  white-space: pre;
+}
+
+
+@media (max-width: 570px) {
+  .mobileHidden {
+    opacity: 0;
+  }
+}
+
+
+.blurred {
+  backdrop-filter: blur(4px);
+}
+
+a.button-link:not(.ignoreCss),
+div.cssResponsive[role='button']:not(.ignoreCss) {
+  text-align: center;
+  text-decoration: none;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: .1rem;
+  height: 3.5rem;
+  padding: 0 2rem;
+  border-radius: .2rem;
+}
+
+html {
+  --cubic: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+}

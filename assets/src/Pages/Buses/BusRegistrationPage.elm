@@ -8,14 +8,11 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Errors exposing (InputError)
-import Html exposing (Html)
-import Html.Attributes exposing (id)
+import Errors
 import Html.Events exposing (..)
 import Http
 import Icons
-import Json.Decode exposing (Decoder, Value, bool, decodeString, dict, field, float, int, list, nullable, string)
-import Json.Decode.Pipeline exposing (required)
+import Json.Decode exposing (Decoder, field, float, int, string)
 import Json.Encode as Encode
 import Models.Bus exposing (VehicleType(..))
 import Navigation
@@ -23,7 +20,7 @@ import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
-import StyledElement exposing (toDropDownView, wrappedInput)
+import StyledElement exposing (toDropDownView)
 import StyledElement.DropDown as Dropdown
 import StyledElement.FloatInput as FloatInput exposing (FloatInput)
 import Task
