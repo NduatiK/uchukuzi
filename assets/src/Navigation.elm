@@ -20,22 +20,28 @@ type LoginRedirect
 
 type Route
     = Home
-    | StudentRegistration
-    | Login (Maybe LoginRedirect)
+      -------------
     | Logout
+    | Login (Maybe LoginRedirect)
     | Signup
+      -------------
     | Routes
+      -------------
     | CrewMembers
     | CrewMemberRegistration
     | EditCrewMember Int
-      -- | Dashboard
+      -------------
     | HouseholdList
+    | StudentRegistration
+      -------------
     | Buses
     | BusRegistration
     | Bus Int (Maybe String)
-    | DeviceList
     | BusDeviceRegistration Int
+    | CreateBusRepair Int
+      -------------
     | DeviceRegistration
+    | DeviceList
 
 
 loggedInParser : Parser (Route -> a) a
@@ -50,7 +56,10 @@ loggedInParser =
                 , ( DeviceList, DeviceRegistration )
                 ]
             ++ [ -- http://localhost:4000/#/fleet/1/?page=trips
-                 Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
+                 --  Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
+                 Parser.map (\a b -> Bus a (Just b)) (s (routeName Buses) </> int </> string)
+               , Parser.map CreateBusRepair (s (routeName Buses) </> int </> s "maintenance" </> s "new")
+               , Parser.map (\a -> Bus a Nothing) (s (routeName Buses) </> int)
                , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s "edit")
                , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
                ]
@@ -270,10 +279,13 @@ routeToString page =
                             [ routeName Buses, String.fromInt busID ]
 
                         Just pageStr_ ->
-                            [ routeName Buses, String.fromInt busID, "?page=" ++ String.toLower pageStr_ ]
+                            [ routeName Buses, String.fromInt busID, String.toLower pageStr_ ]
 
                 BusRegistration ->
                     [ routeName Buses, routeName BusRegistration ]
+
+                CreateBusRepair busID ->
+                    [ routeName Buses, String.fromInt busID, "maintenance", "new" ]
 
                 Routes ->
                     [ routeName Routes ]
@@ -327,6 +339,9 @@ routeName page =
             "fleet"
 
         BusRegistration ->
+            "new"
+
+        CreateBusRepair _ ->
             "new"
 
         Routes ->

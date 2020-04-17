@@ -15,6 +15,7 @@ import Pages.Blank
 import Pages.Buses.BusPage as BusDetailsPage
 import Pages.Buses.BusRegistrationPage as BusRegistration
 import Pages.Buses.BusesPage as BusesList
+import Pages.Buses.CreateBusRepairPage as CreateBusRepair
 import Pages.Crew.CrewMemberRegistrationPage as CrewMemberRegistration
 import Pages.Crew.CrewMembersPage as CrewMembers
 import Pages.DashboardPage as Dashboard
@@ -31,6 +32,7 @@ import Pages.Signup as Signup
 import Ports
 import Session exposing (Session)
 import Style
+import Task
 import Template.NavBar as NavBar exposing (viewHeader)
 import Time
 import Url
@@ -66,6 +68,7 @@ type PageModel
     | BusesList BusesList.Model
     | BusDetailsPage BusDetailsPage.Model
     | BusRegistration BusRegistration.Model
+    | CreateBusRepair CreateBusRepair.Model
     | DevicesList DevicesList.Model
     | Signup Signup.Model
     | CrewMembers CrewMembers.Model
@@ -112,17 +115,23 @@ init args url navKey =
 
         session =
             Session.fromCredentials navKey Time.utc creds
+
+        ( model, cmds ) =
+            changeRouteTo (Navigation.fromUrl url session)
+                { page = Redirect session
+                , route = Nothing
+                , navState = NavBar.init session
+                , windowHeight = height
+                , url = url
+                , locationUpdates = Dict.fromList []
+                , allowReroute = True
+                }
     in
-    changeRouteTo (Navigation.fromUrl url session)
-        (Model
-            (Redirect session)
-            Nothing
-            (NavBar.init session)
-            height
-            url
-            (Dict.fromList [])
-            True
-        )
+    ( model
+    , Cmd.batch
+        [ Task.perform UpdatedTimeZone Time.here
+        ]
+    )
 
 
 
@@ -133,6 +142,7 @@ type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url.Url
     | ReceivedCreds (Maybe Session.Cred)
+    | UpdatedTimeZone Time.Zone
     | WindowResized Int Int
       ------------
       -- | UpdatedSessionCred (Maybe Session.Cred)
@@ -150,6 +160,7 @@ type Msg
     | GotBusesListMsg BusesList.Msg
     | GotBusDetailsPageMsg BusDetailsPage.Msg
     | GotBusRegistrationMsg BusRegistration.Msg
+    | GotCreateBusRepairMsg CreateBusRepair.Msg
       ------------
     | GotStudentRegistrationMsg StudentRegistration.Msg
     | GotDashboardMsg Dashboard.Msg
@@ -214,6 +225,9 @@ view { page, route, navState, windowHeight } =
                 BusDetailsPage model ->
                     viewPage (BusDetailsPage.view model) GotBusDetailsPageMsg
 
+                CreateBusRepair model ->
+                    viewPage (CreateBusRepair.view model) GotCreateBusRepairMsg
+
                 DevicesList model ->
                     viewPage (DevicesList.view model) GotDevicesListMsg
 
@@ -251,6 +265,18 @@ update msg model =
         WindowResized _ height ->
             ( { model | windowHeight = height }, Cmd.none )
 
+        UpdatedTimeZone timezone ->
+            let
+                session =
+                    Session.withTimeZone (toSession model.page) timezone
+            in
+            if Session.getCredentials session == Nothing then
+                changeRouteWithUpdatedSessionTo (Just (Navigation.Login Nothing)) model session
+
+            else
+                changeRouteWithUpdatedSessionTo (Navigation.fromUrl model.url session) model session
+
+        -- ( { model | windowHeight = height }, Cmd.none )
         UrlRequested urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
@@ -367,6 +393,10 @@ updatePage page_msg fullModel =
             BusDetailsPage.update msg model
                 |> mapModelAndMsg BusDetailsPage GotBusDetailsPageMsg
 
+        ( GotCreateBusRepairMsg msg, CreateBusRepair model ) ->
+            CreateBusRepair.update msg model
+                |> mapModelAndMsg CreateBusRepair GotCreateBusRepairMsg
+
         ( GotStudentRegistrationMsg msg, StudentRegistration model ) ->
             StudentRegistration.update msg model
                 |> mapModelAndMsg StudentRegistration GotStudentRegistrationMsg
@@ -462,6 +492,9 @@ toSession pageModel =
         CrewMemberRegistration subModel ->
             subModel.session
 
+        CreateBusRepair subModel ->
+            subModel.session
+
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
@@ -506,9 +539,10 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     BusDetailsPage.init busID session (Page.viewHeight model.windowHeight) (Dict.get busID model.locationUpdates) preferredPage
                         |> updateWith BusDetailsPage GotBusDetailsPageMsg
 
-                -- Just Navigation.Dashboard ->
-                --     Dashboard.init session
-                --         |> updateWith Dashboard GotDashboardMsg
+                Just (Navigation.CreateBusRepair busID) ->
+                    CreateBusRepair.init busID session (Page.viewHeight model.windowHeight)
+                        |> updateWith CreateBusRepair GotCreateBusRepairMsg
+
                 Just Navigation.HouseholdList ->
                     HouseholdList.init session
                         |> updateWith HouseholdList GotHouseholdListMsg

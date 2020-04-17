@@ -172,6 +172,9 @@ toNavigationPage route =
         Navigation.BusDeviceRegistration _ ->
             Buses
 
+        Navigation.CreateBusRepair _ ->
+            Buses
+
         Navigation.HouseholdList ->
             HouseholdList
 

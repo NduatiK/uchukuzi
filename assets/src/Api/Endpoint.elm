@@ -1,4 +1,21 @@
-module Api.Endpoint exposing (Endpoint, bus, buses, crewAssignmentChanges, crewMember, crewMembers, crewMembersAndBuses, devices, get, households, login, patch, post, signup, trips)
+module Api.Endpoint exposing
+    ( Endpoint
+    , bus
+    , buses
+    , crewAssignmentChanges
+    , crewMember
+    , crewMembers
+    , crewMembersAndBuses
+    , devices
+    , get
+    , households
+    , login
+    , patch
+    , performedBusRepairs
+    , post
+    , signup
+    , trips
+    )
 
 import Http exposing (Body)
 import Json.Decode exposing (Decoder, string)
@@ -94,9 +111,8 @@ households =
 
 trips : { bus | bus_id : Int } -> Endpoint
 trips { bus_id } =
-    url [ "trips" ]
-        [ Url.Builder.string "bus_id" (String.fromInt bus_id)
-        ]
+    url [ "tracking", "trips", String.fromInt bus_id ]
+        []
 
 
 buses : Endpoint
@@ -107,6 +123,12 @@ buses =
 bus : Int -> Endpoint
 bus busID =
     url [ "school", "buses", String.fromInt busID ]
+        []
+
+
+performedBusRepairs : Int -> Endpoint
+performedBusRepairs busID =
+    url [ "school", "buses", String.fromInt busID, "performed_repairs" ]
         []
 
 

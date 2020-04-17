@@ -1,4 +1,4 @@
-module Utils.Date exposing (dateFormatter, timeFormatter)
+module Utils.DateFormatter exposing (dateFormatter, timeFormatter)
 
 import DateFormat
 import Time exposing (Posix, Zone)
