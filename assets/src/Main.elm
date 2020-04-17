@@ -303,16 +303,17 @@ update msg model =
                     )
 
         UrlChanged url ->
-            -- let
-            --     isSamePage =
-            --         Navigation.isSamePage model.url url
-            -- in
-            -- if model.allowReroute && not isSamePage then
-            changeRouteTo (Navigation.fromUrl url (toSession model.page))
-                model
+            let
+                isSamePage =
+                    Navigation.isSamePage model.url url
+            in
+            if not isSamePage then
+                changeRouteTo (Navigation.fromUrl url (toSession model.page))
+                    model
 
-        -- else
-        -- ( model, Cmd.none )
+            else
+                ( model, Cmd.none )
+
         ReceivedCreds cred ->
             let
                 session =

@@ -158,6 +158,7 @@ pushUrl key route =
     Nav.pushUrl key (routeToString route)
 
 
+parseUrl : Url -> Url
 parseUrl url =
     let
         parts =
@@ -177,8 +178,14 @@ parseUrl url =
     { url | path = path, fragment = Nothing, query = Just query }
 
 
+isSamePage : Url -> Url -> Bool
 isSamePage url1 url2 =
-    (parseUrl url1).path == (parseUrl url2).path
+    case ( Parser.parse loggedInParser (parseUrl url1), Parser.parse loggedInParser (parseUrl url2) ) of
+        ( Just (Bus a _), Just (Bus b _) ) ->
+            a == b
+
+        ( a, b ) ->
+            a == b
 
 
 fromUrl : Url -> Session -> Maybe Route
