@@ -7,7 +7,8 @@ defmodule UchukuziInterfaceWeb.RolesView do
         "id" => manager.id,
         "name" => manager.name,
         "email" => manager.email,
-        "token" => token
+        "token" => token,
+        "school_id" => manager.school_id
       },
       "location" => %{
         "lat" => manager.school.perimeter.center.lat,

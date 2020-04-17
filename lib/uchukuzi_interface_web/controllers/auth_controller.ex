@@ -1,11 +1,9 @@
 defmodule UchukuziInterfaceWeb.AuthController do
   use UchukuziInterfaceWeb, :controller
 
-  # alias Uchukuzi.School
-  # alias Uchukuzi.Common.{Location, Geofence}
-  # alias Uchukuzi.Roles.Manager
-  alias Uchukuzi.Roles
   use Uchukuzi.Roles.Model
+
+  alias Uchukuzi.Roles
   alias UchukuziInterfaceWeb.Email.{Email, Mailer}
 
   def login_manager(conn, %{"email" => email, "password" => password}) do

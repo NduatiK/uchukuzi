@@ -11,7 +11,7 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     render_one(bus, __MODULE__, "bus.json", as: :bus)
   end
 
-  def render("bus.json", %{school: params}), do: render("bus.json", IO.inspect(params))
+  def render("bus.json", %{school: params}), do: render("bus.json", params)
 
   def render("bus.json", %{bus: bus} = params) do
     %{
@@ -22,7 +22,10 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       seats_available: bus.seats_available,
       device: if(bus.device == nil, do: nil, else: bus.device.imei),
       route: if(Map.get(bus, :route) == nil, do: nil, else: bus.route),
-      last_seen: render_last_seen(Map.get(params, :last_seen))
+      # route: bus.route,
+      last_seen: render_last_seen(Map.get(params, :last_seen)),
+      performed_repairs: render_performed_repairs(Map.get(bus, :performed_repairs))
+
     }
   end
 
@@ -38,5 +41,19 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       bearing: Float.round(report.bearing + 0.0, 1),
       time: report.time
     }
+  end
+  def render_performed_repairs(nil), do: nil
+
+  def render_performed_repairs(performed_repairs) do
+    Enum.map(performed_repairs, fn repair ->
+      %{
+        id: repair.id,
+        part: repair.part,
+        time: repair.inserted_at,
+        cost: repair.cost,
+        description: repair.description || ""
+      }
+    end)
+
   end
 end

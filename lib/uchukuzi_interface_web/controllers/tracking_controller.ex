@@ -16,19 +16,30 @@ defmodule UchukuziInterfaceWeb.TrackingController do
           # Uchukuzi.DiskDB.createTable("reports")
           with {:ok, location} <-
                  Location.new(report["lng"], report["lat"]),
-               {:ok, time} <- DateTimeParser.parse_datetime(report["time"], assume_utc: true),
-               report <- Report.new(time, location) do
-            report
+               {:ok, time} <- DateTimeParser.parse_datetime(report["time"], assume_utc: true) do
+            Report.new(time, location)
+          else
+            e ->
+              # IO.inspect(report)
+              IO.inspect(e)
           end
         end
 
+      reports = Enum.sort(reports, &(DateTime.compare(&2.time, &1.time) != :lt))
+
       for report <- reports do
         Tracking.move(bus, report)
+        # :timer.sleep(10)
+        # bus
+        # |> Tracking.status_of()
+        # |> broadcast_location_update(bus.id, bus.school_id)
       end
 
       bus
-      |> Tracking.where_is()
+      |> Tracking.status_of()
       |> broadcast_location_update(bus.id, bus.school_id)
+
+      IO.inspect("Done")
 
       status =
         if Tracking.in_school?(bus) do
@@ -53,51 +64,14 @@ defmodule UchukuziInterfaceWeb.TrackingController do
 
     UchukuziInterfaceWeb.Endpoint.broadcast("school:#{school_id}", "bus_moved", output)
   end
+
+  def list_trips(conn, %{"bus_id" => bus_id}) do
+    with {bus_id, ""} <- Integer.parse(bus_id),
+         {:ok, bus} <- School.bus_for(conn.assigns.manager.school_id, bus_id) do
+      trips = Repo.preload(bus, :trips).trips
+
+      conn
+      |> render("trips.json", trips: trips)
+    end
+  end
 end
-
-# def create(conn, %{"_json" => reports, "device_id" => device_id}) do
-#   IO.inspect(reports)
-
-#   cond do
-#     _device = Uchukuzi.IoT.get_device(device_id) ->
-#       for report_params <- Enum.reverse(reports) do
-#         Uchukuzi.DiskDB.createTable("reports")
-
-#         _report = %GPS{
-#           location: %{latitude: report_params["lat"], longitude: report_params["lng"]},
-#           bearing: Enum.random(1..130),
-#           timestamp: DateTimeParser.parse_datetime(report_params["time"]),
-#           device: device_id
-#         }
-
-#         # IO.inspect(report)
-#         # Uchukuzi.DiskDB.insert(report, :reports)
-
-#         # Uchukuzi.DiskDB.createTable(:routes)
-#         # route = %{
-#         #   name: "Ngong Road Route"
-#         # }
-#         # Uchukuzi.DiskDB.insert(route, :routes)
-#         # UchukuziAPI.Endpoint.broadcast!("routes:1", "update", %{lat: report.location.latitude, lng: report.location.longitude})
-#         {:ok, time} = DateTimeParser.parse_datetime(report_params["time"])
-
-#         UchukuziAPI.RouteChannel.send_to_channel("routes:1", "update", %{
-#           route_id: 1,
-#           latitude: report_params["lat"],
-#           longitude: report_params["lng"],
-#           bearing: Enum.random(1..130),
-#           timestamp: time
-#         })
-#       end
-
-#       conn
-#       |> send_resp(200, "")
-
-#     true ->
-#       conn
-#       |> send_resp(404, "")
-#   end
-
-#   # end
-# end
-# end

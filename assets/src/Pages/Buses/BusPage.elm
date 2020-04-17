@@ -235,6 +235,21 @@ update msg model =
                 next_msg =
                     case response of
                         Success busData ->
+                            let
+                                pages =
+                                    busData.pages
+
+                                selectedPageIndex =
+                                    List.length pages - 1 - busData.pageIndex
+
+                                ( _, pageMsg ) =
+                                    case List.head (List.drop selectedPageIndex pages) of
+                                        Nothing ->
+                                            aboutPage busData.bus model.session
+
+                                        Just ( _, ( page, msg_ ) ) ->
+                                            ( page, msg_ )
+                            in
                             Cmd.batch
                                 [ case ( model.locationUpdate, busData.bus.last_seen ) of
                                     ( Just locationUpdate_, _ ) ->
@@ -245,6 +260,7 @@ update msg model =
 
                                     _ ->
                                         Cmd.none
+                                , pageMsg
                                 ]
 
                         Failure error ->
@@ -357,10 +373,6 @@ changeCurrentPage selectedPageIndex_ model_ =
                         }
               }
             , msg
-              -- [ Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (Just (pageName selectedPage)))
-              -- [ Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (Just (pageName selectedPage)))
-              -- , msg
-              -- ]
             )
 
         _ ->

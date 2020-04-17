@@ -1,11 +1,10 @@
 defmodule UchukuziInterfaceWeb.Router do
   use UchukuziInterfaceWeb, :router
 
-  if Mix.env == :dev do
+  if Mix.env() == :dev do
     # If using Phoenix
     forward "/sent_emails", Bamboo.SentEmailViewerPlug
   end
-
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -55,6 +54,7 @@ defmodule UchukuziInterfaceWeb.Router do
     get "/buses", SchoolController, :list_buses
     get "/buses/:bus_id", SchoolController, :get_bus
     post "/buses", SchoolController, :create_bus
+    post "/buses/:bus_id/performed_repairs", SchoolController, :create_performed_repair
 
     post "/devices", SchoolController, :register_device
 
@@ -69,6 +69,12 @@ defmodule UchukuziInterfaceWeb.Router do
 
     get "/crew_and_buses", SchoolController, :list_crew_and_buses
     patch "/crew_and_buses", SchoolController, :update_crew_assignments
+  end
+
+  scope "/api/tracking", UchukuziInterfaceWeb do
+    pipe_through [:manager_api, :authenticate_manager]
+
+    get "/trips/:bus_id", TrackingController, :list_trips
   end
 
   scope "/api/tracking", UchukuziInterfaceWeb do
