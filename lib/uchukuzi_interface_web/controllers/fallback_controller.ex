@@ -8,18 +8,18 @@ defmodule UchukuziInterfaceWeb.FallbackController do
   end
 
   def prepend_changeset_errors_with_stage_name(changeset, step) do
+    step_to_string = fn
+      x when is_binary(x) -> x
+      x -> String.to_existing_atom(x)
+    end
+
     Map.put(
       changeset,
       :errors,
       changeset.errors
-      |> Keyword.keys()
-      |> Enum.reduce(changeset.errors, fn key, errors ->
+      |> Enum.reduce(%{}, fn {key, value}, errors ->
         errors
-        |> Keyword.put(
-          String.to_atom(Atom.to_string(step) <> "_" <> Atom.to_string(key)),
-          Keyword.get(errors, key)
-        )
-        |> Keyword.delete(key)
+        |> Map.put(step_to_string.(step) <> "_" <> Atom.to_string(key), value)
       end)
     )
   end
