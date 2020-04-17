@@ -2,6 +2,7 @@ defmodule Uchukuzi.ETA.PredictionWorker do
   use GenServer
   use Export.Python
 
+  alias Uchukuzi.ETA
   alias Uchukuzi.ETA.ETASupervisor
 
   @python_dir "../uchukuzi/lib/python"
@@ -35,7 +36,7 @@ defmodule Uchukuzi.ETA.PredictionWorker do
   def handle_call({coordinate, time_value}, _from, state) do
     result =
       state.py
-      |> Python.call(@python_module, @python_method, ["#{coordinate.lat}_#{coordinate.lng}", time_value])
+      |> Python.call(@python_module, @python_method, [ETA.coordinate_hash(coordinate), time_value])
 
     {:reply, [result], state}
   end

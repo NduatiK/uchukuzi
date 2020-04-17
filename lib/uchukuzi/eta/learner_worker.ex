@@ -2,6 +2,7 @@ defmodule Uchukuzi.ETA.LearnerWorker do
   use GenServer
   use Export.Python
 
+  alias Uchukuzi.ETA
   alias Uchukuzi.ETA.ETASupervisor
 
   @python_dir "../uchukuzi/lib/python"
@@ -36,7 +37,7 @@ defmodule Uchukuzi.ETA.LearnerWorker do
   def handle_call({coordinate, dataset}, _from, state) do
     result =
       state.py
-      |> Python.call(@python_module, @python_method, ["#{coordinate.lat}_#{coordinate.lng}", dataset])
+      |> Python.call(@python_module, @python_method, [ETA.coordinate_hash(coordinate), dataset])
 
     {:reply, [result], state}
   end

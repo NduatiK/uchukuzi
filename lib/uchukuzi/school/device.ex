@@ -99,11 +99,11 @@ defmodule Uchukuzi.School.Device do
   defp _luhns_sum([], sum, _), do: sum
 
   defp _luhns_sum([head | tail], sum, oddPosition = true) do
-    _luhns_sum(tail, sum + head, !oddPosition)
+    _luhns_sum(tail, sum + head, not oddPosition)
   end
 
   defp _luhns_sum([head | tail], sum, oddPosition = false) do
-    _luhns_sum(tail, sum + sum_of_double(head), !oddPosition)
+    _luhns_sum(tail, sum + sum_of_double(head),  not oddPosition)
   end
 
   def sum_of_double(x) do

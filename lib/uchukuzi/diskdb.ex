@@ -48,15 +48,26 @@ defmodule Uchukuzi.DiskDB do
   @doc """
   Retrieve all values from the named table.
   """
+  def get_all_values(table) when is_binary(table) do
+    get_all_values(String.to_existing_atom(table))
+  end
+
+  def get_all_values(table) do
+    # Select from the table the second item in the kv pair,
+    # apply no filters
+    # return the value
+    :dets.select(table, [{{:_, :"$1"}, [], [:"$1"]}])
+  end
+
+  @doc """
+  Retrieve all kv pairs from the named table.
+  """
   def get_all(table) when is_binary(table) do
     get_all(String.to_existing_atom(table))
   end
 
   def get_all(table) do
-    # Select from the table the second item in the kv pair,
-    # apply no filters
-    # return the value
-    :dets.select(table, [{{:_, :"$1"}, [], [:"$1"]}])
+    :dets.select(table, [{:"$1", [], [:"$1"]}])
   end
 
   @doc """

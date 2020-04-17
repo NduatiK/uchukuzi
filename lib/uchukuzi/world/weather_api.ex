@@ -1,4 +1,5 @@
 defmodule Uchukuzi.World.WeatherAPI do
+  @moduledoc false
   use GenServer
 
   alias Uchukuzi.Common.Location
@@ -89,7 +90,7 @@ defmodule Uchukuzi.World.WeatherAPI do
          # rain.3h
        }}
     else
-      e ->
+      _ ->
         # IO.inspect(e)
         :error
     end

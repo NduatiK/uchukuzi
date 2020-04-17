@@ -6,7 +6,7 @@ defmodule Uchukuzi.School.School do
   schema "schools" do
     field(:name, :string)
 
-    embeds_one(:perimeter, Geofence)
+    embeds_one(:perimeter, Geofence, on_replace: :delete)
 
     has_one(:manager, Uchukuzi.Roles.Manager)
     has_many(:buses, Bus, foreign_key: :school_id)
@@ -17,6 +17,10 @@ defmodule Uchukuzi.School.School do
     |> changeset(%{name: name, perimeter: perimeter})
   end
 
+  @spec changeset(
+          {map, map} | %{:__struct__ => atom | %{__changeset__: map}, optional(atom) => any},
+          :invalid | %{optional(:__struct__) => none, optional(atom | binary) => any}
+        ) :: map
   def changeset(schema \\ %__MODULE__{}, params) do
     schema
     |> cast(params, [:name])

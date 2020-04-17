@@ -20,15 +20,15 @@ defmodule Uchukuzi.Tracking do
   alias Uchukuzi.Tracking
   alias Uchukuzi.Tracking.TripTracker
   alias Uchukuzi.Tracking.BusServer
+  alias Uchukuzi.Tracking.StudentActivity
 
   alias Uchukuzi.Common.Report
 
   alias Uchukuzi.World
 
   def student_boarded(%Bus{} = bus, %Student{} = student, %CrewMember{} = assistant) do
-    bus
-    |> TripTracker.pid_from()
-    |> TripTracker.student_boarded(student, assistant)
+    student_activity = StudentActivity.boarded(student, assistant)
+    TripTracker.student_boarded(bus, student_activity)
   end
 
   def move(%Bus{} = bus, %Report{} = report) do
@@ -37,20 +37,21 @@ defmodule Uchukuzi.Tracking do
 
     previous_report = BusServer.last_seen_status(bus_server)
 
+    BusServer.move(bus_server, report)
+
     # Only perform World updates when the bus is outside school,
     # This avoids tracking its presence in the school as being inside a tile for a long time
     # if not in_school?(bus) do
-    if previous_report == nil or DateTime.compare(report.time, previous_report.time) == :gt do
-      World.update(bus_server, previous_report, report)
-    end
 
-    # else
-    #   IO.puts("inschool")
-    # end
+    tiles =
+      if previous_report == nil or DateTime.compare(report.time, previous_report.time) == :gt do
+        World.update(bus_server, previous_report, report)
+      else
+        []
+      end
 
-    BusServer.move(bus_server, report)
-    # IO.puts("----")
-    # TODO: Where do trips come in?
+    TripTracker.add_report(bus, report)
+    TripTracker.crossed_tiles(bus, tiles |> Enum.map(fn x -> x.coordinate end))
   end
 
   def status_of(%Bus{} = bus) do

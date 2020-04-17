@@ -35,10 +35,12 @@ defmodule Uchukuzi.MixProject do
       {:envelope, "~> 1.1"},
       {:eqrcode, "~> 0.1.7"},
 
-
-      # ----- PYTHON for ML --------
+      # ----- ML Related --------
+      {:quantum, "~> 3.0-rc"},
       {:export, "~> 0.1.0"},
       {:poolboy, "~> 1.5.1"},
+
+
 
       # ----- WEATHER --------
       {:httpoison, "~> 0.4"},
@@ -62,33 +64,38 @@ defmodule Uchukuzi.MixProject do
       main: "Uchukuzi",
       extras: ["README.md"],
       groups_for_modules: [
-        "School APIs": [
+        School: [
           Uchukuzi.School.Bus,
           Uchukuzi.School.Bus.FuelRecord,
           Uchukuzi.School.Bus.PerformedRepair,
           Uchukuzi.School.Bus.ScheduledRepair,
-          Uchukuzi.Tracking.BusServer,
-          Uchukuzi.Tracking.BusServer.State,
           Uchukuzi.School.BusStop,
-          Uchukuzi.Tracking.BusSupervisor,
-          Uchukuzi.Tracking.BusesSupervisor,
           Uchukuzi.School.Device,
           Uchukuzi.School.Route,
           Uchukuzi.School.School
         ],
         Roles: [
-          Uchukuzi.Roles.Assistant,
+          Uchukuzi.Roles.CrewMember,
+          Uchukuzi.Roles.Manager,
           Uchukuzi.Roles.Guardian,
           Uchukuzi.Roles.Household,
-          Uchukuzi.Roles.Manager,
           Uchukuzi.Roles.Student
+        ],
+        ETA: [
+          Uchukuzi.ETA.ETASupervisor,
+          Uchukuzi.ETA.LearnerWorker,
+          Uchukuzi.ETA.PredictionWorker
         ],
         Tracking: [
           Uchukuzi.Common.Geofence,
           Uchukuzi.Tracking.StudentActivity,
           Uchukuzi.Tracking.Trip,
           Uchukuzi.Tracking.TripSupervisor,
-          Uchukuzi.Tracking.TripTracker
+          Uchukuzi.Tracking.TripTracker,
+          Uchukuzi.Tracking.BusServer,
+          Uchukuzi.Tracking.BusServer.State,
+          Uchukuzi.Tracking.BusSupervisor,
+          Uchukuzi.Tracking.BusesSupervisor
         ],
         World: [
           Uchukuzi.World.Tile,
@@ -102,7 +109,8 @@ defmodule Uchukuzi.MixProject do
         Common: [
           Uchukuzi.Common.Report,
           Uchukuzi.Common.Location,
-          Uchukuzi.Common.Geofence
+          Uchukuzi.Common.Geofence,
+          Uchukuzi.Common.Validation
         ]
       ]
     ]

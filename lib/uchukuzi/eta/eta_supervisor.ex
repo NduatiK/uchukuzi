@@ -35,6 +35,8 @@ defmodule Uchukuzi.ETA.ETASupervisor do
       :poolboy.child_spec(LearnerWorker, poolboy_config(LearnerWorker))
     ]
 
+    Uchukuzi.ETA.start_up()
+
     Supervisor.init(children, strategy: :one_for_one, name: @name)
   end
 end

@@ -13,7 +13,7 @@ defmodule Uchukuzi.Roles.Guardian do
     timestamps()
   end
 
-  def new(name, email, password) do
+  def new(name, email) do
     %Guardian{}
     |> changeset(%{name: name, email: email})
   end
