@@ -20,6 +20,7 @@ import Style exposing (edges)
 import StyledElement
 import Time
 import Utils.DateFormatter
+import Utils.GroupByDate
 
 
 type alias Model =
@@ -558,58 +559,7 @@ fetchTripsForBus session bus_id =
 
 groupTrips : List Trip -> Time.Zone -> List GroupedTrips
 groupTrips trips timezone =
-    let
-        tripsWithDays : List ( String, Trip )
-        tripsWithDays =
-            List.map (\t -> ( Utils.DateFormatter.dateFormatter timezone t.startTime, t )) trips
-
-        orderedTrips : List ( String, Trip )
-        orderedTrips =
-            List.sortBy (\t -> Time.posixToMillis (Tuple.second t).startTime) tripsWithDays
-
-        groupTripsByMonth : List GroupedTrips -> List ( String, Trip ) -> List GroupedTrips
-        groupTripsByMonth grouped ungrouped =
-            let
-                remainingTrips =
-                    Maybe.withDefault [] (List.tail ungrouped)
-            in
-            case ( List.head grouped, List.head ungrouped ) of
-                -- there are no more ungrouped trips
-                ( _, Nothing ) ->
-                    grouped
-
-                -- there are no grouped trips
-                ( Nothing, Just ( month, trip ) ) ->
-                    let
-                        newGrouped =
-                            [ ( month, [ trip ] ) ]
-                    in
-                    groupTripsByMonth newGrouped remainingTrips
-
-                -- there are some grouped trips
-                ( Just ( groupMonth, groupedTrips ), Just ( month, trip ) ) ->
-                    -- there trip is for the same month as the head
-                    if groupMonth == month then
-                        let
-                            newGrouped =
-                                case List.tail grouped of
-                                    Just tailOfGrouped ->
-                                        ( month, trip :: groupedTrips ) :: tailOfGrouped
-
-                                    Nothing ->
-                                        [ ( month, trip :: groupedTrips ) ]
-                        in
-                        groupTripsByMonth newGrouped remainingTrips
-                        -- there trip is for a different month the head
-
-                    else
-                        let
-                            newGrouped =
-                                ( month, [ trip ] ) :: grouped
-                        in
-                        groupTripsByMonth newGrouped remainingTrips
-    in
-    groupTripsByMonth [] orderedTrips
+    Utils.GroupByDate.group trips timezone .startTime
 
 
 toGPS : Location -> { lat : Float, lng : Float }
