@@ -13,8 +13,6 @@ defmodule Uchukuzi.Tracking.BusServer do
     alias __MODULE__
     defstruct [:bus, :school, last_seen: nil, speed: 0, bearing: 0]
 
-    @spec set_location(Uchukuzi.Tracking.BusServer.State.t(), Uchukuzi.Common.Report.t()) ::
-            Uchukuzi.Tracking.BusServer.State.t()
     def set_location(%State{} = state, %Report{} = report) do
       with last_seen when not is_nil(last_seen) <- state.last_seen,
            comparison when comparison in [:gt, :eq] <-
@@ -83,12 +81,13 @@ defmodule Uchukuzi.Tracking.BusServer do
   def via_tuple(%Bus{} = bus),
     do: Uchukuzi.service_name({__MODULE__, bus.id})
 
+  @spec pid_from(Uchukuzi.School.Bus.t()) :: nil | pid | {atom, atom}
   def pid_from(%Bus{} = bus) do
     with nil <-
            bus
            |> BusServer.via_tuple()
            |> GenServer.whereis() do
-      {:ok, _} = BusesSupervisor.start_bus(bus)
+      BusesSupervisor.start_bus(bus)
 
       bus
       |> BusServer.via_tuple()
@@ -96,6 +95,7 @@ defmodule Uchukuzi.Tracking.BusServer do
     end
   end
 
+  @impl true
   def init(%Bus{} = bus) do
     state = %State{
       bus: bus,
@@ -132,7 +132,7 @@ defmodule Uchukuzi.Tracking.BusServer do
     state = State.set_location(state, report)
 
     if State.in_school?(state) do
-      {:stop, {:in_school, report}, state, state}
+      {:reply, state, state, :hibernate}
     else
       {:reply, state, state}
     end

@@ -3,7 +3,7 @@ defmodule Uchukuzi.Tracking.BusSupervisor do
 
   alias Uchukuzi.School.Bus
   alias Uchukuzi.Tracking.BusServer
-  alias Uchukuzi.Tracking.TripSupervisor
+  alias Uchukuzi.Tracking.TripTracker
 
   def start_link(bus) do
     Supervisor.start_link(__MODULE__, bus, name: via_tuple(bus))
@@ -15,9 +15,13 @@ defmodule Uchukuzi.Tracking.BusSupervisor do
   def init(bus) do
     children = [
       worker(BusServer, [bus]),
-      supervisor(TripSupervisor, [bus])
+      worker(TripTracker, [bus])
     ]
 
-    Supervisor.init(children, strategy: :one_for_one)
+    if Mix.env() == :dev do
+      Supervisor.init(children, strategy: :one_for_one, max_restarts: 20_000)
+    else
+      Supervisor.init(children, strategy: :one_for_one)
+    end
   end
 end

@@ -2,10 +2,12 @@ defmodule Uchukuzi.Common.Report do
   alias __MODULE__
 
   alias Uchukuzi.Common.Location
+  use Ecto.Schema
 
-  @enforce_keys [:time, :location]
-  defstruct [:time, :location]
-  @type t :: %__MODULE__{time: Int.t(), location: Location.t()}
+  embedded_schema do
+    field(:time, :utc_datetime)
+    embeds_one(:location, Location)
+  end
 
   def new(time, %Location{} = location) do
     %Report{time: time, location: location}

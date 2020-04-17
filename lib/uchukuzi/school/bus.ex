@@ -17,6 +17,7 @@ defmodule Uchukuzi.School.Bus do
 
     belongs_to(:school, School)
     has_one(:device, Device)
+    has_many(:trips, Uchukuzi.Tracking.Trip)
 
     timestamps()
   end
@@ -46,5 +47,4 @@ defmodule Uchukuzi.School.Bus do
         changeset
     end
   end
-
 end

@@ -1,203 +1,163 @@
 defmodule Uchukuzi.Tracking.TripTracker do
-  # use GenServer, restart: :transient
-  use GenServer
+  use GenServer, restart: :transient
 
-  @message_timeout 60 * 15 * 1_000
+  @moduledoc """
 
-  alias __MODULE__
+  States
+  1. `new` - used when a `TripTracker` is created,
+  indicates that no reports have been received since the
+  last trip was closed
 
-  alias Uchukuzi.Roles.Student
-  alias Uchukuzi.Roles.CrewMember
+  2. `ongoing` - used when a `TripTracker` is created,
+  indicates that no reports have been received since the
+  last trip was closed
 
-  alias Uchukuzi.Common.Report
-  alias Uchukuzi.Common.Geofence
+  """
 
-  alias Uchukuzi.School.Bus
+  @message_timeout 60 * 60 * 1_000
+
   alias Uchukuzi.Tracking.Trip
   alias Uchukuzi.Tracking.StudentActivity
+  alias Uchukuzi.Tracking.BusesSupervisor
 
-  def start_link([args, %Bus{} = bus]) do
-    GenServer.start_link(__MODULE__, args, name: via_tuple(bus))
+  alias Uchukuzi.Common.Report
+  alias Uchukuzi.School.School
+  alias Uchukuzi.School.Bus
+
+  def start_link(bus) do
+    GenServer.start_link(__MODULE__, bus, name: via_tuple(bus))
   end
 
+  def init(bus) do
+    data = %{
+      bus_id: bus.id,
+      school: Uchukuzi.Repo.preload(bus, :school).school,
+      trip: Trip.new(bus),
+      state: :new
+    }
+
+    {:ok, data}
+  end
+
+  @spec via_tuple(Uchukuzi.School.Bus.t()) :: {:via, Registry, {Uchukuzi.Registry, any}}
   def via_tuple(%Bus{} = bus),
     do: Uchukuzi.service_name({__MODULE__, bus.id})
 
+  def tableName, do: :active_trips
+
+  @spec pid_from(Uchukuzi.School.Bus.t()) :: nil | pid | {atom, atom}
   def pid_from(%Bus{} = bus) do
-    bus
-    |> via_tuple()
-    |> GenServer.whereis()
-  end
+    pid =
+      bus
+      |> __MODULE__.via_tuple()
+      |> GenServer.whereis()
 
-  def fresh_state(%{
-        bus: %Bus{} = bus,
-        initial_report: %Report{} = report
-      }) do
-    %{
-      name: via_tuple(bus),
-      trip: Trip.new() |> insert_report(report),
-      school_perimeter: bus.school.perimeter
-    }
-  end
+    with nil <- pid do
+      BusesSupervisor.start_bus(bus)
 
-  def fresh_state(%{
-        bus: %Bus{} = bus,
-        student_activity: %StudentActivity{} = activity
-      }) do
-    %{
-      name: via_tuple(bus),
-      trip: Trip.new() |> Trip.insert_student_activity(activity),
-      school_perimeter: bus.school.perimeter
-    }
-  end
-
-  def init(%{bus: %Bus{} = bus} = args) do
-    send(self(), {:set_state, via_tuple(bus), args})
-
-    {:ok, fresh_state(args), :hibernate}
-  end
-
-  # *********************** Client API *********************** #
-  def insert_report(trip_tracker, %Report{} = report),
-    do: GenServer.cast(trip_tracker, {:insert_report, report})
-
-  def student_boarded(trip_tracker, %Student{} = student, %CrewMember{role: "assistant"} = assistant),
-    do: GenServer.cast(trip_tracker, {:student_boarded, student, assistant})
-
-  def student_exited(trip_tracker, %Student{} = student, %CrewMember{role: "assistant"} = assistant),
-    do: GenServer.cast(trip_tracker, {:student_exited, student, assistant})
-
-  # def current_location(trip_tracker) do
-  #   GenServer.call(trip_tracker, :current_location)
-  # end
-
-  # def students_onboard(trip_tracker) do
-  #   GenServer.call(trip_tracker, :students_onboard)
-  # end
-
-  # def trip(trip_tracker) do
-  #   GenServer.call(trip_tracker, :trip)
-  # end
-
-  # Server
-
-  # *********************** Server API *********************** #
-  def handle_cast({:student_boarded, student, assistant}, state) do
-    student_activity = student |> StudentActivity.boarded(assistant)
-
-    state
-    |> update_trip_with(student_activity)
-    |> send_notification_of_student_activity()
-    |> exit_with_save()
-  end
-
-  def handle_cast({:student_exited, student, assistant}, state) do
-    student_activity = StudentActivity.exited(student, assistant)
-
-    state
-    |> update_trip_with(student_activity)
-    |> send_notification_of_student_activity()
-    |> exit_with_save()
-  end
-
-  def handle_cast({:insert_report, report}, state) do
-    state
-    |> update_trip_with(report)
-    # |> update_geofence_violations(report)
-    |> exit_with_save()
-
-    # TODO: calculate distance covered
-    # TODO: calculate fuel consumed
-  end
-
-  def handle_call(:students_onboard, _from, state) do
-    {:reply, Trip.students_onboard(state.trip), state}
-  end
-
-  def handle_call(:trip, _from, state) do
-    {:reply, state.trip, state}
-  end
-
-  defp exit_with_save(state) do
-    :ets.insert(tableName(), {state.name, state})
-
-    cond do
-      Trip.is_terminated(state.trip) ->
-        state = %{state | trip: Trip.end_trip(state.trip)}
-        {:stop, {:shutdown, :completed_trip}, state}
-
-      true ->
-        {:noreply, state, @message_timeout}
+      bus
+      |> __MODULE__.via_tuple()
+      |> GenServer.whereis()
     end
   end
 
-  def handle_info(:timeout, state) do
-    {:stop, {:shutdown, :timeout}, state}
+  def handle_cast({:add_report, %Report{} = report}, %{state: :new} = data) do
+    if School.contains_point?(data.school, report.location) do
+      {:noreply, data}
+    else
+      data = %{
+        data
+        | trip: Trip.insert_report(data.trip, report),
+          state: :ongoing
+      }
+
+      {:noreply, data, @message_timeout}
+    end
   end
 
-  def handle_info({:set_state, name, args}, _state) do
-    state =
-      case :ets.lookup(tableName(), name) do
-        [] -> fresh_state(args)
-        [{_key, state}] -> state
+  def handle_cast({:add_report, %Report{} = report}, %{state: :ongoing} = data) do
+    data = %{data | trip: Trip.insert_report(data.trip, report)}
+
+    if School.contains_point?(data.school, report.location) do
+      {:stop, :normal, %{data | state: :complete}}
+    else
+      {:noreply, data, @message_timeout}
+    end
+  end
+
+  def handle_cast({:student_boarded, %StudentActivity{} = activity}, data) do
+    data = %{data | trip: Trip.insert_student_activity(data.trip, activity)}
+
+    {:noreply, data, @message_timeout}
+  end
+
+  def handle_cast({:student_exited, %StudentActivity{} = activity}, data) do
+    data = %{data | trip: Trip.insert_student_activity(data.trip, activity)}
+    {:noreply, data, @message_timeout}
+  end
+
+  # tiles are first crossed to last crossed here
+  def handle_cast({:crossed_tiles, tiles}, data) do
+    data =
+      case {data.trip.crossed_tiles, tiles} do
+        #  If the tiles overlap, ignore the first new tile
+        {[h | _], [h | tail]} ->
+          %{
+            data
+            | trip: %{data.trip | crossed_tiles: Enum.reverse(tail) ++ data.trip.crossed_tiles}
+          }
+
+        #  Otherwise just add it
+        _ ->
+          %{
+            data
+            | trip: %{data.trip | crossed_tiles: Enum.reverse(tiles) ++ data.trip.crossed_tiles}
+          }
       end
 
-    {:noreply, state, :hibernate}
+    {:noreply, data, @message_timeout}
   end
 
-  def terminate({:shutdown, reason}, state) when reason in [:timeout, :completed_trip] do
-    :ets.delete(tableName(), state.name)
-    :ok
+  def handle_info(:timeout, data) do
+    {:stop, {:shutdown, :timeout}, %{data | state: :complete}}
   end
 
-  def terminate(_reason, _state) do
-    :ok
+  def terminate(_reason, %{state: :complete} = data) do
+    data = %{data | trip: Trip.clean_up_trip(data.trip)}
+    Uchukuzi.Repo.insert(data.trip)
+    :ets.delete(tableName(), data.bus_id)
   end
 
-  defp update_trip_with(state, %Report{} = report) do
-    case Trip.insert_report(state.trip, report, state.school_perimeter) do
-      {:ok, trip} ->
-        %{state | trip: trip}
-
-      {:error, :invalid_report_for_trip} ->
-        state
-    end
+  def terminate({:shutdown, :timeout}, data) do
+    data = %{data | trip: Trip.clean_up_trip(data.trip)}
+    Uchukuzi.Repo.insert(data.trip)
+    :ets.delete(tableName(), data.bus_id)
   end
 
-  defp update_trip_with(state, %StudentActivity{} = activity) do
-    case Trip.insert_student_activity(state.trip, activity) do
-      {:ok, trip} ->
-        %{state | trip: trip}
-
-      {:error, :activity_out_of_trip_bounds} ->
-        state
-    end
+  # if stop when incomplete
+  def terminate(_reason, data) do
+    IO.puts("# TODO - No")
+    :ets.insert(tableName(), {data.bus_id, data})
   end
 
-  # defp update_geofence_violations(state, %Report{} = report) do
-  #   violations =
-  #     state.geofences
-  #     |> Enum.filter(&Geofence.contains_point?(&1, report.location))
+  # *************************** CLIENT ***************************#
 
-  #   %{state | violations: violations ++ state.violations}
-  # end
+  def add_report(bus, report),
+    do: cast_tracker(bus, {:add_report, report})
 
-  defp send_notification_of_student_activity(
-         %{trip: %Trip{student_activities: [activity | _]}} = state
-       ) do
-    if not inside_school?(state.school, activity.infered_location) do
-      # TODO: send activiy notification (through a delegate)
-    end
+  # Expects tiles sorted first crossed to last crossed
+  def crossed_tiles(bus, tiles),
+    do: cast_tracker(bus, {:crossed_tiles, tiles})
 
-    state
+  def student_boarded(bus, student_activity),
+    do: cast_tracker(bus, {:student_boarded, student_activity})
+
+  def student_exited(bus, student_activity),
+    do: cast_tracker(bus, {:student_exited, student_activity})
+
+  defp cast_tracker(bus, arguments) do
+    bus
+    |> pid_from()
+    |> GenServer.cast(arguments)
   end
-
-  defp send_notification_of_student_activity(state) do
-  end
-
-  defp inside_school?(school, location) do
-    Geofence.contains_point?(school.perimeter, location)
-  end
-
-  def tableName, do: :active_trips
 end

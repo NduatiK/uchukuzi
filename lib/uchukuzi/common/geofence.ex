@@ -3,7 +3,7 @@ defmodule Uchukuzi.Common.Geofence do
 
   import Uchukuzi.Common.Location, only: [is_location: 1]
 
-  @types [:school, :stay_inside, :never_enter]
+  @types ["school", "stay_inside", "never_enter"]
 
   # @enforce_keys [:type]
   # defstruct [:type, :perimeter, :center, :radius]
@@ -44,15 +44,15 @@ defmodule Uchukuzi.Common.Geofence do
   #   end
   # end
 
-  def new_school_fence(%{lat: lat, lng: lng} = center, radius)
+  def new_school_fence(%{lat: _lat, lng: _lng} = center, radius)
       when is_number(radius) do
     %Geofence{}
-    |> changeset(%{type: :school, center: center, radius: radius})
+    |> changeset(%{type: "school", center: center, radius: radius})
   end
 
-  def new_inside(perimeter), do: new(:stay_inside, perimeter)
+  def new_inside(perimeter), do: new("stay_inside", perimeter)
 
-  def new_stay_outside(perimeter), do: new(:never_enter, perimeter)
+  def new_stay_outside(perimeter), do: new("never_enter", perimeter)
 
   defp new(type, perimeter) when is_list(perimeter) when type in @types do
     %Geofence{}
@@ -66,7 +66,7 @@ defmodule Uchukuzi.Common.Geofence do
     # end
   end
 
-  def contains_point?(%Geofence{type: :school} = geofence, %Location{} = location) do
+  def contains_point?(%Geofence{type: "school"} = geofence, %Location{} = location) do
     Distance.GreatCircle.distance(Location.to_coord(geofence.center), Location.to_coord(location)) <=
       geofence.radius
   end

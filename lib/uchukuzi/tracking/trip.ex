@@ -1,55 +1,35 @@
 defmodule Uchukuzi.Tracking.Trip do
   alias __MODULE__
-
-  defstruct [
-    :start_time,
-    :end_time,
-    reports: [],
-    student_activities: [],
-    students: [],
-    distance_covered: 0,
-    state: :created
-  ]
-
   alias Uchukuzi.Common.Location
+  alias Uchukuzi.School.Bus
   alias Uchukuzi.Common.Report
-  alias Uchukuzi.Common.Geofence
   alias Uchukuzi.Tracking.StudentActivity
+  alias Uchukuzi.World.Tile
+  use Uchukuzi.Tracking.Model
 
-  @doc """
+  schema "trips" do
+    belongs_to(:bus, Bus)
 
-  """
-  def new() do
-    %Trip{}
+    field(:start_time, :utc_datetime)
+    field(:end_time, :utc_datetime)
+
+    embeds_many(:reports, Report)
+    embeds_many(:crossed_tiles, Location)
+    embeds_many(:student_activities, StudentActivity)
+
+    field(:distance_covered, :float)
   end
 
-  def insert_report(
-        %Trip{} = trip,
-        %Report{} = report,
-        %Geofence{} = school_perimeter
-      ) do
+  def new(bus) do
+    %Trip{bus_id: bus.id}
+  end
+
+  def insert_report(%Trip{} = trip, %Report{} = report) do
     trip
-    |> insert(report)
-    |> update_distance_covered()
-    |> update_state(school_perimeter, report)
+    |> insert_sorted(report)
   end
 
-  def insert_student_activity(
-        %Trip{} = trip,
-        %StudentActivity{} = student_activity
-      ) do
-    with true <- trip.start_time < student_activity.time,
-         true <- trip.end_time > student_activity.time do
-      {:ok,
-       trip
-       |> insert(student_activity)}
-    else
-      false ->
-        {:error, :activity_out_of_trip_bounds}
-    end
-  end
-
-  defp insert(trip, %Report{} = report) do
+  defp insert_sorted(trip, %Report{} = report) do
     reports = Enum.sort([report | trip.reports], &(&1.time >= &2.time))
     [latest_report | _] = reports
 
@@ -61,16 +41,19 @@ defmodule Uchukuzi.Tracking.Trip do
     }
   end
 
-  defp insert(trip, %StudentActivity{} = student_activity) do
+  def insert_student_activity(%Trip{} = trip, %StudentActivity{} = student_activity) do
     student_activity =
       student_activity
-      # TODO - What happens when there are no reports?
-      # TODO - Do we come back?
-      # TODO - Can we fallback on the bus's current location
       |> StudentActivity.infer_location(trip)
       |> StudentActivity.set_inferred_location(student_activity)
 
     %Trip{trip | student_activities: [student_activity | trip.student_activities]}
+  end
+
+  def clean_up_trip(%Trip{} = trip) do
+    trip
+    |> update_distance_covered()
+    |> update_student_activities_locations()
   end
 
   @doc """
@@ -93,20 +76,7 @@ defmodule Uchukuzi.Tracking.Trip do
     %{trip | distance_covered: distance_covered}
   end
 
-  def update_state(%Trip{} = trip, %Geofence{} = school_perimeter, report) do
-    inside_school = Geofence.contains_point?(school_perimeter, report.location)
-
-    state =
-      if inside_school and trip.distance_covered > 100 do
-        :terminated
-      else
-        :ongoing
-      end
-
-    %{trip | state: state}
-  end
-
-  def end_trip(%Trip{} = trip) do
+  def update_student_activities_locations(%Trip{} = trip) do
     student_activities =
       trip.student_activities
       |> Enum.map(fn student_activity ->
@@ -115,19 +85,16 @@ defmodule Uchukuzi.Tracking.Trip do
         |> StudentActivity.set_inferred_location(student_activity)
       end)
 
-    %{trip | student_activities: student_activities, state: :terminate}
+    %{trip | student_activities: student_activities}
   end
-
-  def is_terminated(%Trip{state: :terminated}), do: true
-  def is_terminated(_), do: false
 
   def latest_location(%Trip{} = trip) do
     hd(trip.reports).location
   end
 
   @doc """
-  Find out which students are currently onboard the bus based on activities
-
+  Find out which students are currently
+  onboard the bus based on activities
   """
   def students_onboard(%Trip{} = trip) do
     # Replay activities from start to finish to determine who is on on board
