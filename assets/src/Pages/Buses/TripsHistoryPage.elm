@@ -16,13 +16,14 @@ import Icons
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, float, int, list, string)
 import Json.Decode.Pipeline exposing (optional, required, resolve)
+import Models.Trip exposing (Report, StudentActivity, Trip, tripDecoder)
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import Time
-import Utils.Date
+import Utils.DateFormatter
 
 
 type alias Model =
@@ -30,23 +31,15 @@ type alias Model =
     , showGeofence : Bool
     , showStops : Bool
     , trips : WebData (List Trip)
-    , groupedTrips : GroupedTrips
+    , groupedTrips : List GroupedTrips
+    , selectedGroup : Maybe GroupedTrips
     , selectedTrip : Maybe Trip
     , timezone : Time.Zone
     }
 
 
 type alias GroupedTrips =
-    List ( String, List Trip )
-
-
-type alias Trip =
-    { startTime : Time.Posix
-    , endTime : Time.Posix
-    , route : String
-    , points : List Location
-    , length : Int
-    }
+    ( String, List Trip )
 
 
 type alias Location =
@@ -62,12 +55,24 @@ type Msg
     | ToggledShowStops Bool
     | TripsResponse (WebData (List Trip))
     | ClickedOn Trip
+    | SelectedGroup GroupedTrips
 
 
 init : Session -> { bus | id : Int } -> ( Model, Cmd Msg )
 init session bus =
-    ( Model 0 True True RemoteData.Loading [] Nothing (Session.timeZone session)
-    , Cmd.batch [ fetchTripsForBus session bus.id, Ports.initializeMaps False ]
+    ( { sliderValue = 0
+      , showGeofence = True
+      , showStops = True
+      , trips = RemoteData.Loading
+      , groupedTrips = []
+      , selectedGroup = Nothing
+      , selectedTrip = Nothing
+      , timezone = Session.timeZone session
+      }
+    , Cmd.batch
+        [ fetchTripsForBus session bus.id
+        , Ports.initializeMaps False
+        ]
     )
 
 
@@ -92,8 +97,8 @@ update msg model =
                 Nothing ->
                     ( { model | sliderValue = sliderValue }, Ports.deselectPoint () )
 
-                Just point ->
-                    ( { model | sliderValue = sliderValue }, Ports.selectPoint (toGPS point) )
+                Just report ->
+                    ( { model | sliderValue = sliderValue }, Ports.selectPoint report.location )
 
         ToggledShowGeofence show ->
             ( { model | showGeofence = show }, Cmd.none )
@@ -132,12 +137,21 @@ update msg model =
                 ( { model | selectedTrip = Nothing, sliderValue = 0 }, Ports.deselectPoint () )
 
             else
-                case List.head trip.points of
+                case List.head trip.reports of
                     Just firstReport ->
-                        ( { model | selectedTrip = Just trip, sliderValue = 0 }, Ports.selectPoint (toGPS firstReport) )
+                        ( { model | selectedTrip = Just trip, sliderValue = 0 }, Ports.selectPoint firstReport.location )
 
                     Nothing ->
                         ( { model | selectedTrip = Just trip, sliderValue = 0 }, Ports.deselectPoint () )
+
+        SelectedGroup selection ->
+            ( { model
+                | selectedGroup = Just selection
+                , sliderValue = 0
+                , selectedTrip = List.head (Tuple.second selection)
+              }
+            , Ports.deselectPoint ()
+            )
 
 
 
@@ -149,15 +163,10 @@ view model =
     -- Element.column
     --     [ width fill, spacing 40, paddingXY 24 8 ]
     --     [ viewHeading
-    viewBody model
-
-
-
--- ]
-
-
-viewBody : Model -> Element Msg
-viewBody model =
+    --     viewBody model
+    -- -- ]
+    -- viewBody : Model -> Element Msg
+    -- viewBody model =
     case model.trips of
         NotAsked ->
             text "Not fetching"
@@ -167,11 +176,16 @@ viewBody model =
 
         --         text "Loading..."
         Success _ ->
-            Element.column
-                [ width fill, spacing 26, paddingEach { edges | bottom = 40 } ]
-                [ viewMapRegion model model.groupedTrips
+            -- Element.column
+            --     [ width fill, spacing 26, paddingEach { edges | bottom = 40 } ]
+            --     [
+            column [ width fill, spacing 16 ]
+                [ viewMap model
+                , viewMapOptions model
+                , viewTrips model
                 ]
 
+        -- ]
         Failure error ->
             let
                 ( apiError, _ ) =
@@ -180,49 +194,43 @@ viewBody model =
             text (Errors.errorToString apiError)
 
 
-viewMapRegion : Model -> GroupedTrips -> Element Msg
-viewMapRegion model groupedTrips =
-    column [ width fill, spacing 30 ]
-        [ viewMap model model.timezone
-        , viewMapOptions model
-        , viewTrips model.selectedTrip groupedTrips model.timezone
-        ]
+viewMap : Model -> Element Msg
+viewMap model =
+    column
+        [ height (px 500)
 
-
-viewMap : Model -> Time.Zone -> Element Msg
-viewMap model zone =
-    let
-        slider =
-            case model.selectedTrip of
-                Just trip ->
-                    viewSlider model zone trip
-
-                Nothing ->
-                    none
-
-        mapClasses =
-            if model.selectedTrip == Nothing then
-                []
-
-            else
-                [ htmlAttribute (class "selected") ]
-    in
-    el
-        [ height (px 400)
+        -- [ height fill
         , width fill
-        , Border.shadow { offset = ( 0, 12 ), size = 0, blur = 32, color = rgba 0 0 0 0.14 }
         , Style.clipStyle
-
-        -- , Background.color Colors.purple
-        , Border.rounded 15
         , Border.solid
-        , Border.color (rgb255 197 197 197)
+        , Border.color Colors.darkness
         , Border.width 1
         , clip
         , Background.color (rgba 0 0 0 0.05)
-        , Element.inFront slider
         ]
-        (StyledElement.googleMap mapClasses)
+        [ row [ width fill, height fill ]
+            [ StyledElement.googleMap []
+            , case model.selectedTrip of
+                Just trip ->
+                    el
+                        [ width (px 250)
+                        , height fill
+                        , Background.color Colors.white
+                        , Border.color (Colors.withAlpha Colors.darkness 0.5)
+                        , Border.widthEach { edges | left = 1 }
+                        ]
+                        (viewStudentActivities trip.studentActivities model.timezone)
+
+                Nothing ->
+                    none
+            ]
+        , case model.selectedTrip of
+            Just trip ->
+                viewSlider model model.timezone trip
+
+            Nothing ->
+                none
+        ]
 
 
 viewSlider : Model -> Time.Zone -> Trip -> Element Msg
@@ -230,14 +238,14 @@ viewSlider model zone trip =
     let
         max : Int
         max =
-            List.length trip.points - 1
+            List.length trip.reports - 1
 
         currentPointTimeElement : Element msg
         currentPointTimeElement =
             let
                 routeStyle =
                     Style.defaultFontFace
-                        ++ [ Font.color (rgb255 85 88 98)
+                        ++ [ Font.color Colors.darkness
                            , Font.size 14
                            , Font.bold
                            ]
@@ -247,18 +255,17 @@ viewSlider model zone trip =
                     none
 
                 Just point ->
-                    el (centerX :: routeStyle) (text (String.toUpper (Utils.Date.timeFormatter zone point.time)))
+                    el (centerX :: routeStyle) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone point.time)))
 
         ticks : Element msg
         ticks =
             let
                 createTick point =
                     el
-                        [ width (px 2)
-                        , height (px 8)
-                        , centerY
-                        , Border.rounded 1
-                        , if List.head trip.points == Just point then
+                        [ -- width (px 2)
+                          -- , height (px 8)
+                          centerY
+                        , if List.head trip.reports == Just point then
                             Background.color (rgba 1 1 1 0)
 
                           else
@@ -266,24 +273,24 @@ viewSlider model zone trip =
                         ]
                         none
             in
-            row [ spaceEvenly, width fill, centerY ] (List.map createTick trip.points)
+            row [ spaceEvenly, width fill, centerY ] (List.map createTick trip.reports)
     in
     row
-        [ Style.blurredStyle
-        , paddingXY 10 0
+        [ paddingXY 10 0
+        , Border.color Colors.darkness
+        , Border.widthEach { edges | top = 1 }
         , alignBottom
         , height (px 93)
-        , Background.color (rgba 1 1 1 0.45)
+        , Background.color Colors.white
         , width fill
-        , Border.shadow { offset = ( 0, -6 ), size = 0, blur = 32, color = rgba 0 0 0 0.14 }
         ]
         [ -- row [] [ viewSlider model zone trip,
           el [ width (fillPortion 1), width (fillPortion 1) ] none
         , column [ width (fillPortion 40) ]
             [ Input.slider
                 [ height (px 48)
-                , Element.below (el (Style.captionLabelStyle ++ [ alignLeft ]) (text (Utils.Date.timeFormatter zone trip.startTime)))
-                , Element.below (el (Style.captionLabelStyle ++ [ alignRight ]) (text (Utils.Date.timeFormatter zone trip.endTime)))
+                , Element.below (el (Style.captionLabelStyle ++ [ alignLeft ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone trip.startTime))))
+                , Element.below (el (Style.captionLabelStyle ++ [ alignRight ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone trip.endTime))))
 
                 -- "Track styling"
                 , Element.behindContent
@@ -332,9 +339,65 @@ viewSlider model zone trip =
         ]
 
 
+viewStudentActivities : List StudentActivity -> Time.Zone -> Element Msg
+viewStudentActivities activities timezone =
+    let
+        timeStyle =
+            Style.defaultFontFace
+                ++ [ Font.color (rgb255 119 122 129)
+                   , Font.size 13
+                   ]
+
+        routeStyle =
+            Style.defaultFontFace
+                ++ [ Font.color (rgb255 85 88 98)
+                   , Font.size 14
+                   ]
+
+        selectionStyles =
+            []
+
+        viewActivity activity =
+            StyledElement.plainButton [ Style.ignoreCss ]
+                { onPress = Nothing
+                , label =
+                    row
+                        ([ height (px 64)
+                         , width (fillPortion 1 |> minimum 200)
+                         , spacing 8
+                         , paddingXY 12 11
+                         , Background.color (rgb 1 1 1)
+
+                         --  , Border.solid
+                         --  , Border.width 1
+                         --  , Events.onClick (ClickedOn trip)
+                         , Style.animatesShadow
+                         ]
+                            ++ selectionStyles
+                        )
+                        [ column [ spacing 8 ]
+                            [ el (alignRight :: timeStyle ++ [ Font.color Colors.darkText ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone activity.time)))
+
+                            -- , el (alignRight :: timeStyle) (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone trip.endTime)))
+                            -- , el routeStyle (text trip.route)
+                            ]
+                        , el [ width (px 3), height fill, Background.color Colors.darkGreen ] none
+                        , column [ spacing 8 ]
+                            [ paragraph routeStyle [ text ("activity.studentName" ++ " " ++ String.replace "_" " " activity.activity) ]
+
+                            --  el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.startTime))
+                            -- , el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.endTime))
+                            -- , el routeStyle (text trip.route)
+                            ]
+                        ]
+                }
+    in
+    column [ width fill, height fill ] (List.map viewActivity activities)
+
+
 viewMapOptions : Model -> Element Msg
 viewMapOptions model =
-    row [ paddingXY 30 0, spacing 110 ]
+    row [ paddingXY 10 0, spacing 110 ]
         [--     Input.checkbox []
          --     { onChange = ToggledShowGeofence
          --     , icon = StyledElement.checkboxIcon
@@ -354,17 +417,23 @@ viewMapOptions model =
         ]
 
 
-viewTrips : Maybe Trip -> GroupedTrips -> Time.Zone -> Element Msg
-viewTrips selectedTrip groupedTrips timezone =
-    column [ spacing 30 ] (List.map (viewGroupedTrips selectedTrip timezone) groupedTrips)
+viewTrips : Model -> Element Msg
+viewTrips { selectedGroup, selectedTrip, timezone } =
+    case selectedGroup of
+        Nothing ->
+            el [ centerX, centerY ] (text "Select a date from below")
+
+        Just selectedGroup_ ->
+            wrappedRow [ spacing 12 ] (List.map (viewTrip selectedTrip timezone) (Tuple.second selectedGroup_))
 
 
-viewGroupedTrips : Maybe Trip -> Time.Zone -> ( String, List Trip ) -> Element Msg
-viewGroupedTrips selectedTrip timezone ( month, trips ) =
-    column [ spacing 8 ]
-        [ el (Font.size 20 :: Font.bold :: Style.defaultFontFace) (text month)
-        , wrappedRow [ spacing 12 ] (List.map (viewTrip selectedTrip timezone) trips)
-        ]
+
+-- viewGroupedTrips : Maybe Trip -> Time.Zone -> GroupedTrips -> Element Msg
+-- viewGroupedTrips selectedTrip timezone ( month, trips ) =
+--     column [ spacing 8 ]
+--         [ el (Font.size 20 :: Font.bold :: Style.defaultFontFace) (text month)
+--         , wrappedRow [ spacing 12 ] (List.map (viewTrip selectedTrip timezone) trips)
+--         ]
 
 
 viewTrip : Maybe Trip -> Time.Zone -> Trip -> Element Msg
@@ -411,17 +480,17 @@ viewTrip selectedTrip timezone trip =
             ++ selectionStyles
         )
         [ column [ spacing 8 ]
-            [ el (alignRight :: timeStyle ++ [ Font.color Colors.darkText ]) (text (String.toUpper (Utils.Date.timeFormatter timezone trip.startTime)))
-            , el (alignRight :: timeStyle) (text (String.toUpper (Utils.Date.timeFormatter timezone trip.endTime)))
+            [ el (alignRight :: timeStyle ++ [ Font.color Colors.darkText ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone trip.startTime)))
+            , el (alignRight :: timeStyle) (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone trip.endTime)))
 
             -- , el routeStyle (text trip.route)
             ]
         , el [ width (px 3), height fill, Background.color Colors.darkGreen ] none
         , column [ spacing 8 ]
-            [ el routeStyle (text trip.route)
+            [ el routeStyle (text "trip.route")
 
-            --  el (alignRight :: timeStyle) (text (Utils.Date.timeFormatter timezone trip.startTime))
-            -- , el (alignRight :: timeStyle) (text (Utils.Date.timeFormatter timezone trip.endTime))
+            --  el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.startTime))
+            -- , el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.endTime))
             -- , el routeStyle (text trip.route)
             ]
         ]
@@ -429,13 +498,51 @@ viewTrip selectedTrip timezone trip =
 
 viewFooter : Model -> Element Msg
 viewFooter model =
+    let
+        viewScrollTrip group =
+            Input.button [ alignTop, width fill, paddingXY 50 0 ]
+                { label =
+                    column
+                        [ width fill, spacing 10, Style.normalScrolling ]
+                        [ el
+                            [ height (px 16)
+                            , Style.animatesAll
+                            , width (fill |> maximum 190)
+                            , Background.color
+                                (case model.selectedGroup of
+                                    Just selectedGroup ->
+                                        if Tuple.first selectedGroup == Tuple.first group then
+                                            Colors.darkGreen
+
+                                        else
+                                            Colors.transparent
+
+                                    Nothing ->
+                                        Colors.transparent
+                                )
+                            ]
+                            none
+                        , el [] (text (Tuple.first group))
+                        ]
+                , onPress = Just (SelectedGroup group)
+                }
+    in
     column
         [ height fill
         , width fill
-
-        -- , paddingXY 0 10
+        , inFront
+            (el
+                [ Colors.withGradient (pi / 2) Colors.white
+                , width (fill |> maximum 40)
+                , height fill
+                ]
+                none
+            )
         ]
-        [ el [ width fill, height (px 2), Background.color Colors.semiDarkText ] none
+        [ el [ width fill, height (px 2), Background.color Colors.semiDarkText ]
+            none
+        , row ([ width fill, scrollbarX, Style.reverseScrolling ] ++ Style.header2Style ++ [ paddingEach { edges | bottom = 16 } ])
+            (List.map viewScrollTrip model.groupedTrips)
         ]
 
 
@@ -453,67 +560,18 @@ fetchTripsForBus session bus_id =
         |> Cmd.map TripsResponse
 
 
-tripDecoder : Decoder Trip
-tripDecoder =
-    let
-        toDecoder : String -> String -> String -> List Location -> Int -> Decoder Trip
-        toDecoder startDateString endDateString route points length =
-            case ( Iso8601.toTime startDateString, Iso8601.toTime endDateString ) of
-                ( Result.Ok startDate, Result.Ok endDate ) ->
-                    Decode.succeed
-                        { startTime = startDate
-                        , endTime = endDate
-                        , route = route
-                        , points = points
-                        , length = length
-                        }
-
-                ( Result.Err _, _ ) ->
-                    Decode.fail (startDateString ++ " cannot be decoded to a date")
-
-                ( _, Result.Err _ ) ->
-                    Decode.fail (endDateString ++ " cannot be decoded to a date")
-    in
-    Decode.succeed toDecoder
-        |> required "startTime" string
-        |> required "endTime" string
-        |> required "route" string
-        |> required "reports" (list locationDecoder)
-        |> required "length" int
-        |> resolve
-
-
-locationDecoder : Decoder Location
-locationDecoder =
-    let
-        toDecoder : Float -> Float -> String -> Decoder Location
-        toDecoder longitude latitude dateString =
-            case Iso8601.toTime dateString of
-                Result.Ok date ->
-                    Decode.succeed (Location longitude latitude date)
-
-                Result.Err _ ->
-                    Decode.fail (dateString ++ " cannot be decoded to a date")
-    in
-    Decode.succeed toDecoder
-        |> required "longitude" float
-        |> required "latitude" float
-        |> required "time" string
-        |> resolve
-
-
-groupTrips : List Trip -> Time.Zone -> GroupedTrips
+groupTrips : List Trip -> Time.Zone -> List GroupedTrips
 groupTrips trips timezone =
     let
         tripsWithDays : List ( String, Trip )
         tripsWithDays =
-            List.map (\t -> ( Utils.Date.dateFormatter timezone t.startTime, t )) trips
+            List.map (\t -> ( Utils.DateFormatter.dateFormatter timezone t.startTime, t )) trips
 
         orderedTrips : List ( String, Trip )
         orderedTrips =
             List.sortBy (\t -> Time.posixToMillis (Tuple.second t).startTime) tripsWithDays
 
-        groupTripsByMonth : GroupedTrips -> List ( String, Trip ) -> GroupedTrips
+        groupTripsByMonth : List GroupedTrips -> List ( String, Trip ) -> List GroupedTrips
         groupTripsByMonth grouped ungrouped =
             let
                 remainingTrips =
@@ -565,6 +623,6 @@ toGPS location =
     }
 
 
-pointAt : Int -> Trip -> Maybe Location
+pointAt : Int -> Trip -> Maybe Report
 pointAt index trip =
-    List.head (List.drop index trip.points)
+    List.head (List.drop index trip.reports)

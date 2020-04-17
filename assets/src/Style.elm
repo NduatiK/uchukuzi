@@ -21,6 +21,8 @@ module Style exposing
     , inputStyle
     , labelStyle
     , mobileHidden
+    , normalScrolling
+    , reverseScrolling
     , stickyStyle
     , tableElementStyle
     , tableHeaderStyle
@@ -193,6 +195,16 @@ mobileHidden =
 animatesShadow : Attribute msg
 animatesShadow =
     classAttr "animatesShadow"
+
+
+reverseScrolling : Attribute msg
+reverseScrolling =
+    htmlAttribute (Html.Attributes.style "direction" "rtl")
+
+
+normalScrolling : Attribute msg
+normalScrolling =
+    htmlAttribute (Html.Attributes.style "direction" "ltr")
 
 
 animatesAll : Attribute msg
