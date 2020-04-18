@@ -1,4 +1,4 @@
-module Pages.Buses.BusRegistrationPage exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.Buses.CreateBusPage exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
