@@ -22,6 +22,10 @@ defmodule Uchukuzi.School do
     |> Repo.transaction()
   end
 
+  def get_school(school_id),
+    do: Repo.get(School, school_id)
+
+  # ********* Buses *********
   def buses_for(school_id) do
     Repo.get(School, school_id)
     |> Repo.preload(:buses)
@@ -30,12 +34,42 @@ defmodule Uchukuzi.School do
 
   def bus_for(school_id, bus_id) do
     with bus when not is_nil(bus) <- Repo.get_by(Bus, school_id: school_id, id: bus_id) do
-      {:ok, bus}
+      {:ok, Repo.preload(bus, [:performed_repairs])}
     else
       nil -> {:error, :not_found}
     end
   end
 
+  def create_bus(school_id, bus_params) do
+    bus_params
+    |> Map.put("school_id", school_id)
+    |> Bus.new()
+    |> Repo.insert()
+  end
+
+  def create_performed_repair(school_id, bus_id) do
+
+  end
+  def create_performed_repair(school_id, bus_id, params) do
+    with {:ok, bus} <- bus_for(school_id, bus_id) do
+      params
+      |> Enum.reduce(Multi.new(), fn params, multi ->
+        multi
+        |> Multi.run(
+          Integer.to_string(params["browser_id"]),
+          fn _repo, _ ->
+            params
+            |> Map.put("bus_id", bus.id)
+            |> PerformedRepair.changeset()
+            |> Repo.insert()
+          end
+        )
+      end)
+      |> Repo.transaction()
+    end
+  end
+
+  # ********* Devices *********
   def register_device(bus, imei) do
     %{imei: imei, bus_id: bus.id}
     |> Device.new()
@@ -49,9 +83,6 @@ defmodule Uchukuzi.School do
       nil -> {:error, :not_found}
     end
   end
-
-  def get_school(school_id),
-    do: Repo.get(School, school_id)
 
   def crew_member_for(school_id, crew_member_id) do
     CrewMember
@@ -101,15 +132,6 @@ defmodule Uchukuzi.School do
       end)
     end)
     |> Repo.transaction()
-  end
-
-  # ********* BUS *********
-
-  def create_bus(school_id, bus_params) do
-    bus_params
-    |> Map.put("school_id", school_id)
-    |> Bus.new()
-    |> Repo.insert()
   end
 
   # ********* Routes *********
@@ -167,11 +189,5 @@ defmodule Uchukuzi.School do
         preload: [students: s]
       )
     )
-
-    # Guardian
-    # |> join(:left, [g], s in Student, on: s.guardian_id == g.id and s.school_id == ^school_id)
-    # |> select([g, s], {g, s})
-    # |> Repo.all()
-    # |> IO.inspect
   end
 end

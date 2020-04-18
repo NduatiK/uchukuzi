@@ -1,15 +1,35 @@
 defmodule Uchukuzi.School.Bus.PerformedRepair do
   alias __MODULE__
-  alias Uchukuzi.School.Bus
-  @enforce_keys [:bus, :cost, :part, :time]
-  defstruct [:bus, :cost, :part, :time]
+  use Uchukuzi.School.Model
 
-  def new(%Bus{} = bus, cost, part, time) do
-    %PerformedRepair{
-      bus: bus,
-      cost: cost,
-      part: part,
-      time: time
-    }
+  schema "performed_repairs" do
+    field(:cost, :float)
+    field(:part, :string)
+    field(:description, :string, size: 500)
+
+    belongs_to(:bus, Uchukuzi.School.Bus)
+
+    timestamps()
+  end
+
+  def changeset(schema \\ %__MODULE__{}, params) do
+    schema
+    |> cast(params, [:cost, :part, :bus_id, :description])
+    |> validate_required([:cost, :part, :bus_id])
+    |> validate_inclusion(:part, valid_parts())
+    |> validate_length(:description, max: 500)
+  end
+
+  def valid_parts() do
+    [
+      "Front Left Tire",
+      "Front Right Tire",
+      "Rear Left Tire",
+      "Rear Right Tire",
+      "Engine",
+      "Front Cross Axis",
+      "Rear Cross Axis",
+      "Vertical Axis"
+    ]
   end
 end
