@@ -52,8 +52,6 @@ loggedInParser =
             ++ [ -- http://localhost:4000/#/fleet/1/?page=trips
                  --  Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
                  Parser.map CreateBusRepair (s (routeName Buses) </> int </> s "maintenance" </> s "new")
-               , Parser.map (\a b -> Bus a (Just b)) (s (routeName Buses) </> int </> string)
-               , Parser.map (\a -> Bus a Nothing) (s (routeName Buses) </> int)
                , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s "edit")
                , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
                ]
@@ -63,6 +61,9 @@ loggedInParser =
                 , ( Buses, BusRegistration )
                 , ( DeviceList, DeviceRegistration )
                 ]
+            ++ [ Parser.map (\a -> Bus a Nothing) (s (routeName Buses) </> int)
+               , Parser.map (\a b -> Bus a (Just b)) (s (routeName Buses) </> int </> string)
+               ]
         )
 
 
