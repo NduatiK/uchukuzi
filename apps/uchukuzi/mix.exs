@@ -6,11 +6,13 @@ defmodule Uchukuzi.MixProject do
       app: :uchukuzi,
       description: "School bus tracking on steroids",
       version: "0.1.0",
+      build_path: "../../_build",
+      config_path: "../../config/config.exs",
+      deps_path: "../../deps",
+      lockfile: "../../mix.lock",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      # config_path: "config/config.exs",
-
       aliases: aliases(),
 
       # DOCS - mix docs
@@ -39,8 +41,6 @@ defmodule Uchukuzi.MixProject do
       {:quantum, "~> 3.0-rc"},
       {:export, "~> 0.1.0"},
       {:poolboy, "~> 1.5.1"},
-
-
       {:pubsub, "~> 1.0"},
 
       # ----- WEATHER --------
@@ -115,7 +115,6 @@ defmodule Uchukuzi.MixProject do
       ]
     ]
   end
-
 
   defp aliases do
     [
