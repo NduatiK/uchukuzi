@@ -53,10 +53,9 @@ defmodule Uchukuzi.MixProject do
       # ----- DB --------
       {:ecto_sql, "~> 3.0"},
       {:postgrex, ">= 0.0.0"},
+
       # ----- DOCS --------
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
 
@@ -117,12 +116,7 @@ defmodule Uchukuzi.MixProject do
     ]
   end
 
-  # Aliases are shortcuts or tasks specific to the current project.
-  # For example, to create, migrate and run the seeds file at once:
-  #
-  #     $ mix ecto.setup
-  #
-  # See the documentation for `Mix` for more info on aliases.
+
   defp aliases do
     [
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
