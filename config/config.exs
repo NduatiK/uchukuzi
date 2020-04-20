@@ -9,4 +9,5 @@ config :uchukuzi, Uchukuzi.Scheduler,
     {"@daily", {Uchukuzi.ETA, :rebuild_models, []}}
   ]
 
+
 import_config "#{Mix.env()}.exs"
