@@ -136,7 +136,8 @@ viewDevice device =
             , column
                 [ centerY, spacing 40, width fill, paddingEach { edges | bottom = 20 } ]
                 [ StyledElement.textStack "Serial No" formattedSerial
-                , StyledElement.textStack "Serial No" "1231 4453 7523 1262"
+
+                -- , StyledElement.textStack "Serial No" "1231 4453 7523 1262"
                 ]
             ]
         , el [] none
@@ -215,8 +216,6 @@ viewAddDevice model =
                     [ padding 8
                     , width fill
                     , height fill
-
-
                     ]
                     [ Icons.hardware []
                     , el (alignBottom :: Style.header2Style ++ [ Font.color Colors.semiDarkText ])

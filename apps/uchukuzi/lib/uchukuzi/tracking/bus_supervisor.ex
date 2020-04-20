@@ -18,10 +18,10 @@ defmodule Uchukuzi.Tracking.BusSupervisor do
       worker(TripTracker, [bus])
     ]
 
-    if Mix.env() == :dev do
+    # if Mix.env() == :dev do
       Supervisor.init(children, strategy: :one_for_one, max_restarts: 20_000)
-    else
-      Supervisor.init(children, strategy: :one_for_one)
-    end
+    # else
+    #   Supervisor.init(children, strategy: :one_for_one)
+    # end
   end
 end
