@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.svm import SVR
 from sklearn.preprocessing import StandardScaler
-from pickle import dump, load
+from joblib import dump, load
 import warnings
 from sklearn.exceptions import DataConversionWarning
 warnings.filterwarnings("ignore", category=DataConversionWarning)
@@ -46,14 +46,14 @@ def learn(name, data):
         except:
             pass
 
-        dump((sc_X, sc_y, svr), open(model_name(name), 'wb'))
+        dump((sc_X, sc_y, svr), model_name(name))
 
 
 def predict(name, time):
     try:
         # When predicting,
         # find the model for the tile
-        model = load(open(model_name(name), 'rb'))
+        model = load(model_name(name))
     except e:
         print(e)
         return 240  # seconds
