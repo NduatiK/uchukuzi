@@ -21,3 +21,6 @@ erl_crash.dump
 
 .elixir_ls/
 
+Elixir.Uchukuzi.World.ETA
+.gitignore
+Elixir.Uchukuzi.DiskDB
