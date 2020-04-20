@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="202px" height="65px" viewBox="0 0 202 65" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>front_cross_axis_repair</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <rect id="path-1" x="0" y="0" width="54" height="19"></rect>
+    </defs>
+    <g id="front_cross_axis_repair" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group-2-Copy" transform="translate(0.000000, 39.000000)">
+            <g id="Group-3-Copy">
+                <g id="Group" transform="translate(74.000000, 0.000000)">
+                    <mask id="mask-2" fill="white">
+                        <use xlink:href="#path-1"></use>
+                    </mask>
+                    <g id="Rectangle"></g>
+                    <circle id="Oval" stroke="#000000" fill="#61A591" mask="url(#mask-2)" cx="27" cy="19" r="17"></circle>
+                </g>
+                <rect id="Rectangle-Copy-3" stroke="#000000" fill="#61A591" x="0" y="19" width="202" height="7"></rect>
+                <rect id="Rectangle" stroke="#000000" fill="#61A591" x="0" y="19" width="76" height="7"></rect>
+                <rect id="Rectangle-Copy-2" stroke="#000000" fill="#61A591" x="126" y="19" width="76" height="7"></rect>
+            </g>
+        </g>
+    </g>
+</svg>

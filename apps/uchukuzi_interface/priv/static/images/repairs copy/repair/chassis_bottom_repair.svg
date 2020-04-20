@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="272px" height="497px" viewBox="0 0 272 497" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>Artboard Copy 55</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <rect id="path-1" x="0" y="0" width="54" height="19"></rect>
+    </defs>
+    <g id="Artboard-Copy-55" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group-2-Copy" transform="translate(26.000000, 65.000000)">
+            <polygon id="Rectangle" stroke="#000000" fill="#61A591" points="20 -5.79224169e-14 198.5 0 220 84.5 220 285.5 182 368 31 367 0 285.5 0 84.5"></polygon>
+            <g id="Group-3" transform="translate(83.000000, 348.000000)">
+                <g id="Group">
+                    <mask id="mask-2" fill="white">
+                        <use xlink:href="#path-1"></use>
+                    </mask>
+                    <g id="Rectangle"></g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

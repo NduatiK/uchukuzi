@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="14px" height="18px" viewBox="0 0 14 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 62 (91390) - https://sketch.com -->
+    <title>icon/action/settings_24px copy 11</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <rect id="path-1" x="0" y="1" width="1720" height="1135" rx="28"></rect>
+        <rect id="path-3" x="0" y="0" width="1463" height="984"></rect>
+        <rect id="path-5" x="0" y="0" width="1084" height="986"></rect>
+        <filter x="-5.0%" y="-4.2%" width="110.1%" height="111.1%" filterUnits="objectBoundingBox" id="filter-6">
+            <feOffset dx="0" dy="13" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="16" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.32154174 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+        <path d="M6.325,4.71875 C5.675,4.06875 5.675,3.01041667 6.325,2.36041667 C6.975,1.71041667 8.03333333,1.71041667 8.68333333,2.36041667 C9.33333333,3.01041667 9.33333333,4.06875 8.68333333,4.71875 C8.025,5.37708333 6.975,5.37708333 6.325,4.71875 Z M5,13.54375 L5,6.04375 L3.33333333,6.04375 L3.33333333,13.54375 C3.33333333,15.84375 5.2,17.7104167 7.5,17.7104167 L12.5,17.7104167 L12.5,16.04375 L7.5,16.04375 C6.11666667,16.04375 5,14.9270833 5,13.54375 Z M16.6666667,16.9354167 L12.4416667,12.7104167 L9.58333333,12.7104167 L9.58333333,9.64375 C10.75,10.6020833 12.5833333,11.44375 14.1666667,11.44375 L14.1666667,9.64375 C12.7833333,9.66041667 11.1583333,8.91875 10.275,7.94375 L9.10833333,6.65208333 C8.95,6.47708333 8.75,6.33541667 8.53333333,6.23541667 C8.29166667,6.11875 8.01666667,6.04375 7.73333333,6.04375 L7.70833333,6.04375 C6.675,6.04375 5.83333333,6.88541667 5.83333333,7.91875 L5.83333333,12.7104167 C5.83333333,14.09375 6.95,15.2104167 8.33333333,15.2104167 L12.5583333,15.2104167 L15.475,18.1270833 L16.6666667,16.9354167 Z" id="path-7"></path>
+    </defs>
+    <g id="WebApp" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard-Copy-14" transform="translate(-452.000000, -735.000000)">
+            <rect fill="#4F4F4F" x="0" y="0" width="1720" height="1137"></rect>
+            <mask id="mask-2" fill="white">
+                <use xlink:href="#path-1"></use>
+            </mask>
+            <use id="Rectangle" stroke="#979797" fill="#FFFFFF" xlink:href="#path-1"></use>
+            <g id="Group-4" mask="url(#mask-2)">
+                <g transform="translate(257.000000, 154.000000)">
+                    <mask id="mask-4" fill="white">
+                        <use xlink:href="#path-3"></use>
+                    </mask>
+                    <use id="Rectangle" stroke="none" fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-3"></use>
+                    <g id="Group-2" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" mask="url(#mask-4)">
+                        <g transform="translate(0.000000, -3.000000)" id="Rectangle">
+                            <g>
+                                <use fill="black" fill-opacity="1" filter="url(#filter-6)" xlink:href="#path-5"></use>
+                                <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-5"></use>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+            <g id="Group-7" mask="url(#mask-2)">
+                <g transform="translate(415.000000, 601.000000)" id="Group-8">
+                    <g transform="translate(1.000000, 104.000000)">
+                        <g id="icon/notification/airline_seat_recline_normal_24px" transform="translate(33.000000, 29.000000)">
+                            <mask id="mask-8" fill="white">
+                                <use xlink:href="#path-7"></use>
+                            </mask>
+                            <g fill-rule="nonzero"></g>
+                            <g id="*" mask="url(#mask-8)" fill="#000000"  fill-rule="evenodd">
+                                <rect id="Rectangle" x="0" y="0" width="20" height="20"></rect>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="508px" height="254px" viewBox="0 0 508 254" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <g id="Web-App-v2" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-dasharray="14,8">
+        <g id="Artboard-Copy-44" transform="translate(-680.000000, -465.000000)" fill="#FFFFFF" stroke="#000000" stroke-width="2">
+            <g id="WebApp/Box" transform="translate(681.000000, 466.000000)">
+                <g id="Group">
+                    <path d="M495.5,168.5 L503.5,76 L495.5,74.5 L487,167 L495.5,168.5 Z" id="Rectangle-Copy-5"></path>
+                    <path d="M2,61 L337,152 L503.5,76 L186,0 L2,61 Z" id="Rectangle-Copy-2"></path>
+                    <path d="M142,57.9802632 L276.267198,94.5 L343,64 L215.74676,33.5 L142,57.9802632 Z" id="Rectangle-Copy-7"></path>
+                    <path d="M495.5,168.5 L331,251.5 L324,249 L346.000714,237.932156 L487,167 L495.5,168.5 Z" id="Rectangle-Copy-4"></path>
+                    <path d="M2,61 L337,152 L331,251.5 L0,154.5 L2,61 Z" id="Rectangle"></path>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

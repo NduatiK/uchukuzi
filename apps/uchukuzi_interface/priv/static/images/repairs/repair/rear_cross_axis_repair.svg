@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="202px" height="84px" viewBox="0 0 202 84" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>rear_cross_axis_repair</title>
+    <desc>Created with Sketch.</desc>
+    <g id="rear_cross_axis_repair" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M101,1 C96.0521115,1 91.5724126,3.01512437 88.3298345,6.27383472 C84.8710012,9.74987619 82.8199668,14.6410709 83.1116203,20.0093326 L118.903835,19.6675427 C119.094304,14.3713494 117.006599,9.56258793 113.5485,6.15272012 C110.315977,2.96528227 105.8863,1 101,1 Z" id="Oval-2" stroke="#000000" stroke-width="2" fill="#95C3B5"></path>
+        <g id="Group-2-Copy" transform="translate(0.500000, 19.000000)" fill="#95C3B5" stroke="#000000" stroke-width="2">
+            <g id="Group-3">
+                <rect id="Rectangle-Copy-3" x="0" y="0" width="201" height="7"></rect>
+                <rect id="Rectangle" x="0" y="0" width="75.6237624" height="7"></rect>
+                <rect id="Rectangle-Copy-2" x="125.376238" y="0" width="75.6237624" height="7"></rect>
+            </g>
+        </g>
+    </g>
+</svg>
