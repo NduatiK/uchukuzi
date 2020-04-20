@@ -252,7 +252,7 @@ function insertCircle(pos, app) {
         radius = schoolCircle.getRadius()
         schoolCircle.setMap(null)
     }
-    getMapElement()
+    initializeMaps()
         .then(() => {
 
             schoolCircle = new google.maps.Circle({
