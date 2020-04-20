@@ -6,8 +6,8 @@ config :uchukuzi, Uchukuzi.Repo,
   ssl: true,
   pool_size: 2 # Free tier db only allows 4 connections. Rolling deploys need pool_size*(n+1) connections where n is the number of app replicas.
 
-# config :uchukuzi, Uchukuzi.Repo,
-#   database: "uchukuzi_repo",
-#   username: "postgres",
-#   password: "postgres",
-#   hostname: "localhost"
+config :uchukuzi, Uchukuzi.Repo,
+  database: "uchukuzi_repo",
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost"

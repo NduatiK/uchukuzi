@@ -221,4 +221,9 @@ defmodule Uchukuzi.World.Tile do
   Generates a unique tuple for a tile
   """
   def name(%Tile{} = tile), do: tile.coordinate
+
+  def nearby?(%Tile{} = tile1, %Tile{} = tile2, radius \\ @default_tile_size) do
+    round(abs(tile1.coordinate.lat - tile2.coordinate.lat) / radius) == 1 &&
+      round(abs(tile1.coordinate.lng - tile2.coordinate.lng) / radius) == 1
+  end
 end

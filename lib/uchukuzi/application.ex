@@ -7,11 +7,12 @@ defmodule Uchukuzi.Application do
 
   def start(_type, _args) do
     children = [
+      %{id: PubSub, start: {PubSub, :start_link, []}},
       {Uchukuzi.Repo, []},
       {Registry, keys: :unique, name: Uchukuzi.Registry},
       Uchukuzi.Tracking.BusesSupervisor,
       Uchukuzi.World.WorldSupervisor,
-      Uchukuzi.ETA.ETASupervisor,
+      Uchukuzi.World.ETA.ETASupervisor,
       Uchukuzi.Scheduler
     ]
 

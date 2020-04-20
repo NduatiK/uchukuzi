@@ -1,9 +1,9 @@
-defmodule Uchukuzi.ETA.PredictionWorker do
+defmodule Uchukuzi.World.ETA.PredictionWorker do
   use GenServer
   use Export.Python
 
-  alias Uchukuzi.ETA
-  alias Uchukuzi.ETA.ETASupervisor
+  alias Uchukuzi.World.ETA
+  alias Uchukuzi.World.ETA.ETASupervisor
 
   @python_dir "../uchukuzi/lib/python"
   @python_module "ml"
@@ -28,25 +28,24 @@ defmodule Uchukuzi.ETA.PredictionWorker do
   def terminate(_reason, state) do
     state.py
     |> Python.stop()
-
+    IO.inspect("Crash!!!")
     :ok
   end
 
   @impl true
-  def handle_call({coordinate, time_value}, _from, state) do
+  def handle_call({coordinate, hour_value}, _from, state) do
     result =
       state.py
-      |> Python.call(@python_module, @python_method, [ETA.coordinate_hash(coordinate), time_value])
+      |> Python.call(@python_module, @python_method, [ETA.coordinate_hash(coordinate), hour_value])
 
     {:reply, [result], state}
   end
 
-  def predict(coordinate, {:ok, time_value}), do: predict(coordinate, time_value)
 
-  def predict(coordinate, time_value) do
+  def predict(coordinate, hour_value) do
     :poolboy.transaction(
       ETASupervisor.prediction_pool(),
-      fn pid -> GenServer.call(pid, {coordinate, time_value}) end
+      fn pid -> GenServer.call(pid, {coordinate, hour_value}) end
     )
   end
 end

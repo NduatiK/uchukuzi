@@ -34,19 +34,17 @@ defmodule Uchukuzi.World.WorldManager do
         _from,
         state
       ) do
-    time_value = time_of_day.hour + time_of_day.minute / 60
 
     for tile <- tiles do
-      Uchukuzi.ETA.insert(tile, time_value, average_cross_time)
+      Uchukuzi.World.ETA.insert(tile, time_of_day, average_cross_time)
     end
 
     {:reply, state, state}
   end
 
   def handle_call({:crossed_tile, tile, _bus_server, cross_time, time_of_day}, _from, state) do
-    time_value = time_of_day.hour + time_of_day.minute / 60
 
-    Uchukuzi.ETA.insert(tile, time_value, cross_time)
+    Uchukuzi.World.ETA.insert(tile, time_of_day, cross_time)
 
     {:reply, state, state}
   end

@@ -26,3 +26,5 @@ uchukuzi_backend-*.tar
 /.elixir_ls/
 
 /lib/python/__pycache__
+
+/models/

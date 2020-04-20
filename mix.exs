@@ -41,6 +41,7 @@ defmodule Uchukuzi.MixProject do
       {:poolboy, "~> 1.5.1"},
 
 
+      {:pubsub, "~> 1.0"},
 
       # ----- WEATHER --------
       {:httpoison, "~> 0.4"},

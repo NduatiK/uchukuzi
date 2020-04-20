@@ -1,9 +1,9 @@
-defmodule Uchukuzi.ETA.LearnerWorker do
+defmodule Uchukuzi.World.ETA.LearnerWorker do
   use GenServer
   use Export.Python
 
-  alias Uchukuzi.ETA
-  alias Uchukuzi.ETA.ETASupervisor
+  alias Uchukuzi.World.ETA
+  alias Uchukuzi.World.ETA.ETASupervisor
 
   @python_dir "../uchukuzi/lib/python"
   @python_module "ml"

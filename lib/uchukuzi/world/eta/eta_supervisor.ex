@@ -1,9 +1,9 @@
-defmodule Uchukuzi.ETA.ETASupervisor do
+defmodule Uchukuzi.World.ETA.ETASupervisor do
   use Supervisor
 
   @name __MODULE__
-  alias Uchukuzi.ETA.PredictionWorker
-  alias Uchukuzi.ETA.LearnerWorker
+  alias Uchukuzi.World.ETA.PredictionWorker
+  alias Uchukuzi.World.ETA.LearnerWorker
 
   def start_link(_) do
     Supervisor.start_link(__MODULE__, [], name: @name)
@@ -35,7 +35,7 @@ defmodule Uchukuzi.ETA.ETASupervisor do
       :poolboy.child_spec(LearnerWorker, poolboy_config(LearnerWorker))
     ]
 
-    Uchukuzi.ETA.start_up()
+    Uchukuzi.World.ETA.start_up()
 
     Supervisor.init(children, strategy: :one_for_one, name: @name)
   end

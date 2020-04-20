@@ -13,6 +13,9 @@ defmodule Uchukuzi.Repo.Migrations.AddTrips do
       add(:student_activities, :jsonb, default: "[]")
 
       add(:distance_covered, :float)
+      add(:travel_time, :string)
+      add(:crossed_tiles_hash, :string)
+
     end
   end
 

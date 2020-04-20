@@ -17,12 +17,15 @@ defmodule Uchukuzi.Tracking.TripTracker do
   @message_timeout 60 * 60 * 1_000
 
   alias Uchukuzi.Tracking.Trip
+  alias Uchukuzi.Tracking.TripPath
   alias Uchukuzi.Tracking.StudentActivity
   alias Uchukuzi.Tracking.BusesSupervisor
 
   alias Uchukuzi.Common.Report
   alias Uchukuzi.School.School
   alias Uchukuzi.School.Bus
+
+  import Ecto.Query
 
   def start_link(bus) do
     GenServer.start_link(__MODULE__, bus, name: via_tuple(bus))
@@ -33,6 +36,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
       bus_id: bus.id,
       school: Uchukuzi.Repo.preload(bus, :school).school,
       trip: Trip.new(bus),
+      trip_path: nil,
       state: :new
     }
 
@@ -65,9 +69,27 @@ defmodule Uchukuzi.Tracking.TripTracker do
     if School.contains_point?(data.school, report.location) do
       {:noreply, data}
     else
+      startedTrip =
+        data.trip
+        |> Trip.insert_report(report)
+        |> Trip.infer_trip_travel_time()
+
+      similarTrip =
+        Trip
+        |> where([t], t.bus_id == ^data.bus_id and t.travel_time == ^startedTrip.travel_time)
+        |> Ecto.Query.first(desc_nulls_last: :start_time)
+        |> Uchukuzi.Repo.one()
+
+      trip_path =
+        with trip when not is_nil(trip) <- similarTrip do
+          trip.crossed_tiles
+          |> TripPath.new()
+          |> TripPath.update_predictions()
+        end
+
       data = %{
         data
-        | trip: Trip.insert_report(data.trip, report),
+        | trip: startedTrip,
           state: :ongoing
       }
 
@@ -96,24 +118,32 @@ defmodule Uchukuzi.Tracking.TripTracker do
     {:noreply, data, @message_timeout}
   end
 
-  # tiles are first crossed to last crossed here
+  # provided `tiles` are in LRF order here
+  # they are stored in MRF order
   def handle_cast({:crossed_tiles, tiles}, data) do
-    data =
-      case {data.trip.crossed_tiles, tiles} do
-        #  If the tiles overlap, ignore the first new tile
-        {[h | _], [h | tail]} ->
-          %{
-            data
-            | trip: %{data.trip | crossed_tiles: Enum.reverse(tail) ++ data.trip.crossed_tiles}
-          }
+    is_in_student_trip = Enum.member?(Trip.travel_times(), data.trip.travel_time)
 
-        #  Otherwise just add it
-        _ ->
-          %{
-            data
-            | trip: %{data.trip | crossed_tiles: Enum.reverse(tiles) ++ data.trip.crossed_tiles}
-          }
-      end
+    if is_in_student_trip do
+      trip_path =
+        with path when not is_nil(path) <- data.trip_path do
+          # Match crossed tiles to historical tiles
+          # • Find out what tiles need to be crossed
+          # • Predict
+          # • Report to tile members
+
+          path =
+            path
+            |> TripPath.crossed_tiles(tiles)
+            |> TripPath.update_predictions()
+
+          PubSub.publish(:prediction_update, {self(), data.bus_id, path.eta})
+
+          path
+        end
+
+      # UchukuziInterfaceWeb.Endpoint.broadcast("school:#{school_id}", "bus_moved", output)
+      %{data | trip_path: trip_path}
+    end
 
     {:noreply, data, @message_timeout}
   end
@@ -154,6 +184,12 @@ defmodule Uchukuzi.Tracking.TripTracker do
 
   def student_exited(bus, student_activity),
     do: cast_tracker(bus, {:student_exited, student_activity})
+
+  def is_in_student_trip(bus) do
+    bus
+    |> pid_from()
+    |> GenServer.call(bus, :is_in_student_trip)
+  end
 
   defp cast_tracker(bus, arguments) do
     bus

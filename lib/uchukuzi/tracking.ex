@@ -40,7 +40,8 @@ defmodule Uchukuzi.Tracking do
     BusServer.move(bus_server, report)
 
     # Only perform World updates when the bus is outside school,
-    # This avoids tracking its presence in the school as being inside a tile for a long time
+    # This avoids tracking its presence in the school as
+    # being inside a tile for a long time
     # if not in_school?(bus) do
 
     tiles =
