@@ -1,6 +1,5 @@
 use Mix.Config
 
-import_config("../../uchukuzi/config/config.exs")
 
 config :uchukuzi_interface, UchukuziInterfaceWeb.Endpoint,
   url: [host: "localhost"],
