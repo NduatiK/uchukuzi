@@ -252,7 +252,7 @@ function insertCircle(pos, app) {
         radius = schoolCircle.getRadius()
         schoolCircle.setMap(null)
     }
-    initializeMaps()
+    initializeMaps(app, true)
         .then(() => {
 
             schoolCircle = new google.maps.Circle({
@@ -356,9 +356,11 @@ function requestGeoLocation(app) {
     const success = (data) => {
         const pos = {
             lat: data.coords.latitude,
-            lng: data.coords.longitude
+            lng: data.coords.longitude,
+            radius: 50
         }
-        insertCircle(pos, app)
+        app.ports.receivedMapClickLocation.send(pos)
+        // insertCircle(pos, app)
     }
 
     const failure = (error) => {
