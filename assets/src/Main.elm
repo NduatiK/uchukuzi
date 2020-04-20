@@ -13,8 +13,8 @@ import Navigation exposing (Route)
 import Page exposing (..)
 import Pages.Blank
 import Pages.Buses.BusPage as BusDetailsPage
-import Pages.Buses.BusRegistrationPage as BusRegistration
 import Pages.Buses.BusesPage as BusesList
+import Pages.Buses.CreateBusPage as BusRegistration
 import Pages.Buses.CreateBusRepairPage as CreateBusRepair
 import Pages.Crew.CrewMemberRegistrationPage as CrewMemberRegistration
 import Pages.Crew.CrewMembersPage as CrewMembers
@@ -282,21 +282,11 @@ update msg model =
                         Nothing ->
                             ( model, Cmd.none )
 
-                        -- ( { model | url = url }, Cmd.none )
                         Just _ ->
-                            -- let
-                            --     isSamePage =
-                            --         Navigation.isSamePage model.url url
-                            --     newModel =
-                            --         { model | allowReroute = not isSamePage }
-                            -- in
-                            -- if newModel.allowReroute then
                             ( model
                             , Nav.pushUrl (Session.navKey (toSession model.page)) (Url.toString url)
                             )
 
-                -- else
-                --     ( newModel, Cmd.none )
                 Browser.External href ->
                     ( model
                     , Nav.load href
@@ -309,7 +299,7 @@ update msg model =
             in
             if not isSamePage then
                 changeRouteTo (Navigation.fromUrl url (toSession model.page))
-                    model
+                    { model | url = url }
 
             else
                 ( model, Cmd.none )

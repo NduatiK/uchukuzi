@@ -12,6 +12,7 @@ import Errors
 import Icons
 import Json.Decode exposing (Decoder)
 import Models.Bus exposing (Bus, LocationUpdate, busDecoderWithCallback)
+import Navigation
 import Page
 import Pages.Buses.AboutBus as About
 import Pages.Buses.BusDevicePage as BusDevice
@@ -168,7 +169,7 @@ devicePage bus session =
 
 repairsPage : Bus -> Session -> ( Page, Cmd Msg )
 repairsPage bus session =
-    Page.transformToModelMsg BusRepairs GotBusRepairsMsg (BusRepairs.init bus.id bus.repairs)
+    Page.transformToModelMsg BusRepairs GotBusRepairsMsg (BusRepairs.init bus.id bus.repairs (Session.timeZone session))
 
 
 
@@ -372,7 +373,10 @@ changeCurrentPage selectedPageIndex_ model_ =
                             , currentPage = selectedPage
                         }
               }
-            , msg
+            , Cmd.batch
+                [ msg
+                , Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (Just (pageName selectedPage)))
+                ]
             )
 
         _ ->
@@ -396,7 +400,9 @@ viewLoaded : Model -> BusData -> Element Msg
 viewLoaded model busData =
     let
         ( body, footer ) =
-            ( viewBody model.height busData, el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData) )
+            ( viewBody model.height busData
+            , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData)
+            )
 
         edges =
             Style.edges
@@ -473,21 +479,16 @@ viewBody height busData =
             viewPage (BusDevice.view subPageModel) GotBusDeviceMsg
 
         BusRepairs subPageModel ->
-            viewPage (BusRepairs.view subPageModel) GotBusRepairsMsg
+            viewPage (BusRepairs.view subPageModel height) GotBusRepairsMsg
 
 
 viewFooter : BusData -> Element Msg
 viewFooter busData =
-    viewSubPageFooter busData.currentPage
-
-
-viewSubPageFooter : Page -> Element Msg
-viewSubPageFooter page =
     let
         viewPage pageView toMsg =
             Element.map toMsg pageView
     in
-    case page of
+    case busData.currentPage of
         About subPageModel ->
             viewPage (About.viewFooter subPageModel) GotAboutMsg
 

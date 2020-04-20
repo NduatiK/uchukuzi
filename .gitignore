@@ -57,3 +57,5 @@ Elixir.Uchukuzi.DiskDB
 Elixir.Uchukuzi.World.WorldManager
 priv/static/css/app.js
 priv/static/js/app.js
+Elixir.Uchukuzi.ETA
+Elixir.Uchukuzi.World.ETA

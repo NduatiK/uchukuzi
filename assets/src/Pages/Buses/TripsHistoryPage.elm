@@ -415,13 +415,17 @@ viewMapOptions model =
 
 
 viewTrips : Model -> Element Msg
-viewTrips { selectedGroup, selectedTrip, timezone } =
+viewTrips { selectedGroup, selectedTrip, timezone, groupedTrips } =
     case selectedGroup of
         Nothing ->
-            el [ centerX, centerY ] (text "Select a date from below")
+            if groupedTrips == [] then
+                el [ centerX, centerY ] (text "No trips available")
+
+            else
+                el [ centerX, centerY ] (text "Select a date from below")
 
         Just selectedGroup_ ->
-            wrappedRow [ spacing 12 ] (List.map (viewTrip selectedTrip timezone) (Tuple.second selectedGroup_))
+            wrappedRow [ spacing 12 ] (List.map (viewTrip selectedTrip timezone) (List.reverse (Tuple.second selectedGroup_)))
 
 
 

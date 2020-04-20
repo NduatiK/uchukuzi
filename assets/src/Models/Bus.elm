@@ -3,7 +3,7 @@ module Models.Bus exposing
     , Device
     , LocationUpdate
     , Part(..)
-    , RepairRecord
+    , Repair
     , Route
     , VehicleType(..)
     , busDecoder
@@ -15,9 +15,11 @@ module Models.Bus exposing
 
 import Element
 import Icons.Repairs
+import Iso8601
 import Json.Decode as Decode exposing (Decoder, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required, resolve)
 import Models.Location exposing (Location, locationDecoder)
+import Time
 
 
 type alias Bus =
@@ -28,7 +30,7 @@ type alias Bus =
     , stated_milage : Float
     , route : Maybe Route
     , device : Maybe Device
-    , repairs : List RepairRecord
+    , repairs : List Repair
     , last_seen : Maybe LocationUpdate
     }
 
@@ -77,11 +79,12 @@ vehicleTypeToString vehicleType =
             "bus"
 
 
-type alias RepairRecord =
+type alias Repair =
     { id : Int
     , part : Part
     , description : String
     , cost : Int
+    , dateTime : Time.Posix
     }
 
 
@@ -234,17 +237,29 @@ routeDecoder =
         |> required "name" string
 
 
-repairDecoder : Decoder RepairRecord
+repairDecoder : Decoder Repair
 repairDecoder =
     let
-        decoder id part description cost =
-            Decode.succeed (RepairRecord id (toPart part) description cost)
+        decoder id part description cost dateTimeString =
+            case Iso8601.toTime dateTimeString of
+                Result.Ok dateTime ->
+                    Decode.succeed
+                        { id = id
+                        , part = toPart part
+                        , description = description
+                        , cost = cost
+                        , dateTime = dateTime
+                        }
+
+                Result.Err _ ->
+                    Decode.fail (dateTimeString ++ " cannot be decoded to a date")
     in
     Decode.succeed decoder
         |> required "id" int
         |> required "part" string
         |> required "description" string
         |> required "cost" int
+        |> required "time" string
         |> resolve
 
 

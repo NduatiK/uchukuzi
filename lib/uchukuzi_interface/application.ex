@@ -8,10 +8,8 @@ defmodule UchukuziInterface.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
-      # Start the endpoint when the application starts
-      UchukuziInterfaceWeb.Endpoint
-      # Starts a worker by calling: UchukuziInterface.Worker.start_link(arg)
-      # {UchukuziInterface.Worker, arg},
+      UchukuziInterfaceWeb.Endpoint,
+      UchukuziInterfaceWeb.PredictionForwarderSupervisor
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

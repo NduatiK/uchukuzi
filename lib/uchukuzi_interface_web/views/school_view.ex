@@ -25,7 +25,6 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       # route: bus.route,
       last_seen: render_last_seen(Map.get(params, :last_seen)),
       performed_repairs: render_performed_repairs(Map.get(bus, :performed_repairs))
-
     }
   end
 
@@ -42,7 +41,9 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       time: report.time
     }
   end
+
   def render_performed_repairs(nil), do: nil
+  def render_performed_repairs(%Ecto.Association.NotLoaded{}), do: []
 
   def render_performed_repairs(performed_repairs) do
     Enum.map(performed_repairs, fn repair ->
@@ -54,6 +55,5 @@ defmodule UchukuziInterfaceWeb.SchoolView do
         description: repair.description || ""
       }
     end)
-
   end
 end

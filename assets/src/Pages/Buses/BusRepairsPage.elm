@@ -1,23 +1,35 @@
 module Pages.Buses.BusRepairsPage exposing (Model, Msg, init, update, view, viewFooter)
 
-import Api
 import Colors
 import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Events exposing (onMouseEnter, onMouseLeave)
+import Element.Font as Font
 import Icons
 import Icons.Repairs
-import Models.Bus exposing (RepairRecord)
+import Models.Bus exposing (Part(..), Repair)
 import Navigation
 import RemoteData exposing (..)
 import Style
 import StyledElement
 import StyledElement.Footer as Footer
+import Time
+import Utils.GroupByDate
 
 
 type alias Model =
     { busID : Int
-    , repairs : List RepairRecord
+    , repairs : List Repair
+    , timezone : Time.Zone
+    , groupedRepairs : List GroupedRepairs
     , currentPage : Page
+    , highlightedRepair : Maybe Repair
     }
+
+
+type alias GroupedRepairs =
+    ( String, List Repair )
 
 
 type Page
@@ -26,6 +38,7 @@ type Page
     | PastRepairs
 
 
+pageToString : Page -> String
 pageToString page =
     case page of
         Summary ->
@@ -41,15 +54,19 @@ type Msg
     = ClickedSummaryPage
       --------------------
       -- | ClickedScheduledRepairsPage
-      --------------------
     | ClickedPastRepairsPage
+      --------------------
+    | HoveredOver (Maybe Repair)
 
 
-init : Int -> List RepairRecord -> ( Model, Cmd Msg )
-init busID repairs =
+init : Int -> List Repair -> Time.Zone -> ( Model, Cmd Msg )
+init busID repairs timezone =
     ( { busID = busID
       , repairs = repairs
       , currentPage = Summary
+      , timezone = timezone
+      , groupedRepairs = groupRepairs repairs timezone
+      , highlightedRepair = Nothing
       }
     , Cmd.none
     )
@@ -70,89 +87,169 @@ update msg model =
         ClickedPastRepairsPage ->
             ( { model | currentPage = PastRepairs }, Cmd.none )
 
+        HoveredOver repair ->
+            ( { model | highlightedRepair = repair }, Cmd.none )
+
 
 
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model height =
     case model.currentPage of
         Summary ->
-            viewSummary model
+            viewSummary model (height - 220)
 
         _ ->
-            viewPastRepairs model
+            viewPastRepairs model (height - 220)
 
 
-viewSummary : Model -> Element msg
-viewSummary model =
+viewSummary : Model -> Int -> Element Msg
+viewSummary model viewHeight =
     let
         totalCost =
             List.foldl (\x y -> y + x.cost) 0 model.repairs
     in
-    column [ height fill, width (px 500), paddingXY 40 40 ]
+    column [ height (px viewHeight), width (px 500), paddingXY 40 40 ]
         [ StyledElement.textStack "Due for maintenance in" "300km"
         , StyledElement.textStack "Total Paid for Repairs" ("KES. " ++ String.fromInt totalCost)
         ]
 
 
-viewPastRepairs : Model -> Element msg
-viewPastRepairs model =
-    el
-        [ height fill
+viewPastRepairs : Model -> Int -> Element Msg
+viewPastRepairs model viewHeight =
+    row
+        [ height (px viewHeight)
         , width fill
         , Style.clipStyle
+        , spacing 20
         ]
-        (row []
-            [ StyledElement.buttonLink []
+        [ viewGroupedRepairs model.groupedRepairs
+        , el [ centerX, width (px 2), height (fill |> maximum 500), Background.color Colors.darkness ] none
+        , column [ height fill, width (fillPortion 1) ]
+            [ StyledElement.buttonLink [ centerX, Border.width 3, Border.color Colors.purple, Background.color Colors.white ]
                 { label =
                     row []
-                        [ Icons.add [ Colors.fillWhite, centerY ]
-                        , el [ centerY ] (text "Add")
+                        [ Icons.add [ Colors.fillPurple, centerY ]
+                        , el [ centerY, Font.color Colors.purple ] (text "Add Repair record")
                         ]
                 , route = Navigation.CreateBusRepair model.busID
                 }
+            , viewVehicle model
             ]
-        )
+        ]
+
+
+viewGroupedRepairs groupedRepairs =
+    let
+        viewGroup ( title, repairs ) =
+            let
+                totalCost =
+                    List.foldl (\x y -> y + x.cost) 0 repairs
+            in
+            column [ spacing 10, height fill, width fill ]
+                [ el Style.header2Style (text (title ++ " - KES. " ++ String.fromInt totalCost))
+                , wrappedRow [ spacing 10, width (fill |> maximum 800) ] (List.map viewRepair repairs)
+                ]
+    in
+    column [ scrollbarY, height fill, width (fillPortion 2) ]
+        (List.map viewGroup groupedRepairs)
+
+
+viewRepair repair =
+    let
+        timeStyle =
+            Style.defaultFontFace
+                ++ [ Font.color (rgb255 119 122 129)
+                   , Font.size 13
+                   ]
+
+        routeStyle =
+            Style.defaultFontFace
+                ++ [ Font.color (rgb255 85 88 98)
+                   , Font.size 14
+                   ]
+    in
+    row
+        [ height (px 64)
+        , width (fillPortion 1 |> minimum 200)
+        , spacing 8
+        , paddingXY 12 11
+        , Border.color (Colors.withAlpha Colors.darkness 0.3)
+        , Border.solid
+        , Border.width 1
+        , onMouseEnter (HoveredOver (Just repair))
+        , onMouseLeave (HoveredOver Nothing)
+        , Style.animatesShadow
+        ]
+        [ el [ width (px 3), height fill, Background.color Colors.darkGreen ] none
+        , column [ spacing 8 ]
+            [ el routeStyle (text (Models.Bus.titleForPart repair.part))
+            , el timeStyle (text ("KES." ++ String.fromInt repair.cost))
+            ]
+        ]
 
 
 viewVehicle model =
     let
-        viewImage image visible =
-            if visible then
-                inFront image
+        viewImage part =
+            case model.highlightedRepair of
+                Just repair ->
+                    if repair.part == part then
+                        inFront (Models.Bus.imageForPart part [])
 
-            else
-                moveUp 0
+                    else
+                        moveUp 0
+
+                Nothing ->
+                    moveUp 0
     in
-    el [ alignRight, height fill, padding 40 ]
-        (Icons.Repairs.chassis
-            [ centerY
+    column [ height fill, padding 10, width fill ]
+        [ Icons.Repairs.chassis
+            [ scale 0.8
             , centerX
-            , viewImage (Icons.Repairs.verticalAxisRepair []) True
+            , viewImage VerticalAxis
             , inFront (Icons.Repairs.engine [])
-            , viewImage (Icons.Repairs.engineRepair []) True
+            , viewImage Engine
 
             --
-            , viewImage (Icons.Repairs.frontLeftTireRepair []) True
-            , viewImage (Icons.Repairs.frontRightTireRepair []) True
+            , viewImage FrontLeftTire
+            , viewImage FrontRightTire
 
             --
-            , viewImage (Icons.Repairs.rearLeftTireRepair []) True
-            , viewImage (Icons.Repairs.rearRightTireRepair []) True
+            , viewImage RearLeftTire
+            , viewImage RearRightTire
 
             --
-            , viewImage (Icons.Repairs.frontCrossAxisRepair []) True
-            , viewImage (Icons.Repairs.rearCrossAxisRepair []) True
+            , viewImage FrontCrossAxis
+            , viewImage RearCrossAxis
             ]
-        )
+        , paragraph (Style.labelStyle ++ [ width fill ])
+            [ case model.highlightedRepair of
+                Nothing ->
+                    none
+
+                Just repair ->
+                    text repair.description
+            ]
+        ]
 
 
 viewFooter : Model -> Element Msg
 viewFooter model =
-    Footer.view model.currentPage
-        pageToString
-        [ ( Summary, "", ClickedSummaryPage )
-        , ( PastRepairs, "2", ClickedPastRepairsPage )
+    row [ width fill ]
+        [ el [ width (fillPortion 2) ]
+            (Footer.view model.currentPage
+                pageToString
+                [ ( Summary, "", ClickedSummaryPage )
+                , ( PastRepairs, String.fromInt (List.length model.repairs), ClickedPastRepairsPage )
+                ]
+            )
+        , el [ width (fillPortion 1) ] none
         ]
+
+
+groupRepairs : List Repair -> Time.Zone -> List ( String, List Repair )
+groupRepairs trips timezone =
+    Utils.GroupByDate.group trips timezone .dateTime

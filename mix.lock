@@ -44,6 +44,7 @@
   "plug_crypto": {:hex, :plug_crypto, "1.1.2", "bdd187572cc26dbd95b87136290425f2b580a116d3fb1f564216918c9730d227", [:mix], [], "hexpm"},
   "poolboy": {:hex, :poolboy, "1.5.2", "392b007a1693a64540cead79830443abf5762f5d30cf50bc95cb2c1aaafa006b", [:rebar3], [], "hexpm"},
   "postgrex": {:hex, :postgrex, "0.15.3", "5806baa8a19a68c4d07c7a624ccdb9b57e89cbc573f1b98099e3741214746ae4", [:mix], [{:connection, "~> 1.0", [hex: :connection, repo: "hexpm", optional: false]}, {:db_connection, "~> 2.1", [hex: :db_connection, repo: "hexpm", optional: false]}, {:decimal, "~> 1.5", [hex: :decimal, repo: "hexpm", optional: false]}, {:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: true]}], "hexpm"},
+  "pubsub": {:hex, :pubsub, "1.1.1", "617114f865163b5e3df4821dbc0fec169d4c2775b79d69a6c443378219a7c252", [:mix], [], "hexpm"},
   "quantum": {:hex, :quantum, "3.0.0-rc.3", "2a42d9c7abc8e349bff2baf6f66a3cab09ac4e907e4f0ffc088c9f27718e8f44", [:mix], [{:crontab, "~> 1.1", [hex: :crontab, repo: "hexpm", optional: false]}, {:gen_stage, "~> 0.14 or ~> 1.0", [hex: :gen_stage, repo: "hexpm", optional: false]}], "hexpm"},
   "ranch": {:hex, :ranch, "1.7.1", "6b1fab51b49196860b733a49c07604465a47bdb78aa10c1c16a3d199f7f8c881", [:rebar3], [], "hexpm"},
   "seg_seg": {:hex, :seg_seg, "0.1.1", "a7a5c072ad9de3af1bb5e155492c2c7a0fd5f381700efe9b9ba38c95fb997bd7", [:mix], [{:vector, "~> 1.0", [hex: :vector, repo: "hexpm", optional: false]}], "hexpm"},

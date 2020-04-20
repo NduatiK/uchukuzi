@@ -324,7 +324,7 @@ viewForm model =
         form =
             model.form
     in
-    column [ spacing 50, paddingEach { edges | bottom = 100 } ]
+    column [ spacing 50, paddingEach { edges | bottom = 100 }, centerX ]
         [ viewTypePicker form.vehicleClass
         , viewDivider
         , wrappedRow [ spaceEvenly, width fill ]

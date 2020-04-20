@@ -15,20 +15,21 @@ import Icons
 import Icons.Repairs
 import Json.Decode as Decode exposing (Decoder, int, list, string)
 import Json.Encode as Encode
-import Models.Bus exposing (Part(..), RepairRecord, imageForPart, titleForPart)
+import Models.Bus exposing (Part(..), Repair, imageForPart, titleForPart)
 import Navigation
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style
 import StyledElement
 import Task
+import Time
 import Views.DragAndDrop exposing (draggable, droppable)
 
 
 type alias Model =
     { session : Session
     , bus : Int
-    , repairs : List RepairRecord
+    , repairs : List Repair
     , pickedUpItem : Maybe Draggable
     , isAboveDropOffPoint : Bool
     , height : Int
@@ -43,7 +44,7 @@ type Draggable
     | Record Int
 
 
-type alias ValidRepairRecord =
+type alias ValidRepair =
     { id : Int
     , part : String
     , description : String
@@ -120,10 +121,11 @@ update msg model =
             case model.pickedUpItem of
                 Just (Part part) ->
                     ( { model
-                        | repairs = model.repairs ++ [ RepairRecord model.index part "" 0 ]
+                        | repairs = model.repairs ++ [ Repair model.index part "" 0 (Time.millisToPosix 0) ]
                         , pickedUpItem = Nothing
                         , isAboveDropOffPoint = False
                         , index = model.index + 1
+                        , problems = []
                       }
                     , Browser.Dom.getViewportOf viewRecordsID
                         |> Task.andThen (.scene >> .height >> Browser.Dom.setViewportOf viewRecordsID 0)
@@ -248,6 +250,17 @@ viewRecordsID =
 
 viewRecords : Model -> Element Msg
 viewRecords model =
+    let
+        problemAttrs =
+            if List.member (Errors.toClientSideError noRecordsError) model.problems then
+                [ Border.solid
+                , Border.color Colors.errorRed
+                , below (el [ Font.color Colors.errorRed, paddingXY 0 8 ] (text (Tuple.second noRecordsError)))
+                ]
+
+            else
+                []
+    in
     column [ height fill, width (fillPortion 4), centerX, centerY, spacing 10 ]
         [ column [ htmlAttribute (id viewRecordsID), scrollbarY, width fill, spacing 10 ] (List.map (viewRecord model.problems) model.repairs)
         , el
@@ -262,6 +275,7 @@ viewRecords model =
                     else
                         []
                    )
+                ++ problemAttrs
                 ++ droppable
                     { onDrop = DropOn
                     , onDragOver = DraggedOver
@@ -273,7 +287,7 @@ viewRecords model =
         ]
 
 
-viewRecord : List (Errors.Errors Problem) -> RepairRecord -> Element Msg
+viewRecord : List (Errors.Errors Problem) -> Repair -> Element Msg
 viewRecord problems repair =
     let
         errorMapper field match =
@@ -317,7 +331,7 @@ viewRecord problems repair =
                 , StyledElement.textInput []
                     { ariaLabel = "Cost of repair"
                     , caption = Just "Cost of repair"
-                    , errorCaption = errorMapper "cost" [ Problem repair.id ZeroCost ]
+                    , errorCaption = errorMapper "cost" [ RepairProblem repair.id ZeroCost ]
                     , icon = Nothing
                     , onChange = ChangedCost repair.id
                     , placeholder = Nothing
@@ -428,26 +442,38 @@ viewButton requestState =
 
 
 type Problem
-    = Problem Int ActualProblem
+    = RepairProblem Int ActualProblem
+    | NoRecordsCreated
+
+
+noRecordsError =
+    ( NoRecordsCreated, "At least one record is required" )
 
 
 type ActualProblem
     = ZeroCost
 
 
-validateForm : List RepairRecord -> Result (List ( Problem, String )) (List ValidRepairRecord)
+validateForm : List Repair -> Result (List ( Problem, String )) (List ValidRepair)
 validateForm repairs =
     let
         problemsFor repair =
             List.concat
                 [ if repair.cost == 0 then
-                    [ ( Problem repair.id ZeroCost, "Please provide the cost for this repair" ) ]
+                    [ ( RepairProblem repair.id ZeroCost, "Please provide the cost for this repair" ) ]
 
                   else
                     []
                 ]
+
+        generalProblems =
+            if repairs == [] then
+                [ noRecordsError ]
+
+            else
+                []
     in
-    case List.concat (List.map problemsFor repairs) of
+    case List.concat (List.map problemsFor repairs) ++ generalProblems of
         [] ->
             Ok
                 (List.map
@@ -465,7 +491,7 @@ validateForm repairs =
             Err problems
 
 
-submit : Session -> Int -> List ValidRepairRecord -> Cmd Msg
+submit : Session -> Int -> List ValidRepair -> Cmd Msg
 submit session busID repairs =
     let
         paramsFor repair =
