@@ -49,12 +49,6 @@ loggedInParser =
     oneOf
         (Parser.map Buses Parser.top
             :: parsersFor [ Buses, Routes, HouseholdList, DeviceList, CrewMembers ]
-            ++ parsersFor2
-                [ ( HouseholdList, StudentRegistration )
-                , ( CrewMembers, CrewMemberRegistration )
-                , ( Buses, BusRegistration )
-                , ( DeviceList, DeviceRegistration )
-                ]
             ++ [ -- http://localhost:4000/#/fleet/1/?page=trips
                  --  Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
                  Parser.map CreateBusRepair (s (routeName Buses) </> int </> s "maintenance" </> s "new")
@@ -63,6 +57,12 @@ loggedInParser =
                , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s "edit")
                , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
                ]
+            ++ parsersFor2
+                [ ( HouseholdList, StudentRegistration )
+                , ( CrewMembers, CrewMemberRegistration )
+                , ( Buses, BusRegistration )
+                , ( DeviceList, DeviceRegistration )
+                ]
         )
 
 

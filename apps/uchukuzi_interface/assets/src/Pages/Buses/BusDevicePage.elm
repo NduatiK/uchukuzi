@@ -216,9 +216,7 @@ viewAddDevice model =
                     , width fill
                     , height fill
 
-                    -- , Border.width 1
-                    -- , Border.color Colors.white
-                    -- -- , Background.color Colors.purple
+
                     ]
                     [ Icons.hardware []
                     , el (alignBottom :: Style.header2Style ++ [ Font.color Colors.semiDarkText ])
