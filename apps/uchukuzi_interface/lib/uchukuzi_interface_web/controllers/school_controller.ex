@@ -163,7 +163,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def update_crew_assignments(conn, %{"_json" => changes}, school_id) do
     with {:ok, _} <- School.update_crew_assignments(school_id, changes) do
       conn
-      |> redirect(to: "/api/school/crew_and_buses")
+      |> resp(200,"{}")
     end
   end
 

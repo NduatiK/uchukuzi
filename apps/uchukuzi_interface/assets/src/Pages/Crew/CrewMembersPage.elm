@@ -153,7 +153,7 @@ update msg model =
 
             else
                 ( model
-                , updateAssignments model.session model.edits.changes
+                , updateAssignments model.session model.edits.changes model.editedData
                 )
 
         StartedDragging crewMember ->
@@ -395,12 +395,9 @@ viewHeading { data, inEditingMode } =
 
          else
             [ el Style.headerStyle (text "Crew")
-            , StyledElement.button [ Border.width 3, Border.color Colors.purple, Background.color Colors.white, alignRight ]
-                { label =
-                    row [ spacing 8 ]
-                        [ Icons.edit [ Colors.fillPurple ]
-                        , el [ centerY, Font.color Colors.purple ] (text "Re-assign")
-                        ]
+            , StyledElement.ghostButton [ alignRight ]
+                { title = "Re-assign"
+                , icon = Icons.edit
                 , onPress = Just StartEditing
                 }
             , StyledElement.buttonLink [ alignRight ]
@@ -660,13 +657,13 @@ fetchCrewMembersAndBuses session =
         |> Cmd.map ServerResponse
 
 
-updateAssignments : Session -> List Change -> Cmd Msg
-updateAssignments session changes =
+updateAssignments : Session -> List Change -> Data -> Cmd Msg
+updateAssignments session changes editedData =
     let
         updates =
             Models.CrewMember.encodeChanges changes
     in
-    Api.patch session Endpoint.crewAssignmentChanges updates dataDecoder
+    Api.patch session Endpoint.crewAssignmentChanges updates (Decode.succeed editedData)
         |> Cmd.map ServerResponse
 
 
