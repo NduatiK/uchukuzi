@@ -11,6 +11,7 @@ import Html.Events exposing (..)
 import Icons
 import Json.Decode exposing (list)
 import Models.Household exposing (Household, Student, householdDecoder)
+import Navigation
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
@@ -38,7 +39,12 @@ type Msg
     = SelectedHousehold
     | SelectedStudent Student
     | StudentsResponse (WebData (List Household))
+    | RegisterStudent
     | NoOp
+
+
+
+-- | NoOp
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -59,6 +65,9 @@ update msg model =
     --         model.form
     -- in
     case msg of
+        RegisterStudent ->
+            ( model, Navigation.rerouteTo model Navigation.StudentRegistration )
+
         StudentsResponse response ->
             case response of
                 Failure error ->
@@ -83,30 +92,30 @@ view : Model -> Element Msg
 view model =
     Element.column
         [ width fill, spacing 40, paddingXY 24 8 ]
-        [ viewHeading "All Households" Nothing
+        [ viewHeading model
         , viewBody model.households
         ]
 
 
-viewHeading : String -> Maybe String -> Element Msg
-viewHeading title subLine =
+viewHeading : Model -> Element Msg
+viewHeading model =
     row [ spacing 16 ]
         [ Element.column
             [ width fill ]
             [ el
                 Style.headerStyle
-                (text title)
-            , case subLine of
-                Nothing ->
-                    none
+                (text "All Households")
 
-                Just caption ->
-                    el Style.captionLabelStyle (text caption)
+            -- , case subLine of
+            --     Nothing ->
+            --         none
+            --     Just caption ->
+            --         el Style.captionLabelStyle (text caption)
             ]
         , StyledElement.iconButton []
             { icon = Icons.add
             , iconAttrs = [ Colors.fillWhite ]
-            , onPress = Nothing
+            , onPress = Just RegisterStudent
             }
         ]
 

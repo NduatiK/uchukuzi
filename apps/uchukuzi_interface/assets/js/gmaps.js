@@ -325,11 +325,15 @@ const addDrawTools = (app) => (data) => {
 function requestGeoLocation(app) {
 
     if (process.env.NODE_ENV !== 'production') {
+
         app.ports.receivedMapClickLocation.send({
             lat: -1.2921, lng: 36.8219, radius: 50
         })
         return
+
     }
+    app.ports.receivedMapClickLocation.send({ lat: 53.294582, lng: -6.308967, radius: 50 })
+    return
 
     function handleLocationError(error) {
         switch (error.code) {
