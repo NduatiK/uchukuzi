@@ -182,6 +182,9 @@ parseUrl url =
 isSamePage : Url -> Url -> Bool
 isSamePage url1 url2 =
     case ( Parser.parse loggedInParser (parseUrl url1), Parser.parse loggedInParser (parseUrl url2) ) of
+        ( Nothing, Nothing ) ->
+            Parser.parse notLoggedInParser (parseUrl url1) == Parser.parse notLoggedInParser (parseUrl url2)
+
         ( Just (Bus a _), Just (Bus b _) ) ->
             a == b
 
