@@ -349,9 +349,8 @@ function requestGeoLocation(app) {
             case error.TIMEOUT:
                 alert("The request to get your location timed out.")
                 break
-            case error.UNKNOWN_ERROR:
+            default:
                 alert("An unknown error occurred.")
-                break
         }
     }
 
