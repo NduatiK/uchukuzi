@@ -200,7 +200,7 @@ close =
 
 box : List (Attribute msg) -> Element msg
 box =
-    iconNamed "images/box.svg"
+    iconNamed "images/solid_box.svg"
 
 
 save : List (Attribute msg) -> Element msg

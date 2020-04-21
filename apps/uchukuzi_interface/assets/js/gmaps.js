@@ -332,8 +332,11 @@ function requestGeoLocation(app) {
         return
 
     }
+    // if (window.debug)  {
+
     app.ports.receivedMapClickLocation.send({ lat: 53.294582, lng: -6.308967, radius: 50 })
     return
+    // }
 
     function handleLocationError(error) {
         switch (error.code) {
