@@ -4,6 +4,7 @@ module StyledElement exposing
     , checkboxIcon
     , dropDown
     , emailInput
+    , ghostButton
     , googleMap
     , iconButton
     , multilineInput
@@ -162,6 +163,22 @@ button attributes config =
             ++ attributes
         )
         config
+
+
+ghostButton :
+    List (Attribute msg)
+    -> { title : String, onPress : Maybe msg, icon : Icons.IconBuilder msg }
+    -> Element msg
+ghostButton attrs { title, onPress, icon } =
+    button
+        ([ Border.width 3, Border.color Colors.purple, Background.color Colors.white ] ++ attrs)
+        { label =
+            row [ spacing 8 ]
+                [ icon [ alpha 1, Colors.fillPurple ]
+                , el [ centerY, Font.color Colors.purple ] (text title)
+                ]
+        , onPress = onPress
+        }
 
 
 unstyledIconButton :
