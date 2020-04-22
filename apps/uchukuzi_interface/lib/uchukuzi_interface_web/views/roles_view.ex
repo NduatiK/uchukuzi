@@ -66,6 +66,9 @@ defmodule UchukuziInterfaceWeb.RolesView do
       "students" => render_students(guardian.students)
     }
   end
+  def render("students.json", %{students: students}) do
+    render_students(students)
+  end
 
   def render_students(%Ecto.Association.NotLoaded{}), do: nil
 

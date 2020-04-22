@@ -158,6 +158,11 @@ hardware =
     iconNamed "images/hardware.svg"
 
 
+refresh : List (Attribute msg) -> Element msg
+refresh =
+    iconNamed "images/refresh.svg"
+
+
 search : List (Attribute msg) -> Element msg
 search =
     iconNamed "images/search.svg"

@@ -148,6 +148,11 @@ defmodule Uchukuzi.Tracking.TripTracker do
     {:noreply, data, @message_timeout}
   end
 
+  def handle_call(:students_onboard, _from, data) do
+    students = Trip.students_onboard(data.trip)
+    {:reply, students, data, @message_timeout}
+  end
+
   def handle_info(:timeout, data) do
     {:stop, {:shutdown, :timeout}, %{data | state: :complete}}
   end
@@ -185,10 +190,10 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def student_exited(bus, student_activity),
     do: cast_tracker(bus, {:student_exited, student_activity})
 
-  def is_in_student_trip(bus) do
+  def students_onboard(bus) do
     bus
     |> pid_from()
-    |> GenServer.call(bus, :is_in_student_trip)
+    |> GenServer.call(:students_onboard)
   end
 
   defp cast_tracker(bus, arguments) do

@@ -3,6 +3,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
 
   alias Uchukuzi.School
   action_fallback(UchukuziInterfaceWeb.FallbackController)
+  alias UchukuziInterfaceWeb.Email.{Email, Mailer}
 
   def action(conn, _) do
     arg_list =
@@ -30,10 +31,15 @@ defmodule UchukuziInterfaceWeb.SchoolController do
            School.create_school(school, manager_params) do
       manager = Repo.preload(manager, :school)
 
+      token = ManagerAuth.sign(manager.id)
+
+      Email.send_token_email_to(manager, token)
+      |> Mailer.deliver_now()
+
       conn
       |> put_status(:created)
       |> put_view(UchukuziInterfaceWeb.RolesView)
-      |> render("manager.json", manager: manager, token: ManagerAuth.sign(manager.id))
+      |> render("manager.json", manager: manager, token: token)
     end
   end
 
@@ -75,10 +81,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   end
 
   def list_households(conn, _, school_id) do
-    guardians =
-      for guardian <- School.guardians_for(school_id) do
-        Repo.preload(guardian, :students)
-      end
+    guardians = School.guardians_for(school_id)
 
     conn
     |> put_view(UchukuziInterfaceWeb.RolesView)
@@ -163,7 +166,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def update_crew_assignments(conn, %{"_json" => changes}, school_id) do
     with {:ok, _} <- School.update_crew_assignments(school_id, changes) do
       conn
-      |> resp(200,"{}")
+      |> resp(200, "{}")
     end
   end
 
@@ -172,6 +175,24 @@ defmodule UchukuziInterfaceWeb.SchoolController do
       conn
       |> put_view(UchukuziInterfaceWeb.RolesView)
       |> render("crew_member.json", crew_member: crew_member)
+    end
+  end
+
+  def get_crew_members_for_bus(conn, %{"bus_id" => bus_id}, school_id) do
+    with crew_members <- School.crew_members_for_bus(school_id, bus_id) do
+      conn
+      |> put_view(UchukuziInterfaceWeb.RolesView)
+      |> render("crew_members.json", crew_members: crew_members)
+    end
+  end
+
+  def get_students_onboard(conn, %{"bus_id" => bus_id}, school_id) do
+    with {:ok, bus} <- School.bus_for(school_id, bus_id) do
+      students = Uchukuzi.Tracking.students_onboard(bus) |> IO.inspect()
+
+      conn
+      |> put_view(UchukuziInterfaceWeb.RolesView)
+      |> render("students.json", students: students)
     end
   end
 

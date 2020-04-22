@@ -4,7 +4,9 @@ module StyledElement exposing
     , checkboxIcon
     , dropDown
     , emailInput
+    , failureButton
     , ghostButton
+    , ghostButtonLink
     , googleMap
     , iconButton
     , multilineInput
@@ -80,6 +82,22 @@ navigationLink attrs config =
         )
         { url = Navigation.href config.route
         , label = config.label
+        }
+
+
+ghostButtonLink :
+    List (Attribute msg)
+    -> { title : String, route : Navigation.Route }
+    -> Element msg
+ghostButtonLink attrs { title, route } =
+    buttonLink
+        ([ Border.width 3, Border.color Colors.purple, Background.color Colors.white ] ++ attrs)
+        { label =
+            row [ spacing 8 ]
+                [ el [ centerY, Font.color Colors.purple ] (text title)
+                , Icons.chevronDown [ alpha 1, Colors.fillPurple, rotate (-pi / 2), centerY ]
+                ]
+        , route = route
         }
 
 
@@ -163,6 +181,22 @@ button attributes config =
             ++ attributes
         )
         config
+
+
+failureButton :
+    List (Attribute msg)
+    -> { title : String, onPress : Maybe msg }
+    -> Element msg
+failureButton attrs { title, onPress } =
+    button
+        (Background.color Colors.errorRed :: attrs)
+        { label =
+            row [ spacing 8 ]
+                [ Icons.refresh [ Colors.fillWhite ]
+                , el [ centerY ] (text title)
+                ]
+        , onPress = onPress
+        }
 
 
 ghostButton :

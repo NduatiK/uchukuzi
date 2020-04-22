@@ -61,6 +61,10 @@ defmodule Uchukuzi.Tracking do
     |> BusServer.last_seen_status()
   end
 
+  def students_onboard(%Bus{} = bus) do
+    TripTracker.students_onboard(bus)
+  end
+
   def where_is(%Bus{} = bus) do
     bus
     |> BusServer.pid_from()

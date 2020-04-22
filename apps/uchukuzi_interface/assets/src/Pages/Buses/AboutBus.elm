@@ -1,5 +1,7 @@
 module Pages.Buses.AboutBus exposing (Model, Msg, init, locationUpdateMsg, update, view, viewFooter)
 
+import Api
+import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
 import Element.Background as Background
@@ -8,7 +10,11 @@ import Element.Font as Font
 import Element.Input as Input
 import Element.Lazy
 import Icons
+import Json.Decode exposing (list)
 import Models.Bus exposing (Bus, LocationUpdate, Route)
+import Models.CrewMember exposing (CrewMember, crewDecoder)
+import Models.Household exposing (Student, studentDecoder)
+import Navigation
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
@@ -18,8 +24,9 @@ import StyledElement.Footer as Footer
 
 
 type alias Model =
-    { showGeofence : Bool
-    , bus : Bus
+    { bus : Bus
+    , crew : WebData (List CrewMember)
+    , studentsOnboard : WebData (List Student)
     , session : Session
     , currentPage : Page
     }
@@ -52,19 +59,29 @@ type Msg
     = ClickedStatisticsPage
       --------------------
     | ClickedStudentsPage
+    | FetchStudentsOnboard
+    | StudentsOnboardServerResponse (WebData (List Student))
     | SelectedStudent Int
       --------------------
     | ClickedRoute
+      --------------------
     | ClickedCrewPage
+    | CrewMemberServerResponse (WebData (List CrewMember))
       --------------------
     | LocationUpdate LocationUpdate
 
 
 init : Session -> Bus -> ( Model, Cmd Msg )
 init session bus =
-    ( Model True bus session Statistics
+    ( { bus = bus
+      , crew = NotAsked
+      , studentsOnboard = Loading
+      , session = session
+      , currentPage = Statistics
+      }
     , Cmd.batch
         [ Ports.initializeMaps False
+        , fetchStudentsOnboard session bus.id
         ]
     )
 
@@ -85,11 +102,20 @@ update msg model =
         SelectedStudent index ->
             ( { model | currentPage = Students (Just index) }, Ports.initializeMaps False )
 
+        StudentsOnboardServerResponse response ->
+            ( { model | studentsOnboard = response }, Cmd.none )
+
+        FetchStudentsOnboard ->
+            ( model, fetchStudentsOnboard model.session model.bus.id )
+
         ClickedRoute ->
             ( { model | currentPage = Route }, Ports.initializeMaps False )
 
+        CrewMemberServerResponse response ->
+            ( { model | crew = response }, Cmd.none )
+
         ClickedCrewPage ->
-            ( { model | currentPage = Crew }, Cmd.none )
+            ( { model | currentPage = Crew }, fetchCrewMembers model.session model.bus.id )
 
         LocationUpdate locationUpdate ->
             let
@@ -141,9 +167,10 @@ viewStatisticsPage model =
 
                     Just last_seen ->
                         [ textStack "Distance Travelled" "2,313 km"
-                        , textStack "Fuel Consumed" "3,200 l"
+
+                        -- , textStack "Fuel Consumed" "3,200 l"
                         , textStack "Current Speed" (String.fromFloat last_seen.speed ++ " km/h")
-                        , textStack "Repairs Made" "23"
+                        , textStack "Repairs Made" (String.fromInt (List.length model.bus.repairs))
                         ]
                 , [ el [] none ]
                 ]
@@ -178,7 +205,7 @@ viewStudentsPage model viewHeight =
                                )
                         )
                         -- [ text (String.fromInt (index + 1) ++ ". " ++ student) ]
-                        [ text student ]
+                        [ text student.name ]
                 , onPress = Just (SelectedStudent index)
                 }
 
@@ -194,48 +221,51 @@ viewStudentsPage model viewHeight =
                 )
     in
     wrappedRow [ width fill, height fill, spacing 24 ]
-        [ viewGMAP
-        , column [ width fill, height fill ]
-            [ Input.button [ width fill, height fill ]
-                { label = row [ spacing 10 ] [ el Style.header2Style (text "All Students"), Icons.chevronDown [ rotate (-pi / 2) ] ]
-                , onPress = Nothing
-                }
-            , el
-                [ width fill
-                , height (fill |> maximum (viewHeight // 2))
-                , Border.color Colors.darkGreen
-                , Border.width 0
-                , inFront gradient
-                ]
-                (column
-                    [ width fill
-                    , height (fill |> maximum (viewHeight // 2))
-                    , scrollbarY
-                    , paddingEach { edges | bottom = 24 }
-                    ]
-                    (List.indexedMap viewStudent
-                        [ "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "  Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
-                        , "Bansilal Brata"
+        [ -- viewGMAP
+          -- ,
+          column [ width fill, height fill ]
+            [ --      Input.button [ width fill, height fill ]
+              --     { label = row [ spacing 10 ] [ el Style.header2Style (text "All Students"), Icons.chevronDown [ rotate (-pi / 2) ] ]
+              --     , onPress = Nothing
+              --     }
+              -- ,
+              case model.studentsOnboard of
+                Failure _ ->
+                    column [ centerX, centerY, spacing 20 ]
+                        [ paragraph [] [ text "Unable to load students" ]
+                        , StyledElement.failureButton [ centerX ]
+                            { title = "Try Again"
+                            , onPress = Just FetchStudentsOnboard
+                            }
                         ]
-                    )
-                )
+
+                Success students ->
+                    if students == [] then
+                        column [ centerX, centerY, spacing 20 ]
+                            [ paragraph [] [ text "0 students currently onboard" ]
+                            ]
+
+                    else
+                        el
+                            [ width fill
+                            , height (fill |> maximum (viewHeight // 2))
+                            , Border.color Colors.darkGreen
+                            , Border.width 0
+                            , inFront gradient
+                            ]
+                            (column
+                                [ width fill
+                                , height (fill |> maximum (viewHeight // 2))
+                                , scrollbarY
+                                , paddingEach { edges | bottom = 24 }
+                                ]
+                                (List.indexedMap viewStudent
+                                    students
+                                )
+                            )
+
+                _ ->
+                    el [ centerX, centerY ] (Icons.loading [])
             ]
         ]
 
@@ -252,19 +282,40 @@ viewCrewPage model =
         viewEmployee role name phone email =
             el [ width fill, height fill ]
                 (column [ centerY, centerX, spacing 8, width (fill |> maximum 300) ]
-                    [ row [ width fill ] [ textStackWithSpacing role name 8, Icons.chevronDown [ rotate (-pi / 2), alignBottom, moveUp 16 ] ]
+                    [ row [ width fill ] [ textStackWithSpacing role name 8 ]
                     , el [ width fill, height (px 2), Background.color (Colors.withAlpha Colors.darkness 0.34) ] none
                     , el [] none
                     , el Style.labelStyle (text phone)
                     , el Style.labelStyle (text email)
                     ]
                 )
+
+        viewCrewMember member =
+            viewEmployee (Models.CrewMember.roleToString member.role) member.name member.phoneNumber member.email
     in
-    row [ spacing 20, centerY, width fill ]
-        [ viewEmployee "Assistant" "Thomas Magnum" "Phone Number" "Email"
-        , el [ width (px 2), height (fill |> maximum 300), centerX, Background.color Colors.darkness ] none
-        , viewEmployee "Driver" "James Ferrazi" "Phone Number" "Email"
-        ]
+    case model.crew of
+        Failure _ ->
+            StyledElement.failureButton [ centerX ]
+                { title = "Try Again"
+                , onPress = Just ClickedCrewPage
+                }
+
+        Success crew ->
+            if crew == [] then
+                column [ centerX, spacing 20 ]
+                    [ paragraph [] [ text "No crew driver or assistant assigned" ]
+                    , StyledElement.ghostButtonLink [ centerX ]
+                        { title = "Assign crew"
+                        , route = Navigation.CrewMembers
+                        }
+                    ]
+
+            else
+                row [ spacing 20, centerY, width fill ]
+                    (List.map viewCrewMember crew)
+
+        _ ->
+            el [ centerX, centerY ] (Icons.loading [])
 
 
 
@@ -285,15 +336,35 @@ viewFooter model =
     Footer.view model.currentPage
         pageToString
         [ ( Statistics, "", ClickedStatisticsPage )
-        , ( Students Nothing, "2", ClickedStudentsPage )
-        , ( Route
-          , case model.bus.route of
-                Just route ->
-                    route.name
+        , case model.studentsOnboard of
+            Success students ->
+                ( Students Nothing
+                , students
+                    |> List.length
+                    |> String.fromInt
+                , ClickedStudentsPage
+                )
 
-                _ ->
-                    "Not set"
-          , ClickedRoute
-          )
-        , ( Crew, "Thomas Magnum + 1", ClickedCrewPage )
+            _ ->
+                ( Students Nothing, "", ClickedStudentsPage )
+
+        -- , ( Route
+        --   , case model.bus.route of
+        --         Just route ->
+        --             route.name
+        --         _ ->
+        --             "Not set"
+        --   , ClickedRoute
+        --   )
+        , ( Crew, "", ClickedCrewPage )
         ]
+
+
+fetchCrewMembers session busID =
+    Api.get session (Endpoint.crewMembersForBus busID) (list crewDecoder)
+        |> Cmd.map CrewMemberServerResponse
+
+
+fetchStudentsOnboard session busID =
+    Api.get session (Endpoint.studentsOnboard busID) (list studentDecoder)
+        |> Cmd.map StudentsOnboardServerResponse

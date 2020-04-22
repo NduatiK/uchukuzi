@@ -90,6 +90,13 @@ defmodule Uchukuzi.School do
     |> Repo.one()
   end
 
+  def crew_members_for_bus(school_id, bus_id) do
+    CrewMember
+    |> where(school_id: ^school_id, bus_id: ^bus_id)
+    |> Repo.all()
+  end
+
+
   def update_crew_member_for(school_id, crew_member_id, params) do
     CrewMember
     |> where(school_id: ^school_id, id: ^crew_member_id)

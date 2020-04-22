@@ -25,7 +25,8 @@ tabSections =
     [ TabItem "Fleet" Icons.vehicle Buses
     , TabItem "Students" Icons.seat HouseholdList
     , TabItem "Crew" Icons.people CrewMembers
-    , TabItem "Routes" Icons.pin Routes
+
+    -- , TabItem "Routes" Icons.pin Routes
     ]
 
 
@@ -182,6 +183,9 @@ toNavigationPage route =
             HouseholdList
 
         Navigation.Home ->
+            Buses
+
+        Navigation.Activate _ ->
             Buses
 
         Navigation.Login _ ->

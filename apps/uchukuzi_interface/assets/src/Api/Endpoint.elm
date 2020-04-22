@@ -7,6 +7,7 @@ module Api.Endpoint exposing
     , crewMember
     , crewMembers
     , crewMembersAndBuses
+    , crewMembersForBus
     , devices
     , get
     , households
@@ -15,6 +16,7 @@ module Api.Endpoint exposing
     , performedBusRepairs
     , post
     , signup
+    , studentsOnboard
     , trips
     )
 
@@ -135,6 +137,18 @@ bus busID =
 performedBusRepairs : Int -> Endpoint
 performedBusRepairs busID =
     url [ "school", "buses", String.fromInt busID, "performed_repairs" ]
+        []
+
+
+crewMembersForBus : Int -> Endpoint
+crewMembersForBus busID =
+    url [ "school", "buses", String.fromInt busID, "crew" ]
+        []
+
+
+studentsOnboard : Int -> Endpoint
+studentsOnboard busID =
+    url [ "school", "buses", String.fromInt busID, "students_onboard" ]
         []
 
 
