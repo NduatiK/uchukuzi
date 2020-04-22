@@ -12,6 +12,7 @@ defmodule UchukuziInterfaceWeb.TrackingView do
       start_time: trip.start_time,
       end_time: trip.end_time,
       distance_covered: trip.distance_covered,
+      travel_time: trip.travel_time,
       # student_activities: Enum.map(trip.student_activities, &render_student_activities/1),
       student_activities:
         Enum.map(

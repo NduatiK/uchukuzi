@@ -12,6 +12,7 @@ import Errors exposing (Errors, InputError)
 import Html.Attributes exposing (id)
 import Html.Events exposing (..)
 import Http
+import Models.Household exposing (TravelTime(..))
 import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (hardcoded)
@@ -75,14 +76,11 @@ type alias ValidForm =
 
 type alias Student =
     { name : String
-    , time : TripTime
+    , time : TravelTime
     }
 
 
-type TripTime
-    = TwoWay
-    | Morning
-    | Evening
+
 
 
 type alias Guardian =
@@ -106,7 +104,7 @@ type Field
     | PhoneNumber String
     | Route (Maybe String)
     | CanTrack Bool
-    | TripTime Student TripTime Bool
+    | TravelTime Student TravelTime Bool
 
 
 type Msg
@@ -321,7 +319,7 @@ updateField field model =
             in
             ( { model | form = updated_form }, Cmd.none )
 
-        TripTime updatedStudent toggledTime _ ->
+        TravelTime updatedStudent toggledTime _ ->
             let
                 transformTime originalTime =
                     case ( originalTime, toggledTime ) of
@@ -452,7 +450,8 @@ viewForm model =
     Element.column
         [ width (fillPortion 1), spacing 26 ]
         [ el [ width (fill |> maximum 300) ] (toDropDownView <| routeDropDown model)
-        , viewDivider
+
+        -- , viewDivider
         , el Style.header2Style (text "Students")
 
         -- , viewLocationInput household.home_location
@@ -461,12 +460,11 @@ viewForm model =
         , el Style.header2Style
             (text "Guardian's contacts")
         , viewGuardianNameInput model.form.problems household.guardian.name
-        , -- wrappedRow [ spacing 24 ]
-          -- [
-          viewEmailInput model.form.problems household.guardian.email
-        , viewPhoneInput model.form.problems household.guardian.phoneNumber
+        , wrappedRow [ spacing 24 ]
+            [ viewEmailInput model.form.problems household.guardian.email
+            , viewPhoneInput model.form.problems household.guardian.phoneNumber
+            ]
 
-        -- ]
         -- , viewShareLocationInput model.form.canTrack
         , viewButton
         ]
@@ -558,7 +556,7 @@ viewStudentsTable students =
               , view =
                     \student ->
                         Input.checkbox []
-                            { onChange = TripTime student Morning >> Changed
+                            { onChange = TravelTime student Morning >> Changed
                             , icon = StyledElement.checkboxIcon
                             , checked = includesMorningTrip student.time
                             , label =
@@ -570,7 +568,7 @@ viewStudentsTable students =
               , view =
                     \student ->
                         Input.checkbox []
-                            { onChange = TripTime student Evening >> Changed
+                            { onChange = TravelTime student Evening >> Changed
                             , icon = StyledElement.checkboxIcon
                             , checked = includesEveningTrip student.time
                             , label =

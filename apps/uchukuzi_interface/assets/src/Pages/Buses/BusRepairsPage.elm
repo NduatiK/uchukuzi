@@ -15,7 +15,7 @@ import Style
 import StyledElement
 import StyledElement.Footer as Footer
 import Time
-import Utils.GroupByDate
+import Utils.GroupBy
 
 
 type alias Model =
@@ -63,7 +63,7 @@ init : Int -> List Repair -> Time.Zone -> ( Model, Cmd Msg )
 init busID repairs timezone =
     ( { busID = busID
       , repairs = repairs
-      , currentPage = Summary
+      , currentPage = PastRepairs
       , timezone = timezone
       , groupedRepairs = groupRepairs repairs timezone
       , highlightedRepair = Nothing
@@ -125,7 +125,7 @@ viewPastRepairs model viewHeight =
         , Style.clipStyle
         , spacing 20
         ]
-        [ viewGroupedRepairs model.groupedRepairs
+        [ viewGroupedRepairs model
         , el [ centerX, width (px 2), height (fill |> maximum 500), Background.color Colors.darkness ] none
         , column [ height fill, width (fillPortion 1) ]
             [ StyledElement.buttonLink [ centerX, Border.width 3, Border.color Colors.purple, Background.color Colors.white ]
@@ -141,20 +141,31 @@ viewPastRepairs model viewHeight =
         ]
 
 
-viewGroupedRepairs groupedRepairs =
+viewGroupedRepairs { groupedRepairs, repairs } =
     let
-        viewGroup ( title, repairs ) =
+        totalCost =
+            List.foldl (\x y -> y + x.cost) 0 repairs
+
+        viewGroup ( date, repairsForDate ) =
             let
-                totalCost =
-                    List.foldl (\x y -> y + x.cost) 0 repairs
+                totalCostForDate =
+                    List.foldl (\x y -> y + x.cost) 0 repairsForDate
             in
             column [ spacing 10, height fill, width fill ]
-                [ el Style.header2Style (text (title ++ " - KES. " ++ String.fromInt totalCost))
-                , wrappedRow [ spacing 10, width (fill |> maximum 800) ] (List.map viewRepair repairs)
+                [ el Style.header2Style (text (date ++ " - KES. " ++ String.fromInt totalCostForDate))
+                , wrappedRow [ spacing 10, width (fill |> maximum 800) ] (List.map viewRepair repairsForDate)
                 ]
     in
     column [ scrollbarY, height fill, width (fillPortion 2) ]
-        (List.map viewGroup groupedRepairs)
+        (column [ paddingXY 0 10 ]
+            [ row (Style.header2Style ++ [ alignLeft, width fill, Font.color Colors.black, spacing 30 ])
+                [ text "Total Paid for Repairs"
+                , el [ Font.size 21, Font.color Colors.darkGreen ] (text ("KES. " ++ String.fromInt totalCost))
+                ]
+            , el [ height (px 1), Background.color Colors.simpleGrey, width fill ] none
+            ]
+            :: List.map viewGroup groupedRepairs
+        )
 
 
 viewRepair repair =
@@ -242,8 +253,9 @@ viewFooter model =
         [ el [ width (fillPortion 2) ]
             (Footer.view model.currentPage
                 pageToString
-                [ ( Summary, "", ClickedSummaryPage )
-                , ( PastRepairs, String.fromInt (List.length model.repairs), ClickedPastRepairsPage )
+                [ -- ( Summary, "", ClickedSummaryPage )
+                  -- ,
+                  ( PastRepairs, String.fromInt (List.length model.repairs), ClickedPastRepairsPage )
                 ]
             )
         , el [ width (fillPortion 1) ] none
@@ -252,4 +264,4 @@ viewFooter model =
 
 groupRepairs : List Repair -> Time.Zone -> List ( String, List Repair )
 groupRepairs trips timezone =
-    Utils.GroupByDate.group trips timezone .dateTime
+    Utils.GroupBy.date  timezone .dateTime trips

@@ -4,13 +4,16 @@ import Api
 import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input
 import Errors
 import Html exposing (Html)
 import Html.Events exposing (..)
 import Icons
 import Json.Decode exposing (list)
-import Models.Household exposing (Household, Student, householdDecoder)
+import Models.Household exposing (Household, Student, TravelTime(..), householdDecoder, studentByRouteDecoder)
 import Navigation
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
@@ -23,23 +26,24 @@ import Views.Heading exposing (viewHeading)
 -- MODEL
 
 
+type alias GroupedStudents =
+    ( String, List Student )
+
+
 type alias Model =
     { session : Session
-    , households : WebData (List Household)
+    , groupedStudents : WebData ( List GroupedStudents, List Household )
+    , selectedGroupedStudents : Maybe GroupedStudents
+    , selectedStudent : Maybe Student
     }
-
-
-type TripTime
-    = TwoWay
-    | Morning
-    | Evening
 
 
 type Msg
     = SelectedHousehold
-    | SelectedStudent Student
-    | StudentsResponse (WebData (List Household))
+    | SelectedStudent (Maybe Student)
+    | StudentsResponse (WebData ( List GroupedStudents, List Household ))
     | RegisterStudent
+    | SelectedRoute GroupedStudents
     | NoOp
 
 
@@ -49,7 +53,11 @@ type Msg
 
 init : Session -> ( Model, Cmd Msg )
 init session =
-    ( Model session Loading
+    ( { session = session
+      , groupedStudents = Loading
+      , selectedGroupedStudents = Nothing
+      , selectedStudent = Nothing
+      }
     , fetchHouseholds session
     )
 
@@ -75,12 +83,21 @@ update msg model =
                         ( _, error_msg ) =
                             Errors.decodeErrors error
                     in
-                    ( { model | households = response }, error_msg )
+                    ( { model | groupedStudents = response }, error_msg )
 
                 _ ->
-                    ( { model | households = response }, Cmd.none )
+                    ( { model | groupedStudents = response }, Cmd.none )
 
-        _ ->
+        SelectedRoute students ->
+            ( { model | selectedGroupedStudents = Just students }, Cmd.none )
+
+        SelectedStudent student ->
+            ( { model | selectedStudent = student }, Cmd.none )
+
+        SelectedHousehold ->
+            ( model, Cmd.none )
+
+        NoOp ->
             ( model, Cmd.none )
 
 
@@ -88,40 +105,100 @@ update msg model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
-    Element.column
-        [ width fill, spacing 40, paddingXY 24 8 ]
-        [ viewHeading model
-        , viewBody model.households
+view : Model -> Int -> Element Msg
+view model viewHeight =
+    column
+        [ width fill
+        , height (px viewHeight)
+        , spacing 40
+        , paddingXY 90 70
+        , inFront (viewOverlay model)
         ]
+        [ viewHeading model
+        , viewBody model
+        ]
+
+
+viewOverlay : Model -> Element Msg
+viewOverlay { selectedStudent } =
+    el
+        (Style.animatesAll
+            :: (if selectedStudent == Nothing then
+                    [ alpha 0 ]
+
+                else
+                    [ alpha 1
+                    , width fill
+                    , height fill
+                    ]
+               )
+        )
+        (case selectedStudent of
+            Nothing ->
+                none
+
+            Just student ->
+                el
+                    [ width fill
+                    , height fill
+                    , behindContent
+                        (Input.button
+                            [ width fill
+                            , height fill
+                            , Background.color (Colors.withAlpha Colors.black 0.6)
+                            , Style.blurredStyle
+                            ]
+                            { onPress = Just (SelectedStudent Nothing)
+                            , label = none
+                            }
+                        )
+                    , inFront
+                        (el [ Background.color Colors.white, Border.rounded 5, Style.elevated2, centerX, centerY, width (fill |> maximum 600), Style.animatesNone ]
+                            (column [ spacing 8, paddingXY 0 24, width fill ]
+                                [ row [ width fill, paddingXY 8 0 ]
+                                    [ column [ paddingXY 20 0, spacing 8 ]
+                                        [ el (Style.header2Style ++ [ padding 0 ]) (text student.name)
+
+                                        -- , el Style.captionLabelStyle (text (roleToString crewMember.role))
+                                        ]
+                                    , StyledElement.button [ Background.color Colors.white, alignRight, centerY, mouseOver [ Background.color (Colors.withAlpha Colors.purple 0.2) ] ]
+                                        { label =
+                                            row [ spacing 8 ]
+                                                [ Icons.edit [ Colors.fillPurple ]
+                                                , el [ centerY, Font.color Colors.purple ] (text "Edit details")
+                                                ]
+                                        , onPress = Nothing
+
+                                        -- , onPress = Just (EditCrewMember crewMember)
+                                        }
+                                    ]
+                                , el [ width fill, height (px 2), Background.color Colors.darkness ] none
+                                , column [ paddingXY 20 20, spacing 16 ]
+                                    [--     el Style.labelStyle (text crewMember.phoneNumber)
+                                     -- , el Style.labelStyle (text crewMember.email)
+                                    ]
+                                ]
+                            )
+                        )
+                    ]
+                    none
+        )
 
 
 viewHeading : Model -> Element Msg
 viewHeading model =
-    row [ spacing 16 ]
-        [ Element.column
-            [ width fill ]
-            [ el
-                Style.headerStyle
-                (text "All Households")
-
-            -- , case subLine of
-            --     Nothing ->
-            --         none
-            --     Just caption ->
-            --         el Style.captionLabelStyle (text caption)
-            ]
-        , StyledElement.iconButton []
-            { icon = Icons.add
-            , iconAttrs = [ Colors.fillWhite ]
+    row [ spacing 16, width fill ]
+        [ el Style.headerStyle (text "Students")
+        , StyledElement.ghostButton [ alignRight ]
+            { title = "Add Household"
+            , icon = Icons.add
             , onPress = Just RegisterStudent
             }
         ]
 
 
-viewBody model =
-    case model of
+viewBody { groupedStudents, selectedGroupedStudents } =
+    case groupedStudents of
         NotAsked ->
             text "Initialising."
 
@@ -135,14 +212,45 @@ viewBody model =
             in
             text (Errors.errorToString apiError)
 
-        Success households ->
+        Success groups ->
             Element.column [ spacing 40 ]
-                [ viewHouseholdsTable households
+                [ viewRoutes groups selectedGroupedStudents
+                , case selectedGroupedStudents of
+                    Just students ->
+                        Element.column [ spacing 40 ]
+                            [ viewHouseholdsTable students
+                            ]
+
+                    Nothing ->
+                        none
                 ]
 
 
-viewHouseholdsTable : List Household -> Element Msg
-viewHouseholdsTable households =
+viewRoutes groups selectedGroupedStudents =
+    let
+        title group =
+            StyledElement.plainButton []
+                { label =
+                    el
+                        ((if Just group == selectedGroupedStudents then
+                            [ Background.color Colors.darkGreen, Font.color Colors.white, Border.width 1, Border.color (Colors.withAlpha Colors.black 0.1) ]
+
+                          else
+                            [ Background.color Colors.white, Border.width 2, Border.color Colors.sassyGrey ]
+                         )
+                            ++ [ paddingXY 12 6
+                               , Border.rounded 5
+                               ]
+                        )
+                        (text (Tuple.first group))
+                , onPress = Just (SelectedRoute group)
+                }
+    in
+    wrappedRow [] (List.map title (Tuple.first groups))
+
+
+viewHouseholdsTable : GroupedStudents -> Element Msg
+viewHouseholdsTable students =
     let
         includesMorningTrip time =
             time == Morning || time == TwoWay
@@ -158,13 +266,16 @@ viewHouseholdsTable households =
     in
     Element.table
         [ spacing 15 ]
-        { data = households
+        { data = Tuple.second students
         , columns =
             [ { header = tableHeader "NAME"
               , width = fill
               , view =
-                    \household ->
-                        el rowTextStyle (Element.text household.guardian.name)
+                    \student ->
+                        StyledElement.plainButton rowTextStyle
+                            { label = Element.text student.name
+                            , onPress = Just (SelectedStudent (Just student))
+                            }
               }
 
             -- , { header = tableHeader "ROUTE"
@@ -180,9 +291,9 @@ viewHouseholdsTable households =
                         Input.checkbox []
                             { onChange = always NoOp
                             , icon = StyledElement.checkboxIcon
+                            , checked = includesMorningTrip student.travelTime
 
-                            -- , checked = includesMorningTrip student.time
-                            , checked = True
+                            -- , checked = True
                             , label =
                                 Input.labelHidden "Takes morning bus"
                             }
@@ -211,5 +322,5 @@ viewHouseholdsTable households =
 
 fetchHouseholds : Session -> Cmd Msg
 fetchHouseholds session =
-    Api.get session Endpoint.households (list householdDecoder)
+    Api.get session Endpoint.households studentByRouteDecoder
         |> Cmd.map StudentsResponse

@@ -368,12 +368,8 @@ viewButton requestState =
                     Icons.loading [ alignRight, width (px 46), height (px 46) ]
 
                 Failure _ ->
-                    StyledElement.button
-                        [ alignRight, Background.color Colors.errorRed ]
-                        { label =
-                            row [ spacing 8 ]
-                                [ el [ centerY ] (text "Try Again")
-                                ]
+                    StyledElement.failureButton [ alignRight ]
+                        { title = "Try Again"
                         , onPress = Just SubmitButtonMsg
                         }
 

@@ -20,7 +20,7 @@ import Style exposing (edges)
 import StyledElement
 import Time
 import Utils.DateFormatter
-import Utils.GroupByDate
+import Utils.GroupBy
 
 
 type alias Model =
@@ -360,7 +360,7 @@ viewStudentActivities activities timezone =
                 , label =
                     row
                         ([ height (px 64)
-                         , width (fillPortion 1 |> minimum 200)
+                         , width (fillPortion 1 |> minimum 300)
                          , spacing 8
                          , paddingXY 12 11
                          , Background.color (rgb 1 1 1)
@@ -379,8 +379,11 @@ viewStudentActivities activities timezone =
                             -- , el routeStyle (text trip.route)
                             ]
                         , el [ width (px 3), height fill, Background.color Colors.darkGreen ] none
-                        , column [ spacing 8 ]
-                            [ paragraph routeStyle [ text ("activity.studentName" ++ " " ++ String.replace "_" " " activity.activity) ]
+                        , column [ spacing 8, width fill ]
+                            [ textColumn (spacing 4 :: routeStyle)
+                                [ el [] (text "Tony G.")
+                                , el [] (text (String.replace "_" " " activity.activity))
+                                ]
 
                             --  el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.startTime))
                             -- , el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.endTime))
@@ -488,7 +491,7 @@ viewTrip selectedTrip timezone trip =
             ]
         , el [ width (px 3), height fill, Background.color Colors.darkGreen ] none
         , column [ spacing 8 ]
-            [ el routeStyle (text "trip.route")
+            [ el routeStyle (text trip.travelTime)
 
             --  el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.startTime))
             -- , el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.endTime))
@@ -563,7 +566,7 @@ fetchTripsForBus session bus_id =
 
 groupTrips : List Trip -> Time.Zone -> List GroupedTrips
 groupTrips trips timezone =
-    Utils.GroupByDate.group trips timezone .startTime
+    Utils.GroupBy.date  timezone .startTime trips
 
 
 toGPS : Location -> { lat : Float, lng : Float }

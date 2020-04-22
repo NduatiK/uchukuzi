@@ -1,7 +1,8 @@
-module Models.Household exposing (Household, Location, Student, householdDecoder)
+module Models.Household exposing (Household, Location, Student, TravelTime(..), householdDecoder, studentByRouteDecoder, studentDecoder)
 
 import Json.Decode as Decode exposing (Decoder, float, int, list, string, succeed)
 import Json.Decode.Pipeline exposing (required, resolve)
+import Utils.GroupBy
 
 
 type alias Household =
@@ -29,6 +30,50 @@ type alias Guardian =
     }
 
 
+type TravelTime
+    = TwoWay
+    | Morning
+    | Evening
+
+
+type alias Student =
+    { name : String
+    , travelTime : TravelTime
+    , homeLocation : Location
+    , pickupLocation : Location
+    , route : String
+    }
+
+
+type alias Location =
+    { lng : Float
+    , lat : Float
+    }
+
+
+studentByRouteDecoder : Decoder ( List ( String, List Student ), List Household )
+studentByRouteDecoder =
+    let
+        decoder : List Household -> Decoder ( List ( String, List Student ), List Household )
+        decoder households =
+            let
+                students =
+                    List.concat (List.map .students households)
+            in
+            Decode.succeed
+                ( Utils.GroupBy.attr
+                    { groupBy = .route
+                    , nameAs = .route
+                    , reverse = False
+                    }
+                    students
+                , households
+                )
+    in
+    list householdDecoder
+        |> Decode.andThen decoder
+
+
 householdDecoder : Decoder Household
 householdDecoder =
     let
@@ -44,29 +89,31 @@ householdDecoder =
         |> resolve
 
 
-type alias Student =
-    { name : String
-    , travel_time : String
-    , homeLocation : Location
-    , pickupLocation : Location
-    , route : String
-    }
-
-
-type alias Location =
-    { lng : Float
-    , lat : Float
-    }
-
-
 studentDecoder : Decoder Student
 studentDecoder =
-    Decode.succeed Student
+    let
+        decoder name travel_time home_location pickup_location route =
+            let
+                travelTime =
+                    case travel_time of
+                        "evening" ->
+                            Evening
+
+                        "morning" ->
+                            Morning
+
+                        _ ->
+                            TwoWay
+            in
+            succeed (Student name travelTime home_location pickup_location route)
+    in
+    Decode.succeed decoder
         |> required "name" string
         |> required "travel_time" string
         |> required "home_location" locationDecoder
         |> required "pickup_location" locationDecoder
         |> required "route" string
+        |> resolve
 
 
 locationDecoder : Decoder Location

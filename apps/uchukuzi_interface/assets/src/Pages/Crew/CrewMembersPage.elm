@@ -378,13 +378,8 @@ viewHeading { data, inEditingMode } =
                                         ]
                                 , onPress = Just CancelEdits
                                 }
-                            , StyledElement.button
-                                [ alignRight, Background.color Colors.errorRed ]
-                                { label =
-                                    row [ spacing 8 ]
-                                        [ Icons.save [ alpha 1, Colors.fillWhite ]
-                                        , el [ centerY ] (text "Try Again")
-                                        ]
+                            , StyledElement.failureButton [ alignRight ]
+                                { title = "Try Again"
                                 , onPress = Just SaveChanges
                                 }
                             ]
