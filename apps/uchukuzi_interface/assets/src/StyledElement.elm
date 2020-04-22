@@ -192,7 +192,7 @@ failureButton attrs { title, onPress } =
         (Background.color Colors.errorRed :: attrs)
         { label =
             row [ spacing 8 ]
-                [ Icons.refresh [ Colors.fillWhite ]
+                [ Icons.refresh [ Colors.fillWhite, alpha 1 ]
                 , el [ centerY ] (text title)
                 ]
         , onPress = onPress
