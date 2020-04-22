@@ -1,4 +1,4 @@
-module Pages.Households.HouseholdRegistrationPage exposing (Model, Msg, init, update, view)
+module Pages.Households.HouseholdRegistrationPage exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -12,11 +12,12 @@ import Errors exposing (Errors, InputError)
 import Html.Attributes exposing (id)
 import Html.Events exposing (..)
 import Http
-import Models.Household exposing (TravelTime(..))
 import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (hardcoded)
 import Json.Encode as Encode
+import Models.Household exposing (TravelTime(..))
+import Models.Location exposing (Location)
 import Navigation exposing (..)
 import Ports
 import RemoteData exposing (..)
@@ -36,7 +37,6 @@ type alias Model =
     { session : Session
     , form : Form
     , routeDropdownState : Dropdown.State String
-    , searchDropdownState : Dropdown.State Location
     }
 
 
@@ -46,8 +46,8 @@ type alias Form =
     , guardian : Guardian
     , canTrack : Bool
     , homeLocation : Maybe Location
-    , pickupLocation : Maybe Location
     , route : Maybe String
+    , searchText : String
     , problems : List (Errors Problem)
     }
 
@@ -59,9 +59,9 @@ type Problem
     | EmptyGuardianPhoneNumber
     | InvalidGuardianPhoneNumber
     | EmptyStudentsList
-    | EmptyPickupLocation
     | EmptyHomeLocation
     | EmptyRoute
+    | AutocompleteFailed
 
 
 type alias ValidForm =
@@ -69,7 +69,6 @@ type alias ValidForm =
     , guardian : Guardian
     , canTrack : Bool
     , homeLocation : Location
-    , pickupLocation : Location
     , route : String
     }
 
@@ -80,19 +79,10 @@ type alias Student =
     }
 
 
-
-
-
 type alias Guardian =
     { name : String
     , phoneNumber : String
     , email : String
-    }
-
-
-type alias Location =
-    { longitude : Float
-    , latitude : Float
     }
 
 
@@ -110,18 +100,19 @@ type Field
 type Msg
     = Changed Field
     | DropdownMsg (Dropdown.Msg String)
-    | SearchDropdownMsg (Dropdown.Msg Location)
     | SaveStudentPressed
     | DeleteStudentMsg Student
     | SubmitButtonMsg
+    | SearchTextChanged String
     | ServerResponse (WebData Int)
+    | AutocompleteError
+    | ReceivedMapLocation Location
 
 
 emptyForm : Session -> Model
 emptyForm session =
     { session = session
     , routeDropdownState = Dropdown.init "routeDropdown"
-    , searchDropdownState = Dropdown.init "searchDropdown"
     , form =
         { currentStudent = ""
         , students =
@@ -132,12 +123,9 @@ emptyForm session =
             , email = ""
             }
         , canTrack = True
-        , homeLocation = Just { latitude = 1, longitude = 2 }
-        , pickupLocation = Just { latitude = 0, longitude = 0 }
-
-        -- , homeLocation = Nothing
-        -- , pickupLocation = Nothing
+        , homeLocation = Nothing
         , route = Nothing
+        , searchText = ""
         , problems = []
         }
     }
@@ -145,7 +133,12 @@ emptyForm session =
 
 init : Session -> ( Model, Cmd msg )
 init session =
-    ( emptyForm session, Ports.initializeMaps False )
+    ( emptyForm session
+    , Cmd.batch
+        [ Ports.initializeMaps
+        , Ports.initializeSearch
+        ]
+    )
 
 
 
@@ -172,15 +165,8 @@ update msg model =
             in
             ( { model | routeDropdownState = state }, cmd )
 
-        SearchDropdownMsg subMsg ->
-            let
-                ( _, config, options ) =
-                    gmapDropDown model
-
-                ( state, cmd ) =
-                    Dropdown.update config subMsg model.searchDropdownState options
-            in
-            ( { model | searchDropdownState = state }, cmd )
+        SearchTextChanged text ->
+            ( { model | form = { form | searchText = text } }, Cmd.none )
 
         SubmitButtonMsg ->
             case validateForm form of
@@ -219,8 +205,21 @@ update msg model =
             in
             ( { model | form = updated_form }, Cmd.none )
 
+        AutocompleteError ->
+            let
+                apiFormErrors =
+                    Errors.toClientSideError ( AutocompleteFailed, "Unable to load autocomplete, please refresh the page" )
+
+                updatedForm =
+                    { form | problems = apiFormErrors :: form.problems }
+            in
+            ( { model | form = updatedForm }, Cmd.none )
+
         ServerResponse response ->
             updateStatus model response
+
+        ReceivedMapLocation location ->
+            ( { model | form = { form | homeLocation = Just location } }, Cmd.none )
 
 
 updateStatus : Model -> WebData Int -> ( Model, Cmd Msg )
@@ -375,12 +374,6 @@ view model =
         ]
 
 
-googleMap_search : Model -> Element Msg
-googleMap_search model =
-    el [ padding 40, width (fill |> maximum 400) ]
-        (toDropDownView <| gmapDropDown model)
-
-
 googleMap : Model -> Element Msg
 googleMap model =
     let
@@ -389,7 +382,7 @@ googleMap model =
                 (\x ->
                     case x of
                         Errors.ClientSideError y _ ->
-                            y == EmptyHomeLocation || y == EmptyPickupLocation
+                            y == EmptyHomeLocation
 
                         _ ->
                             False
@@ -417,7 +410,19 @@ googleMap model =
         [ el
             [ width fill
             , height (px 400)
-            , inFront (googleMap_search model)
+            , inFront
+                -- googleMap_search model
+                (StyledElement.textInput [ padding 10 ]
+                    { ariaLabel = "search input"
+                    , caption = Nothing
+                    , errorCaption = Nothing
+                    , icon = Just Icons.search
+                    , onChange = SearchTextChanged
+                    , placeholder = Nothing
+                    , title = ""
+                    , value = model.form.searchText
+                    }
+                )
             ]
             (StyledElement.googleMap
                 ([ width fill
@@ -740,24 +745,6 @@ routeDropDown model =
         }
 
 
-gmapDropDown : Model -> ( Element Msg, Dropdown.Config Location Msg, List Location )
-gmapDropDown model =
-    StyledElement.dropDown [ Style.elevated2 ]
-        { ariaLabel = "Search for household on the map"
-        , caption = Nothing
-        , prompt = Just "Search for area"
-        , dropDownMsg = SearchDropdownMsg
-        , dropdownState = model.searchDropdownState
-        , errorCaption = Nothing
-        , icon = Just Icons.search
-        , onSelect = HomeLocation >> Changed
-        , options = []
-        , title = ""
-        , toString = \x -> "Home"
-        , isLoading = True
-        }
-
-
 viewButton : Element Msg
 viewButton =
     el (Style.labelStyle ++ [ width fill, paddingEach { edges | right = 24 } ])
@@ -784,7 +771,7 @@ submit session household =
                 , ( "students", Encode.list encodeStudent (Tuple.first household.students :: Tuple.second household.students) )
                 , ( "route", Encode.string "household.route" )
                 , ( "home_location", encodeLocation household.homeLocation )
-                , ( "pickup_location", encodeLocation household.pickupLocation )
+                , ( "pickup_location", encodeLocation household.homeLocation )
                 ]
                 |> Http.jsonBody
     in
@@ -797,10 +784,11 @@ aDecoder =
     Decode.succeed 0
 
 
+encodeLocation : Location -> Encode.Value
 encodeLocation location =
     Encode.object
-        [ ( "lat", Encode.float location.latitude )
-        , ( "lng", Encode.float location.longitude )
+        [ ( "lat", Encode.float location.lat )
+        , ( "lng", Encode.float location.lng )
         ]
 
 
@@ -852,19 +840,14 @@ validateForm form =
                 ]
 
         unwrapNullables =
-            case ( form.pickupLocation, form.homeLocation, form.route ) of
-                ( Just pickupLocation, Just homeLocation, Just route ) ->
-                    Ok ( pickupLocation, homeLocation, route )
+            case ( form.homeLocation, form.route ) of
+                ( Just homeLocation, Just route ) ->
+                    Ok ( homeLocation, route )
 
                 _ ->
                     Err
                         (List.concat
-                            [ if form.pickupLocation == Nothing then
-                                [ ( EmptyPickupLocation, "Required" ) ]
-
-                              else
-                                []
-                            , if form.homeLocation == Nothing then
+                            [ if form.homeLocation == Nothing then
                                 [ ( EmptyHomeLocation, "Required" ) ]
 
                               else
@@ -878,13 +861,12 @@ validateForm form =
                         )
     in
     case ( List.head form.students, problems, unwrapNullables ) of
-        ( Just student, [], Ok ( pickupLocation, homeLocation, route ) ) ->
+        ( Just student, [], Ok ( homeLocation, route ) ) ->
             Ok
                 { students = ( student, List.drop 1 form.students )
                 , guardian = form.guardian
                 , canTrack = form.canTrack
                 , homeLocation = homeLocation
-                , pickupLocation = pickupLocation
                 , route = route
                 }
 
@@ -905,3 +887,11 @@ validateForm form =
                                 []
                        )
                 )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Ports.autocompleteError (always AutocompleteError)
+        , Ports.receivedMapLocation ReceivedMapLocation
+        ]

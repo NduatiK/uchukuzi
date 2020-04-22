@@ -173,9 +173,18 @@ check attrs =
     iconNamed "images/check.svg" (alpha 1 :: attrs)
 
 
+done : List (Attribute msg) -> Element msg
+done attrs =
+    iconNamed "images/done.svg" (alpha 1 :: attrs)
+
+
 vehicle : List (Attribute msg) -> Element msg
 vehicle =
     iconNamed "images/shuttle.svg"
+
+home_pin : List (Attribute msg) -> Element msg
+home_pin =
+    iconNamed "images/home_pin.svg"
 
 
 fuel : List (Attribute msg) -> Element msg

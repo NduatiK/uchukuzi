@@ -6,7 +6,7 @@ import { isDevelopment } from './env'
 let runningRequest = null
 let initializingMapsChain = null
 
-function initializeMaps(app, _clickable, numberOfRetries, schoolLocation) {
+function initializeMaps(app, _clickable, drawable, numberOfRetries, schoolLocation) {
     if (schoolLocation) {
         defaultLocation = { center: schoolLocation, zoom: 10 }
         console.log(defaultLocation)
@@ -23,11 +23,13 @@ function initializeMaps(app, _clickable, numberOfRetries, schoolLocation) {
         .then(cleanMap)
         .then(insertMap)
         .then(setupMapCallbacks(app, _clickable))
-        .then(addDrawTools(app))
+        .then(addDrawTools(app, drawable))
+    initializingMapsChain
         .catch(() => {
             runningRequest = null
         })
         .then(() => { initializingMapsChain = null })
+    return initializingMapsChain
 }
 
 /**
@@ -47,7 +49,7 @@ function loadMapAPI() {
         script.onload = () => { resolve(google) }
         script.onerror = reject
         document.getElementsByTagName('head')[0].appendChild(script)
-        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyB6wUhsk2tL7ihoORGBfeqc8UCRA3XRVsw&libraries=drawing"
+        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyB6wUhsk2tL7ihoORGBfeqc8UCRA3XRVsw&libraries=drawing,places"
     })
     return runningRequest
 }
@@ -210,22 +212,21 @@ const setupMapCallbacks = (app, clickable) => (data) => {
                 map: map,
                 icon: image
             })
-            map.setZoom(16)
+            map.setZoom(17)
 
             markers.push(marker)
             map.panTo(gmPos)
         })
     }
 
-
     if (clickable) {
         if (!google.maps.event.hasListeners(map, 'click')) {
-            google.maps.event.addListener(map, 'click', function (args) {
+            clickListener = google.maps.event.addListener(map, 'click', function (args) {
                 const pos = {
                     lat: args.latLng.lat(),
                     lng: args.latLng.lng()
                 }
-                // insertCircle(pos, app)
+                insertCircle(pos, app, map)
             })
         }
     } else {
@@ -245,15 +246,26 @@ function getCardinalDirection(angle) {
     return directions[Math.round(angle / 45) % 8]
 }
 
-function insertCircle(pos, app) {
+function insertCircle(pos, app, map) {
+
+
     let radius = 50
 
     if (schoolCircle) {
         radius = schoolCircle.getRadius()
         schoolCircle.setMap(null)
     }
-    initializeMaps(app, true)
-        .then(() => {
+
+    function getMap() {
+        if (map) {
+            return Promise.resolve({ map: map })
+        } else {
+            return initializeMaps(app, true)
+        }
+    }
+
+    getMap()
+        .then(({ map }) => {
 
             schoolCircle = new google.maps.Circle({
                 strokeColor: '#61A591',
@@ -261,7 +273,7 @@ function insertCircle(pos, app) {
                 strokeWeight: 2,
                 fillColor: '#61A591',
                 fillOpacity: 0.35,
-                map: MapInstance,
+                map: map,
                 draggable: true,
                 geodesic: true,
                 editable: true,
@@ -285,58 +297,50 @@ function insertCircle(pos, app) {
                     sendSchoolCircle(schoolCircle)
                 })
             }
-            MapInstance.panTo(schoolCircle.center)
-            MapInstance.setZoom(16)
+            map.panTo(schoolCircle.center)
+            map.setZoom(17)
             sendSchoolCircle(schoolCircle)
         })
 }
 
 let polylineListener = null
-const addDrawTools = (app) => (data) => {
+const addDrawTools = (app, drawable) => (data) => {
     const { dom, map } = data
 
+    if (drawable) {
 
-    if (!drawingManager) {
-        drawingManager = new google.maps.drawing.DrawingManager({
-            drawingControl: true,
-            drawingControlOptions: {
-                position: google.maps.ControlPosition.TOP_CENTER,
-                drawingModes: ['polyline']
-            }
+        if (!drawingManager) {
+            drawingManager = new google.maps.drawing.DrawingManager({
+                drawingControl: true,
+                drawingControlOptions: {
+                    position: google.maps.ControlPosition.TOP_CENTER,
+                    drawingModes: ['polyline']
+                }
+            })
+
+        } else {
+            drawingManager.setMap(null)
+            google.maps.event.removeListener(polylineListener)
+        }
+        polylineListener = google.maps.event.addListener(drawingManager, 'polylinecomplete', function (polyline) {
+            polylines.push(polyline)
         })
 
+        console.log("drawingManager", drawingManager)
+        drawingManager.setMap(map)
     } else {
-        drawingManager.setMap(null)
-        google.maps.event.removeListener(polylineListener)
+        if (drawingManager) {
+            drawingManager.setMap(null)
+        }
     }
-    polylineListener = google.maps.event.addListener(drawingControl, 'polylinecomplete', function (polyline) {
-        polylines.push(polyline);
-    });
-
-    console.log("drawingManager", drawingManager)
-    drawingManager.setMap(map);
 
 
-    return Promise.resolve()
+    return Promise.resolve(data)
 }
 
 
 
 function requestGeoLocation(app) {
-
-    if (process.env.NODE_ENV !== 'production') {
-
-        app.ports.receivedMapClickLocation.send({
-            lat: -1.2921, lng: 36.8219, radius: 50
-        })
-        return
-
-    }
-    // if (window.debug)  {
-
-    app.ports.receivedMapClickLocation.send({ lat: 53.294582, lng: -6.308967, radius: 50 })
-    return
-    // }
 
     function handleLocationError(error) {
         switch (error.code) {
@@ -365,8 +369,7 @@ function requestGeoLocation(app) {
             lng: data.coords.longitude,
             radius: 50
         }
-        app.ports.receivedMapClickLocation.send(pos)
-        // insertCircle(pos, app)
+        insertCircle(pos, app)
     }
 
     const failure = (error) => {
@@ -382,12 +385,83 @@ function requestGeoLocation(app) {
     }
 }
 
+let homeMarker
+function initializeSearch(app) {
+    console.log("entered initializeSearch")
+    initializeMaps(app, true)
+        .then(({ dom, map }) => {
+            if (homeMarker) {
+
+            } else {
+                var image = {
+                    url: "/images/home_pin.svg",
+                    size: new google.maps.Size(24, 24),
+                    anchor: new google.maps.Point(12, 24),
+                }
+                homeMarker = new google.maps.Marker({
+                    map: map,
+                    icon: image
+                })
+            }
+
+            var input = document.getElementById('search-input')
+
+            console.log("initializeSearch")
+            var autocomplete = new google.maps.places.Autocomplete(input)
+
+            autocomplete.bindTo('bounds', map)
+
+            // Set the data fields to return when the user selects a place.
+            autocomplete.setFields(
+                ['address_components', 'geometry', 'name'])
+            autocomplete.addListener('place_changed', function () {
+
+                homeMarker.setVisible(false)
+                var place = autocomplete.getPlace()
+                if (!place.geometry) {
+                    window.alert("No details available for input: '" + place.name + "'")
+                    return
+                }
+
+                // If the place has a geometry, then present it on a map.
+                if (place.geometry.viewport) {
+                    map.fitBounds(place.geometry.viewport)
+                } else {
+                    map.setCenter(place.geometry.location)
+                    map.setZoom(17) 
+                }
+                homeMarker.setPosition(place.geometry.location)
+                homeMarker.setVisible(true)
+
+                app.ports.receivedMapLocation.send(place.geometry.location)
+
+                var address = ''
+                if (place.address_components) {
+                    address = [
+                        (place.address_components[0] && place.address_components[0].short_name || ''),
+                        (place.address_components[1] && place.address_components[1].short_name || ''),
+                        (place.address_components[2] && place.address_components[2].short_name || '')
+                    ].join(' ')
+                }
 
 
+                console.log(place.name)
+                console.log(address)
+                // infowindowContent.children['place-name'].textContent = place.name
+                // infowindowContent.children['place-address'].textContent = address
+                // infowindow.open(map, marker)
+            })
+
+
+        })
+        .catch(() => {
+            app.ports.autocompleteError.send()
+        })
+}
 
 
 function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time))
 }
 
-export { initializeMaps, requestGeoLocation }
+export { initializeMaps, requestGeoLocation, initializeSearch }

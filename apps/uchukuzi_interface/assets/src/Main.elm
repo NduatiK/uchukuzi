@@ -606,6 +606,9 @@ subscriptions model_ =
                 BusDetailsPage model ->
                     Sub.map GotBusDetailsPageMsg (BusDetailsPage.subscriptions model)
 
+                StudentRegistration model ->
+                    Sub.map GotStudentRegistrationMsg (StudentRegistration.subscriptions model)
+
                 _ ->
                     Sub.none
     in

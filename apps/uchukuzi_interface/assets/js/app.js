@@ -1,5 +1,5 @@
 import { Elm } from '../src/Main.elm'
-import { initializeMaps, requestGeoLocation } from './gmaps'
+import { initializeMaps, requestGeoLocation, initializeSearch } from './gmaps'
 import { initializeCamera } from './camera'
 import { initializeLiveView, killLiveView } from './liveView'
 
@@ -31,13 +31,18 @@ var app = Elm.Main.init({
     node: document.getElementById("elm")
 })
 
-app.ports.initializeMaps.subscribe((clickable) => {
+app.ports.initializeSearchPort.subscribe(() => {
+    initializeSearch(app)
+})
+
+app.ports.initializeCustomMap.subscribe(({ clickable, drawable }) => {
     let numberOfRetries = 5
 
     const schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey));
 
-    initializeMaps(app, clickable, numberOfRetries, schoolLocation)
+    initializeMaps(app, clickable, drawable, numberOfRetries, schoolLocation)
 })
+
 
 app.ports.requestGeoLocation.subscribe(() => {
     requestGeoLocation(app)
