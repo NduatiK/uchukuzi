@@ -5,6 +5,7 @@ import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
 import Element.Background as Background
+import Element.Font as Font
 import Errors exposing (Errors)
 import Html.Events exposing (..)
 import Http
@@ -258,14 +259,10 @@ updateField field model =
 
 view : Model -> Element Msg
 view model =
-    row [ width fill, height fill ]
-        [ Element.column
-            [ width fill, spacing 40, paddingXY 24 8, alignTop, height fill ]
-            [ if isEditing model then
-                viewHeading "Edit Crew Member" Nothing
-
-              else
-                viewHeading "Add a Crew Member" Nothing
+    el [ width fill, height fill, paddingXY 80 40 ]
+        (Element.column
+            [ spacing 40, alignTop, height fill, centerX ]
+            [ viewHeading model
             , case model.editState of
                 Just state ->
                     case state.requestState of
@@ -281,6 +278,21 @@ view model =
                 Nothing ->
                     viewForm model
             ]
+        )
+
+
+viewHeading : Model -> Element Msg
+viewHeading model =
+    let
+        title =
+            if isEditing model then
+                "Edit Crew Member"
+
+            else
+                "Add a Crew Member"
+    in
+    row [ width fill ]
+        [ el Style.headerStyle (text title)
         ]
 
 
@@ -290,13 +302,20 @@ viewForm model =
         form =
             model.form
     in
-    -- column [ spacing 50, paddingEach { edges | bottom = 100 } ]
     column
-        [ spacing 32, width (fill |> minimum 300 |> maximum 300), alignTop ]
-        [ viewNameInput form.problems form.name
-        , viewEmailInput form.problems form.email
-        , viewPhoneInput form.problems form.phoneNumber
-        , viewRoleDropDown model
+        [ spacing 32, width (fill |> minimum 300), alignTop, centerX ]
+        [ wrappedRow [ spacing 32 ]
+            [ viewNameInput form.problems form.name
+            , viewRoleDropDown model
+            ]
+        , column [ spacing 16 ]
+            [ el (Style.header2Style ++ [ Font.size 20 ])
+                (text "Contact Details")
+            , wrappedRow [ spacing 32 ]
+                [ viewEmailInput form.problems form.email
+                , viewPhoneInput form.problems form.phoneNumber
+                ]
+            ]
         , viewButton model.requestState
         ]
 
@@ -304,11 +323,7 @@ viewForm model =
 viewNameInput : List (Errors Problem) -> String -> Element Msg
 viewNameInput problems name =
     StyledElement.emailInput
-        [ width
-            (fill
-                |> maximum 300
-            )
-        ]
+        [ width (fill |> minimum 300 |> maximum 300) ]
         { ariaLabel = "Name"
         , caption = Nothing
         , errorCaption = Errors.inputErrorsFor problems "name" [ EmptyName ]
@@ -323,13 +338,9 @@ viewNameInput problems name =
 viewEmailInput : List (Errors Problem) -> String -> Element Msg
 viewEmailInput problems email =
     StyledElement.emailInput
-        [ width
-            (fill
-                |> maximum 300
-            )
-        ]
+        [ width (fill |> minimum 300 |> maximum 300) ]
         { ariaLabel = "Email Address"
-        , caption = Just "Used to connect the parent to the mobile app"
+        , caption = Just "Used to log into the Assistant app"
         , errorCaption = Errors.inputErrorsFor problems "email" [ EmptyEmail, InvalidEmail ]
         , icon = Just Icons.email
         , onChange = Email >> Changed
@@ -342,12 +353,7 @@ viewEmailInput problems email =
 viewPhoneInput : List (Errors Problem) -> String -> Element Msg
 viewPhoneInput problems phone_number =
     StyledElement.textInput
-        [ alignTop
-        , width
-            (fill
-                |> maximum 300
-            )
-        ]
+        [ alignTop, width (fill |> minimum 300 |> maximum 300) ]
         { ariaLabel = "'s Phone Number"
         , caption = Nothing
         , errorCaption = Errors.inputErrorsFor problems "phone_number" [ EmptyPhoneNumber, InvalidPhoneNumber ]
@@ -361,35 +367,35 @@ viewPhoneInput problems phone_number =
 
 viewButton : WebData a -> Element Msg
 viewButton requestState =
-    let
-        buttonView =
-            case requestState of
-                Loading ->
-                    Icons.loading [ alignRight, width (px 46), height (px 46) ]
+    -- let
+    --     buttonView =
+    case requestState of
+        Loading ->
+            Icons.loading [ alignRight, width (px 46), height (px 46) ]
 
-                Failure _ ->
-                    StyledElement.failureButton [ alignRight ]
-                        { title = "Try Again"
-                        , onPress = Just SubmitButtonMsg
-                        }
+        Failure _ ->
+            StyledElement.failureButton [ alignRight ]
+                { title = "Try Again"
+                , onPress = Just SubmitButtonMsg
+                }
 
-                _ ->
-                    StyledElement.button [ alignRight ]
-                        { onPress = Just SubmitButtonMsg
-                        , label = text "Submit"
-                        }
-    in
-    el (Style.labelStyle ++ [ width fill ])
-        buttonView
+        _ ->
+            StyledElement.button [ alignRight ]
+                { onPress = Just SubmitButtonMsg
+                , label = text "Submit"
+                }
+
+
+
+-- in
+-- el (Style.labelStyle ++ [ width fill ])
+--     buttonView
 
 
 routeDropDown : Model -> ( Element Msg, Dropdown.Config Role Msg, List Role )
 routeDropDown model =
     StyledElement.dropDown
-        [ width
-            (fill
-                |> maximum 300
-            )
+        [ width (fill |> minimum 300 |> maximum 300)
         , alignTop
         ]
         { ariaLabel = "Select role dropdown"
