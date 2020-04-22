@@ -3,6 +3,7 @@ port module Ports exposing (..)
 {-| -}
 
 import Models.Bus exposing (LocationUpdate)
+import Models.Location exposing (Location)
 
 
 
@@ -14,7 +15,20 @@ import Models.Bus exposing (LocationUpdate)
 port initializeLiveView : () -> Cmd msg
 
 
-port initializeMaps : Bool -> Cmd msg
+port initializeCustomMap : { drawable : Bool, clickable : Bool } -> Cmd msg
+
+
+initializeMaps : Cmd msg
+initializeMaps =
+    initializeCustomMap { drawable = False, clickable = False }
+
+
+initializeSearch : Cmd msg
+initializeSearch =
+    initializeSearchPort ()
+
+
+port initializeSearchPort : () -> Cmd msg
 
 
 port requestGeoLocation : () -> Cmd msg
@@ -57,7 +71,13 @@ port noCameraFoundError : (Bool -> msg) -> Sub msg
 port receivedMapClickLocation : (Maybe { lat : Float, lng : Float, radius : Float } -> msg) -> Sub msg
 
 
+port receivedMapLocation : (Location -> msg) -> Sub msg
+
+
 port onBusMove : (LocationUpdate -> msg) -> Sub msg
 
 
 port mapReady : (Bool -> msg) -> Sub msg
+
+
+port autocompleteError : (() -> msg) -> Sub msg

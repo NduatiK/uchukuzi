@@ -60,7 +60,7 @@ init session height locationUpdates =
       }
     , Cmd.batch
         [ fetchBuses session
-        , Ports.initializeMaps False
+        , Ports.initializeMaps
         , Ports.initializeLiveView ()
         ]
     )

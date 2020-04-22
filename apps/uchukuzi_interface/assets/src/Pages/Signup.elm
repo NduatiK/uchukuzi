@@ -2,12 +2,14 @@ module Pages.Signup exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api exposing (SuccessfulLogin, loginDecoder)
 import Api.Endpoint as Endpoint
+import Browser.Dom as Dom
 import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Errors exposing (Errors, InputError)
+import Html.Attributes exposing (id)
 import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, float, int, list, string)
@@ -20,6 +22,7 @@ import RemoteData exposing (..)
 import Session exposing (Session)
 import Style
 import StyledElement
+import Task
 import Utils.Validator exposing (..)
 
 
@@ -143,6 +146,7 @@ type Msg
     | LocationSelected (Maybe Location)
     | ToManagerForm
     | ToSchoolForm
+    | NoOp
     | SubmittedForm
     | SignupResponse (WebData SuccessfulLogin)
 
@@ -218,7 +222,10 @@ update msg model =
             case validateManagerForm form.manager of
                 Ok _ ->
                     ( { model | form = { form | page = SchoolDetails } }
-                    , Ports.initializeMaps True
+                    , Cmd.batch
+                        [ Ports.initializeCustomMap { drawable = False, clickable = True }
+                        , Task.attempt (always NoOp) (Dom.focus "school-name-input")
+                        ]
                     )
 
                 Err problems ->
@@ -241,6 +248,9 @@ update msg model =
                     { model | status = requestStatus }
             in
             updateStatus updatedModel requestStatus
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 updateStatus : Model -> WebData SuccessfulLogin -> ( Model, Cmd Msg )
@@ -361,7 +371,7 @@ viewSchoolForm model =
     in
     column [ centerX, alignTop, width (fill |> maximum 600), spacing 10 ]
         [ formPageHeader "School Details" "(2/2)"
-        , StyledElement.textInput [ centerX ]
+        , StyledElement.textInput [ centerX]
             { title = "School Name"
             , caption = Just "This is the name that will be visible to parents and students"
             , errorCaption = errorMapper "school_name" [ EmptySchoolName ]
@@ -417,7 +427,6 @@ viewMap isLoading =
         (StyledElement.googleMap
             [ height (px 400)
             , width (px 600)
-            , Background.color (rgb 0 0 1)
             ]
         )
 

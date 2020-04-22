@@ -28,7 +28,7 @@ init : Session -> ( Model, Cmd Msg )
 init session =
     ( Model session NotAsked ""
     , Cmd.batch
-        [ Ports.initializeMaps False
+        [ Ports.initializeMaps
         ]
     )
 

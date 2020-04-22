@@ -65,7 +65,7 @@ update msg model =
             ( model, Navigation.rerouteTo model (Navigation.BusDeviceRegistration model.bus.id) )
 
         ClickedAboutPage ->
-            ( { model | currentPage = About }, Ports.initializeMaps False )
+            ( { model | currentPage = About }, Ports.initializeMaps )
 
         ClickedFeaturesPage ->
             ( { model | currentPage = Features }, Cmd.none )

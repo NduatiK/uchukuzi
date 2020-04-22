@@ -68,7 +68,7 @@ init session bus =
       }
     , Cmd.batch
         [ fetchTripsForBus session bus.id
-        , Ports.initializeMaps False
+        , Ports.initializeMaps
         ]
     )
 
@@ -79,7 +79,7 @@ init session bus =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
+    case msg of             
         AdjustedValue sliderValue ->
             let
                 currentPoint =
@@ -116,7 +116,7 @@ update msg model =
                 command =
                     case response of
                         Success _ ->
-                            Ports.initializeMaps False
+                            Ports.initializeMaps
 
                         Failure error ->
                             Tuple.second (Errors.decodeErrors error)
@@ -566,7 +566,7 @@ fetchTripsForBus session bus_id =
 
 groupTrips : List Trip -> Time.Zone -> List GroupedTrips
 groupTrips trips timezone =
-    Utils.GroupBy.date  timezone .startTime trips
+    Utils.GroupBy.date timezone .startTime trips
 
 
 toGPS : Location -> { lat : Float, lng : Float }

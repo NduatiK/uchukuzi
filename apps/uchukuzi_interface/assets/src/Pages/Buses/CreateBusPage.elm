@@ -118,7 +118,7 @@ init : Session -> ( Model, Cmd Msg )
 init session =
     ( emptyForm session
     , Cmd.batch
-        [ Ports.initializeMaps False
+        [ Ports.initializeMaps
         , Task.succeed (FuelDropdownMsg (Dropdown.selectOption Diesel)) |> Task.perform identity
         , Task.succeed (ConsumptionDropdownMsg (Dropdown.selectOption Default)) |> Task.perform identity
         ]

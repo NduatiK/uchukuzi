@@ -80,7 +80,7 @@ init session bus =
       , currentPage = Statistics
       }
     , Cmd.batch
-        [ Ports.initializeMaps False
+        [ Ports.initializeMaps
         , fetchStudentsOnboard session bus.id
         ]
     )
@@ -94,13 +94,13 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ClickedStatisticsPage ->
-            ( { model | currentPage = Statistics }, Ports.initializeMaps False )
+            ( { model | currentPage = Statistics }, Ports.initializeMaps )
 
         ClickedStudentsPage ->
             ( { model | currentPage = Students Nothing }, Cmd.none )
 
         SelectedStudent index ->
-            ( { model | currentPage = Students (Just index) }, Ports.initializeMaps False )
+            ( { model | currentPage = Students (Just index) }, Ports.initializeMaps )
 
         StudentsOnboardServerResponse response ->
             ( { model | studentsOnboard = response }, Cmd.none )
@@ -109,7 +109,7 @@ update msg model =
             ( model, fetchStudentsOnboard model.session model.bus.id )
 
         ClickedRoute ->
-            ( { model | currentPage = Route }, Ports.initializeMaps False )
+            ( { model | currentPage = Route }, Ports.initializeMaps )
 
         CrewMemberServerResponse response ->
             ( { model | crew = response }, Cmd.none )

@@ -284,7 +284,7 @@ textInput attributes { title, caption, errorCaption, value, onChange, placeholde
     let
         input =
             Input.text
-                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0) ])
+                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ])
                 { onChange = onChange
                 , text = value
                 , placeholder = placeholder
@@ -311,7 +311,7 @@ multilineInput attributes { title, caption, errorCaption, value, onChange, place
     let
         input =
             Input.multiline
-                (Style.labelStyle ++ [ height fill, centerY, Border.width 0, Background.color (rgba 0 0 0 0) ])
+                (Style.labelStyle ++ [ height fill, centerY, Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ])
                 { onChange = onChange
                 , text = value
                 , placeholder = placeholder
@@ -339,7 +339,7 @@ emailInput attributes { title, caption, errorCaption, value, onChange, placehold
     let
         input =
             Input.email
-                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0) ])
+                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ])
                 { onChange = onChange
                 , text = value
                 , placeholder = placeholder
@@ -413,7 +413,7 @@ passwordInput attributes { title, caption, errorCaption, value, onChange, placeh
 
         input =
             passwordBoxBuilder
-                ([ Border.width 0, Background.color (rgba 0 0 0 0) ]
+                ([ Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ]
                     ++ Style.labelStyle
                 )
                 { onChange = onChange
@@ -542,7 +542,7 @@ numberInput attributes { title, caption, errorCaption, value, onChange, placehol
 
         textField =
             Input.text
-                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0) ])
+                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ])
                 { onChange = onChangeWithMaxAndMin
                 , text = String.fromInt value
                 , placeholder = placeholder
