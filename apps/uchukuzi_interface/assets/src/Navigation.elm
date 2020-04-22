@@ -22,6 +22,7 @@ type Route
     = Home
       -------------
     | Logout
+    | Activate String
     | Login (Maybe LoginRedirect)
     | Signup
       -------------
@@ -70,7 +71,8 @@ loggedInParser =
 notLoggedInParser : Parser (Route -> a) a
 notLoggedInParser =
     oneOf
-        [ buildParser (Login Nothing)
+        [ Parser.map (\x -> Activate (Maybe.withDefault "" x)) (s (routeName (Activate "")) <?> Query.string "token")
+        , buildParser (Login Nothing)
         , Parser.map Login (s (routeName (Login Nothing)) </> loginUrlParser)
         , buildParser Signup
         ]
@@ -257,6 +259,9 @@ routeToString page =
 
                 -- Dashboard ->
                 --     [ routeName page ]
+                Activate token ->
+                    [ routeName page, "token" ]
+
                 Login redirect ->
                     [ routeName page, loginRedirectToString redirect ]
 
@@ -318,6 +323,9 @@ routeName page =
     case page of
         Home ->
             ""
+
+        Activate _ ->
+            "activate"
 
         Login _ ->
             "login"

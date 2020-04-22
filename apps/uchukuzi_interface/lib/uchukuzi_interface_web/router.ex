@@ -46,6 +46,7 @@ defmodule UchukuziInterfaceWeb.Router do
     post "/manager/login", AuthController, :login_manager
     post "/assistant/request_token", AuthController, :request_assistant_token
     post "/assistant/exchange_token", AuthController, :exchange_assistant_token
+    post "/manager/exchange_token", AuthController, :exchange_manager_token
   end
 
   scope "/api/school", UchukuziInterfaceWeb do

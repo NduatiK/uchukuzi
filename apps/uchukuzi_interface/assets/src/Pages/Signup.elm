@@ -273,7 +273,8 @@ updateStatus model msg =
             ( model
             , Cmd.batch
                 [ Navigation.rerouteTo model (Navigation.Login (Just Navigation.ConfirmEmail))
-                , Api.storeCredentials data.creds
+
+                -- , Api.storeCredentials data.creds
                 , Location.storeSchoolLocation data.location
                 ]
             )

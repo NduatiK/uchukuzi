@@ -20,6 +20,14 @@ defmodule Uchukuzi.Roles do
     end
   end
 
+
+  def set_manager_email_verified(manager) do
+    manager
+    |> change(email_verified: true)
+    |> Repo.update()
+  end
+
+
   def get_manager_by(params),
     do: get_by(Manager, params)
 

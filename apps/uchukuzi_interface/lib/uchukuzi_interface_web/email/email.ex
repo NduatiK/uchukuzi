@@ -9,8 +9,18 @@ defmodule UchukuziInterfaceWeb.Email.Email do
       to: assistant.email,
       from: "support@uchukuzi.com",
       subject: "Uchukuzi Assistant Login Link",
-      html_body: EmailView.render_html(assistant, token),
-      text_body: EmailView.render_text(assistant, token)
+      html_body: EmailView.render_assistant_login("html", assistant, token),
+      text_body: EmailView.render_assistant_login("text", assistant, token)
+    )
+  end
+
+  def send_token_email_to(%Manager{} = manager, token) do
+    new_email(
+      to: manager.email,
+      from: "support@uchukuzi.com",
+      subject: "Uchukuzi Confirmation",
+      html_body: EmailView.render_manager_signup("html", manager, token),
+      text_body: EmailView.render_manager_signup("text", manager, token)
     )
   end
 end

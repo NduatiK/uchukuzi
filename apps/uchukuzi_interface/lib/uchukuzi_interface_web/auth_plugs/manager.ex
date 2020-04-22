@@ -44,6 +44,6 @@ defmodule UchukuziInterfaceWeb.AuthPlugs.ManagerAuth do
   def sign(user_id),
     do: Phoenix.Token.sign(UchukuziInterfaceWeb.Endpoint, @salt, user_id)
 
-  def verify(token),
-    do: Phoenix.Token.verify(UchukuziInterfaceWeb.Endpoint, @salt, token, max_age: 14 * @day)
+  def verify(token, max_age \\ 14 * @day),
+    do: Phoenix.Token.verify(UchukuziInterfaceWeb.Endpoint, @salt, token, max_age: max_age)
 end

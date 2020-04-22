@@ -43,6 +43,9 @@ type alias Form =
 init : Session -> Maybe LoginRedirect -> ( Model, Cmd Msg )
 init session redirect =
     let
+        _ =
+            Debug.log "redirect" redirect
+
         message =
             case redirect of
                 Nothing ->
@@ -51,7 +54,12 @@ init session redirect =
                 Just Navigation.ConfirmEmail ->
                     Just "We have sent you an email, please verify your account before logging in"
     in
-    ( Model session { email = "", password = "" } Nothing message NotAsked
+    ( { session = session
+      , form = { email = "", password = "" }
+      , error = Nothing
+      , message = message
+      , status = NotAsked
+      }
     , Cmd.none
       -- , Api.logout
     )

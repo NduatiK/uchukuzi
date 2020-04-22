@@ -11,6 +11,7 @@ import Json.Decode exposing (Value)
 import Models.Bus exposing (LocationUpdate)
 import Navigation exposing (Route)
 import Page exposing (..)
+import Pages.Activate as Activate
 import Pages.Blank
 import Pages.Buses.BusPage as BusDetailsPage
 import Pages.Buses.BusesPage as BusesList
@@ -60,6 +61,7 @@ type PageModel
     | Home Home.Model
       -- | Dashboard Dashboard.Model
     | Login Login.Model
+    | Activate Activate.Model
     | Logout Logout.Model
     | RoutesList RoutesList.Model
     | HouseholdList HouseholdList.Model
@@ -151,6 +153,7 @@ type Msg
     | GotHouseholdListMsg HouseholdList.Msg
     | GotHomeMsg ()
     | GotLoginMsg Login.Msg
+    | GotActivateMsg Activate.Msg
     | GotLogoutMsg ()
     | GotSignupMsg Signup.Msg
       ------------
@@ -191,6 +194,9 @@ view { page, route, navState, windowHeight } =
                 Home _ ->
                     viewEmptyPage Home.view
 
+                Activate model ->
+                    viewPage (Activate.view model) GotActivateMsg
+
                 Login model ->
                     viewPage (Login.view model) GotLoginMsg
 
@@ -206,10 +212,8 @@ view { page, route, navState, windowHeight } =
                 NotFound _ ->
                     viewEmptyPage NotFound.view
 
-                -- Dashboard model ->
-                --     viewPage (Dashboard.view model) GotDashboardMsg
                 HouseholdList model ->
-                    viewPage (HouseholdList.view model) GotHouseholdListMsg
+                    viewPage (HouseholdList.view model (Page.viewHeight windowHeight)) GotHouseholdListMsg
 
                 StudentRegistration model ->
                     viewPage (StudentRegistration.view model) GotStudentRegistrationMsg
@@ -268,11 +272,7 @@ update msg model =
                 session =
                     Session.withTimeZone (toSession model.page) timezone
             in
-            if Session.getCredentials session == Nothing then
-                changeRouteWithUpdatedSessionTo (Just (Navigation.Login Nothing)) model session
-
-            else
-                changeRouteWithUpdatedSessionTo (Navigation.fromUrl model.url session) model session
+            changeRouteWithUpdatedSessionTo (Navigation.fromUrl model.url session) model session
 
         -- ( { model | windowHeight = height }, Cmd.none )
         UrlRequested urlRequest ->
@@ -394,6 +394,10 @@ updatePage page_msg fullModel =
             DevicesList.update msg model
                 |> mapModelAndMsg DevicesList GotDevicesListMsg
 
+        ( GotActivateMsg msg, Activate model ) ->
+            Activate.update msg model
+                |> mapModelAndMsg Activate GotActivateMsg
+
         ( GotLoginMsg msg, Login model ) ->
             Login.update msg model
                 |> mapModelAndMsg Login GotLoginMsg
@@ -435,6 +439,9 @@ toSession pageModel =
 
         Logout model ->
             model.session
+
+        Activate subModel ->
+            subModel.session
 
         Login subModel ->
             subModel.session
@@ -546,6 +553,10 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                 Just Navigation.StudentRegistration ->
                     StudentRegistration.init session
                         |> updateWith StudentRegistration GotStudentRegistrationMsg
+
+                Just (Navigation.Activate token) ->
+                    Activate.init session token
+                        |> updateWith Activate GotActivateMsg
 
                 Just (Navigation.Login redirect) ->
                     Login.init session redirect

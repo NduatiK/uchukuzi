@@ -1,5 +1,6 @@
 module Api.Endpoint exposing
     ( Endpoint
+    , activate
     , bus
     , buses
     , crewAssignmentChanges
@@ -77,6 +78,11 @@ patch endpoint session body decoder =
 login : Endpoint
 login =
     url [ "auth", "manager", "login" ] []
+
+
+activate : Endpoint
+activate =
+    url [ "auth", "manager", "exchange_token" ] []
 
 
 signup : Endpoint

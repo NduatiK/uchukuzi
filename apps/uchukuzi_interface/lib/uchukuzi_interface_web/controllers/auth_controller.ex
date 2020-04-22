@@ -7,13 +7,44 @@ defmodule UchukuziInterfaceWeb.AuthController do
   alias UchukuziInterfaceWeb.Email.{Email, Mailer}
 
   def login_manager(conn, %{"email" => email, "password" => password}) do
-    with {:ok, manager} <- Roles.login_manager(email, password) do
+    with {:ok, manager} <- Roles.login_manager(email, password),
+         true <- manager.email_verified do
       manager = Repo.preload(manager, :school)
 
       conn
       |> put_view(UchukuziInterfaceWeb.RolesView)
       |> render("manager.json", manager: manager, token: ManagerAuth.sign(manager.id))
     else
+      false ->
+        conn
+        |> resp(
+          :bad_request,
+          "{\"errors\": {\"detail\": \"Please verify your email account before logging in\"} }"
+        )
+        |> send_resp()
+
+      {:error, _} ->
+        conn
+        |> resp(:unauthorized, "Unauthorized")
+        |> send_resp()
+    end
+  end
+
+  def exchange_manager_token(conn, %{"token" => token}) do
+    with {:ok, user_id} <- ManagerAuth.verify(token, 3600),
+         manager when not is_nil(manager) <- Roles.get_manager_by(id: user_id),
+         {:ok, manager} <- Roles.set_manager_email_verified(manager) do
+      manager = Repo.preload(manager, :school)
+
+      conn
+      |> put_view(UchukuziInterfaceWeb.RolesView)
+      |> render("manager.json", manager: manager, token: ManagerAuth.sign(manager.id))
+    else
+      {:error, :expired} ->
+        conn
+        |> resp(:unauthorized, "expired")
+        |> send_resp()
+
       {:error, _} ->
         conn
         |> resp(:unauthorized, "Unauthorized")
