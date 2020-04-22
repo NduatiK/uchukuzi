@@ -43,9 +43,6 @@ type alias Form =
 init : Session -> Maybe LoginRedirect -> ( Model, Cmd Msg )
 init session redirect =
     let
-        _ =
-            Debug.log "redirect" redirect
-
         message =
             case redirect of
                 Nothing ->
