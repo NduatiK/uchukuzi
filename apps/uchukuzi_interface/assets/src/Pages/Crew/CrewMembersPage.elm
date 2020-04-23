@@ -412,7 +412,7 @@ viewBody model =
                 editedData =
                     applyChanges model.edits.changes data
             in
-            row [ height fill, width fill, spacing 40, explain Debug.todo ]
+            row [ height fill, width fill, spacing 40 ]
                 [ case data.buses of
                     [] ->
                         column (width (fillPortion 2) :: centerX :: spacing 8 :: centerY :: Style.labelStyle)
