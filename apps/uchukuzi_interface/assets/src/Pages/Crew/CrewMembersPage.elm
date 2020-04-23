@@ -412,7 +412,7 @@ viewBody model =
                 editedData =
                     applyChanges model.edits.changes data
             in
-            row [ height fill, width fill, spacing 40 ]
+            row [ height fill, width fill, spacing 40, explain Debug.todo ]
                 [ case data.buses of
                     [] ->
                         column (width (fillPortion 2) :: centerX :: spacing 8 :: centerY :: Style.labelStyle)
@@ -597,7 +597,7 @@ viewUnassignedCrewMembers data windowHeight inEditingMode =
                 ++ [ height fill
                    , Border.color Colors.darkGreen
                    , Border.width 2
-                   , width fill
+                   , width (fillPortion 1)
                    , scrollbarY
                    , spacing 2
                    , padding 0

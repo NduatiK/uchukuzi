@@ -1,15 +1,15 @@
 import mapStyles from './mapStyles'
 import { isDevelopment } from './env'
+const schoolLocationStorageKey = 'schoolLocation'
 
 function parse(string) {
     try {
         return string ? JSON.parse(string) : null
     } catch (e) {
-        localStorage.setItem(credentialsStorageKey, null);
+        localStorage.setItem(schoolLocationStorageKey, null);
         return null
     }
 }
-const schoolLocationStorageKey = 'schoolLocation'
 let schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey));
 
 window.addEventListener("storage", (event) => {
@@ -26,6 +26,12 @@ let purple = "#594fee"
 // Prevent duplicate loads
 let runningRequest = null
 let initializingMapsChain = null
+
+let defaultLocation = { center: { lat: -1.2921, lng: 36.8219 }, zoom: 10 }
+
+if (schoolLocation) {
+    defaultLocation = { center: schoolLocation, zoom: 10 }
+}
 
 function initializeMaps(app, clickable, drawable, numberOfRetries, schoolLocation) {
     if (schoolLocation) {
@@ -76,7 +82,6 @@ function loadMapAPI() {
 
 let MapLibraryInstance = null
 let MapDomElement = null
-let defaultLocation = { center: { lat: -1.2921, lng: 36.8219 }, zoom: 10 }
 function createMapDom(google) {
     runningRequest = null
     if (MapDomElement && MapLibraryInstance) {
