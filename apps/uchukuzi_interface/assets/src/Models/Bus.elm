@@ -9,6 +9,7 @@ module Models.Bus exposing
     , busDecoder
     , busDecoderWithCallback
     , imageForPart
+    , routeDecoder
     , titleForPart
     , vehicleTypeToString
     )

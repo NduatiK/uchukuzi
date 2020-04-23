@@ -237,7 +237,7 @@ viewOverlay { selectedStudent, session } =
                                     , column [ paddingXY 0 4, spacing 12 ]
                                         [ row []
                                             [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Route: ")
-                                            , el (Style.labelStyle ++ [ padding 0 ]) (text student.route)
+                                            , el (Style.labelStyle ++ [ padding 0 ]) (text student.route.name)
                                             ]
                                         , row []
                                             [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Guardian: ")

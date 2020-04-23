@@ -62,7 +62,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
            lng: home_location_params["lng"],
            lat: home_location_params["lat"]
          },
-         {:ok, %{guardian: guardian}} <-
+         {:ok, %{"guardian" => guardian}} <-
            School.create_household(
              school_id,
              guardian_params,

@@ -66,6 +66,7 @@ defmodule UchukuziInterfaceWeb.RolesView do
       "students" => render_students(guardian.students)
     }
   end
+
   def render("students.json", %{students: students}) do
     render_students(students)
   end
@@ -79,7 +80,7 @@ defmodule UchukuziInterfaceWeb.RolesView do
   end
 
   def render_student(%Uchukuzi.Roles.Student{} = student) do
-    IO.inspect(student)
+    student = Uchukuzi.Repo.preload(student, :route)
 
     %{
       "id" => student.id,
@@ -88,7 +89,7 @@ defmodule UchukuziInterfaceWeb.RolesView do
       "travel_time" => student.travel_time,
       "home_location" => render_location(student.home_location),
       "pickup_location" => render_location(student.pickup_location),
-      "route" => "student.route_id"
+      "route" => UchukuziInterfaceWeb.SchoolView.render_bus_route(student.route)
     }
   end
 

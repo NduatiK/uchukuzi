@@ -39,6 +39,7 @@ type alias Model =
     , form : Form
     , routeDropdownState : Dropdown.State Route
     , routeRequestState : WebData (List Route)
+    , requestState : WebData ()
     }
 
 
@@ -106,7 +107,7 @@ type Msg
     | DeleteStudentMsg Student
     | SubmitButtonMsg
     | SearchTextChanged String
-    | ServerResponse (WebData Int)
+    | ServerResponse (WebData ())
     | AutocompleteError
     | ReceivedMapLocation Location
     | RouteServerResponse (WebData (List Route))
@@ -132,6 +133,7 @@ emptyForm session =
         , searchText = ""
         , problems = []
         }
+    , requestState = NotAsked
     }
 
 
@@ -220,7 +222,7 @@ update msg model =
             ( { model | form = updatedForm }, Cmd.none )
 
         ServerResponse response ->
-            updateStatus model response
+            updateStatus { model | requestState = response } response
 
         ReceivedMapLocation location ->
             ( { model | form = { form | homeLocation = Just location } }, Cmd.none )
@@ -229,7 +231,7 @@ update msg model =
             ( { model | routeRequestState = response }, Cmd.none )
 
 
-updateStatus : Model -> WebData Int -> ( Model, Cmd Msg )
+updateStatus : Model -> WebData () -> ( Model, Cmd Msg )
 updateStatus model webData =
     case webData of
         Loading ->
@@ -498,7 +500,7 @@ viewForm model =
             ]
 
         -- , viewShareLocationInput model.form.canTrack
-        , viewButton
+        , viewButton model
         ]
 
 
@@ -768,14 +770,23 @@ routeDropDown model =
         }
 
 
-viewButton : Element Msg
-viewButton =
-    el (Style.labelStyle ++ [ width fill, paddingEach { edges | right = 24 } ])
-        (StyledElement.button [ alignRight ]
-            { onPress = Just SubmitButtonMsg
-            , label = text "Submit"
-            }
-        )
+viewButton : Model -> Element Msg
+viewButton model =
+    case model.requestState of
+        Loading ->
+            Icons.loading [ alignRight, width (px 46), height (px 46) ]
+
+        Failure _ ->
+            StyledElement.failureButton [ alignRight ]
+                { title = "Try Again"
+                , onPress = Just SubmitButtonMsg
+                }
+
+        _ ->
+            StyledElement.button [ alignRight ]
+                { onPress = Just SubmitButtonMsg
+                , label = text "Submit"
+                }
 
 
 submit : Session -> ValidForm -> Cmd Msg
@@ -802,9 +813,9 @@ submit session household =
         |> Cmd.map ServerResponse
 
 
-aDecoder : Decoder Int
+aDecoder : Decoder ()
 aDecoder =
-    Decode.succeed 0
+    Decode.succeed ()
 
 
 encodeLocation : Location -> Encode.Value

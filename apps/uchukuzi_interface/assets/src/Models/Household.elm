@@ -2,6 +2,7 @@ module Models.Household exposing (Household, Location, Student, TravelTime(..), 
 
 import Json.Decode as Decode exposing (Decoder, float, int, list, string, succeed)
 import Json.Decode.Pipeline exposing (required, resolve)
+import Models.Bus exposing (SimpleRoute, routeDecoder)
 import Utils.GroupBy
 
 
@@ -42,7 +43,7 @@ type alias Student =
     , travelTime : TravelTime
     , homeLocation : Location
     , pickupLocation : Location
-    , route : String
+    , route : SimpleRoute
     }
 
 
@@ -63,8 +64,8 @@ studentByRouteDecoder =
             in
             Decode.succeed
                 ( Utils.GroupBy.attr
-                    { groupBy = .route
-                    , nameAs = .route
+                    { groupBy = .route >> .name
+                    , nameAs = .route >> .name
                     , reverse = False
                     }
                     students
@@ -114,7 +115,7 @@ studentDecoder =
         |> required "travel_time" string
         |> required "home_location" locationDecoder
         |> required "pickup_location" locationDecoder
-        |> required "route" string
+        |> required "route" routeDecoder
         |> resolve
 
 

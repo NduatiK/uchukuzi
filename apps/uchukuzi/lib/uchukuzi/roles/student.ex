@@ -23,6 +23,7 @@ defmodule Uchukuzi.Roles.Student do
 
     belongs_to(:school, Uchukuzi.School.School)
     belongs_to(:guardian, Guardian)
+    belongs_to(:route, Uchukuzi.School.Route)
 
     timestamps()
   end
@@ -43,7 +44,7 @@ defmodule Uchukuzi.Roles.Student do
 
   def changeset(schema \\ %Student{}, params) do
     schema
-    |> cast(params, [:name, :email, :school_id, :guardian_id, :travel_time])
+    |> cast(params, [:name, :email, :school_id, :route_id, :guardian_id, :travel_time])
     |> validate_required([:name, :travel_time])
     |> cast_embed(:pickup_location, with: &Location.changeset/2)
     |> cast_embed(:home_location, with: &Location.changeset/2)

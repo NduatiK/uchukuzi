@@ -14,8 +14,8 @@ defmodule Uchukuzi.School do
 
   def create_school(school_changeset, manager) do
     Multi.new()
-    |> Multi.insert(:school, school_changeset)
-    |> Multi.insert(:manager, fn %{school: school} ->
+    |> Multi.insert("school", school_changeset)
+    |> Multi.insert("manager", fn %{"school" => school} ->
       Ecto.build_assoc(school, :manager)
       |> Manager.registration_changeset(manager)
     end)
@@ -173,9 +173,9 @@ defmodule Uchukuzi.School do
       ) do
     Multi.new()
     # Build Guardian
-    |> Multi.insert(:guardian, Guardian.changeset(%Guardian{}, guardian_params))
+    |> Multi.insert("guardian", Guardian.changeset(%Guardian{}, guardian_params))
     # Recursively build student
-    |> Multi.merge(fn %{guardian: guardian} ->
+    |> Multi.merge(fn %{"guardian" => guardian} ->
       students_params
       |> Enum.with_index()
       |> Enum.reduce(Multi.new(), fn {student_params, idx}, multi ->
@@ -195,6 +195,7 @@ defmodule Uchukuzi.School do
       end)
     end)
     |> Repo.transaction()
+    |> IO.inspect()
   end
 
   def guardians_for(school_id) do
