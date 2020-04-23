@@ -1,14 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="18px" height="17px" viewBox="0 0 18 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="32px" height="32px" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
-    <title>Oval Copy</title>
+    <title>Group 5</title>
     <desc>Created with Sketch.</desc>
-    <g id="Web-App-v2" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-opacity="0.908954327">
-        <g id="Artboard-Copy-39" transform="translate(-751.000000, -617.000000)" fill="#61A591" stroke="#333F4E" stroke-width="2">
-            <g id="Group-2-Copy" transform="translate(98.000000, 192.000000)">
-                <g id="Group-2" transform="translate(262.000000, 18.000000)">
-                    <g id="Group-3" transform="translate(367.765737, 383.000000)">
-                        <circle id="Oval-Copy" cx="32.5" cy="32.5" r="7.5"></circle>
+    <defs>
+        <path d="M5,13.18 L5,17.18 L12,21 L19,17.18 L19,13.18 L12,17 L5,13.18 Z M12,3 L1,9 L12,15 L21,10.09 L21,17 L23,17 L23,9 L12,3 Z" id="path-1"></path>
+    </defs>
+    <g id="Web-App-v2" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard-Copy-39" transform="translate(-1037.000000, -900.000000)">
+            <g id="Student-Row-Copy" transform="translate(306.000000, 902.000000)">
+                <g id="Group-2">
+                    <g id="Group-5" transform="translate(733.000000, 0.000000)">
+                        <circle id="Oval-Copy-7" stroke-opacity="0.908954327" stroke="#333F4E" stroke-width="2" fill="#FFFFFF" cx="14" cy="14" r="15"></circle>
+                        <g id="icon/social/school_24px" transform="translate(2.000000, 2.000000)">
+                            <mask id="mask-2" fill="white">
+                                <use xlink:href="#path-1"></use>
+                            </mask>
+                            <g fill-rule="nonzero"></g>
+                            <g id="Pallete5/A-Copy-5" mask="url(#mask-2)" fill="#61A591" fill-rule="evenodd">
+                                <rect id="Rectangle" x="0" y="0" width="24" height="24"></rect>
+                            </g>
+                        </g>
                     </g>
                 </g>
             </g>
