@@ -1,15 +1,22 @@
 module Pages.Routes.Routes exposing (Model, Msg, init, update, view)
 
+import Api
+import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
 import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input
+import Errors
 import Icons
-import Models.Route exposing (Route)
+import Json.Decode exposing (list)
+import Models.Route exposing (Route, routeDecoder)
+import Navigation
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
-import Style
+import Style exposing (edges)
 import StyledElement
 
 
@@ -21,7 +28,9 @@ type alias Model =
 
 
 type Msg
-    = Add
+    = CreateRoute
+    | UpdatedSearchText String
+    | ServerResponse (WebData (List Route))
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -29,6 +38,7 @@ init session =
     ( Model session NotAsked ""
     , Cmd.batch
         [ Ports.initializeMaps
+        , fetchRoutes session
         ]
     )
 
@@ -36,40 +46,62 @@ init session =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Add ->
-            ( model, Cmd.none )
+        UpdatedSearchText string ->
+            ( { model | filterText = string }, Cmd.none )
+
+        CreateRoute ->
+            ( model, Navigation.rerouteTo model Navigation.CreateRoute )
+
+        ServerResponse response ->
+            let
+                newModel =
+                    { model | routes = response }
+            in
+            case response of
+                Failure error ->
+                    let
+                        ( _, error_msg ) =
+                            Errors.decodeErrors error
+                    in
+                    ( newModel, error_msg )
+
+                _ ->
+                    ( newModel, Cmd.none )
 
 
-view : Model -> Element Msg
-view model =
-    column [ paddingXY 90 60, width fill, spacing 16 ]
-        [ googleMap
-        , viewHeading "All Routes" Nothing
+
+-- ( newModel, Ports.bulkUpdateBusMap (locationUpdatesFrom newModel) )
+
+
+view : Model -> Int -> Element Msg
+view model viewHeight =
+    row [ paddingXY 60 30, width fill, spacing 32, height (fill |> maximum viewHeight) ]
+        [ viewBody model (viewHeight - 60)
+        , googleMap
         ]
 
 
-viewHeading : String -> Maybe String -> Element Msg
-viewHeading title subLine =
+viewBody model viewHeight =
+    column [ width fill, height (px viewHeight), spacing 20 ]
+        [ viewHeading model
+        , viewRoutes model
+        ]
+
+
+viewHeading : Model -> Element Msg
+viewHeading model =
     row [ spacing 16, width fill ]
         [ Element.column
             [ width fill ]
-            [ el
-                Style.headerStyle
-                (text title)
-            , case subLine of
-                Nothing ->
-                    none
-
-                Just caption ->
-                    el Style.captionStyle (text caption)
+            [ el Style.headerStyle (text "All Routes")
             ]
         , StyledElement.textInput
             [ alignRight, width (fill |> maximum 300), centerY ]
             { title = ""
             , caption = Nothing
             , errorCaption = Nothing
-            , value = ""
-            , onChange = always Add
+            , value = model.filterText
+            , onChange = UpdatedSearchText
             , placeholder = Just (Input.placeholder [] (text "Search"))
             , ariaLabel = "Filter buses"
             , icon = Just Icons.search
@@ -80,20 +112,108 @@ viewHeading title subLine =
             ]
             { icon = Icons.add
             , iconAttrs = [ Colors.fillWhite ]
-            , onPress = Nothing
+            , onPress = Just CreateRoute
             }
         ]
 
 
+viewRoutes model =
+    case model.routes of
+        Failure error ->
+            let
+                ( apiError, _ ) =
+                    Errors.decodeErrors error
+            in
+            text (Errors.errorToString apiError)
+
+        Success routes ->
+            wrappedRow [ spacing 10, paddingEach { edges | right = 10, bottom = 10 }, scrollbarY, height fill, width fill ]
+                (List.map viewRoute routes)
+
+        -- (List.map viewRoute (routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes))
+        _ ->
+            el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
+
+
+viewRoute : Route -> Element Msg
+viewRoute route =
+    -- el [] none
+    -- viewTrip : Maybe Trip -> Time.Zone -> Trip -> Element Msg
+    -- viewTrip selectedTrip timezone trip =
+    let
+        timeStyle =
+            Style.defaultFontFace
+                ++ [ Font.color (rgb255 119 122 129)
+                   , Font.size 13
+                   ]
+
+        routeStyle =
+            Style.defaultFontFace
+                ++ [ Font.color (rgb255 85 88 98)
+                   , Font.size 14
+
+                   --    , Font.bold
+                   ]
+
+        selectionStyles =
+            []
+
+        --     if Just trip == selectedTrip then
+        --         [ Border.color (rgb255 97 165 145)
+        --         , moveUp 2
+        --         , Border.shadow { offset = ( 0, 12 ), blur = 20, size = 0, color = rgba255 97 165 145 0.3 }
+        --         ]
+        --     else
+        --         [ Border.color (rgba255 197 197 197 0.5)
+        --         -- , Border.shadow { offset = ( 0, 2 ), size = 0, blur = 12, color = rgba 0 0 0 0.14 }
+        --         ]
+    in
+    row
+        ([ height (px 64)
+         , width (fillPortion 1 |> minimum 200)
+         , spacing 8
+         , paddingXY 12 11
+         , Border.solid
+         , Border.width 1
+         , Border.color Colors.sassyGrey
+         , alignTop
+
+         --  , Events.onClick (ClickedOn trip)
+         , Style.animatesShadow
+         ]
+            ++ selectionStyles
+        )
+        [ column [ spacing 8 ]
+            [ el routeStyle (text route.name)
+            , el timeStyle
+                (text
+                    (Maybe.withDefault "" (Maybe.andThen (.numberPlate >> Just) route.bus))
+                )
+
+            --  el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.startTime))
+            -- , el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.endTime))
+            -- , el routeStyle (text trip.route)
+            ]
+        ]
+
+
+
+-- column [ width fill ]
+--     [ viewBuses buses model.filterText
+--     ]
+
+
 googleMap : Element Msg
 googleMap =
-    column
+    StyledElement.googleMap
         [ width fill
+
+        -- , height (fill |> minimum 500)
         , height fill
         ]
-        [ StyledElement.googleMap
-            [ width fill
-            , height (fill |> minimum 500)
-            ]
-        , el [ height (px 2), width fill, Background.color Colors.darkness ] none
-        ]
+
+
+fetchRoutes : Session -> Cmd Msg
+fetchRoutes session =
+    Api.get session Endpoint.routes (list routeDecoder)
+        |> Cmd.map ServerResponse

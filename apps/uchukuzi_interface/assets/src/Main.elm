@@ -27,6 +27,7 @@ import Pages.Households.HouseholdsPage as HouseholdList
 import Pages.Login as Login
 import Pages.Logout as Logout
 import Pages.NotFound as NotFound
+import Pages.Routes.CreateRoutePage as CreateRoute
 import Pages.Routes.Routes as RoutesList
 import Pages.Signup as Signup
 import Ports
@@ -60,21 +61,29 @@ type PageModel
     | NotFound Session
     | Home Home.Model
       -- | Dashboard Dashboard.Model
+      ------------
     | Login Login.Model
     | Activate Activate.Model
     | Logout Logout.Model
+    | Signup Signup.Model
+      ------------
     | RoutesList RoutesList.Model
+    | CreateRoute CreateRoute.Model
+      ------------
     | HouseholdList HouseholdList.Model
     | StudentRegistration StudentRegistration.Model
+      ------------
     | BusesList BusesList.Model
     | BusDetailsPage BusDetailsPage.Model
     | BusRegistration BusRegistration.Model
     | CreateBusRepair CreateBusRepair.Model
+      ------------
     | DevicesList DevicesList.Model
-    | Signup Signup.Model
+      ------------
+    | DeviceRegistration DeviceRegistration.Model
+      ------------
     | CrewMembers CrewMembers.Model
     | CrewMemberRegistration CrewMemberRegistration.Model
-    | DeviceRegistration DeviceRegistration.Model
 
 
 init : Maybe Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -158,6 +167,7 @@ type Msg
     | GotSignupMsg Signup.Msg
       ------------
     | GotRoutesListMsg RoutesList.Msg
+    | GotCreateRouteMsg CreateRoute.Msg
       ------------
     | GotBusesListMsg BusesList.Msg
     | GotBusDetailsPageMsg BusDetailsPage.Msg
@@ -213,10 +223,10 @@ view { page, route, navState, windowHeight } =
                     viewEmptyPage NotFound.view
 
                 HouseholdList model ->
-                    viewPage (HouseholdList.view model (Page.viewHeight windowHeight)) GotHouseholdListMsg
+                    viewPage (HouseholdList.view model viewHeight) GotHouseholdListMsg
 
                 StudentRegistration model ->
-                    viewPage (StudentRegistration.view model) GotStudentRegistrationMsg
+                    viewPage (StudentRegistration.view model viewHeight) GotStudentRegistrationMsg
 
                 BusesList model ->
                     viewPage (BusesList.view model) GotBusesListMsg
@@ -237,7 +247,10 @@ view { page, route, navState, windowHeight } =
                     viewPage (DeviceRegistration.view model) GotDeviceRegistrationMsg
 
                 RoutesList model ->
-                    viewPage (RoutesList.view model) GotRoutesListMsg
+                    viewPage (RoutesList.view model viewHeight) GotRoutesListMsg
+
+                CreateRoute model ->
+                    viewPage (CreateRoute.view model viewHeight) GotCreateRouteMsg
 
                 CrewMembers model ->
                     viewPage (CrewMembers.view model) GotCrewMembersMsg
@@ -414,6 +427,10 @@ updatePage page_msg fullModel =
             RoutesList.update msg model
                 |> mapModelAndMsg RoutesList GotRoutesListMsg
 
+        ( GotCreateRouteMsg msg, CreateRoute model ) ->
+            CreateRoute.update msg model
+                |> mapModelAndMsg CreateRoute GotCreateRouteMsg
+
         ( GotCrewMembersMsg msg, CrewMembers model ) ->
             CrewMembers.update msg model
                 |> mapModelAndMsg CrewMembers GotCrewMembersMsg
@@ -479,6 +496,9 @@ toSession pageModel =
             subModel.session
 
         RoutesList subModel ->
+            subModel.session
+
+        CreateRoute subModel ->
             subModel.session
 
         CrewMembers subModel ->
@@ -574,6 +594,10 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     RoutesList.init session
                         |> updateWith RoutesList GotRoutesListMsg
 
+                Just Navigation.CreateRoute ->
+                    CreateRoute.init session
+                        |> updateWith CreateRoute GotCreateRouteMsg
+
                 Just Navigation.CrewMembers ->
                     CrewMembers.init session (Page.viewHeight model.windowHeight)
                         |> updateWith CrewMembers GotCrewMembersMsg
@@ -608,6 +632,9 @@ subscriptions model_ =
 
                 StudentRegistration model ->
                     Sub.map GotStudentRegistrationMsg (StudentRegistration.subscriptions model)
+
+                CreateRoute model ->
+                    Sub.map GotCreateRouteMsg (CreateRoute.subscriptions model)
 
                 _ ->
                     Sub.none

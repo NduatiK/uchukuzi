@@ -4,7 +4,7 @@ module Models.Bus exposing
     , LocationUpdate
     , Part(..)
     , Repair
-    , Route
+    , SimpleRoute
     , VehicleType(..)
     , busDecoder
     , busDecoderWithCallback
@@ -28,15 +28,15 @@ type alias Bus =
     , seats_available : Int
     , vehicleType : VehicleType
     , stated_milage : Float
-    , route : Maybe Route
+    , route : Maybe SimpleRoute
     , device : Maybe Device
     , repairs : List Repair
     , last_seen : Maybe LocationUpdate
     }
 
 
-type alias Route =
-    { id : String
+type alias SimpleRoute =
+    { id : Int
     , name : String
     }
 
@@ -230,10 +230,10 @@ busDecoder =
     busDecoderWithCallback identity
 
 
-routeDecoder : Decoder Route
+routeDecoder : Decoder SimpleRoute
 routeDecoder =
-    Decode.succeed Route
-        |> required "id" string
+    Decode.succeed SimpleRoute
+        |> required "id" int
         |> required "name" string
 
 

@@ -12,9 +12,10 @@ import Errors
 import Html.Events exposing (..)
 import Http
 import Icons
-import Json.Decode exposing (Decoder, field, float, int, string)
+import Json.Decode exposing (Decoder, field, float, int, list, string)
 import Json.Encode as Encode
 import Models.Bus exposing (VehicleType(..))
+import Models.Route exposing (Route, routeDecoder)
 import Navigation
 import Ports
 import RemoteData exposing (..)
@@ -35,10 +36,11 @@ import Views.Heading exposing (viewHeading)
 type alias Model =
     { session : Session
     , form : Form
-    , routeDropdownState : Dropdown.State String
+    , routeDropdownState : Dropdown.State Route
     , fuelDropdownState : Dropdown.State FuelType
     , consumptionDropdownState : Dropdown.State ConsumptionType
     , requestState : WebData Int
+    , routeRequestState : WebData (List Route)
     }
 
 
@@ -46,7 +48,7 @@ type alias Form =
     { vehicleClass : VehicleClass
     , numberPlate : String
     , seatsAvailable : Int
-    , routeId : Maybe String
+    , routeId : Maybe Int
     , consumptionType : ConsumptionType
     , consumptionAmount : FloatInput
     , problems : List (Errors.Errors Problem)
@@ -55,13 +57,14 @@ type alias Form =
 
 type Problem
     = InvalidNumberPlate
+    | EmptyRoute
 
 
 type alias ValidForm =
     { vehicleType : String
     , numberPlate : String
     , seatsAvailable : Int
-    , routeId : Maybe String
+    , routeId : Maybe Int
     , consumptionAmount : Float
     , fuelType : String
     }
@@ -86,7 +89,7 @@ type Field
     | FuelType FuelType
     | NumberPlate String
     | SeatsAvailable Int
-    | Route (Maybe String)
+    | Route (Maybe Int)
     | FuelConsumptionType ConsumptionType
     | FuelConsumptionAmount FloatInput
 
@@ -111,6 +114,7 @@ emptyForm session =
     , fuelDropdownState = Dropdown.init "fuelDropdown"
     , consumptionDropdownState = Dropdown.init "consumptionDropdown"
     , requestState = NotAsked
+    , routeRequestState = Loading
     }
 
 
@@ -119,6 +123,7 @@ init session =
     ( emptyForm session
     , Cmd.batch
         [ Ports.initializeMaps
+        , fetchRoutes session
         , Task.succeed (FuelDropdownMsg (Dropdown.selectOption Diesel)) |> Task.perform identity
         , Task.succeed (ConsumptionDropdownMsg (Dropdown.selectOption Default)) |> Task.perform identity
         ]
@@ -133,7 +138,8 @@ type Msg
     = Changed Field
     | SubmitButtonMsg
     | ServerResponse (WebData Int)
-    | RouteDropdownMsg (Dropdown.Msg String)
+    | RouteServerResponse (WebData (List Route))
+    | RouteDropdownMsg (Dropdown.Msg Route)
     | FuelDropdownMsg (Dropdown.Msg FuelType)
     | ConsumptionDropdownMsg (Dropdown.Msg ConsumptionType)
 
@@ -219,6 +225,9 @@ update msg model =
 
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
+
+        RouteServerResponse response ->
+            ( { model | routeRequestState = response }, Cmd.none )
 
 
 updateField : Field -> Model -> ( Model, Cmd Msg )
@@ -324,30 +333,38 @@ viewForm model =
         form =
             model.form
     in
-    column [ spacing 50, paddingEach { edges | bottom = 100 }, centerX ]
-        [ viewTypePicker form.vehicleClass
-        , viewDivider
-        , wrappedRow [ spaceEvenly, width fill ]
-            [ column
-                [ spacing 32, width (fill |> minimum 300 |> maximum 300), alignTop ]
-                [ viewNumberPlateInput form.numberPlate form.problems
-                , viewAvailableSeatingInput form.seatsAvailable form.problems
-                , viewRouteDropDown model
-                ]
-            , viewVerticalDivider
-            , column
-                [ spacing 32, width (fill |> minimum 300 |> maximum 300), alignTop ]
-                [ viewFuelTypeDropDown model
-                , viewConsumptionDropDown model
-                , if form.consumptionType == Custom then
-                    viewConsumptionInput form.consumptionAmount
+    case model.routeRequestState of
+        Success routes ->
+            column [ spacing 50, paddingEach { edges | bottom = 100 }, centerX ]
+                [ viewTypePicker form.vehicleClass
+                , viewDivider
+                , wrappedRow [ spaceEvenly, width fill ]
+                    [ column
+                        [ spacing 32, width (fill |> minimum 300 |> maximum 300), alignTop ]
+                        [ viewNumberPlateInput form.numberPlate form.problems
+                        , viewAvailableSeatingInput form.seatsAvailable form.problems
+                        , viewRouteDropDown model
+                        ]
+                    , viewVerticalDivider
+                    , column
+                        [ spacing 32, width (fill |> minimum 300 |> maximum 300), alignTop ]
+                        [ viewFuelTypeDropDown model
+                        , viewConsumptionDropDown model
+                        , if form.consumptionType == Custom then
+                            viewConsumptionInput form.consumptionAmount
 
-                  else
-                    none
+                          else
+                            none
+                        , viewButton model.requestState
+                        ]
+                    ]
                 ]
-            ]
-        , viewButton model.requestState
-        ]
+
+        Failure _ ->
+            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+
+        _ ->
+            Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
 
 
 viewTypePicker : VehicleClass -> Element Msg
@@ -615,8 +632,17 @@ viewFuelTypeDropDown model =
     toDropDownView (fuelDropDown model)
 
 
-routeDropDown : Model -> ( Element Msg, Dropdown.Config String Msg, List String )
+routeDropDown : Model -> ( Element Msg, Dropdown.Config Route Msg, List Route )
 routeDropDown model =
+    let
+        routes =
+            case model.routeRequestState of
+                Success routes_ ->
+                    List.filter (\r -> r.bus == Nothing) routes_
+
+                _ ->
+                    []
+    in
     StyledElement.dropDown
         [ width
             (fill
@@ -631,10 +657,10 @@ routeDropDown model =
         , dropdownState = model.routeDropdownState
         , errorCaption = Nothing
         , icon = Just Icons.timeline
-        , onSelect = Route >> Changed
-        , options = [ "a", "b", "c", "d", "e", "f" ]
+        , onSelect = Maybe.andThen (.id >> Just) >> Route >> Changed
+        , options = routes
         , title = "Route"
-        , toString = identity
+        , toString = .name
         , isLoading = False
         }
 
@@ -718,11 +744,18 @@ validateForm : Form -> Result (List ( Problem, String )) ValidForm
 validateForm form =
     let
         problems =
-            if Validator.isValidNumberPlate form.numberPlate then
-                []
+            List.concat
+                [ if Validator.isValidNumberPlate form.numberPlate then
+                    []
 
-            else
-                [ ( InvalidNumberPlate, "There's something wrong with this number plate" ) ]
+                  else
+                    [ ( InvalidNumberPlate, "There's something wrong with this number plate" ) ]
+
+                -- , if form.routeId == Nothing then
+                --     [ ( EmptyRoute, "Please se" ) ]
+                --   else
+                --     []
+                ]
 
         vehicleType =
             toVehicleType form.vehicleClass
@@ -742,7 +775,7 @@ validateForm form =
                 { vehicleType = vehicleType
                 , numberPlate = form.numberPlate
                 , seatsAvailable = form.seatsAvailable
-                , routeId = Nothing
+                , routeId = form.routeId
                 , consumptionAmount = FloatInput.toFloat form.consumptionAmount
                 , fuelType = fuelType
                 }
@@ -756,12 +789,15 @@ submit session form =
     let
         params =
             Encode.object
-                [ ( "number_plate", Encode.string form.numberPlate )
-                , ( "seats_available", Encode.int form.seatsAvailable )
-                , ( "vehicle_type", Encode.string form.vehicleType )
-                , ( "stated_milage", Encode.float form.consumptionAmount )
-                , ( "fuel_type", Encode.string form.fuelType )
-                ]
+                ([ ( "number_plate", Encode.string form.numberPlate )
+                 , ( "seats_available", Encode.int form.seatsAvailable )
+                 , ( "vehicle_type", Encode.string form.vehicleType )
+                 , ( "stated_milage", Encode.float form.consumptionAmount )
+                 , ( "fuel_type", Encode.string form.fuelType )
+                 ]
+                    ++ Maybe.withDefault []
+                        (Maybe.andThen (\routeId -> Just [ ( "route_id", Encode.int routeId ) ]) form.routeId)
+                )
                 |> Http.jsonBody
     in
     Api.post session Endpoint.buses params busDecoder
@@ -771,3 +807,9 @@ submit session form =
 busDecoder : Decoder Int
 busDecoder =
     field "id" int
+
+
+fetchRoutes : Session -> Cmd Msg
+fetchRoutes session =
+    Api.get session Endpoint.routes (list routeDecoder)
+        |> Cmd.map RouteServerResponse

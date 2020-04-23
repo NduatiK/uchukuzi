@@ -27,6 +27,7 @@ type Route
     | Signup
       -------------
     | Routes
+    | CreateRoute
       -------------
     | CrewMembers
     | CrewMemberRegistration
@@ -45,14 +46,18 @@ type Route
     | DeviceList
 
 
+
+-- http://localhost:4000/#/fleet/1/?page=trips
+--  Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
+
+
 loggedInParser : Parser (Route -> a) a
 loggedInParser =
     oneOf
         (Parser.map Buses Parser.top
             :: parsersFor [ Buses, Routes, HouseholdList, DeviceList, CrewMembers ]
-            ++ [ -- http://localhost:4000/#/fleet/1/?page=trips
-                 --  Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
-                 Parser.map CreateBusRepair (s (routeName Buses) </> int </> s "maintenance" </> s "new")
+            ++ [ Parser.map CreateBusRepair (s (routeName Buses) </> int </> s "maintenance" </> s "new")
+               , Parser.map CreateRoute (s (routeName Routes) </> s (routeName CreateRoute))
                , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s "edit")
                , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
                ]
@@ -257,9 +262,7 @@ routeToString page =
                 Home ->
                     []
 
-                -- Dashboard ->
-                --     [ routeName page ]
-                Activate token ->
+                Activate _ ->
                     [ routeName page, "token" ]
 
                 Login redirect ->
@@ -305,6 +308,9 @@ routeToString page =
 
                 Routes ->
                     [ routeName Routes ]
+
+                CreateRoute ->
+                    [ routeName Routes, routeName CreateRoute ]
 
                 CrewMembers ->
                     [ routeName CrewMembers ]
@@ -361,6 +367,9 @@ routeName page =
             "new"
 
         CreateBusRepair _ ->
+            "new"
+
+        CreateRoute ->
             "new"
 
         Routes ->

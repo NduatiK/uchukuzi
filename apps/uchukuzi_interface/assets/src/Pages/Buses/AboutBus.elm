@@ -11,7 +11,7 @@ import Element.Input as Input
 import Element.Lazy
 import Icons
 import Json.Decode exposing (list)
-import Models.Bus exposing (Bus, LocationUpdate, Route)
+import Models.Bus exposing (Bus, LocationUpdate)
 import Models.CrewMember exposing (CrewMember, crewDecoder)
 import Models.Household exposing (Student, studentDecoder)
 import Navigation

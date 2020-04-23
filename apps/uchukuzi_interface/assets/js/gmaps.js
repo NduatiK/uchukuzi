@@ -229,7 +229,7 @@ const setupMapCallbacks = (app, clickable) => (data) => {
             })
         }
     } else {
-         if (clickListener) {
+        if (clickListener) {
             google.maps.event.removeListener(clickListener)
         }
     }
@@ -303,6 +303,7 @@ function insertCircle(pos, app, map) {
 }
 
 let polylineListener = null
+let polylineClickListener = null
 const addDrawTools = (app, drawable) => (data) => {
     const { dom, map } = data
 
@@ -310,11 +311,14 @@ const addDrawTools = (app, drawable) => (data) => {
 
         if (!drawingManager) {
             drawingManager = new google.maps.drawing.DrawingManager({
-                drawingControl: true,
-                drawingControlOptions: {
-                    position: google.maps.ControlPosition.TOP_CENTER,
-                    drawingModes: ['polyline']
+                drawingControl: false,
+                drawingMode: google.maps.drawing.OverlayType.POLYLINE,
+                polylineOptions: {
+                    editable: true,
+                    draggable: true,
+                    strokeColor: "#61A591"
                 }
+
             })
 
         } else {
@@ -322,9 +326,14 @@ const addDrawTools = (app, drawable) => (data) => {
             google.maps.event.removeListener(polylineListener)
         }
         polylineListener = google.maps.event.addListener(drawingManager, 'polylinecomplete', function (polyline) {
-            polylines.push(polyline)
-        })
+            // polylines.push(polyline)
+            polyline.setEditable(true);
+            drawingManager.setDrawingMode(null);
 
+            setupClicksPolyline(polyline, app)
+
+
+        })
         console.log("drawingManager", drawingManager)
         drawingManager.setMap(map)
     } else {
@@ -337,6 +346,46 @@ const addDrawTools = (app, drawable) => (data) => {
     return Promise.resolve(data)
 }
 
+function setupClicksPolyline(line, app) {
+    // Adapted from http://bl.ocks.org/knownasilya/89a32e572989f0aff1f8
+    if (polylineClickListener) {
+        return
+    }
+    const locations = line.getPath().getArray().map((v, _, _array) => {
+        return {
+            lat: v.lat(),
+            lng: v.lng()
+        }
+    })
+
+    app.ports.updatedPath.send(locations)
+
+    polylineClickListener = google.maps.event.addListener(line, 'click', function (e) {
+
+        var line = this;
+
+        if (typeof e.vertex === 'number') {
+            var path = line.getPath();
+            path.removeAt(e.vertex);
+            if (path.length < 2) {
+                line.setMap(null);
+                app.ports.updatedPath.send([])
+                drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYLINE);
+                polylineClickListener = null
+            } else {
+                const locations = line.getPath().getArray().map((v, _, _array) => {
+                    return {
+                        lat: v.lat(),
+                        lng: v.lng()
+                    }
+                })
+
+                app.ports.updatedPath.send(locations)
+            }
+
+        }
+    });
+}
 
 
 function requestGeoLocation(app) {

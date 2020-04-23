@@ -1,20 +1,35 @@
 module Models.Route exposing (Route, routeDecoder)
 
-import Json.Decode as Decode exposing (Decoder, list, string)
+import Json.Decode as Decode exposing (Decoder, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required)
 import Models.Location exposing (Location, locationDecoder)
 
 
 type alias Route =
-    { id : String
+    { id : Int
     , name : String
     , point : List Location
+    , bus : Maybe SimpleBus
+    }
+
+
+type alias SimpleBus =
+    { id : Int
+    , numberPlate : String
     }
 
 
 routeDecoder : Decoder Route
 routeDecoder =
     Decode.succeed Route
-        |> required "id" string
+        |> required "id" int
         |> required "name" string
-        |> required "stops" (list locationDecoder)
+        |> required "path" (list locationDecoder)
+        |> required "bus" (nullable busDecoder)
+
+
+busDecoder : Decoder SimpleBus
+busDecoder =
+    Decode.succeed SimpleBus
+        |> required "id" int
+        |> required "number_plate" string

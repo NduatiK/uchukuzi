@@ -16,6 +16,7 @@ defmodule Uchukuzi.School.Bus do
     field(:fuel_type, :string)
 
     belongs_to(:school, School)
+    belongs_to(:route, Route)
     has_one(:device, Device)
     has_many(:trips, Uchukuzi.Tracking.Trip)
     has_many(:performed_repairs, PerformedRepair)

@@ -15,6 +15,7 @@ module Api.Endpoint exposing
     , patch
     , performedBusRepairs
     , post
+    , routes
     , signup
     , studentsOnboard
     , trips
@@ -155,6 +156,11 @@ studentsOnboard busID =
 devices : Endpoint
 devices =
     url [ "school", "devices" ] []
+
+
+routes : Endpoint
+routes =
+    url [ "school", "routes" ] []
 
 
 

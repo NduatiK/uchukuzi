@@ -303,7 +303,8 @@ viewTable buses =
                             Just route ->
                                 StyledElement.textLink [ centerY ]
                                     { label = text route.name
-                                    , route = Navigation.Bus bus.id Nothing
+                                    , route = Navigation.Routes
+                                    -- , route = Navigation.Routes bus.id Nothing
                                     }
 
                             Nothing ->

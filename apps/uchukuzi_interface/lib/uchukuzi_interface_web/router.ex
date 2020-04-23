@@ -76,6 +76,11 @@ defmodule UchukuziInterfaceWeb.Router do
 
     get "/crew_and_buses", SchoolController, :list_crew_and_buses
     patch "/crew_and_buses", SchoolController, :update_crew_assignments
+
+
+
+    post "/routes", SchoolController, :create_route
+    get "/routes", SchoolController, :list_routes
   end
 
   scope "/api/tracking", UchukuziInterfaceWeb do

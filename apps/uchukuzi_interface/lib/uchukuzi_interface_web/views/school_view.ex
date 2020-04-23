@@ -1,5 +1,6 @@
 defmodule UchukuziInterfaceWeb.SchoolView do
   use UchukuziInterfaceWeb, :view
+  use Uchukuzi.School.Model
 
   def render("buses.json", %{buses: buses}) do
     buses
@@ -21,11 +22,35 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       stated_milage: bus.stated_milage,
       seats_available: bus.seats_available,
       device: if(bus.device == nil, do: nil, else: bus.device.imei),
-      route: if(Map.get(bus, :route) == nil, do: nil, else: bus.route),
+      route: render_bus_route(Map.get(bus, :route)),
       # route: bus.route,
       last_seen: render_last_seen(Map.get(params, :last_seen)),
       performed_repairs: render_performed_repairs(Map.get(bus, :performed_repairs))
     }
+  end
+
+  def render("routes.json", %{routes: routes}) do
+    routes
+    |> render_many(__MODULE__, "route.json", as: :route)
+  end
+
+  def render("route.json", %{route: route}) do
+    %{
+      id: route.id,
+      name: route.name,
+      path: route.path |> Enum.map(&render_location/1),
+      bus:
+        with bus = %Bus{} <- Map.get(route, :bus) do
+          %{id: bus.id, number_plate: bus.number_plate}
+        end
+    }
+  end
+
+  def render_bus_route(nil), do: nil
+  def render_bus_route(%Ecto.Association.NotLoaded{}), do: nil
+
+  def render_bus_route(route) do
+    %{id: route.id, name: route.name}
   end
 
   def render_last_seen(nil), do: nil
@@ -55,5 +80,12 @@ defmodule UchukuziInterfaceWeb.SchoolView do
         description: repair.description || ""
       }
     end)
+  end
+
+  def render_location(location) do
+    %{
+      lng: location.lng,
+      lat: location.lat
+    }
   end
 end

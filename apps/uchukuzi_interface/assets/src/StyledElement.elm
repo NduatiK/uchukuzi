@@ -621,6 +621,9 @@ googleMap mapClasses =
          , width fill
          , htmlAttribute (id "google-map")
          , Background.color (rgb255 237 237 237)
+         , Border.color Colors.white
+         , Border.width 2
+         , padding 2
          ]
             ++ mapClasses
         )

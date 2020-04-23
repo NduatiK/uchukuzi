@@ -13,6 +13,7 @@ defmodule Uchukuzi.School.Route do
     embeds_many(:path, Location)
 
     belongs_to(:school, School)
+    has_one(:bus, Bus)
   end
 
 

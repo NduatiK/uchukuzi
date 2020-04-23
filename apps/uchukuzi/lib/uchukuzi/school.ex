@@ -27,9 +27,12 @@ defmodule Uchukuzi.School do
 
   # ********* Buses *********
   def buses_for(school_id) do
-    Repo.get(School, school_id)
-    |> Repo.preload(:buses)
-    |> Map.get(:buses)
+    Repo.all(
+      from(b in Bus,
+        where: b.school_id == ^school_id,
+        preload: [:route, :device]
+      )
+    )
   end
 
   def bus_for(school_id, bus_id) do
@@ -139,7 +142,17 @@ defmodule Uchukuzi.School do
 
   # ********* Routes *********
 
-  def create_route(school_id, name, path) do
+  def routes_for(school_id) do
+    Repo.all(
+      from(r in Route,
+        left_join: b in assoc(r, :bus),
+        where: r.school_id == ^school_id,
+        preload: [bus: b]
+      )
+    )
+  end
+
+  def create_route(school_id, %{"name" => name, "path" => path}) do
     %{
       school_id: school_id,
       name: name,

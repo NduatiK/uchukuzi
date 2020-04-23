@@ -13,12 +13,13 @@ import Html.Attributes exposing (id)
 import Html.Events exposing (..)
 import Http
 import Icons
-import Json.Decode as Decode exposing (Decoder, string)
+import Json.Decode as Decode exposing (Decoder, field, float, int, list, string)
 import Json.Decode.Pipeline exposing (hardcoded)
 import Json.Encode as Encode
 import Models.Household exposing (TravelTime(..))
 import Models.Location exposing (Location)
-import Navigation exposing (..)
+import Models.Route exposing (Route, routeDecoder)
+import Navigation
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
@@ -36,7 +37,8 @@ import Views.Heading exposing (viewHeading)
 type alias Model =
     { session : Session
     , form : Form
-    , routeDropdownState : Dropdown.State String
+    , routeDropdownState : Dropdown.State Route
+    , routeRequestState : WebData (List Route)
     }
 
 
@@ -46,7 +48,7 @@ type alias Form =
     , guardian : Guardian
     , canTrack : Bool
     , homeLocation : Maybe Location
-    , route : Maybe String
+    , route : Maybe Int
     , searchText : String
     , problems : List (Errors Problem)
     }
@@ -69,7 +71,7 @@ type alias ValidForm =
     , guardian : Guardian
     , canTrack : Bool
     , homeLocation : Location
-    , route : String
+    , route : Int
     }
 
 
@@ -92,14 +94,14 @@ type Field
     | HomeLocation (Maybe Location)
     | Email String
     | PhoneNumber String
-    | Route (Maybe String)
+    | Route (Maybe Int)
     | CanTrack Bool
     | TravelTime Student TravelTime Bool
 
 
 type Msg
     = Changed Field
-    | DropdownMsg (Dropdown.Msg String)
+    | DropdownMsg (Dropdown.Msg Route)
     | SaveStudentPressed
     | DeleteStudentMsg Student
     | SubmitButtonMsg
@@ -107,12 +109,14 @@ type Msg
     | ServerResponse (WebData Int)
     | AutocompleteError
     | ReceivedMapLocation Location
+    | RouteServerResponse (WebData (List Route))
 
 
 emptyForm : Session -> Model
 emptyForm session =
     { session = session
     , routeDropdownState = Dropdown.init "routeDropdown"
+    , routeRequestState = Loading
     , form =
         { currentStudent = ""
         , students =
@@ -131,11 +135,12 @@ emptyForm session =
     }
 
 
-init : Session -> ( Model, Cmd msg )
+init : Session -> ( Model, Cmd Msg )
 init session =
     ( emptyForm session
     , Cmd.batch
         [ Ports.initializeSearch
+        , fetchRoutes session
         ]
     )
 
@@ -219,6 +224,9 @@ update msg model =
 
         ReceivedMapLocation location ->
             ( { model | form = { form | homeLocation = Just location } }, Cmd.none )
+
+        RouteServerResponse response ->
+            ( { model | routeRequestState = response }, Cmd.none )
 
 
 updateStatus : Model -> WebData Int -> ( Model, Cmd Msg )
@@ -359,8 +367,8 @@ updateField field model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model viewHeight =
     column
         [ width fill
         , height fill
@@ -368,8 +376,28 @@ view model =
         , padding 24
         ]
         [ viewHeading "Register Household" Nothing
-        , googleMap model
-        , viewBody model
+        , case model.routeRequestState of
+            Success _ ->
+                -- row [ width fill, height fill, spacing 24 ]
+                --     [ viewBody model
+                --     , googleMap model
+                --     ]
+                column [ width fill, height fill, spacing 24 ]
+                    [ googleMap model
+
+                    -- [ row [ width fill ]
+                    --     [ el [ width (fillPortion 1) ] none
+                    --     , el [ width (fillPortion 2) ] (googleMap model)
+                    --     , el [ width (fillPortion 1) ] none
+                    --     ]
+                    , viewBody model
+                    ]
+
+            Failure _ ->
+                el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+
+            _ ->
+                Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
         ]
 
 
@@ -400,7 +428,7 @@ googleMap model =
                 [ Border.color Colors.errorRed, Border.width 2, padding 2 ]
 
             else
-                [ Border.color Colors.white, Border.width 2, padding 2 ]
+                []
     in
     column
         [ width fill
@@ -414,10 +442,10 @@ googleMap model =
                 (StyledElement.textInput [ padding 10 ]
                     { ariaLabel = "search input"
                     , caption = Nothing
-                    , errorCaption = Nothing
+                    , errorCaption = Errors.inputErrorsFor model.form.problems "search" [ AutocompleteFailed ]
                     , icon = Just Icons.search
                     , onChange = SearchTextChanged
-                    , placeholder = Nothing
+                    , placeholder = Just (Input.placeholder [] (text "Eg. Kilimani Apartments"))
                     , title = ""
                     , value = model.form.searchText
                     }
@@ -433,7 +461,7 @@ googleMap model =
                     ++ mapBorderStyle
                 )
             )
-        , el mapCaptionStyle (text "Click on the map to mark the home location")
+        , el mapCaptionStyle (text "Click on the map or search for a location to mark the home location")
         ]
 
 
@@ -523,8 +551,15 @@ viewStudentsInput { students, problems, currentStudent } =
                 , title = "Student Name"
                 , value = currentStudent
                 }
-            , Input.button [ padding 8, alignBottom, Background.color Colors.purple, Border.rounded 8 ]
-                { label = Icons.add [ Colors.fillWhite ]
+
+            -- , StyledElement.ghostButton [ Border.width 1 ]
+            --     { title = "Add"
+            --     , icon = Icons.add
+            --     , onPress = Just SaveStudentPressed
+            --     }
+            , StyledElement.iconButton [ padding 8, centerY, Background.color Colors.purple, Border.rounded 8 ]
+                { icon = Icons.add
+                , iconAttrs = [ Colors.fillWhite ]
                 , onPress = Just SaveStudentPressed
                 }
             ]
@@ -619,26 +654,6 @@ viewLocationInput home =
         }
 
 
-viewRouteInput : String -> Element Msg
-viewRouteInput route =
-    Element.column
-        [ spacing 10
-        , width
-            (fill
-                |> maximum 300
-            )
-        ]
-        [ Input.text Style.inputStyle
-            { onChange = Just >> Route >> Changed
-            , text = route
-            , placeholder = Nothing
-            , label =
-                Input.labelAbove Style.labelStyle
-                    (text "Route")
-            }
-        ]
-
-
 viewPhoneInput : List (Errors Problem) -> String -> Element Msg
 viewPhoneInput problems phone_number =
     StyledElement.textInput
@@ -726,8 +741,17 @@ viewDivider =
         Element.none
 
 
-routeDropDown : Model -> ( Element Msg, Dropdown.Config String Msg, List String )
+routeDropDown : Model -> ( Element Msg, Dropdown.Config Route Msg, List Route )
 routeDropDown model =
+    let
+        routes =
+            case model.routeRequestState of
+                Success routes_ ->
+                    routes_
+
+                _ ->
+                    []
+    in
     StyledElement.dropDown []
         { ariaLabel = "Select route dropdown"
         , caption = Nothing
@@ -735,11 +759,11 @@ routeDropDown model =
         , dropDownMsg = DropdownMsg
         , dropdownState = model.routeDropdownState
         , errorCaption = Errors.inputErrorsFor model.form.problems "route" [ EmptyRoute ]
-        , icon = Just Icons.vehicle
-        , onSelect = Route >> Changed
-        , options = [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10" ]
+        , icon = Just Icons.timeline
+        , onSelect = Maybe.andThen (.id >> Just) >> Route >> Changed
+        , options = routes
         , title = "Route"
-        , toString = identity
+        , toString = .name
         , isLoading = False
         }
 
@@ -768,7 +792,7 @@ submit session household =
             Encode.object
                 [ ( "guardian", guardian )
                 , ( "students", Encode.list encodeStudent (Tuple.first household.students :: Tuple.second household.students) )
-                , ( "route", Encode.string "household.route" )
+                , ( "route", Encode.int household.route )
                 , ( "home_location", encodeLocation household.homeLocation )
                 , ( "pickup_location", encodeLocation household.homeLocation )
                 ]
@@ -894,3 +918,9 @@ subscriptions model =
         [ Ports.autocompleteError (always AutocompleteError)
         , Ports.receivedMapLocation ReceivedMapLocation
         ]
+
+
+fetchRoutes : Session -> Cmd Msg
+fetchRoutes session =
+    Api.get session Endpoint.routes (list routeDecoder)
+        |> Cmd.map RouteServerResponse

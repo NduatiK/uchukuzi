@@ -120,7 +120,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
 
   def create_bus(conn, bus_params, school_id) do
     with {:ok, bus} <- School.create_bus(school_id, bus_params) do
-      bus = Repo.preload(bus, :device)
+      bus = Repo.preload(bus, [:device, :route])
 
       conn
       |> put_status(:created)
@@ -252,5 +252,20 @@ defmodule UchukuziInterfaceWeb.SchoolController do
       |> put_view(UchukuziInterfaceWeb.RolesView)
       |> render("crew_member.json", crew_member: crew_member)
     end
+  end
+
+  def create_route(conn, params, school_id) do
+    with {:ok, route} <- School.create_route(school_id, params) do
+      conn
+      |> render(200, "{}")
+    end
+  end
+
+  @spec list_routes(Plug.Conn.t(), any, any) :: Plug.Conn.t()
+  def list_routes(conn, _, school_id) do
+    routes = School.routes_for(school_id)
+
+    conn
+    |> render("routes.json", routes: routes)
   end
 end

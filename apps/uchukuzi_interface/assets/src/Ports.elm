@@ -89,3 +89,6 @@ port mapReady : (Bool -> msg) -> Sub msg
 
 
 port autocompleteError : (() -> msg) -> Sub msg
+
+
+port updatedPath : (List Location -> msg) -> Sub msg

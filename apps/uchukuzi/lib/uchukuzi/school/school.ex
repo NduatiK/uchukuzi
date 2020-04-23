@@ -9,7 +9,8 @@ defmodule Uchukuzi.School.School do
     embeds_one(:perimeter, Geofence, on_replace: :delete)
 
     has_one(:manager, Uchukuzi.Roles.Manager)
-    has_many(:buses, Bus, foreign_key: :school_id)
+    has_many(:buses, Bus)
+    has_many(:routes, Route)
   end
 
   def new(name, perimeter) do
@@ -32,5 +33,4 @@ defmodule Uchukuzi.School.School do
   def contains_point?(%School{} = school, %Location{} = location) do
     Geofence.contains_point?(school.perimeter, location)
   end
-
 end
