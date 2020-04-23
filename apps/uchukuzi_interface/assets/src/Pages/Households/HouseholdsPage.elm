@@ -290,7 +290,7 @@ viewBody { groupedStudents, selectedGroupedStudents } =
             text "Initialising."
 
         Loading ->
-            el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
+            row [ width fill, height fill ] [ el [ width fill, height fill ] (Icons.loading [ centerX, centerY ]) ]
 
         Failure error ->
             let
@@ -298,6 +298,12 @@ viewBody { groupedStudents, selectedGroupedStudents } =
                     Errors.decodeErrors error
             in
             text (Errors.errorToString apiError)
+
+        Success ( [], [] ) ->
+            column (centerX :: spacing 8 :: centerY :: Style.labelStyle)
+                [ el [ centerX ] (text "You have not added any students.")
+                , el [ centerX ] (text "Click the + button above to create one do so.")
+                ]
 
         Success groups ->
             Element.column [ spacing 40 ]

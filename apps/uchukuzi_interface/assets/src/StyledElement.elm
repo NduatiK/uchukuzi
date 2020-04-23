@@ -32,6 +32,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Errors exposing (InputError)
+import Html exposing (node)
 import Html.Attributes exposing (id)
 import Http
 import Icons exposing (IconBuilder)
@@ -615,6 +616,7 @@ numberInput attributes { title, caption, errorCaption, value, onChange, placehol
     body
 
 
+googleMap : List (Attribute msg) -> Element msg
 googleMap mapClasses =
     el
         ([ height fill
@@ -627,4 +629,4 @@ googleMap mapClasses =
          ]
             ++ mapClasses
         )
-        none
+        (html (node "gmap" [] []))

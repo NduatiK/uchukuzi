@@ -8,7 +8,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Element.Lazy
 import Icons
 import Json.Decode exposing (list)
 import Models.Bus exposing (Bus, LocationUpdate)
@@ -152,7 +151,7 @@ view model viewHeight =
 
 viewGMAP : Element Msg
 viewGMAP =
-    Element.Lazy.lazy StyledElement.googleMap [ height (fill |> minimum 300), width (fillPortion 2) ]
+    StyledElement.googleMap [ height (fill |> minimum 300), width (fillPortion 2) ]
 
 
 viewStatisticsPage : Model -> Element Msg
