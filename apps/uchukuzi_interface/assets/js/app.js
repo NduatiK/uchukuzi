@@ -1,5 +1,5 @@
 import { Elm } from '../src/Main.elm'
-import { initializeMaps, requestGeoLocation, initializeSearch } from './gmaps'
+import { initializeMaps, requestGeoLocation, initializeSearch, schoolLocationStorageKey } from './gmaps'
 import { initializeCamera } from './camera'
 import { initializeLiveView, killLiveView } from './liveView'
 import { printCard } from './card'
@@ -13,7 +13,6 @@ function parse(string) {
     }
 }
 
-const schoolLocationStorageKey = 'schoolLocation'
 const credentialsStorageKey = 'credentials'
 const storedCredentials = parse(localStorage.getItem(credentialsStorageKey));
 

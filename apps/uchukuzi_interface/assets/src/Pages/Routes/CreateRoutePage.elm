@@ -158,7 +158,7 @@ updateStatus model webData =
 
         Success creds ->
             ( model
-            , Navigation.rerouteTo model Navigation.HouseholdList
+            , Navigation.rerouteTo model Navigation.Routes
             )
 
 

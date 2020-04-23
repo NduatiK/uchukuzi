@@ -63,6 +63,15 @@ printCard =
 port printCardPort : () -> Cmd msg
 
 
+port drawPath : { routeID : Int, path : List Location } -> Cmd msg
+
+
+port bulkDrawPath : List { routeID : Int, path : List Location } -> Cmd msg
+
+
+port highlightPath : { routeID : Int, highlighted : Bool } -> Cmd msg
+
+
 
 -- INCOMING
 

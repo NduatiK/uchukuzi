@@ -9,8 +9,9 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Errors
+import Html.Events
 import Icons
-import Json.Decode exposing (list)
+import Json.Decode exposing (list, succeed)
 import Models.Route exposing (Route, routeDecoder)
 import Navigation
 import Ports
@@ -31,6 +32,8 @@ type Msg
     = CreateRoute
     | UpdatedSearchText String
     | ServerResponse (WebData (List Route))
+    | HoverOver Route
+    | HoverLeft Route
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -52,12 +55,23 @@ update msg model =
         CreateRoute ->
             ( model, Navigation.rerouteTo model Navigation.CreateRoute )
 
+        HoverOver route ->
+            ( model, Ports.highlightPath { routeID = route.id, highlighted = True } )
+
+        HoverLeft route ->
+            ( model, Ports.highlightPath { routeID = route.id, highlighted = False } )
+
         ServerResponse response ->
             let
                 newModel =
                     { model | routes = response }
             in
             case response of
+                Success routes ->
+                    ( newModel
+                    , Ports.bulkDrawPath (List.map (\route -> { routeID = route.id, path = route.path }) routes)
+                    )
+
                 Failure error ->
                     let
                         ( _, error_msg ) =
@@ -126,6 +140,12 @@ viewRoutes model =
             in
             text (Errors.errorToString apiError)
 
+        Success [] ->
+            column (centerX :: spacing 8 :: centerY :: Style.labelStyle)
+                [ el [ centerX ] (text "You have no routes set up.")
+                , el [ centerX ] (text "Click the + button above to create one.")
+                ]
+
         Success routes ->
             wrappedRow [ spacing 10, paddingEach { edges | right = 10, bottom = 10 }, scrollbarY, height fill, width fill ]
                 (List.map viewRoute routes)
@@ -177,8 +197,8 @@ viewRoute route =
          , Border.width 1
          , Border.color Colors.sassyGrey
          , alignTop
-
-         --  , Events.onClick (ClickedOn trip)
+         , htmlAttribute (Html.Events.onMouseOver (HoverOver route))
+         , htmlAttribute (Html.Events.onMouseLeave (HoverLeft route))
          , Style.animatesShadow
          ]
             ++ selectionStyles

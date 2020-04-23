@@ -257,7 +257,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def create_route(conn, params, school_id) do
     with {:ok, route} <- School.create_route(school_id, params) do
       conn
-      |> render(200, "{}")
+      |> resp(200, "{}")
     end
   end
 

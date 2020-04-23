@@ -413,7 +413,15 @@ viewBody model =
                     applyChanges model.edits.changes data
             in
             row [ height fill, width fill, spacing 40 ]
-                [ Lazy.lazy3 viewBuses editedData model.edits model.inEditingMode
+                [ case data.buses of
+                    [] ->
+                        column (width (fillPortion 2) :: centerX :: spacing 8 :: centerY :: Style.labelStyle)
+                            [ el [ centerX ] (text "You have buses set up.")
+                            , el [ centerX ] (text "Create one to assign crew members.")
+                            ]
+
+                    _ ->
+                        Lazy.lazy3 viewBuses editedData model.edits model.inEditingMode
                 , el [ width (px 60) ] none
                 , el [ width (px 2), height (px (model.height // 2)), Background.color Colors.darkness ] none
                 , Lazy.lazy3 viewUnassignedCrewMembers editedData model.height model.inEditingMode

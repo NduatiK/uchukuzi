@@ -242,23 +242,14 @@ viewBuses buses filterText =
                             ]
                     , onPress = Just CreateBus
                     }
-
-                -- , StyledElement.unstyledIconButton
-                --     [ centerY
-                --     , Border.width 1
-                --     ]
-                --     { onPress = Just CreateBus
-                --     , icon = Icons.add
-                --     , iconAttrs = []
-                --     }
                 ]
             , el []
                 (case ( filteredBuses, filterText ) of
                     ( [], "" ) ->
-                        el (centerX :: centerY :: padding 30 :: Style.labelStyle) (text "No buses created yet")
+                        el (centerX :: centerY :: paddingXY 0 30 :: Style.labelStyle) (text "No buses created yet")
 
                     ( [], _ ) ->
-                        el (centerX :: centerY :: padding 30 :: Style.labelStyle) (text ("No matches for " ++ filterText))
+                        el (centerX :: centerY :: paddingXY 0 30 :: Style.labelStyle) (text ("No matches for " ++ filterText))
 
                     ( someBuses, _ ) ->
                         viewTable someBuses
@@ -304,6 +295,7 @@ viewTable buses =
                                 StyledElement.textLink [ centerY ]
                                     { label = text route.name
                                     , route = Navigation.Routes
+
                                     -- , route = Navigation.Routes bus.id Nothing
                                     }
 

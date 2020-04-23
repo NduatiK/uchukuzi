@@ -8,7 +8,7 @@ import Models.Location exposing (Location, locationDecoder)
 type alias Route =
     { id : Int
     , name : String
-    , point : List Location
+    , path : List Location
     , bus : Maybe SimpleBus
     }
 

@@ -1,7 +1,20 @@
 import mapStyles from './mapStyles'
 import { isDevelopment } from './env'
 
+function parse(string) {
+    try {
+        return string ? JSON.parse(string) : null
+    } catch (e) {
+        localStorage.setItem(credentialsStorageKey, null);
+        return null
+    }
+}
+const schoolLocationStorageKey = 'schoolLocation'
+const schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey));
 
+
+let darkGreen = "#61A591"
+let purple = "#594fee"
 // Prevent duplicate loads
 let runningRequest = null
 let initializingMapsChain = null
@@ -94,6 +107,10 @@ let drawingManager = null
 let schoolCircle = null
 function cleanMap(data) {
     const { dom, map } = data
+    polylines.forEach((x) => {
+        x.setMap(null)
+    })
+    polylines = []
     markers.forEach((x) => {
         x.setMap(null)
     })
@@ -137,14 +154,9 @@ const setupMapCallbacks = (app, clickable) => (data) => {
             var image = {
                 url: `/images/buses/${getCardinalDirection(update.bearing)}.svg`,
                 size: new google.maps.Size(90, 90),
-                // origin: new google.maps.Point(0, 0),
                 anchor: new google.maps.Point(45, 45),
                 scaledSize: new google.maps.Size(90, 90)
             }
-
-            // var image = {
-            //     url: `/images/buses/${getCardinalDirection(update.bearing)}.png`,
-            //   } 
 
             if (marker === undefined) {
                 marker = new google.maps.Marker({
@@ -180,6 +192,66 @@ const setupMapCallbacks = (app, clickable) => (data) => {
                     })
                 } else {
                     updates.forEach(updateMarker)
+                }
+            })
+        })
+
+        app.ports.highlightPath.subscribe(({ routeID, highlighted }) => {
+ 
+            let polyline = polylines.find((value, _indx, _list) => {
+                return value.id == routeID
+            })
+            if (polyline) {
+                if (highlighted) {
+                    polyline.set('strokeColor', purple);
+
+                } else {
+                    polyline.set('strokeColor', darkGreen);
+
+                }
+            }
+        })
+
+        const drawPath = function ({ routeID, path }) {
+            if (isDevelopment) {
+                console.log("drawPath")
+            }
+
+            var polyline = new google.maps.Polyline({
+                path: path,
+                geodesic: false,
+                strokeColor: darkGreen,
+                id: routeID
+            });
+            polylines.push(polyline)
+
+            polyline.setMap(map);
+        }
+
+        // app.ports.drawPath.subscribe((path) => {
+
+        //     sleep(100).then(() => {
+
+        //         if (initializingMapsChain) {
+        //             initializingMapsChain.then(() => {
+        //                 drawPath(path)
+        //             })
+        //         } else {
+        //             drawPath(path)
+        //         }
+        //     })
+        // })
+
+        app.ports.bulkDrawPath.subscribe((paths) => {
+            sleep(100).then(() => {
+                if (initializingMapsChain) {
+                    initializingMapsChain.then(() => {
+                        insertCircle(schoolLocation, app, map, false)
+                        paths.forEach(drawPath)
+                    })
+                } else {
+                    insertCircle(schoolLocation, app, map, false)
+                    paths.forEach(drawPath)
                 }
             })
         })
@@ -245,7 +317,7 @@ function getCardinalDirection(angle) {
     return directions[Math.round(angle / 45) % 8]
 }
 
-function insertCircle(pos, app, map) {
+function insertCircle(pos, app, map, editable) {
 
 
     let radius = 50
@@ -267,15 +339,15 @@ function insertCircle(pos, app, map) {
         .then(({ map }) => {
 
             schoolCircle = new google.maps.Circle({
-                strokeColor: '#61A591',
+                strokeColor: darkGreen,
                 strokeOpacity: 0.8,
                 strokeWeight: 2,
-                fillColor: '#61A591',
+                fillColor: darkGreen,
                 fillOpacity: 0.35,
                 map: map,
                 draggable: true,
                 geodesic: true,
-                editable: true,
+                editable: editable || false,
                 center: pos,
                 radius: radius // metres
             })
@@ -296,14 +368,19 @@ function insertCircle(pos, app, map) {
                     sendSchoolCircle(schoolCircle)
                 })
             }
-            map.panTo(schoolCircle.center)
-            map.setZoom(17)
-            sendSchoolCircle(schoolCircle)
+            if (editable) {
+
+                map.panTo(schoolCircle.center)
+                map.setZoom(17)
+                sendSchoolCircle(schoolCircle)
+            }
         })
 }
 
 let polylineListener = null
 let polylineClickListener = null
+let polylines = []
+
 const addDrawTools = (app, drawable) => (data) => {
     const { dom, map } = data
 
@@ -316,7 +393,7 @@ const addDrawTools = (app, drawable) => (data) => {
                 polylineOptions: {
                     editable: true,
                     draggable: true,
-                    strokeColor: "#61A591"
+                    strokeColor: darkGreen
                 }
 
             })
@@ -326,8 +403,9 @@ const addDrawTools = (app, drawable) => (data) => {
             google.maps.event.removeListener(polylineListener)
         }
         polylineListener = google.maps.event.addListener(drawingManager, 'polylinecomplete', function (polyline) {
-            // polylines.push(polyline)
+            polylines.push(polyline)
             polyline.setEditable(true);
+
             drawingManager.setDrawingMode(null);
 
             setupClicksPolyline(polyline, app)
@@ -537,4 +615,4 @@ function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time))
 }
 
-export { initializeMaps, requestGeoLocation, initializeSearch }
+export { initializeMaps, requestGeoLocation, initializeSearch, schoolLocationStorageKey }
