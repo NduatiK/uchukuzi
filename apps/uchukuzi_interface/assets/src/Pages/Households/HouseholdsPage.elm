@@ -177,6 +177,18 @@ viewOverlay { selectedStudent, session } =
                 none
 
             Just { student, household } ->
+                let
+                    travelTime =
+                        case student.travelTime of
+                            Evening ->
+                                "Evening Only"
+
+                            Morning ->
+                                "Morning Only"
+
+                            _ ->
+                                "Morning and Evening"
+                in
                 el
                     [ width fill
                     , height fill
@@ -203,8 +215,8 @@ viewOverlay { selectedStudent, session } =
                             , below
                                 (row [ padding 20, centerX, spacing 20 ]
                                     [ StyledElement.hoverButton []
-                                        { title = "Generate Card"
-                                        , icon = Just Icons.card
+                                        { title = "Print Card"
+                                        , icon = Just Icons.print
                                         , onPress = Just GenerateCard
                                         }
                                     , StyledElement.hoverButton [ alignRight ]
@@ -242,18 +254,15 @@ viewOverlay { selectedStudent, session } =
                                                 ++ Maybe.withDefault "" (Maybe.andThen (.token >> Just) (Session.getCredentials session))
                                         , description = ""
                                         }
-                                    , column [ paddingXY 0 4, spacing 12, alignRight ]
-                                        [ if student.travelTime == Evening then
-                                            none
-
-                                          else
-                                            el (Style.labelStyle ++ [ Font.color Colors.sassyGreyDark, padding 0, alignRight ]) (text "Morning")
-                                        , if student.travelTime == Morning then
-                                            none
-
-                                          else
-                                            el (Style.labelStyle ++ [ Font.color Colors.sassyGreyDark, padding 0, alignRight ]) (text "Evening")
-                                        ]
+                                    , el
+                                        (Style.labelStyle
+                                            ++ [ Font.color Colors.sassyGreyDark
+                                               , padding 0
+                                               , alignRight
+                                               , alignBottom
+                                               ]
+                                        )
+                                        (text travelTime)
                                     ]
                                 ]
                             )

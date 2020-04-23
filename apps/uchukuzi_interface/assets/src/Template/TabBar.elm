@@ -24,9 +24,8 @@ tabSections : List (TabItem msg)
 tabSections =
     [ TabItem "Fleet" Icons.vehicle Buses
     , TabItem "Students" Icons.seat HouseholdList
+    , TabItem "Routes" Icons.pin Routes
     , TabItem "Crew" Icons.people CrewMembers
-
-    -- , TabItem "Routes" Icons.pin Routes
     ]
 
 
@@ -204,6 +203,9 @@ toNavigationPage route =
             Buses
 
         Navigation.Routes ->
+            Routes
+
+        Navigation.CreateRoute ->
             Routes
 
         Navigation.CrewMembers ->

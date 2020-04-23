@@ -58,8 +58,8 @@ add attrs =
     iconNamed "images/add.svg" (alpha 1 :: attrs)
 
 
-card : List (Attribute msg) -> Element msg
-card attrs =
+print : List (Attribute msg) -> Element msg
+print attrs =
     iconNamed "images/card.svg" (alpha 1 :: attrs)
 
 

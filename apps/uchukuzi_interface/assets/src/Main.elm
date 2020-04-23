@@ -200,6 +200,10 @@ view { page, route, navState, windowHeight } =
 
         -- viewEmptyPage =
         renderedView =
+            let
+                viewHeight =
+                    Page.viewHeight windowHeight
+            in
             case page of
                 Home _ ->
                     viewEmptyPage Home.view
