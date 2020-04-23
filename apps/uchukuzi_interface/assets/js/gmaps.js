@@ -10,8 +10,16 @@ function parse(string) {
     }
 }
 const schoolLocationStorageKey = 'schoolLocation'
-const schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey));
+let schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey));
 
+window.addEventListener("storage", (event) => {
+    if (event.storageArea === schoolLocation && event.key === schoolLocationStorageKey) {
+        schoolLocation = parse(event.value)
+        if (MapLibraryInstance) {
+            pushSchool(MapLibraryInstance)
+        }
+    }
+}, false);
 
 let darkGreen = "#61A591"
 let purple = "#594fee"
@@ -131,8 +139,36 @@ function insertMap(data) {
         dom.parentNode.removeChild(dom)
     }
     mapDiv.prepend(dom)
-
+    pushSchool(map)
     return Promise.resolve(data)
+}
+
+var schoolMarker = null
+function pushSchool(map) {
+    if (!schoolLocation) {
+        if (schoolMarker) {
+            schoolMarker.setMap(null)
+            schoolMarker = null
+        }
+
+        return
+    }
+
+    if (!schoolMarker) {
+        var image = {
+            url: `/images/school_marker.svg`,
+            size: new google.maps.Size(26, 26),
+            anchor: new google.maps.Point(13, 13),
+            scaledSize: new google.maps.Size(26, 26)
+        }
+        schoolMarker = new google.maps.Marker({
+            icon: image,
+            map: map,
+            title: "School"
+        })
+    }
+    schoolMarker.setPosition(schoolLocation)
+
 }
 
 let hasSetup = false
@@ -197,7 +233,6 @@ const setupMapCallbacks = (app, clickable) => (data) => {
         })
 
         app.ports.highlightPath.subscribe(({ routeID, highlighted }) => {
- 
             let polyline = polylines.find((value, _indx, _list) => {
                 return value.id == routeID
             })
@@ -242,15 +277,17 @@ const setupMapCallbacks = (app, clickable) => (data) => {
         //     })
         // })
 
+
         app.ports.bulkDrawPath.subscribe((paths) => {
             sleep(100).then(() => {
                 if (initializingMapsChain) {
-                    initializingMapsChain.then(() => {
-                        insertCircle(schoolLocation, app, map, false)
+                    initializingMapsChain.then(({ map }) => {
+
+                        pushSchool(map)
                         paths.forEach(drawPath)
                     })
                 } else {
-                    insertCircle(schoolLocation, app, map, false)
+                    pushSchool(map)
                     paths.forEach(drawPath)
                 }
             })
@@ -317,7 +354,7 @@ function getCardinalDirection(angle) {
     return directions[Math.round(angle / 45) % 8]
 }
 
-function insertCircle(pos, app, map, editable) {
+function insertCircle(pos, app, map) {
 
 
     let radius = 50
@@ -368,12 +405,11 @@ function insertCircle(pos, app, map, editable) {
                     sendSchoolCircle(schoolCircle)
                 })
             }
-            if (editable) {
 
-                map.panTo(schoolCircle.center)
-                map.setZoom(17)
-                sendSchoolCircle(schoolCircle)
-            }
+            map.panTo(schoolCircle.center)
+            map.setZoom(17)
+            sendSchoolCircle(schoolCircle)
+
         })
 }
 
@@ -515,99 +551,104 @@ let homeMarker
 let homeMarkerDragListener
 function initializeSearch(app) {
     console.log("entered initializeSearch")
-    initializeMaps(app, false, false)
-        .then(({ dom, map }) => {
-            if (homeMarker) {
+    sleep(100).then(() => {
 
-            } else {
-                var image = {
-                    url: "/images/home_pin.svg",
-                    size: new google.maps.Size(24, 24),
-                    anchor: new google.maps.Point(12, 24),
-                }
-                homeMarker = new google.maps.Marker({
-                    draggable: true,
-                    map: map,
-                    icon: image
-                })
+        initializeMaps(app, false, false)
+            .then(({ dom, map }) => {
+                if (homeMarker) {
 
-                homeMarkerDragListener = google.maps.event.addListener(homeMarker, 'dragend', function () {
-                    app.ports.receivedMapLocation.send({
-                        lat: homeMarker.getPosition().lat(),
-                        lng: homeMarker.getPosition().lng()
-                    })
-                })
-                markers.push(homeMarker)
-            }
-
-
-            if (!google.maps.event.hasListeners(map, 'click')) {
-                clickListener = google.maps.event.addListener(map, 'click', function (args) {
-                    homeMarker.setPosition(args.latLng)
-                    app.ports.receivedMapLocation.send({
-                        lat: args.latLng.lat(),
-                        lng: args.latLng.lng()
-                    })
-                })
-            }
-
-
-            var input = document.getElementById('search-input')
-
-            console.log("initializeSearch")
-            var autocomplete = new google.maps.places.Autocomplete(input)
-
-            autocomplete.bindTo('bounds', map)
-
-            // Set the data fields to return when the user selects a place.
-            autocomplete.setFields(
-                ['address_components', 'geometry', 'name'])
-            autocomplete.addListener('place_changed', function () {
-
-                homeMarker.setVisible(false)
-                var place = autocomplete.getPlace()
-                if (!place.geometry) {
-                    window.alert("No details available for input: '" + place.name + "'")
-                    return
-                }
-
-                // If the place has a geometry, then present it on a map.
-                if (place.geometry.viewport) {
-                    map.fitBounds(place.geometry.viewport)
                 } else {
-                    map.setCenter(place.geometry.location)
-                    map.setZoom(17)
-                }
-                homeMarker.setPosition(place.geometry.location)
-                homeMarker.setVisible(true)
+                    var image = {
+                        url: "/images/home_pin.svg",
+                        size: new google.maps.Size(24, 24),
+                        anchor: new google.maps.Point(12, 24),
+                    }
+                    homeMarker = new google.maps.Marker({
+                        draggable: true,
+                        map: map,
+                        icon: image
+                    })
 
-                app.ports.receivedMapLocation.send({
-                    lat: place.geometry.location.lat(),
-                    lng: place.geometry.location.lng()
+                    homeMarkerDragListener = google.maps.event.addListener(homeMarker, 'dragend', function () {
+                        app.ports.receivedMapLocation.send({
+                            lat: homeMarker.getPosition().lat(),
+                            lng: homeMarker.getPosition().lng()
+                        })
+                    })
+                    markers.push(homeMarker)
+                }
+
+
+                if (!google.maps.event.hasListeners(map, 'click')) {
+                    clickListener = google.maps.event.addListener(map, 'click', function (args) {
+                        homeMarker.setPosition(args.latLng)
+                        app.ports.receivedMapLocation.send({
+                            lat: args.latLng.lat(),
+                            lng: args.latLng.lng()
+                        })
+                    })
+                }
+
+
+                var input = document.getElementById('search-input')
+
+                console.log("initializeSearch")
+                var autocomplete = new google.maps.places.Autocomplete(input)
+
+                autocomplete.bindTo('bounds', map)
+
+                // Set the data fields to return when the user selects a place.
+                autocomplete.setFields(
+                    ['address_components', 'geometry', 'name'])
+                autocomplete.addListener('place_changed', function () {
+
+                    homeMarker.setVisible(false)
+                    var place = autocomplete.getPlace()
+                    if (!place.geometry) {
+                        window.alert("No details available for input: '" + place.name + "'")
+                        return
+                    }
+
+                    // If the place has a geometry, then present it on a map.
+                    if (place.geometry.viewport) {
+                        map.fitBounds(place.geometry.viewport)
+                    } else {
+                        map.setCenter(place.geometry.location)
+                        map.setZoom(17)
+                    }
+                    homeMarker.setPosition(place.geometry.location)
+                    homeMarker.setVisible(true)
+
+                    app.ports.receivedMapLocation.send({
+                        lat: place.geometry.location.lat(),
+                        lng: place.geometry.location.lng()
+                    })
+
+                    var address = ''
+                    if (place.address_components) {
+                        address = [
+                            (place.address_components[0] && place.address_components[0].short_name || ''),
+                            (place.address_components[1] && place.address_components[1].short_name || ''),
+                            (place.address_components[2] && place.address_components[2].short_name || '')
+                        ].join(' ')
+                    }
+
+
+                    // console.log(place.name)
+                    // console.log(address)
+                    // // infowindowContent.children['place-name'].textContent = place.name
+                    // // infowindowContent.children['place-address'].textContent = address
+                    // // infowindow.open(map, marker)
                 })
 
-                var address = ''
-                if (place.address_components) {
-                    address = [
-                        (place.address_components[0] && place.address_components[0].short_name || ''),
-                        (place.address_components[1] && place.address_components[1].short_name || ''),
-                        (place.address_components[2] && place.address_components[2].short_name || '')
-                    ].join(' ')
-                }
 
-
-                console.log(place.name)
-                console.log(address)
-                // infowindowContent.children['place-name'].textContent = place.name
-                // infowindowContent.children['place-address'].textContent = address
-                // infowindow.open(map, marker)
             })
+            .catch((e) => {
+                console.log(e)
+                app.ports.autocompleteError.send(true)
+            })
+    })
 
-
-        })
-        .catch(() => {
-            app.ports.autocompleteError.send()
-        })
 }
 
 

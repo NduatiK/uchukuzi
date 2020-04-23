@@ -445,7 +445,7 @@ googleMap model =
                     , errorCaption = Errors.inputErrorsFor model.form.problems "search" [ AutocompleteFailed ]
                     , icon = Just Icons.search
                     , onChange = SearchTextChanged
-                    , placeholder = Just (Input.placeholder [] (text "Eg. Kilimani Apartments"))
+                    , placeholder = Nothing
                     , title = ""
                     , value = model.form.searchText
                     }
