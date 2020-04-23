@@ -37,7 +37,8 @@ type TravelTime
 
 
 type alias Student =
-    { name : String
+    { id : Int
+    , name : String
     , travelTime : TravelTime
     , homeLocation : Location
     , pickupLocation : Location
@@ -78,7 +79,7 @@ householdDecoder : Decoder Household
 householdDecoder =
     let
         decoder id name email phoneNumber students =
-            succeed (Household id (Guardian id name email phoneNumber) students)
+            succeed (Household id (Guardian id name phoneNumber email) students)
     in
     Decode.succeed decoder
         |> required "id" int
@@ -92,7 +93,7 @@ householdDecoder =
 studentDecoder : Decoder Student
 studentDecoder =
     let
-        decoder name travel_time home_location pickup_location route =
+        decoder id name travel_time home_location pickup_location route =
             let
                 travelTime =
                     case travel_time of
@@ -105,9 +106,10 @@ studentDecoder =
                         _ ->
                             TwoWay
             in
-            succeed (Student name travelTime home_location pickup_location route)
+            succeed (Student id name travelTime home_location pickup_location route)
     in
     Decode.succeed decoder
+        |> required "id" int
         |> required "name" string
         |> required "travel_time" string
         |> required "home_location" locationDecoder

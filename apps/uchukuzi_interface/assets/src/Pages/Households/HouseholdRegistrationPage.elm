@@ -135,8 +135,7 @@ init : Session -> ( Model, Cmd msg )
 init session =
     ( emptyForm session
     , Cmd.batch
-        [ Ports.initializeMaps
-        , Ports.initializeSearch
+        [ Ports.initializeSearch
         ]
     )
 
@@ -394,7 +393,7 @@ googleMap model =
                 Style.errorStyle
 
             else
-                Style.captionLabelStyle
+                Style.captionStyle
 
         mapBorderStyle =
             if hasMapError then

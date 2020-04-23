@@ -6,10 +6,9 @@ import { isDevelopment } from './env'
 let runningRequest = null
 let initializingMapsChain = null
 
-function initializeMaps(app, _clickable, drawable, numberOfRetries, schoolLocation) {
+function initializeMaps(app, clickable, drawable, numberOfRetries, schoolLocation) {
     if (schoolLocation) {
         defaultLocation = { center: schoolLocation, zoom: 10 }
-        console.log(defaultLocation)
     }
 
     // Piggyback on existing request if necessary
@@ -22,7 +21,7 @@ function initializeMaps(app, _clickable, drawable, numberOfRetries, schoolLocati
         .then(createMapDom)
         .then(cleanMap)
         .then(insertMap)
-        .then(setupMapCallbacks(app, _clickable))
+        .then(setupMapCallbacks(app, clickable))
         .then(addDrawTools(app, drawable))
     initializingMapsChain
         .catch(() => {
@@ -230,7 +229,7 @@ const setupMapCallbacks = (app, clickable) => (data) => {
             })
         }
     } else {
-        if (clickListener) {
+         if (clickListener) {
             google.maps.event.removeListener(clickListener)
         }
     }
@@ -386,9 +385,10 @@ function requestGeoLocation(app) {
 }
 
 let homeMarker
+let homeMarkerDragListener
 function initializeSearch(app) {
     console.log("entered initializeSearch")
-    initializeMaps(app, true)
+    initializeMaps(app, false, false)
         .then(({ dom, map }) => {
             if (homeMarker) {
 
@@ -399,10 +399,31 @@ function initializeSearch(app) {
                     anchor: new google.maps.Point(12, 24),
                 }
                 homeMarker = new google.maps.Marker({
+                    draggable: true,
                     map: map,
                     icon: image
                 })
+
+                homeMarkerDragListener = google.maps.event.addListener(homeMarker, 'dragend', function () {
+                    app.ports.receivedMapLocation.send({
+                        lat: homeMarker.getPosition().lat(),
+                        lng: homeMarker.getPosition().lng()
+                    })
+                })
+                markers.push(homeMarker)
             }
+
+
+            if (!google.maps.event.hasListeners(map, 'click')) {
+                clickListener = google.maps.event.addListener(map, 'click', function (args) {
+                    homeMarker.setPosition(args.latLng)
+                    app.ports.receivedMapLocation.send({
+                        lat: args.latLng.lat(),
+                        lng: args.latLng.lng()
+                    })
+                })
+            }
+
 
             var input = document.getElementById('search-input')
 
@@ -428,12 +449,15 @@ function initializeSearch(app) {
                     map.fitBounds(place.geometry.viewport)
                 } else {
                     map.setCenter(place.geometry.location)
-                    map.setZoom(17) 
+                    map.setZoom(17)
                 }
                 homeMarker.setPosition(place.geometry.location)
                 homeMarker.setVisible(true)
 
-                app.ports.receivedMapLocation.send(place.geometry.location)
+                app.ports.receivedMapLocation.send({
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng()
+                })
 
                 var address = ''
                 if (place.address_components) {
