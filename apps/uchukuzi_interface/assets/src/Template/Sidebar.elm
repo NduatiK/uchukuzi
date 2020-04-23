@@ -8,6 +8,7 @@ import Element.Region as Region
 import Icons
 import Navigation exposing (Route)
 import Style exposing (edges)
+import StyledElement
 
 
 type NavigationPage
@@ -38,30 +39,52 @@ sidebarSections =
     ]
 
 
-view : Maybe Route -> Element msg
-view currentRoute =
-    let
-        viewSidebarSection wrappedItem =
-            case wrappedItem of
-                TopLevel item ->
-                    viewTopLevelLink item (colorFor item.navPage currentRoute)
-
-                Nested title subItems ->
-                    viewNestedLink title subItems currentRoute
-    in
+view : Maybe Route -> Bool -> msg -> Element msg
+view currentRoute open sidebarToggleMsg =
     column
         [ spacing 8
         , alignTop
+        , Style.animatesAll
         , paddingEach { edges | top = 100 }
         , Region.navigation
+        , height fill
+        , if open then
+            width shrink
+
+          else
+            width (px 54)
 
         -- , Background.color (rgb 1 1 1)
         ]
-        (List.map viewSidebarSection sidebarSections)
+        (List.map (viewSidebarSection open currentRoute) sidebarSections
+            ++ [ el [ alignBottom, alignLeft, paddingXY 12 12 ]
+                    (StyledElement.iconButton [ Background.color Colors.transparent, centerX ]
+                        { icon = Icons.chevronDown
+                        , iconAttrs =
+                            [ if open then
+                                rotate (pi / 2)
+
+                              else
+                                rotate (-pi / 2)
+                            ]
+                        , onPress = Just sidebarToggleMsg
+                        }
+                    )
+               ]
+        )
 
 
-viewTopLevelLink : Section msg -> Color -> Element msg
-viewTopLevelLink item backgroundColor =
+viewSidebarSection open currentRoute wrappedItem =
+    case wrappedItem of
+        TopLevel item ->
+            viewTopLevelLink item open (colorFor item.navPage currentRoute)
+
+        Nested title subItems ->
+            viewNestedLink title open subItems currentRoute
+
+
+viewTopLevelLink : Section msg -> Bool -> Color -> Element msg
+viewTopLevelLink item open backgroundColor =
     link
         [ paddingEach { edges | left = 16, top = 4, bottom = 4, right = 24 }
         , width fill
@@ -74,12 +97,22 @@ viewTopLevelLink item backgroundColor =
         , label =
             row (paddingXY 0 8 :: spacing 8 :: Font.size 18 :: sideBarSubSectionStyle)
                 [ el [ height (px 24), width (px 24) ] (item.icon [ centerX, centerY ])
-                , text item.title
+                , el
+                    [ if open then
+                        alpha 1
+
+                      else
+                        alpha 0
+                    ]
+                    (text item.title)
+
+                -- (text (String.toUpper item.title))
+                -- , el [ Font.semiBold, Font.variantList [ Font.smallCaps ] ] (text (String.toUpper item.title))
                 ]
         }
 
 
-viewNestedLink title subItems currentPage =
+viewNestedLink title open subItems currentPage =
     let
         subSection subItem =
             link

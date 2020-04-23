@@ -23,15 +23,15 @@ viewHeight pageHeight =
     pageHeight - NavBar.maxHeight
 
 
-frame : Maybe Route -> Element a -> Session.Session -> (a -> msg) -> NavBar.Model -> (NavBar.Msg -> msg) -> Int -> Element msg
-frame route body session toMsg navState headerToMsg pageHeight =
+frame : Maybe Route -> Element a -> Session.Session -> (a -> msg) -> NavBar.Model -> (NavBar.Msg -> msg) -> Bool -> msg -> Int -> Element msg
+frame route body session toMsg navState headerToMsg sidebarOpen sidebarToggleMsg pageHeight =
     let
         sideBar =
             if Session.getCredentials session == Nothing || Navigation.isPublicRoute route then
                 none
 
             else
-                Sidebar.view route
+                Sidebar.view route sidebarOpen sidebarToggleMsg
 
         renderedBody =
             row [ width fill ]

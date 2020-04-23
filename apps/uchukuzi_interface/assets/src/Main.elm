@@ -47,6 +47,7 @@ type alias Model =
     { page : PageModel
     , route : Maybe Route
     , navState : NavBar.Model
+    , sideBarOpen : Bool
     , windowHeight : Int
     , url : Url.Url
     , locationUpdates : Dict Int LocationUpdate
@@ -131,6 +132,7 @@ init args url navKey =
                 { page = Redirect session
                 , route = Nothing
                 , navState = NavBar.init session
+                , sideBarOpen = True
                 , windowHeight = height
                 , url = url
                 , locationUpdates = Dict.fromList []
@@ -157,6 +159,7 @@ type Msg
       ------------
       -- | UpdatedSessionCred (Maybe Session.Cred)
       ------------
+    | ToggleSideBar
     | GotNavBarMsg NavBar.Msg
       ------------
     | GotHouseholdListMsg HouseholdList.Msg
@@ -190,13 +193,13 @@ type Msg
 
 
 view : Model -> Browser.Document Msg
-view { page, route, navState, windowHeight } =
+view { page, route, navState, windowHeight, sideBarOpen } =
     let
         viewEmptyPage pageContents =
             viewPage pageContents GotHomeMsg
 
         viewPage pageContents toMsg =
-            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg windowHeight
+            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarOpen ToggleSideBar windowHeight
 
         -- viewEmptyPage =
         renderedView =
@@ -283,6 +286,9 @@ update msg model =
     case msg of
         WindowResized _ height ->
             ( { model | windowHeight = height }, Cmd.none )
+
+        ToggleSideBar ->
+            ( { model | sideBarOpen = not model.sideBarOpen }, Cmd.none )
 
         UpdatedTimeZone timezone ->
             let
