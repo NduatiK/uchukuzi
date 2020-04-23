@@ -2,6 +2,7 @@ import { Elm } from '../src/Main.elm'
 import { initializeMaps, requestGeoLocation, initializeSearch } from './gmaps'
 import { initializeCamera } from './camera'
 import { initializeLiveView, killLiveView } from './liveView'
+import { printCard } from './card'
 
 function parse(string) {
     try {
@@ -31,6 +32,9 @@ var app = Elm.Main.init({
     node: document.getElementById("elm")
 })
 
+app.ports.printCardPort.subscribe(() => {
+    printCard("")
+})
 app.ports.initializeSearchPort.subscribe(() => {
     initializeSearch(app)
 })

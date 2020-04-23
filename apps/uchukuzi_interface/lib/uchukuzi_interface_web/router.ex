@@ -38,6 +38,8 @@ defmodule UchukuziInterfaceWeb.Router do
     pipe_through :api
 
     post "/school/create", SchoolController, :create_school
+    get "/school/households/:student_id/qr_code.svg", SchoolController, :get_qr_code
+
   end
 
   scope "/api/auth", UchukuziInterfaceWeb do
@@ -47,6 +49,8 @@ defmodule UchukuziInterfaceWeb.Router do
     post "/assistant/request_token", AuthController, :request_assistant_token
     post "/assistant/exchange_token", AuthController, :exchange_assistant_token
     post "/manager/exchange_token", AuthController, :exchange_manager_token
+
+
   end
 
   scope "/api/school", UchukuziInterfaceWeb do

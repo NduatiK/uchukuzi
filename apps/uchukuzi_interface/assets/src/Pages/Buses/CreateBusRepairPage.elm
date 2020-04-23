@@ -315,7 +315,7 @@ viewRecord problems repair =
                     , el [ alignRight ] (StyledElement.plainButton [] { onPress = Just (Delete repair.id), label = Icons.trash [ Colors.fillErrorRed, alpha 1 ] })
                     ]
                 , column [ width fill, height fill ]
-                    [ el (alignRight :: Style.captionLabelStyle)
+                    [ el (alignRight :: Style.captionStyle)
                         (text (String.fromInt (String.length repair.description) ++ "/500"))
                     , StyledElement.multilineInput [ width fill, height fill ]
                         { ariaLabel = "Description of repair"

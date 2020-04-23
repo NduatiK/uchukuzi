@@ -6,7 +6,7 @@ module Style exposing
     , animatesShadow
     , blurredStyle
     , borderedContainer
-    , captionLabelStyle
+    , captionStyle
     , clipStyle
     , cssResponsive
     , defaultFontFace
@@ -96,8 +96,8 @@ header2Style =
     ]
 
 
-captionLabelStyle : List (Attribute msg)
-captionLabelStyle =
+captionStyle : List (Attribute msg)
+captionStyle =
     [ Font.size 13
     , Font.color (Colors.withAlpha (rgb255 4 30 37) 0.69)
     ]

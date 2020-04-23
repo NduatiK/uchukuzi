@@ -455,7 +455,7 @@ viewHeading busData =
                 none
 
             Just route ->
-                el Style.captionLabelStyle (text route.name)
+                el Style.captionStyle (text route.name)
         ]
 
 

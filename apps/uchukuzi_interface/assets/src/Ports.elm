@@ -55,6 +55,14 @@ port updateBusMap : LocationUpdate -> Cmd msg
 port bulkUpdateBusMap : List LocationUpdate -> Cmd msg
 
 
+printCard : Cmd msg
+printCard =
+    printCardPort ()
+
+
+port printCardPort : () -> Cmd msg
+
+
 
 -- INCOMING
 

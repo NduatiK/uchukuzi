@@ -1,4 +1,7 @@
-Push: git push gigalixir master
+Push: git push heroku master
 
-Check your app logs with:      gigalixir logs -a uchukuzi
-********Check**** deploy status with:      gigalixir ps -a uchukuzi
+heroku run "POOL_SIZE=2 mix ecto.migrate"
+
+
+heroku ps:exec 
+iex --sname console --remsh server@${HOSTNAME}

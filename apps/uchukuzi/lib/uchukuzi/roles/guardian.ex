@@ -7,6 +7,7 @@ defmodule Uchukuzi.Roles.Guardian do
   schema "guardians" do
     field(:name, :string)
     field(:email, :string)
+    field(:phone_number, :string)
 
     has_many(:students, Student)
 

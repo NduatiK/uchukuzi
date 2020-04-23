@@ -61,7 +61,7 @@ viewHeading title subLine =
                     none
 
                 Just caption ->
-                    el Style.captionLabelStyle (text caption)
+                    el Style.captionStyle (text caption)
             ]
         , StyledElement.textInput
             [ alignRight, width (fill |> maximum 300), centerY ]

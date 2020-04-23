@@ -62,7 +62,7 @@ defmodule UchukuziInterfaceWeb.RolesView do
       "id" => guardian.id,
       "name" => guardian.name,
       "email" => guardian.email,
-      "phone_number" => guardian.email,
+      "phone_number" => guardian.phone_number,
       "students" => render_students(guardian.students)
     }
   end

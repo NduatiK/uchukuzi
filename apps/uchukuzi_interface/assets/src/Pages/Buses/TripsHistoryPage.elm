@@ -79,7 +79,7 @@ init session bus =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of             
+    case msg of
         AdjustedValue sliderValue ->
             let
                 currentPoint =
@@ -286,8 +286,8 @@ viewSlider model zone trip =
         , column [ width (fillPortion 40) ]
             [ Input.slider
                 [ height (px 48)
-                , Element.below (el (Style.captionLabelStyle ++ [ alignLeft ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone trip.startTime))))
-                , Element.below (el (Style.captionLabelStyle ++ [ alignRight ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone trip.endTime))))
+                , Element.below (el (Style.captionStyle ++ [ alignLeft ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone trip.startTime))))
+                , Element.below (el (Style.captionStyle ++ [ alignRight ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone trip.endTime))))
 
                 -- "Track styling"
                 , Element.behindContent

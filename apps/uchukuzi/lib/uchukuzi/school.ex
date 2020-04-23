@@ -47,9 +47,6 @@ defmodule Uchukuzi.School do
     |> Repo.insert()
   end
 
-  def create_performed_repair(school_id, bus_id) do
-
-  end
   def create_performed_repair(school_id, bus_id, params) do
     with {:ok, bus} <- bus_for(school_id, bus_id) do
       params
@@ -95,7 +92,6 @@ defmodule Uchukuzi.School do
     |> where(school_id: ^school_id, bus_id: ^bus_id)
     |> Repo.all()
   end
-
 
   def update_crew_member_for(school_id, crew_member_id, params) do
     CrewMember
@@ -196,5 +192,11 @@ defmodule Uchukuzi.School do
         preload: [students: s]
       )
     )
+  end
+
+  def student_for(school_id, student_id) do
+    Student
+    |> where(school_id: ^school_id, id: ^student_id)
+    |> Repo.one()
   end
 end

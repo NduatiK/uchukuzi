@@ -316,14 +316,11 @@ viewOverlay { selectedCrewMember } =
                                 [ row [ width fill, paddingXY 8 0 ]
                                     [ column [ paddingXY 20 0, spacing 8 ]
                                         [ el (Style.header2Style ++ [ padding 0 ]) (text crewMember.name)
-                                        , el Style.captionLabelStyle (text (roleToString crewMember.role))
+                                        , el Style.captionStyle (text (roleToString crewMember.role))
                                         ]
-                                    , StyledElement.button [ Background.color Colors.white, alignRight, centerY, mouseOver [ Background.color (Colors.withAlpha Colors.purple 0.2) ] ]
-                                        { label =
-                                            row [ spacing 8 ]
-                                                [ Icons.edit [ Colors.fillPurple ]
-                                                , el [ centerY, Font.color Colors.purple ] (text "Edit details")
-                                                ]
+                                    , StyledElement.hoverButton [ alignRight ]
+                                        { title = "Edit details"
+                                        , icon = Just Icons.edit
                                         , onPress = Just (EditCrewMember crewMember)
                                         }
                                     ]
@@ -346,7 +343,7 @@ viewHeading { data, inEditingMode } =
         (if inEditingMode then
             column []
                 [ el Style.headerStyle (text "Editing Crew")
-                , el Style.captionLabelStyle (text "Drag and drop crew members to reassign them")
+                , el Style.captionStyle (text "Drag and drop crew members to reassign them")
                 ]
                 :: (case data of
                         Success _ ->

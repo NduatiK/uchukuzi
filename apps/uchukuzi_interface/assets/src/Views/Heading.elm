@@ -17,7 +17,7 @@ viewHeading title subLine =
                 none
 
             Just caption ->
-                el Style.captionLabelStyle (text caption)
+                el Style.captionStyle (text caption)
         , viewDivider
         ]
 

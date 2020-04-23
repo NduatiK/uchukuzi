@@ -58,6 +58,11 @@ add attrs =
     iconNamed "images/add.svg" (alpha 1 :: attrs)
 
 
+card : List (Attribute msg) -> Element msg
+card attrs =
+    iconNamed "images/card.svg" (alpha 1 :: attrs)
+
+
 edit : List (Attribute msg) -> Element msg
 edit attrs =
     iconNamed "images/edit.svg" (alpha 1 :: attrs)
@@ -181,6 +186,7 @@ done attrs =
 vehicle : List (Attribute msg) -> Element msg
 vehicle =
     iconNamed "images/shuttle.svg"
+
 
 home_pin : List (Attribute msg) -> Element msg
 home_pin =

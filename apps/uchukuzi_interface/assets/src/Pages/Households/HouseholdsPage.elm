@@ -10,11 +10,13 @@ import Element.Font as Font
 import Element.Input as Input
 import Errors
 import Html exposing (Html)
+import Html.Attributes exposing (id)
 import Html.Events exposing (..)
 import Icons
 import Json.Decode exposing (list)
 import Models.Household exposing (Household, Student, TravelTime(..), householdDecoder, studentByRouteDecoder)
 import Navigation
+import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
@@ -34,13 +36,18 @@ type alias Model =
     { session : Session
     , groupedStudents : WebData ( List GroupedStudents, List Household )
     , selectedGroupedStudents : Maybe GroupedStudents
-    , selectedStudent : Maybe Student
+    , selectedStudent :
+        Maybe
+            { student : Student
+            , household : Household
+            }
     }
 
 
 type Msg
     = SelectedHousehold
     | SelectedStudent (Maybe Student)
+    | GenerateCard
     | StudentsResponse (WebData ( List GroupedStudents, List Household ))
     | RegisterStudent
     | SelectedRoute GroupedStudents
@@ -92,10 +99,41 @@ update msg model =
             ( { model | selectedGroupedStudents = Just students }, Cmd.none )
 
         SelectedStudent student ->
-            ( { model | selectedStudent = student }, Cmd.none )
+            case ( model.groupedStudents, student ) of
+                ( _, Nothing ) ->
+                    ( { model | selectedStudent = Nothing }, Cmd.none )
+
+                ( Success groupedStudents, Just aStudent ) ->
+                    let
+                        matchingHousehold =
+                            List.head
+                                (List.filter
+                                    (\household ->
+                                        List.any (\s -> s.id == aStudent.id) household.students
+                                    )
+                                    (Tuple.second groupedStudents)
+                                )
+
+                        selectedStudent =
+                            Maybe.andThen
+                                (\household ->
+                                    Just
+                                        { student = aStudent
+                                        , household = household
+                                        }
+                                )
+                                matchingHousehold
+                    in
+                    ( { model | selectedStudent = selectedStudent }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
         SelectedHousehold ->
             ( model, Cmd.none )
+
+        GenerateCard ->
+            ( model, Ports.printCard )
 
         NoOp ->
             ( model, Cmd.none )
@@ -120,9 +158,10 @@ view model viewHeight =
 
 
 viewOverlay : Model -> Element Msg
-viewOverlay { selectedStudent } =
+viewOverlay { selectedStudent, session } =
     el
-        (Style.animatesAll
+        (htmlAttribute (id "cards")
+            :: Style.animatesAll
             :: (if selectedStudent == Nothing then
                     [ alpha 0 ]
 
@@ -137,7 +176,7 @@ viewOverlay { selectedStudent } =
             Nothing ->
                 none
 
-            Just student ->
+            Just { student, household } ->
                 el
                     [ width fill
                     , height fill
@@ -153,29 +192,68 @@ viewOverlay { selectedStudent } =
                             }
                         )
                     , inFront
-                        (el [ Background.color Colors.white, Border.rounded 5, Style.elevated2, centerX, centerY, width (fill |> maximum 600), Style.animatesNone ]
-                            (column [ spacing 8, paddingXY 0 24, width fill ]
-                                [ row [ width fill, paddingXY 8 0 ]
-                                    [ column [ paddingXY 20 0, spacing 8 ]
-                                        [ el (Style.header2Style ++ [ padding 0 ]) (text student.name)
-
-                                        -- , el Style.captionLabelStyle (text (roleToString crewMember.role))
-                                        ]
-                                    , StyledElement.button [ Background.color Colors.white, alignRight, centerY, mouseOver [ Background.color (Colors.withAlpha Colors.purple 0.2) ] ]
-                                        { label =
-                                            row [ spacing 8 ]
-                                                [ Icons.edit [ Colors.fillPurple ]
-                                                , el [ centerY, Font.color Colors.purple ] (text "Edit details")
-                                                ]
+                        (el
+                            [ Background.color Colors.white
+                            , Border.rounded 5
+                            , Style.elevated2
+                            , centerX
+                            , centerY
+                            , width (fill |> maximum 600)
+                            , Style.animatesNone
+                            , below
+                                (row [ padding 20, centerX, spacing 20 ]
+                                    [ StyledElement.hoverButton []
+                                        { title = "Generate Card"
+                                        , icon = Just Icons.card
+                                        , onPress = Just GenerateCard
+                                        }
+                                    , StyledElement.hoverButton [ alignRight ]
+                                        { title = "Edit details"
+                                        , icon = Just Icons.edit
                                         , onPress = Nothing
-
-                                        -- , onPress = Just (EditCrewMember crewMember)
                                         }
                                     ]
-                                , el [ width fill, height (px 2), Background.color Colors.darkness ] none
-                                , column [ paddingXY 20 20, spacing 16 ]
-                                    [--     el Style.labelStyle (text crewMember.phoneNumber)
-                                     -- , el Style.labelStyle (text crewMember.email)
+                                )
+                            ]
+                            (column [ spacing 8, paddingXY 0 0, width (px 600), height (px 310) ]
+                                [ column [ paddingXY 28 20, spacing 8 ]
+                                    [ el [ height (px 12) ] none
+                                    , el (Style.header2Style ++ [ padding 0 ]) (text student.name)
+                                    ]
+                                , row [ spacing 12, paddingXY 28 0 ]
+                                    [ el [ Background.color Colors.darkGreen, height fill, width (px 2) ] none
+                                    , column [ paddingXY 0 4, spacing 12 ]
+                                        [ row []
+                                            [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Route: ")
+                                            , el (Style.labelStyle ++ [ padding 0 ]) (text student.route)
+                                            ]
+                                        , row []
+                                            [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Guardian: ")
+                                            , el Style.labelStyle (text household.guardian.phoneNumber)
+                                            ]
+                                        ]
+                                    ]
+                                , row [ width fill, paddingXY 20 20, alignBottom ]
+                                    [ image [ width (px 100), height (px 100), alignBottom, alignLeft ]
+                                        { src =
+                                            "/api/school/households/"
+                                                ++ String.fromInt student.id
+                                                ++ "/qr_code.svg?token="
+                                                ++ Maybe.withDefault "" (Maybe.andThen (.token >> Just) (Session.getCredentials session))
+                                        , description = ""
+                                        }
+                                    , column [ paddingXY 0 4, spacing 12, alignRight ]
+                                        [ if student.travelTime == Evening then
+                                            none
+
+                                          else
+                                            el (Style.labelStyle ++ [ Font.color Colors.sassyGreyDark, padding 0, alignRight ]) (text "Morning")
+                                        , if student.travelTime == Morning then
+                                            none
+
+                                          else
+                                            el (Style.labelStyle ++ [ Font.color Colors.sassyGreyDark, padding 0, alignRight ]) (text "Evening")
+                                        ]
                                     ]
                                 ]
                             )

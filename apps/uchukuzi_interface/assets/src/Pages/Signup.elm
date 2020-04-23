@@ -329,7 +329,7 @@ formPageHeader name pageNumber =
     el (alignLeft :: Style.header2Style)
         (paragraph [ spacing 10 ]
             [ text name
-            , el (paddingXY 10 0 :: Style.captionLabelStyle) (text pageNumber)
+            , el (paddingXY 10 0 :: Style.captionStyle) (text pageNumber)
             ]
         )
 
@@ -360,7 +360,7 @@ viewSchoolForm model =
                 Style.errorStyle
 
             else
-                Style.captionLabelStyle
+                Style.captionStyle
 
         mapBorderStyle =
             if hasMapError then
@@ -371,7 +371,7 @@ viewSchoolForm model =
     in
     column [ centerX, alignTop, width (fill |> maximum 600), spacing 10 ]
         [ formPageHeader "School Details" "(2/2)"
-        , StyledElement.textInput [ centerX]
+        , StyledElement.textInput [ centerX ]
             { title = "School Name"
             , caption = Just "This is the name that will be visible to parents and students"
             , errorCaption = errorMapper "school_name" [ EmptySchoolName ]
@@ -396,7 +396,7 @@ viewSchoolForm model =
                         , alpha 0
                         , mouseOver [ alpha 1 ]
                         ]
-                        (el ([ moveDown 24, Background.color Colors.white, Style.elevated2, padding 8, mouseOver [ alpha 0 ] ] ++ Style.captionLabelStyle)
+                        (el ([ moveDown 24, Background.color Colors.white, Style.elevated2, padding 8, mouseOver [ alpha 0 ] ] ++ Style.captionStyle)
                             (text "This allows us to know when your vehicle has left or arrived at the school compound")
                         )
                     )
@@ -468,7 +468,7 @@ viewManagerForm model =
                 , icon = Nothing
                 }
             ]
-        , el Style.captionLabelStyle (text "Your official name")
+        , el Style.captionStyle (text "Your official name")
         , spacer
         , StyledElement.emailInput [ centerX ]
             { title = "Email Address"

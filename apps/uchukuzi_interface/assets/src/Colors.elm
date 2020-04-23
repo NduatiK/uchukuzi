@@ -61,6 +61,11 @@ sassyGrey =
     Element.rgb255 163 175 190
 
 
+sassyGreyDark : Color
+sassyGreyDark =
+    Element.rgb255 130 140 152
+
+
 teal : Color
 teal =
     Element.rgb255 102 218 213

@@ -8,7 +8,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def action(conn, _) do
     arg_list =
       with :no_manager <- Map.get(conn.assigns, :manager, :no_manager) do
-        [conn, conn.params, nil]
+        [conn, conn.params]
       else
         manager ->
           [conn, conn.params, manager.school_id]
@@ -17,7 +17,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     apply(__MODULE__, action_name(conn), arg_list)
   end
 
-  def create_school(conn, %{"manager" => manager_params, "school" => school_params}, _) do
+  def create_school(conn, %{"manager" => manager_params, "school" => school_params}) do
     with center <- %{
            lng: school_params["geo"]["lng"],
            lat: school_params["geo"]["lat"]
@@ -80,12 +80,42 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
+  @spec list_households(Plug.Conn.t(), any, any) :: Plug.Conn.t()
   def list_households(conn, _, school_id) do
     guardians = School.guardians_for(school_id)
 
     conn
     |> put_view(UchukuziInterfaceWeb.RolesView)
     |> render("guardians.json", guardians: guardians)
+  end
+
+
+
+  def get_qr_code(%{query_params: %{"token" => token}} = conn, %{"student_id" => student_id}) do
+    conn =
+      %{assigns: %{manager: manager}} =
+      conn
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> ManagerAuth.call(conn)
+
+      with student when not is_nil(student) <- School.student_for(manager.school_id, student_id) do
+        student = Repo.preload(student, :guardian)
+
+        qr_code =
+          """
+          {"id": #{student.id}, "pno": #{student.guardian.phone_number}}
+          """
+          |> EQRCode.encode()
+          |> EQRCode.png()
+
+        conn
+        |> put_resp_content_type("image/png")
+        |> send_resp(200, qr_code)
+
+
+        # conn
+        # |> send
+      end
   end
 
   def create_bus(conn, bus_params, school_id) do

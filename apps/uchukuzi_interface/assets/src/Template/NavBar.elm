@@ -211,7 +211,7 @@ dropdownOption optionText action =
         , label =
             el
                 ([]
-                    ++ Style.captionLabelStyle
+                    ++ Style.captionStyle
                 )
                 (text optionText)
         }

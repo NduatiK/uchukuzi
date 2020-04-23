@@ -8,6 +8,7 @@ module StyledElement exposing
     , ghostButton
     , ghostButtonLink
     , googleMap
+    , hoverButton
     , iconButton
     , multilineInput
     , navigationLink
@@ -181,6 +182,28 @@ button attributes config =
             ++ attributes
         )
         config
+
+
+hoverButton :
+    List (Attribute msg)
+    -> { title : String, onPress : Maybe msg, icon : Maybe (IconBuilder msg) }
+    -> Element msg
+hoverButton attrs { title, onPress, icon } =
+    button
+        ([ Background.color Colors.white
+         , centerY
+         , Font.color Colors.purple
+         , mouseOver [ Background.color (Element.rgb255 222 220 252) ]
+         ]
+            ++ attrs
+        )
+        { label =
+            row [ spacing 8 ]
+                [ Maybe.withDefault (always none) icon [ Colors.fillPurple ]
+                , el [ centerY ] (text title)
+                ]
+        , onPress = onPress
+        }
 
 
 failureButton :
@@ -443,7 +466,7 @@ wrappedInput input title caption errorCaption icon attributes trailingElements =
         captionLabel =
             case caption of
                 Just captionText ->
-                    Element.paragraph captionLabelStyle [ text captionText ]
+                    Element.paragraph captionStyle [ text captionText ]
 
                 Nothing ->
                     none
