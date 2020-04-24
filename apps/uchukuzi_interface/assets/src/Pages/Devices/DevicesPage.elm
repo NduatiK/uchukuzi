@@ -59,13 +59,14 @@ view : Model -> Element msg
 view model =
     column [ width fill, spacing 40, paddingXY 24 8 ]
         [ viewHeading "*Devices****" (Just "Place this within the bus")
-        , Element.column []
-            [ StyledElement.buttonLink []
-                { route = Navigation.DeviceRegistration
-                , label = text "Add a device"
-                }
-            , viewBody model
-            ]
+
+        -- , Element.column []
+        -- [ StyledElement.buttonLink []
+        --     { route = Navigation.DeviceRegistration
+        --     , label = text "Add a device"
+        --     }
+        -- , viewBody model
+        -- ]
         ]
 
 

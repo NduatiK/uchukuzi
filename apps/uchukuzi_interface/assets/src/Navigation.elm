@@ -41,12 +41,11 @@ type Route
     | Bus Int (Maybe String)
     | BusDeviceRegistration Int
     | CreateBusRepair Int
-      -------------
-    | DeviceRegistration
-    | DeviceList
 
 
 
+-------------
+-- | DeviceList
 -- http://localhost:4000/#/fleet/1/?page=trips
 --  Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
 
@@ -55,7 +54,14 @@ loggedInParser : Parser (Route -> a) a
 loggedInParser =
     oneOf
         (Parser.map Buses Parser.top
-            :: parsersFor [ Buses, Routes, HouseholdList, DeviceList, CrewMembers ]
+            :: parsersFor
+                [ Buses
+                , Routes
+                , HouseholdList
+
+                -- , DeviceList
+                , CrewMembers
+                ]
             ++ [ Parser.map CreateBusRepair (s (routeName Buses) </> int </> s "maintenance" </> s "new")
                , Parser.map CreateRoute (s (routeName Routes) </> s (routeName CreateRoute))
                , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s "edit")
@@ -65,7 +71,8 @@ loggedInParser =
                 [ ( HouseholdList, StudentRegistration )
                 , ( CrewMembers, CrewMemberRegistration )
                 , ( Buses, BusRegistration )
-                , ( DeviceList, DeviceRegistration )
+
+                -- , ( DeviceList, DeviceRegistration )
                 ]
             ++ [ Parser.map (\a -> Bus a Nothing) (s (routeName Buses) </> int)
                , Parser.map (\a b -> Bus a (Just b)) (s (routeName Buses) </> int </> string)
@@ -280,12 +287,8 @@ routeToString page =
                 StudentRegistration ->
                     [ routeName HouseholdList, routeName page ]
 
-                DeviceList ->
-                    [ routeName page ]
-
-                DeviceRegistration ->
-                    [ routeName DeviceList, routeName page ]
-
+                -- DeviceList ->
+                --     [ routeName page ]
                 BusDeviceRegistration busID ->
                     [ routeName Buses, String.fromInt busID, routeName page ]
 
@@ -345,12 +348,8 @@ routeName page =
         HouseholdList ->
             "students"
 
-        DeviceList ->
-            "devices"
-
-        DeviceRegistration ->
-            "new"
-
+        -- DeviceList ->
+        --     "devices"
         BusDeviceRegistration _ ->
             "register_device"
 

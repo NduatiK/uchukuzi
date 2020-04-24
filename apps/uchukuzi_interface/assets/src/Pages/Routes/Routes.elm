@@ -104,11 +104,8 @@ viewBody model viewHeight =
 
 viewHeading : Model -> Element Msg
 viewHeading model =
-    row [ spacing 16, width fill ]
-        [ Element.column
-            [ width fill ]
-            [ el Style.headerStyle (text "All Routes")
-            ]
+    wrappedRow [ spacing 16, width fill ]
+        [ el Style.headerStyle (text "All Routes")
         , StyledElement.textInput
             [ alignRight, width (fill |> maximum 300), centerY ]
             { title = ""
@@ -147,10 +144,19 @@ viewRoutes model =
                 ]
 
         Success routes ->
-            wrappedRow [ spacing 10, paddingEach { edges | right = 10, bottom = 10 }, scrollbarY, height fill, width fill ]
-                (List.map viewRoute routes)
+            el
+                [ scrollbarY
+                , height fill
+                , width fill
+                ]
+                (wrappedRow
+                    [ spacing 10
+                    , paddingEach { edges | right = 10, bottom = 10 }
+                    ]
+                    (List.map viewRoute routes)
+                 -- (List.map viewRoute (routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes))
+                )
 
-        -- (List.map viewRoute (routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes))
         _ ->
             el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
 

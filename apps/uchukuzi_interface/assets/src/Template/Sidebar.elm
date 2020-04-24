@@ -253,12 +253,10 @@ toNavigationPage route =
         Navigation.Signup ->
             Buses
 
-        Navigation.DeviceRegistration ->
-            Buses
-
-        Navigation.DeviceList ->
-            Buses
-
+        -- Navigation.DeviceRegistration ->
+        --     Buses
+        -- Navigation.DeviceList ->
+        --     Buses
         Navigation.Routes ->
             Routes
 

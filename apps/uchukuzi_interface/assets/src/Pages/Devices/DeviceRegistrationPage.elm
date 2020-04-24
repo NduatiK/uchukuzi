@@ -35,16 +35,13 @@ type alias Model =
     { session : Session
     , form : Form
     , cameraState : CameraState
-    , busDropDownState : Dropdown.State Bus
-    , buses : WebData (List Bus)
     , requestState : WebData ValidForm
-    , preselectedBus : Maybe Int
+    , bus : Int
     }
 
 
 type alias Form =
     { serial : String
-    , selectedBus : Maybe Bus
     , problems : List (Errors.Errors Problem)
     }
 
@@ -53,13 +50,6 @@ type Problem
     = InvalidSerial
     | CameraOpenError
     | ServerError String (List String)
-
-
-type alias Bus =
-    { id : Int
-    , numberPlate : String
-    , hasDevice : Bool
-    }
 
 
 type CameraState
@@ -71,38 +61,32 @@ type CameraState
 
 type alias ValidForm =
     { serial : String
-    , bus_id : Maybe Int
+    , bus_id : Int
     }
 
 
 type Msg
     = ChangedDeviceSerial String
     | SubmitButtonMsg
-    | BusesServerResponse (WebData (List Bus))
     | RegisterResponse (WebData ValidForm)
     | ToggleCamera
     | CameraOpened Bool
     | GotCameraNotFoundError
     | ReceivedCode String
-    | BusPicked (Maybe Bus)
-    | DropdownMsg (Dropdown.Msg Bus)
 
 
-init : Session -> Maybe Int -> ( Model, Cmd Msg )
+init : Session -> Int -> ( Model, Cmd Msg )
 init session busID =
     ( { session = session
-      , preselectedBus = busID
+      , bus = busID
       , form =
             { serial = ""
-            , selectedBus = Nothing
             , problems = []
             }
       , cameraState = CameraClosed
-      , busDropDownState = Dropdown.init "busDropDownState"
-      , buses = Loading
       , requestState = NotAsked
       }
-    , Cmd.batch [ fetchBuses session ]
+    , Cmd.none
     )
 
 
@@ -125,7 +109,7 @@ update msg model =
             ( { model | form = updated_form }, Cmd.none )
 
         SubmitButtonMsg ->
-            case validateForm model.form of
+            case validateForm model of
                 Ok validForm ->
                     ( { model
                         | form = { form | problems = [] }
@@ -211,41 +195,6 @@ update msg model =
                     ]
                 )
 
-        BusPicked bus ->
-            ( { model | form = { form | selectedBus = bus } }, Cmd.none )
-
-        DropdownMsg subMsg ->
-            let
-                ( _, config, options ) =
-                    busDropdown model
-
-                ( state, cmd ) =
-                    Dropdown.update config subMsg model.busDropDownState options
-            in
-            ( { model | busDropDownState = state }, cmd )
-
-        BusesServerResponse response ->
-            case response of
-                Success buses ->
-                    let
-                        filteredBuses =
-                            buses
-                                |> List.filter (.hasDevice >> not)
-                                |> List.sortBy .numberPlate
-
-                        selectedBus =
-                            Maybe.andThen
-                                (\bus_id ->
-                                    List.head
-                                        (List.filter (\bus -> bus.id == bus_id) filteredBuses)
-                                )
-                                model.preselectedBus
-                    in
-                    ( { model | buses = Success filteredBuses, form = { form | selectedBus = selectedBus } }, Cmd.none )
-
-                _ ->
-                    ( { model | buses = response }, Cmd.none )
-
         RegisterResponse response ->
             let
                 newModel =
@@ -253,7 +202,7 @@ update msg model =
             in
             case response of
                 Success _ ->
-                    ( newModel, Navigation.rerouteTo newModel Navigation.DeviceList )
+                    ( newModel, Navigation.rerouteTo newModel (Navigation.Bus model.bus (Just "device")) )
 
                 Failure error ->
                     let
@@ -321,12 +270,12 @@ viewForm model =
                 , onPress = Just ToggleCamera
                 }
             ]
-        , if model.preselectedBus == Nothing then
-            toDropDownView <| busDropdown model
 
-          else
-            none
-        , viewButton (model.form.selectedBus /= Nothing)
+        -- , if model.bus == Nothing then
+        --     toDropDownView <| busDropdown model
+        --   else
+        --     none
+        , viewButton True
         ]
 
 
@@ -461,33 +410,6 @@ viewButton enabled =
         }
 
 
-busDropdown : Model -> ( Element Msg, Dropdown.Config Bus Msg, List Bus )
-busDropdown model =
-    let
-        dropdown buses =
-            StyledElement.dropDown []
-                { ariaLabel = "Select bus dropdown"
-                , caption = Just "Select the bus you will attach the device to"
-                , prompt = Nothing
-                , dropDownMsg = DropdownMsg
-                , dropdownState = model.busDropDownState
-                , errorCaption = Nothing
-                , icon = Just Icons.vehicle
-                , onSelect = BusPicked
-                , options = buses
-                , title = "Bus"
-                , toString = \x -> x.numberPlate
-                , isLoading = False
-                }
-    in
-    case model.buses of
-        Success buses ->
-            dropdown buses
-
-        _ ->
-            dropdown []
-
-
 viewScanExplanation =
     column [ padding 24, spacing 20 ]
         [ Icons.qrBox []
@@ -504,32 +426,8 @@ subscriptions model =
         ]
 
 
-fetchBuses : Session -> Cmd Msg
-fetchBuses session =
-    Api.get session Endpoint.buses (list busDecoder)
-        |> Cmd.map BusesServerResponse
-
-
-busDecoder : Decoder Bus
-busDecoder =
-    let
-        toBus : Int -> String -> Maybe String -> Decoder Bus
-        toBus id number_plate device =
-            Decode.succeed
-                { id = id
-                , numberPlate = number_plate
-                , hasDevice = device /= Nothing
-                }
-    in
-    Decode.succeed toBus
-        |> required "id" int
-        |> required "number_plate" string
-        |> required "device" (nullable string)
-        |> resolve
-
-
-validateForm : Form -> Result (List ( Problem, String )) ValidForm
-validateForm form =
+validateForm : Model -> Result (List ( Problem, String )) ValidForm
+validateForm { form, bus } =
     let
         problems =
             if Validator.isValidImei form.serial then
@@ -542,7 +440,7 @@ validateForm form =
         [] ->
             Ok
                 { serial = form.serial
-                , bus_id = Maybe.map .id form.selectedBus
+                , bus_id = bus
                 }
 
         _ ->
@@ -553,16 +451,10 @@ submit : Session -> ValidForm -> Cmd Msg
 submit session form =
     let
         params =
-            (case form.bus_id of
-                Just bus_id ->
-                    Encode.object
-                        [ ( "bus_id", Encode.int bus_id )
-                        , ( "imei", Encode.string form.serial )
-                        ]
-
-                Nothing ->
-                    Encode.object []
-            )
+            Encode.object
+                [ ( "bus_id", Encode.int form.bus_id )
+                , ( "imei", Encode.string form.serial )
+                ]
                 |> Http.jsonBody
     in
     Api.post session Endpoint.devices params (Decode.succeed form)
