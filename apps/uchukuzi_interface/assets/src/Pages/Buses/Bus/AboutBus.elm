@@ -1,4 +1,4 @@
-module Pages.Buses.AboutBus exposing (Model, Msg, init, locationUpdateMsg, update, view, viewFooter)
+module Pages.Buses.Bus.AboutBus exposing (Model, Msg, init, locationUpdateMsg, update, view, viewFooter)
 
 import Api
 import Api.Endpoint as Endpoint

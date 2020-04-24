@@ -9,6 +9,7 @@ module Api.Endpoint exposing
     , crewMembersAndBuses
     , crewMembersForBus
     , devices
+    , fuelReports
     , get
     , households
     , login
@@ -138,6 +139,10 @@ bus busID =
 performedBusRepairs : Int -> Endpoint
 performedBusRepairs busID =
     url [ "school", "buses", String.fromInt busID, "performed_repairs" ]
+        []
+fuelReports : Int -> Endpoint
+fuelReports busID =
+    url [ "school", "buses", String.fromInt busID, "fuel_reports" ]
         []
 
 

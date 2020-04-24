@@ -4,10 +4,16 @@ import Browser.Navigation as Nav
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Json.Decode as Decode exposing (Decoder)
+import Pages.Buses.Bus.Navigation exposing (BusPage(..), allBusPages)
 import Session exposing (Session)
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, int, oneOf, s, string)
 import Url.Parser.Query as Query
+
+
+busPageToString : BusPage -> String
+busPageToString =
+    Pages.Buses.Bus.Navigation.busPageToString >> String.toLower
 
 
 
@@ -38,9 +44,10 @@ type Route
       -------------
     | Buses
     | BusRegistration
-    | Bus Int (Maybe String)
+    | Bus Int BusPage
     | BusDeviceRegistration Int
     | CreateBusRepair Int
+    | CreateFuelRecord Int
 
 
 
@@ -62,7 +69,8 @@ loggedInParser =
                 -- , DeviceList
                 , CrewMembers
                 ]
-            ++ [ Parser.map CreateBusRepair (s (routeName Buses) </> int </> s "maintenance" </> s "new")
+            ++ [ Parser.map CreateFuelRecord (s (routeName Buses) </> int </> s (busPageToString FuelHistory) </> s (routeName (CreateFuelRecord -1)))
+               , Parser.map CreateBusRepair (s (routeName Buses) </> int </> s (busPageToString BusRepairs) </> s (routeName (CreateBusRepair -1)))
                , Parser.map CreateRoute (s (routeName Routes) </> s (routeName CreateRoute))
                , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s "edit")
                , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
@@ -74,8 +82,16 @@ loggedInParser =
 
                 -- , ( DeviceList, DeviceRegistration )
                 ]
-            ++ [ Parser.map (\a -> Bus a Nothing) (s (routeName Buses) </> int)
-               , Parser.map (\a b -> Bus a (Just b)) (s (routeName Buses) </> int </> string)
+            ++ [ Parser.map (\a -> Bus a About) (s (routeName Buses) </> int)
+               , Parser.map
+                    (\a b ->
+                        let
+                            matching =
+                                List.head (List.filter (\p -> busPageToString p == b) allBusPages)
+                        in
+                        Bus a (Maybe.withDefault About matching)
+                    )
+                    (s (routeName Buses) </> int </> string)
                ]
         )
 
@@ -295,19 +311,17 @@ routeToString page =
                 Buses ->
                     [ routeName Buses ]
 
-                Bus busID pageStr ->
-                    case pageStr of
-                        Nothing ->
-                            [ routeName Buses, String.fromInt busID ]
-
-                        Just pageStr_ ->
-                            [ routeName Buses, String.fromInt busID, String.toLower pageStr_ ]
+                Bus busID busPage ->
+                    [ routeName Buses, String.fromInt busID, busPageToString busPage ]
 
                 BusRegistration ->
                     [ routeName Buses, routeName BusRegistration ]
 
                 CreateBusRepair busID ->
-                    [ routeName Buses, String.fromInt busID, "maintenance", "new" ]
+                    [ routeName Buses, String.fromInt busID, busPageToString BusRepairs, routeName (CreateBusRepair -1) ]
+
+                CreateFuelRecord busID ->
+                    [ routeName Buses, String.fromInt busID, busPageToString FuelHistory, routeName (CreateFuelRecord -1) ]
 
                 Routes ->
                     [ routeName Routes ]
@@ -348,8 +362,6 @@ routeName page =
         HouseholdList ->
             "students"
 
-        -- DeviceList ->
-        --     "devices"
         BusDeviceRegistration _ ->
             "register_device"
 
@@ -366,6 +378,9 @@ routeName page =
             "new"
 
         CreateBusRepair _ ->
+            "new"
+
+        CreateFuelRecord _ ->
             "new"
 
         CreateRoute ->

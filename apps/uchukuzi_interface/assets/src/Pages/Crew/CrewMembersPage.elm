@@ -32,7 +32,6 @@ import Views.DragAndDrop exposing (draggable, droppable)
 
 type alias Model =
     { session : Session
-    , height : Int
     , data : WebData Data
     , editedData : Data
     , edits : Edits
@@ -78,10 +77,9 @@ type Msg
     | DraggedCrewMemberAboveUnassigned
 
 
-init : Session -> Int -> ( Model, Cmd Msg )
-init session height =
+init : Session -> ( Model, Cmd Msg )
+init session =
     ( { session = session
-      , height = height
       , data = Loading
       , editedData = Data [] []
       , edits =
@@ -263,17 +261,17 @@ update msg model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model viewHeight =
     column
         [ width fill
-        , height (px model.height)
+        , height (px viewHeight)
         , spacing 40
         , paddingXY 90 70
         , inFront (viewOverlay model)
         ]
         [ viewHeading model
-        , viewBody model
+        , viewBody model viewHeight
         ]
 
 
@@ -404,8 +402,8 @@ viewHeading { data, inEditingMode } =
         )
 
 
-viewBody : Model -> Element Msg
-viewBody model =
+viewBody : Model -> Int -> Element Msg
+viewBody model viewHeight =
     case model.data of
         Success data ->
             let
@@ -423,8 +421,8 @@ viewBody model =
                     _ ->
                         Lazy.lazy3 viewBuses editedData model.edits model.inEditingMode
                 , el [ width (px 60) ] none
-                , el [ width (px 2), height (px (model.height // 2)), Background.color Colors.darkness ] none
-                , Lazy.lazy3 viewUnassignedCrewMembers editedData model.height model.inEditingMode
+                , el [ width (px 2), height (px (viewHeight // 2)), Background.color Colors.darkness ] none
+                , Lazy.lazy3 viewUnassignedCrewMembers editedData viewHeight model.inEditingMode
                 ]
 
         Failure _ ->

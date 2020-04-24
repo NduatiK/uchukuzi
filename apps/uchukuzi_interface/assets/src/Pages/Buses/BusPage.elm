@@ -14,11 +14,12 @@ import Json.Decode exposing (Decoder)
 import Models.Bus exposing (Bus, LocationUpdate, busDecoderWithCallback)
 import Navigation
 import Page
-import Pages.Buses.AboutBus as About
-import Pages.Buses.BusDevicePage as BusDevice
-import Pages.Buses.BusRepairsPage as BusRepairs
-import Pages.Buses.FuelHistoryPage as FuelHistory
-import Pages.Buses.TripsHistoryPage as RouteHistory
+import Pages.Buses.Bus.AboutBus as About
+import Pages.Buses.Bus.BusDevicePage as BusDevice
+import Pages.Buses.Bus.BusRepairsPage as BusRepairs
+import Pages.Buses.Bus.FuelHistoryPage as FuelHistory
+import Pages.Buses.Bus.Navigation exposing (BusPage(..), busPageToString)
+import Pages.Buses.Bus.TripsHistoryPage as RouteHistory
 import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
@@ -28,10 +29,9 @@ import Style
 type alias Model =
     { session : Session
     , busData : WebData BusData
-    , height : Int
     , busID : Int
     , locationUpdate : Maybe LocationUpdate
-    , preferredPage : Maybe String
+    , currentPage : BusPage
     }
 
 
@@ -58,23 +58,27 @@ type Page
     | BusRepairs BusRepairs.Model
 
 
-pageName : Page -> String
-pageName page =
+pageToBusPage : Page -> BusPage
+pageToBusPage page =
     case page of
         About _ ->
-            "Summary"
+            Pages.Buses.Bus.Navigation.About
 
         RouteHistory _ ->
-            "Trips"
+            Pages.Buses.Bus.Navigation.RouteHistory
 
         FuelHistory _ ->
-            "Fuel Log"
+            Pages.Buses.Bus.Navigation.FuelHistory
 
         BusDevice _ ->
-            "Device"
+            Pages.Buses.Bus.Navigation.BusDevice
 
         BusRepairs _ ->
-            "Maintenance"
+            Pages.Buses.Bus.Navigation.BusRepairs
+
+
+pageName =
+    pageToBusPage >> busPageToString >> String.replace "_" " "
 
 
 type Msg
@@ -95,24 +99,23 @@ locationUpdateMsg data =
     LocationUpdate data
 
 
-init : Int -> Session -> Int -> Maybe LocationUpdate -> Maybe String -> ( Model, Cmd Msg )
-init busID session height locationUpdate preferredPage =
+init : Int -> Session -> Maybe LocationUpdate -> BusPage -> ( Model, Cmd Msg )
+init busID session locationUpdate currentPage =
     ( { session = session
       , busData = Loading
-      , height = height
       , busID = busID
       , locationUpdate = locationUpdate
-      , preferredPage = preferredPage
+      , currentPage = currentPage
       }
     , Cmd.batch
-        [ fetchBus busID session preferredPage
+        [ fetchBus busID session currentPage
         , Ports.initializeLiveView ()
         ]
     )
 
 
-allPagesFromSession : Bus -> Session -> Maybe String -> BusData
-allPagesFromSession bus session preferredPage =
+allPagesFromSession : Bus -> Session -> BusPage -> BusData
+allPagesFromSession bus session currentPage =
     let
         defaultPage =
             ( Icons.info, aboutPage bus session )
@@ -126,18 +129,13 @@ allPagesFromSession bus session preferredPage =
             ]
 
         ( pageIndex, initialPage ) =
-            case preferredPage of
-                Just preferredPage_ ->
-                    Maybe.withDefault
-                        ( 0, defaultPage )
-                        (List.head
-                            (List.filter (\( index, ( _, ( page, _ ) ) ) -> String.toLower (pageName page) == String.toLower (String.replace "%20" " " preferredPage_))
-                                (List.indexedMap Tuple.pair pages)
-                            )
-                        )
-
-                Nothing ->
-                    ( 0, defaultPage )
+            Maybe.withDefault
+                ( 0, defaultPage )
+                (List.head
+                    (List.filter (\( index, ( _, ( page, _ ) ) ) -> pageToBusPage page == currentPage)
+                        (List.indexedMap Tuple.pair pages)
+                    )
+                )
     in
     { bus = bus
     , currentPage = Tuple.first (Tuple.second initialPage)
@@ -375,7 +373,7 @@ changeCurrentPage selectedPageIndex_ model_ =
               }
             , Cmd.batch
                 [ msg
-                , Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (Just (pageName selectedPage)))
+                , Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (pageToBusPage selectedPage))
                 ]
             )
 
@@ -383,11 +381,11 @@ changeCurrentPage selectedPageIndex_ model_ =
             ( model_, Cmd.none )
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model viewHeight =
     case model.busData of
         Success busData ->
-            viewLoaded model busData
+            viewLoaded model busData viewHeight
 
         Failure _ ->
             el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
@@ -396,11 +394,11 @@ view model =
             Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
 
 
-viewLoaded : Model -> BusData -> Element Msg
-viewLoaded model busData =
+viewLoaded : Model -> BusData -> Int -> Element Msg
+viewLoaded model busData viewHeight =
     let
         ( body, footer ) =
-            ( viewBody model.height busData
+            ( viewBody viewHeight busData
             , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData)
             )
 
@@ -594,15 +592,15 @@ iconForPage pageIcon page currentPage =
 -- NETWORK
 
 
-fetchBus : Int -> Session -> Maybe String -> Cmd Msg
-fetchBus busID session preferredPage =
-    Api.get session (Endpoint.bus busID) (busDecoder session preferredPage)
+fetchBus : Int -> Session -> BusPage -> Cmd Msg
+fetchBus busID session currentPage =
+    Api.get session (Endpoint.bus busID) (busDecoder session currentPage)
         |> Cmd.map ServerResponse
 
 
-busDecoder : Session -> Maybe String -> Decoder BusData
-busDecoder session preferredPage =
-    busDecoderWithCallback (\bus -> allPagesFromSession bus session preferredPage)
+busDecoder : Session -> BusPage -> Decoder BusData
+busDecoder session currentPage =
+    busDecoderWithCallback (\bus -> allPagesFromSession bus session currentPage)
 
 
 subscriptions : Model -> Sub Msg

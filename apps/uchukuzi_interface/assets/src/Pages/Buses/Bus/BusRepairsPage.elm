@@ -1,4 +1,4 @@
-module Pages.Buses.BusRepairsPage exposing (Model, Msg, init, update, view, viewFooter)
+module Pages.Buses.Bus.BusRepairsPage exposing (Model, Msg, init, update, view, viewFooter)
 
 import Colors
 import Element exposing (..)
@@ -264,4 +264,4 @@ viewFooter model =
 
 groupRepairs : List Repair -> Time.Zone -> List ( String, List Repair )
 groupRepairs trips timezone =
-    Utils.GroupBy.date  timezone .dateTime trips
+    Utils.GroupBy.date timezone .dateTime trips

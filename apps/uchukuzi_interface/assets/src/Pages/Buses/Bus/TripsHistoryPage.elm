@@ -1,4 +1,4 @@
-module Pages.Buses.TripsHistoryPage exposing (Model, Msg, init, update, view, viewFooter)
+module Pages.Buses.Bus.TripsHistoryPage exposing (Model, Msg, init, update, view, viewFooter)
 
 import Api exposing (get)
 import Api.Endpoint as Endpoint exposing (trips)

@@ -75,10 +75,6 @@ init session =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    -- let
-    --     form =
-    --         model.form
-    -- in
     case msg of
         RegisterStudent ->
             ( model, Navigation.rerouteTo model Navigation.StudentRegistration )
@@ -91,6 +87,14 @@ update msg model =
                             Errors.decodeErrors error
                     in
                     ( { model | groupedStudents = response }, error_msg )
+
+                Success ( groupedStudents, _ ) ->
+                    ( { model
+                        | groupedStudents = response
+                        , selectedGroupedStudents = List.head groupedStudents
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( { model | groupedStudents = response }, Cmd.none )

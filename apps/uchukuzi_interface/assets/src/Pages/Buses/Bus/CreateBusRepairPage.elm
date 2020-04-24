@@ -1,4 +1,4 @@
-module Pages.Buses.CreateBusRepairPage exposing (Model, Msg, init, update, view)
+module Pages.Buses.Bus.CreateBusRepairPage exposing (Model, Msg, init, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -17,6 +17,7 @@ import Json.Decode as Decode exposing (Decoder, int, list, string)
 import Json.Encode as Encode
 import Models.Bus exposing (Part(..), Repair, imageForPart, titleForPart)
 import Navigation
+import Pages.Buses.Bus.Navigation exposing (BusPage(..))
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style
@@ -32,7 +33,6 @@ type alias Model =
     , repairs : List Repair
     , pickedUpItem : Maybe Draggable
     , isAboveDropOffPoint : Bool
-    , height : Int
     , index : Int
     , requestState : WebData ()
     , problems : List (Errors.Errors Problem)
@@ -67,14 +67,13 @@ type Msg
     | ChangedCost Int String
 
 
-init : Int -> Session -> Int -> ( Model, Cmd Msg )
-init bus session height =
+init : Int -> Session -> ( Model, Cmd Msg )
+init bus session =
     ( { session = session
       , bus = bus
       , repairs = []
       , pickedUpItem = Nothing
       , isAboveDropOffPoint = False
-      , height = height
       , index = 0
       , problems = []
       , requestState = NotAsked
@@ -202,7 +201,7 @@ update msg model =
             in
             case response of
                 Success () ->
-                    ( newModel, Navigation.rerouteTo newModel (Navigation.Bus model.bus (Just "Maintenance")) )
+                    ( newModel, Navigation.rerouteTo newModel (Navigation.Bus model.bus BusRepairs) )
 
                 Failure error ->
                     let
@@ -223,17 +222,17 @@ update msg model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model viewHeight =
     column
         [ paddingXY 40 10
         , width fill
-        , height (px model.height)
+        , height (px viewHeight)
         , spacing 10
         ]
         [ el Style.headerStyle (text "Create Repair Record")
         , row
-            [ height (px (model.height - 80))
+            [ height (px (viewHeight - 80))
             , width fill
             ]
             [ viewRecords model

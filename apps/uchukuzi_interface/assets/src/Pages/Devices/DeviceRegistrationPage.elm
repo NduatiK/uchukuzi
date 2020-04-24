@@ -17,6 +17,7 @@ import Json.Decode as Decode exposing (Decoder, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required, resolve)
 import Json.Encode as Encode
 import Navigation
+import Pages.Buses.Bus.Navigation exposing (BusPage(..))
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
@@ -202,7 +203,7 @@ update msg model =
             in
             case response of
                 Success _ ->
-                    ( newModel, Navigation.rerouteTo newModel (Navigation.Bus model.bus (Just "device")) )
+                    ( newModel, Navigation.rerouteTo newModel (Navigation.Bus model.bus BusDevice) )
 
                 Failure error ->
                     let

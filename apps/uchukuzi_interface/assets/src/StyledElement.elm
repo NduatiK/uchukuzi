@@ -459,63 +459,6 @@ errorBorder hideBorder =
         [ Border.color Colors.errorRed, Border.solid, Border.width 2 ]
 
 
-{-| wrappedInput input title caption errorCaption icon attributes trailingElements
--}
-wrappedInput : Element msg -> String -> Maybe String -> Maybe InputError -> Maybe (IconBuilder msg) -> List (Attribute msg) -> List (Element msg) -> Element msg
-wrappedInput input title caption errorCaption icon attributes trailingElements =
-    let
-        captionLabel =
-            case caption of
-                Just captionText ->
-                    Element.paragraph captionStyle [ text captionText ]
-
-                Nothing ->
-                    none
-
-        errorCaptionLabel =
-            case errorCaption of
-                Just (Errors.InputError errors) ->
-                    Element.paragraph Style.errorStyle (List.map text errors)
-
-                -- Just (Ser errors) ->
-                --     Element.paragraph (Style.labelStyle ++ [ Font.color Style.error ]) (List.map text errors)
-                _ ->
-                    -- Nothing ->
-                    none
-
-        textBoxIcon =
-            case icon of
-                Just iconElement ->
-                    iconElement [ centerY, paddingEach { edges | left = 12 } ]
-
-                Nothing ->
-                    none
-    in
-    Element.column
-        ([ spacing 6
-         , width fill
-         , height
-            shrink
-         ]
-            ++ attributes
-        )
-        [ if title /= "" then
-            el Style.labelStyle (text title)
-
-          else
-            none
-        , row
-            (spacing 12 :: width fill :: centerY :: Style.inputStyle ++ errorBorder (errorCaption == Nothing))
-            ([ textBoxIcon
-             , input
-             ]
-                ++ trailingElements
-            )
-        , captionLabel
-        , errorCaptionLabel
-        ]
-
-
 checkboxIcon : Bool -> Element msg
 checkboxIcon checked =
     if checked then
@@ -621,7 +564,6 @@ googleMap mapClasses =
     el
         ([ height fill
          , width fill
-         , htmlAttribute (id "google-map")
          , Background.color (rgb255 237 237 237)
          , Border.color Colors.white
          , Border.width 2
@@ -629,4 +571,58 @@ googleMap mapClasses =
          ]
             ++ mapClasses
         )
-        (html (node "gmap" [] []))
+        (html (node "gmap" [ id "google-map" ] []))
+
+
+{-| wrappedInput input title caption errorCaption icon attributes trailingElements
+-}
+wrappedInput : Element msg -> String -> Maybe String -> Maybe InputError -> Maybe (IconBuilder msg) -> List (Attribute msg) -> List (Element msg) -> Element msg
+wrappedInput input title caption errorCaption icon attributes trailingElements =
+    let
+        captionLabel =
+            case caption of
+                Just captionText ->
+                    Element.paragraph captionStyle [ text captionText ]
+
+                Nothing ->
+                    none
+
+        errorCaptionLabel =
+            case errorCaption of
+                Just (Errors.InputError errors) ->
+                    Element.paragraph Style.errorStyle (List.map text errors)
+
+                _ ->
+                    none
+
+        textBoxIcon =
+            case icon of
+                Just iconElement ->
+                    iconElement [ centerY, paddingEach { edges | left = 12 } ]
+
+                Nothing ->
+                    none
+    in
+    Element.column
+        ([ spacing 6
+         , width fill
+         , height
+            shrink
+         ]
+            ++ attributes
+        )
+        [ if title /= "" then
+            el Style.labelStyle (text title)
+
+          else
+            none
+        , row
+            (spacing 12 :: width fill :: centerY :: Style.inputStyle ++ errorBorder (errorCaption == Nothing))
+            ([ textBoxIcon
+             , input
+             ]
+                ++ trailingElements
+            )
+        , captionLabel
+        , errorCaptionLabel
+        ]

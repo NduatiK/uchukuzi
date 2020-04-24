@@ -13,6 +13,7 @@ import Json.Decode exposing (list)
 import Models.Bus exposing (Bus, LocationUpdate, busDecoder, vehicleTypeToString)
 import Models.Location exposing (Location)
 import Navigation
+import Pages.Buses.Bus.Navigation exposing (BusPage(..))
 import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
@@ -29,7 +30,6 @@ type alias Model =
     , buses : WebData (List Bus)
     , locationUpdates : Dict Int LocationUpdate
     , filterText : String
-    , height : Int
     , selectedBus : Maybe Bus
     }
 
@@ -49,13 +49,12 @@ locationUpdateMsg data =
     LocationUpdate data
 
 
-init : Session -> Int -> Dict Int LocationUpdate -> ( Model, Cmd Msg )
-init session height locationUpdates =
+init : Session -> Dict Int LocationUpdate -> ( Model, Cmd Msg )
+init session locationUpdates =
     ( { session = session
       , buses = Loading
       , locationUpdates = locationUpdates
       , filterText = ""
-      , height = height
       , selectedBus = Nothing
       }
     , Cmd.batch
@@ -95,7 +94,7 @@ update msg model =
             )
 
         SelectedBus bus ->
-            ( model, Navigation.rerouteTo model (Navigation.Bus bus.id Nothing) )
+            ( model, Navigation.rerouteTo model (Navigation.Bus bus.id About) )
 
         CreateBus ->
             ( model, Navigation.rerouteTo model Navigation.BusRegistration )
@@ -148,11 +147,11 @@ locationUpdatesFrom model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model viewHeight =
     column
         [ width fill
-        , height (px model.height)
+        , height (px viewHeight)
         , spacing 40
         , paddingXY 90 70
         ]
@@ -273,7 +272,7 @@ viewTable buses =
                     \bus ->
                         StyledElement.textLink [ width (fill |> minimum 220), centerY ]
                             { label = text bus.numberPlate
-                            , route = Navigation.Bus bus.id Nothing
+                            , route = Navigation.Bus bus.id About
                             }
               }
             , { header = tableHeader ""

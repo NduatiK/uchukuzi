@@ -1,6 +1,7 @@
 module Pages.Buses.CreateBusPage exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api
+import Pages.Buses.Bus.Navigation exposing (BusPage(..))
 import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
@@ -207,7 +208,7 @@ update msg model =
             in
             case response of
                 Success bus_id ->
-                    ( newModel, Navigation.rerouteTo newModel (Navigation.Bus bus_id Nothing) )
+                    ( newModel, Navigation.rerouteTo newModel (Navigation.Bus bus_id About) )
 
                 Failure error ->
                     let
@@ -656,7 +657,7 @@ routeDropDown model =
         , dropDownMsg = RouteDropdownMsg
         , dropdownState = model.routeDropdownState
         , errorCaption = Nothing
-        , icon = Just Icons.timeline
+        , icon = Just Icons.pin
         , onSelect = Maybe.andThen (.id >> Just) >> Route >> Changed
         , options = routes
         , title = "Route"

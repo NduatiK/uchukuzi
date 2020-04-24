@@ -1,5 +1,7 @@
 module Main exposing (..)
 
+-- import Pages.Devices.DevicesPage as DevicesList
+
 import Api
 import Browser
 import Browser.Events
@@ -13,14 +15,14 @@ import Navigation exposing (Route)
 import Page exposing (..)
 import Pages.Activate as Activate
 import Pages.Blank
+import Pages.Buses.Bus.CreateBusRepairPage as CreateBusRepair
+import Pages.Buses.Bus.CreateFuelRecord as CreateFuelRecord
 import Pages.Buses.BusPage as BusDetailsPage
 import Pages.Buses.BusesPage as BusesList
 import Pages.Buses.CreateBusPage as BusRegistration
-import Pages.Buses.CreateBusRepairPage as CreateBusRepair
 import Pages.Crew.CrewMemberRegistrationPage as CrewMemberRegistration
 import Pages.Crew.CrewMembersPage as CrewMembers
 import Pages.Devices.DeviceRegistrationPage as DeviceRegistration
-import Pages.Devices.DevicesPage as DevicesList
 import Pages.Home as Home
 import Pages.Households.HouseholdRegistrationPage as StudentRegistration
 import Pages.Households.HouseholdsPage as HouseholdList
@@ -78,8 +80,9 @@ type PageModel
     | BusDetailsPage BusDetailsPage.Model
     | BusRegistration BusRegistration.Model
     | CreateBusRepair CreateBusRepair.Model
+    | CreateFuelRecord CreateFuelRecord.Model
       ------------
-    | DevicesList DevicesList.Model
+      -- | DevicesList DevicesList.Model
       ------------
     | DeviceRegistration DeviceRegistration.Model
       ------------
@@ -176,10 +179,11 @@ type Msg
     | GotBusDetailsPageMsg BusDetailsPage.Msg
     | GotBusRegistrationMsg BusRegistration.Msg
     | GotCreateBusRepairMsg CreateBusRepair.Msg
+    | GotCreateFuelRecordMsg CreateFuelRecord.Msg
       ------------
     | GotStudentRegistrationMsg StudentRegistration.Msg
       -- | GotDashboardMsg Dashboard.Msg
-    | GotDevicesListMsg DevicesList.Msg
+      -- | GotDevicesListMsg DevicesList.Msg
     | GotDeviceRegistrationMsg DeviceRegistration.Msg
       ------------
     | GotCrewMembersMsg CrewMembers.Msg
@@ -236,20 +240,22 @@ view { page, route, navState, windowHeight, sideBarOpen } =
                     viewPage (StudentRegistration.view model viewHeight) GotStudentRegistrationMsg
 
                 BusesList model ->
-                    viewPage (BusesList.view model) GotBusesListMsg
+                    viewPage (BusesList.view model viewHeight) GotBusesListMsg
 
                 BusRegistration model ->
                     viewPage (BusRegistration.view model) GotBusRegistrationMsg
 
                 BusDetailsPage model ->
-                    viewPage (BusDetailsPage.view model) GotBusDetailsPageMsg
+                    viewPage (BusDetailsPage.view model viewHeight) GotBusDetailsPageMsg
 
                 CreateBusRepair model ->
-                    viewPage (CreateBusRepair.view model) GotCreateBusRepairMsg
+                    viewPage (CreateBusRepair.view model viewHeight) GotCreateBusRepairMsg
 
-                DevicesList model ->
-                    viewPage (DevicesList.view model) GotDevicesListMsg
+                CreateFuelRecord model ->
+                    viewPage (CreateFuelRecord.view model viewHeight) GotCreateFuelRecordMsg
 
+                -- DevicesList model ->
+                --     viewPage (DevicesList.view model) GotDevicesListMsg
                 DeviceRegistration model ->
                     viewPage (DeviceRegistration.view model) GotDeviceRegistrationMsg
 
@@ -260,7 +266,7 @@ view { page, route, navState, windowHeight, sideBarOpen } =
                     viewPage (CreateRoute.view model viewHeight) GotCreateRouteMsg
 
                 CrewMembers model ->
-                    viewPage (CrewMembers.view model) GotCrewMembersMsg
+                    viewPage (CrewMembers.view model viewHeight) GotCrewMembersMsg
 
                 CrewMemberRegistration model ->
                     viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg
@@ -409,14 +415,17 @@ updatePage page_msg fullModel =
             CreateBusRepair.update msg model
                 |> mapModelAndMsg CreateBusRepair GotCreateBusRepairMsg
 
+        ( GotCreateFuelRecordMsg msg, CreateFuelRecord model ) ->
+            CreateFuelRecord.update msg model
+                |> mapModelAndMsg CreateFuelRecord GotCreateFuelRecordMsg
+
         ( GotStudentRegistrationMsg msg, StudentRegistration model ) ->
             StudentRegistration.update msg model
                 |> mapModelAndMsg StudentRegistration GotStudentRegistrationMsg
 
-        ( GotDevicesListMsg msg, DevicesList model ) ->
-            DevicesList.update msg model
-                |> mapModelAndMsg DevicesList GotDevicesListMsg
-
+        -- ( GotDevicesListMsg msg, DevicesList model ) ->
+        --     DevicesList.update msg model
+        --         |> mapModelAndMsg DevicesList GotDevicesListMsg
         ( GotActivateMsg msg, Activate model ) ->
             Activate.update msg model
                 |> mapModelAndMsg Activate GotActivateMsg
@@ -499,9 +508,8 @@ toSession pageModel =
         BusDetailsPage subModel ->
             subModel.session
 
-        DevicesList subModel ->
-            subModel.session
-
+        -- DevicesList subModel ->
+        --     subModel.session
         DeviceRegistration subModel ->
             subModel.session
 
@@ -518,6 +526,9 @@ toSession pageModel =
             subModel.session
 
         CreateBusRepair subModel ->
+            subModel.session
+
+        CreateFuelRecord subModel ->
             subModel.session
 
 
@@ -549,7 +560,7 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                         |> updateWith Home GotHomeMsg
 
                 Just Navigation.Buses ->
-                    BusesList.init session (Page.viewHeight model.windowHeight) model.locationUpdates
+                    BusesList.init session model.locationUpdates
                         |> updateWith BusesList GotBusesListMsg
 
                 Just Navigation.BusRegistration ->
@@ -561,12 +572,16 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                         |> updateWith DeviceRegistration GotDeviceRegistrationMsg
 
                 Just (Navigation.Bus busID preferredPage) ->
-                    BusDetailsPage.init busID session (Page.viewHeight model.windowHeight) (Dict.get busID model.locationUpdates) preferredPage
+                    BusDetailsPage.init busID session (Dict.get busID model.locationUpdates) preferredPage
                         |> updateWith BusDetailsPage GotBusDetailsPageMsg
 
                 Just (Navigation.CreateBusRepair busID) ->
-                    CreateBusRepair.init busID session (Page.viewHeight model.windowHeight)
+                    CreateBusRepair.init busID session
                         |> updateWith CreateBusRepair GotCreateBusRepairMsg
+
+                Just (Navigation.CreateFuelRecord busID) ->
+                    CreateFuelRecord.init busID session
+                        |> updateWith CreateFuelRecord GotCreateFuelRecordMsg
 
                 Just Navigation.HouseholdList ->
                     HouseholdList.init session
@@ -604,7 +619,7 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                         |> updateWith CreateRoute GotCreateRouteMsg
 
                 Just Navigation.CrewMembers ->
-                    CrewMembers.init session (Page.viewHeight model.windowHeight)
+                    CrewMembers.init session
                         |> updateWith CrewMembers GotCrewMembersMsg
 
                 Just Navigation.CrewMemberRegistration ->
