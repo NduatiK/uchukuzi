@@ -15,7 +15,8 @@ import Time
 
 
 type alias Trip =
-    { startTime : Time.Posix
+    { id : Int
+    , startTime : Time.Posix
     , endTime : Time.Posix
     , travelTime : String
     , reports : List Report
@@ -47,12 +48,13 @@ type alias Report =
 tripDecoder : Decoder Trip
 tripDecoder =
     let
-        toDecoder : String -> String -> String -> List Report -> Float -> List StudentActivity -> Decoder Trip
-        toDecoder startDateString endDateString travelTime reports distanceCovered studentActivities =
+        toDecoder : Int -> String -> String -> String -> List Report -> Float -> List StudentActivity -> Decoder Trip
+        toDecoder id startDateString endDateString travelTime reports distanceCovered studentActivities =
             case ( Iso8601.toTime startDateString, Iso8601.toTime endDateString ) of
                 ( Result.Ok startDate, Result.Ok endDate ) ->
                     Decode.succeed
-                        { startTime = startDate
+                        { id = id
+                        , startTime = startDate
                         , endTime = endDate
                         , travelTime = travelTime
                         , reports = List.reverse reports
@@ -67,6 +69,7 @@ tripDecoder =
                     Decode.fail (endDateString ++ " cannot be decoded to a date")
     in
     Decode.succeed toDecoder
+        |> required "id" int
         |> required "start_time" string
         |> required "end_time" string
         |> required "travel_time" string

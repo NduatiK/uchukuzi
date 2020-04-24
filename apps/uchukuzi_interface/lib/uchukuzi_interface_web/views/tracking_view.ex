@@ -8,6 +8,7 @@ defmodule UchukuziInterfaceWeb.TrackingView do
 
   def render("trip.json", %{trip: trip}) do
     %{
+      id: trip.id,
       bus: trip.bus_id,
       start_time: trip.start_time,
       end_time: trip.end_time,

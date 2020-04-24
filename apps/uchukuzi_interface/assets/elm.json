@@ -6,6 +6,7 @@
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
+            "CurrySoftware/elm-datepicker": "4.0.0",
             "NoRedInk/elm-json-decode-pipeline": "1.0.0",
             "PaackEng/elm-ui-dropdown": "1.0.0",
             "elm/browser": "1.0.2",

@@ -55,8 +55,8 @@ type Msg
     | SelectedGroup GroupedTrips
 
 
-init : Session -> { bus | id : Int } -> ( Model, Cmd Msg )
-init session bus =
+init : Int -> Session -> ( Model, Cmd Msg )
+init busID session =
     ( { sliderValue = 0
       , showGeofence = True
       , showStops = True
@@ -67,7 +67,7 @@ init session bus =
       , timezone = Session.timeZone session
       }
     , Cmd.batch
-        [ fetchTripsForBus session bus.id
+        [ fetchTripsForBus session busID
         , Ports.initializeMaps
         ]
     )
@@ -484,8 +484,10 @@ viewTrip selectedTrip timezone trip =
             ++ selectionStyles
         )
         [ column [ spacing 8 ]
-            [ el (alignRight :: timeStyle ++ [ Font.color Colors.darkText ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone trip.startTime)))
-            , el (alignRight :: timeStyle) (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone trip.endTime)))
+            [ el (alignRight :: timeStyle ++ [ Font.color Colors.darkText ])
+                (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone trip.startTime)))
+            , el (alignRight :: timeStyle)
+                (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone trip.endTime)))
 
             -- , el routeStyle (text trip.route)
             ]
