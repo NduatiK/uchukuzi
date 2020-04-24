@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.CreateFuelRecord exposing (Model, Msg, init, update, view)
+module Pages.Buses.Bus.CreateFuelReport exposing (Model, Msg, init, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -33,14 +33,14 @@ import Views.DragAndDrop exposing (draggable, droppable)
 type alias Model =
     { session : Session
     , bus : Int
-    , form : FuelRecord
+    , form : Form
     , requestState : WebData ()
     , datePickerState : DatePicker.DatePicker
     , problems : List (Errors.Errors Problem)
     }
 
 
-type alias FuelRecord =
+type alias Form =
     { date : Maybe Date.Date
     , cost : Int
     , volume : Float
@@ -48,7 +48,7 @@ type alias FuelRecord =
     }
 
 
-type alias ValidFuelRecord =
+type alias ValidForm =
     { date : Date.Date
     , cost : Int
     , volume : Float
@@ -318,7 +318,7 @@ type Problem
     | EmptyVolume
 
 
-validateForm : FuelRecord -> Result (List ( Problem, String )) ValidFuelRecord
+validateForm : Form -> Result (List ( Problem, String )) ValidForm
 validateForm record =
     let
         problems =
@@ -352,7 +352,7 @@ validateForm record =
             Err problems
 
 
-submit : Session -> Int -> ValidFuelRecord -> Cmd Msg
+submit : Session -> Int -> ValidForm -> Cmd Msg
 submit session busID record =
     let
         params =

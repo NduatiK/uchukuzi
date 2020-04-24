@@ -161,7 +161,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
-  def create_fuel_report(conn, %{"bus_id" => bus_id, "date" => date} = params, school_id) do
+  def create_fuel_report(conn, %{"bus_id" => bus_id} = params, school_id) do
     with {:ok, date} <-
            DateTimeParser.parse_datetime(params["date"], assume_time: true),
          params <- Map.put(params, "date", date),
@@ -169,6 +169,13 @@ defmodule UchukuziInterfaceWeb.SchoolController do
       conn
       |> resp(200, "{}")
     end
+  end
+
+  def list_fuel_reports(conn, %{"bus_id" => bus_id}, school_id) do
+    fuel_reports = School.fuel_reports(school_id, bus_id)
+
+    conn
+    |> render("fuel_reports.json", fuel_reports: fuel_reports)
   end
 
   # * Devices

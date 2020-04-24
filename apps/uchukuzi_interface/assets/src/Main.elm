@@ -16,7 +16,7 @@ import Page exposing (..)
 import Pages.Activate as Activate
 import Pages.Blank
 import Pages.Buses.Bus.CreateBusRepairPage as CreateBusRepair
-import Pages.Buses.Bus.CreateFuelRecord as CreateFuelRecord
+import Pages.Buses.Bus.CreateFuelReport as CreateFuelReport
 import Pages.Buses.BusPage as BusDetailsPage
 import Pages.Buses.BusesPage as BusesList
 import Pages.Buses.CreateBusPage as BusRegistration
@@ -80,7 +80,7 @@ type PageModel
     | BusDetailsPage BusDetailsPage.Model
     | BusRegistration BusRegistration.Model
     | CreateBusRepair CreateBusRepair.Model
-    | CreateFuelRecord CreateFuelRecord.Model
+    | CreateFuelReport CreateFuelReport.Model
       ------------
       -- | DevicesList DevicesList.Model
       ------------
@@ -179,7 +179,7 @@ type Msg
     | GotBusDetailsPageMsg BusDetailsPage.Msg
     | GotBusRegistrationMsg BusRegistration.Msg
     | GotCreateBusRepairMsg CreateBusRepair.Msg
-    | GotCreateFuelRecordMsg CreateFuelRecord.Msg
+    | GotCreateFuelReportMsg CreateFuelReport.Msg
       ------------
     | GotStudentRegistrationMsg StudentRegistration.Msg
       -- | GotDashboardMsg Dashboard.Msg
@@ -251,8 +251,8 @@ view { page, route, navState, windowHeight, sideBarOpen } =
                 CreateBusRepair model ->
                     viewPage (CreateBusRepair.view model viewHeight) GotCreateBusRepairMsg
 
-                CreateFuelRecord model ->
-                    viewPage (CreateFuelRecord.view model viewHeight) GotCreateFuelRecordMsg
+                CreateFuelReport model ->
+                    viewPage (CreateFuelReport.view model viewHeight) GotCreateFuelReportMsg
 
                 -- DevicesList model ->
                 --     viewPage (DevicesList.view model) GotDevicesListMsg
@@ -415,9 +415,9 @@ updatePage page_msg fullModel =
             CreateBusRepair.update msg model
                 |> mapModelAndMsg CreateBusRepair GotCreateBusRepairMsg
 
-        ( GotCreateFuelRecordMsg msg, CreateFuelRecord model ) ->
-            CreateFuelRecord.update msg model
-                |> mapModelAndMsg CreateFuelRecord GotCreateFuelRecordMsg
+        ( GotCreateFuelReportMsg msg, CreateFuelReport model ) ->
+            CreateFuelReport.update msg model
+                |> mapModelAndMsg CreateFuelReport GotCreateFuelReportMsg
 
         ( GotStudentRegistrationMsg msg, StudentRegistration model ) ->
             StudentRegistration.update msg model
@@ -528,7 +528,7 @@ toSession pageModel =
         CreateBusRepair subModel ->
             subModel.session
 
-        CreateFuelRecord subModel ->
+        CreateFuelReport subModel ->
             subModel.session
 
 
@@ -579,9 +579,9 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     CreateBusRepair.init busID session
                         |> updateWith CreateBusRepair GotCreateBusRepairMsg
 
-                Just (Navigation.CreateFuelRecord busID) ->
-                    CreateFuelRecord.init busID session
-                        |> updateWith CreateFuelRecord GotCreateFuelRecordMsg
+                Just (Navigation.CreateFuelReport busID) ->
+                    CreateFuelReport.init busID session
+                        |> updateWith CreateFuelReport GotCreateFuelReportMsg
 
                 Just Navigation.HouseholdList ->
                     HouseholdList.init session

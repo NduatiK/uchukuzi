@@ -1,4 +1,4 @@
-defmodule Uchukuzi.Repo.Migrations.AddFuelRecord do
+defmodule Uchukuzi.Repo.Migrations.AddFuelReport do
   use Ecto.Migration
 
   def up do
@@ -7,8 +7,9 @@ defmodule Uchukuzi.Repo.Migrations.AddFuelRecord do
 
       add(:volume, :float)
       add(:cost, :integer)
-      add(:date, :naive_datetime)
+      add(:distance_travelled, :integer)
 
+      add(:date, :naive_datetime)
     end
   end
 

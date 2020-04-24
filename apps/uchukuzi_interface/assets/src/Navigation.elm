@@ -47,7 +47,7 @@ type Route
     | Bus Int BusPage
     | BusDeviceRegistration Int
     | CreateBusRepair Int
-    | CreateFuelRecord Int
+    | CreateFuelReport Int
 
 
 
@@ -69,7 +69,7 @@ loggedInParser =
                 -- , DeviceList
                 , CrewMembers
                 ]
-            ++ [ Parser.map CreateFuelRecord (s (routeName Buses) </> int </> s (busPageToString FuelHistory) </> s (routeName (CreateFuelRecord -1)))
+            ++ [ Parser.map CreateFuelReport (s (routeName Buses) </> int </> s (busPageToString FuelHistory) </> s (routeName (CreateFuelReport -1)))
                , Parser.map CreateBusRepair (s (routeName Buses) </> int </> s (busPageToString BusRepairs) </> s (routeName (CreateBusRepair -1)))
                , Parser.map CreateRoute (s (routeName Routes) </> s (routeName CreateRoute))
                , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s "edit")
@@ -320,8 +320,8 @@ routeToString page =
                 CreateBusRepair busID ->
                     [ routeName Buses, String.fromInt busID, busPageToString BusRepairs, routeName (CreateBusRepair -1) ]
 
-                CreateFuelRecord busID ->
-                    [ routeName Buses, String.fromInt busID, busPageToString FuelHistory, routeName (CreateFuelRecord -1) ]
+                CreateFuelReport busID ->
+                    [ routeName Buses, String.fromInt busID, busPageToString FuelHistory, routeName (CreateFuelReport -1) ]
 
                 Routes ->
                     [ routeName Routes ]
@@ -380,7 +380,7 @@ routeName page =
         CreateBusRepair _ ->
             "new"
 
-        CreateFuelRecord _ ->
+        CreateFuelReport _ ->
             "new"
 
         CreateRoute ->

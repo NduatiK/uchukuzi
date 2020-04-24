@@ -163,10 +163,10 @@ defmodule Uchukuzi.Tracking.TripTracker do
     # :ets.delete(tableName(), data.bus_id)
   end
 
-  def terminate({:shutdown, :timeout}, data) do
-    data = %{data | trip: Trip.clean_up_trip(data.trip)}
-    Uchukuzi.Repo.insert(data.trip)
-    # :ets.delete(tableName(), data.bus_id)
+  def terminate({:shutdown, :timeout}, %{state: :ongoing} = data) do
+
+      data = %{data | trip: Trip.clean_up_trip(data.trip)}
+      Uchukuzi.Repo.insert(data.trip)
   end
 
   # if stop when incomplete

@@ -9,6 +9,7 @@ defmodule Uchukuzi.School do
 
   use Uchukuzi.School.Model
   use Uchukuzi.Roles.Model
+  alias Uchukuzi.Tracking.BusServer
 
   # ********* SCHOOL *********
 
@@ -70,11 +71,24 @@ defmodule Uchukuzi.School do
   end
 
   def create_fuel_report(school_id, bus_id, params) do
-    with {:ok, _bus} <- bus_for(school_id, bus_id) do
+    with {:ok, bus} <- bus_for(school_id, bus_id) do
+      distance_travelled =
+        bus
+        |> Bus.distance_travelled()
+
       params
-      |> FuelRecord.changeset()
+      |> Map.put("distance_travelled", distance_travelled)
+      |> FuelReport.changeset()
       |> Repo.insert()
     end
+  end
+
+  def fuel_reports(school_id, bus_id) do
+    Repo.all(
+      from(r in FuelReport,
+      left_join: b in assoc(r, :bus),
+      where: b.school_id == ^school_id and b.id == ^bus_id
+    ))
   end
 
   # ********* Devices *********

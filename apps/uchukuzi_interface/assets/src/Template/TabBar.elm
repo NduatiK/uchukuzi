@@ -175,7 +175,7 @@ toNavigationPage route =
         Navigation.CreateBusRepair _ ->
             Buses
 
-        Navigation.CreateFuelRecord _ ->
+        Navigation.CreateFuelReport _ ->
             Buses
 
         Navigation.HouseholdList ->

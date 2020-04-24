@@ -20,6 +20,7 @@ defmodule Uchukuzi.School.Bus do
     has_one(:device, Device)
     has_many(:trips, Uchukuzi.Tracking.Trip)
     has_many(:performed_repairs, PerformedRepair)
+    has_many(:fuel_reports, FuelReport)
 
     timestamps()
   end
@@ -47,6 +48,22 @@ defmodule Uchukuzi.School.Bus do
 
       _ ->
         changeset
+    end
+  end
+
+  def distance_travelled(bus) do
+    result =
+      Repo.all(
+        from(b in Bus,
+          left_join: t in assoc(b, :trips),
+          # where: b.id == ^bus.id and t.bus_id == ^bus.id,
+          select: type(sum(t.distance_covered), :float)
+        )
+      ) |> IO.inspect()
+
+    case result do
+      [nil] -> 0
+      [value] -> round(value)
     end
   end
 end

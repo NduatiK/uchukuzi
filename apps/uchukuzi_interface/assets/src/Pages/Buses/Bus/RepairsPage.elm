@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.BusRepairsPage exposing (Model, Msg, init, update, view, viewFooter)
+module Pages.Buses.Bus.RepairsPage exposing (Model, Msg, init, update, view, viewFooter)
 
 import Colors
 import Element exposing (..)

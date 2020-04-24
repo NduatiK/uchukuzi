@@ -16,7 +16,7 @@ defmodule Uchukuzi.School.Model do
       }
 
       alias Uchukuzi.School.Bus.{
-        FuelRecord,
+        FuelReport,
         ScheduledRepair,
         PerformedRepair
       }

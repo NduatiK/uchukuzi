@@ -66,7 +66,7 @@ defmodule Uchukuzi.MixProject do
       groups_for_modules: [
         School: [
           Uchukuzi.School.Bus,
-          Uchukuzi.School.Bus.FuelRecord,
+          Uchukuzi.School.Bus.FuelReport,
           Uchukuzi.School.Bus.PerformedRepair,
           Uchukuzi.School.Bus.ScheduledRepair,
           Uchukuzi.School.BusStop,

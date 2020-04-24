@@ -15,10 +15,10 @@ import Models.Bus exposing (Bus, LocationUpdate, busDecoderWithCallback)
 import Navigation
 import Page
 import Pages.Buses.Bus.AboutBus as About
-import Pages.Buses.Bus.BusDevicePage as BusDevice
-import Pages.Buses.Bus.BusRepairsPage as BusRepairs
+import Pages.Buses.Bus.DevicePage as BusDevice
 import Pages.Buses.Bus.FuelHistoryPage as FuelHistory
 import Pages.Buses.Bus.Navigation exposing (BusPage(..), busPageToString)
+import Pages.Buses.Bus.RepairsPage as BusRepairs
 import Pages.Buses.Bus.TripsHistoryPage as RouteHistory
 import Ports
 import RemoteData exposing (RemoteData(..), WebData)
@@ -152,12 +152,12 @@ aboutPage bus session =
 
 routePage : Bus -> Session -> ( Page, Cmd Msg )
 routePage bus session =
-    Page.transformToModelMsg RouteHistory GotRouteHistoryMsg (RouteHistory.init session bus)
+    Page.transformToModelMsg RouteHistory GotRouteHistoryMsg (RouteHistory.init bus.id session)
 
 
 fuelPage : Bus -> Session -> ( Page, Cmd Msg )
 fuelPage bus session =
-    Page.transformToModelMsg FuelHistory GotFuelHistoryMsg (FuelHistory.init bus (Session.timeZone session))
+    Page.transformToModelMsg FuelHistory GotFuelHistoryMsg (FuelHistory.init bus.id session)
 
 
 devicePage : Bus -> Session -> ( Page, Cmd Msg )
@@ -381,6 +381,10 @@ changeCurrentPage selectedPageIndex_ model_ =
             ( model_, Cmd.none )
 
 
+
+-- VIEW
+
+
 view : Model -> Int -> Element Msg
 view model viewHeight =
     case model.busData of
@@ -397,9 +401,10 @@ view model viewHeight =
 viewLoaded : Model -> BusData -> Int -> Element Msg
 viewLoaded model busData viewHeight =
     let
-        ( body, footer ) =
+        ( body, footer, buttons ) =
             ( viewBody viewHeight busData
             , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData)
+            , viewButtons busData
             )
 
         edges =
@@ -413,7 +418,7 @@ viewLoaded model busData viewHeight =
         -- , spacing 24
         , paddingXY 36 0
         ]
-        [ viewHeading busData
+        [ viewHeading busData buttons
         , Element.row
             [ width fill
             , height fill
@@ -427,33 +432,36 @@ viewLoaded model busData viewHeight =
         ]
 
 
-viewHeading : BusData -> Element msg
-viewHeading busData =
-    Element.column
-        [ width fill, paddingXY 8 8 ]
-        [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold ])
-            [ el [] (text (pageName busData.currentPage))
-            , text " for "
-            , el
-                [ Font.color Colors.semiDarkText
-                , Font.semiBold
-                , below
-                    (el
-                        [ Background.color (Colors.withAlpha Colors.semiDarkText 0.2)
-                        , width fill
-                        , height (px 2)
-                        ]
-                        none
-                    )
+viewHeading : BusData -> Element msg -> Element msg
+viewHeading busData button =
+    row [ width fill, paddingXY 8 12 ]
+        [ Element.column
+            [ width fill ]
+            [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold ])
+                [ el [] (text (pageName busData.currentPage))
+                , text " for "
+                , el
+                    [ Font.color Colors.semiDarkText
+                    , Font.semiBold
+                    , below
+                        (el
+                            [ Background.color (Colors.withAlpha Colors.semiDarkText 0.2)
+                            , width fill
+                            , height (px 2)
+                            ]
+                            none
+                        )
+                    ]
+                    (text busData.bus.numberPlate)
                 ]
-                (text busData.bus.numberPlate)
-            ]
-        , case busData.bus.route of
-            Nothing ->
-                none
+            , case busData.bus.route of
+                Nothing ->
+                    none
 
-            Just route ->
-                el Style.captionStyle (text route.name)
+                Just route ->
+                    el Style.captionStyle (text route.name)
+            ]
+        , el [ centerY ] button
         ]
 
 
@@ -501,6 +509,20 @@ viewFooter busData =
 
         BusRepairs subPageModel ->
             viewPage (BusRepairs.viewFooter subPageModel) GotBusRepairsMsg
+
+
+viewButtons : BusData -> Element Msg
+viewButtons busData =
+    let
+        viewPage pageView toMsg =
+            Element.map toMsg pageView
+    in
+    case busData.currentPage of
+        FuelHistory subPageModel ->
+            viewPage (FuelHistory.viewButtons subPageModel) GotFuelHistoryMsg
+
+        _ ->
+            none
 
 
 

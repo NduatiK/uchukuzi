@@ -46,6 +46,22 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     }
   end
 
+  def render("fuel_reports.json", %{fuel_reports: fuel_reports}) do
+    fuel_reports
+    |> render_many(__MODULE__, "fuel_report.json", as: :fuel_report)
+  end
+
+  def render("fuel_report.json", %{fuel_report: fuel_report}) do
+    IO.inspect(fuel_report)
+    %{
+      id: fuel_report.id,
+      cost: fuel_report.cost,
+      volume: fuel_report.volume,
+      date: fuel_report.date,
+      distance_travelled: fuel_report.distance_travelled
+    }
+  end
+
   def render_bus_route(nil), do: nil
   def render_bus_route(%Ecto.Association.NotLoaded{}), do: nil
 
