@@ -325,7 +325,8 @@ const setupMapCallbacks = (app, clickable) => (data) => {
                 map: map,
                 icon: image
             })
-            map.setZoom(17)
+
+            // map.setZoom(17)
 
             markers.push(marker)
             map.panTo(gmPos)

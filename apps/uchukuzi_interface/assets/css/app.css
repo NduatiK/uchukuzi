@@ -7,6 +7,12 @@ body {
   overflow: hidden;
 }
 
+gmap,
+google-map-cached {
+  width: 100%;
+  height: 100%;
+}
+
 .blurred {
   backdrop-filter: blur(4px);
 }
