@@ -69,6 +69,14 @@ defmodule Uchukuzi.School do
     end
   end
 
+  def create_fuel_report(school_id, bus_id, params) do
+    with {:ok, _bus} <- bus_for(school_id, bus_id) do
+      params
+      |> FuelRecord.changeset()
+      |> Repo.insert()
+    end
+  end
+
   # ********* Devices *********
   def register_device(bus, imei) do
     %{imei: imei, bus_id: bus.id}

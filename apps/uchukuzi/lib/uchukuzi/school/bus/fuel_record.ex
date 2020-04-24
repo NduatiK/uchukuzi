@@ -1,11 +1,17 @@
 defmodule Uchukuzi.School.Bus.FuelRecord do
   alias __MODULE__
-  alias Uchukuzi.School.Bus
+  use Uchukuzi.School.Model
 
-  @enforce_keys [:amount, :bus, :time]
-  defstruct [:amount, :bus, :time]
+  schema "fuel_records" do
+    field(:volume, :float)
+    field(:cost, :integer)
+    field(:date, :naive_datetime)
+    belongs_to(:bus, Uchukuzi.School.Bus)
+  end
 
-  def new(%Bus{} = bus, time, amount) do
-    %FuelRecord{bus: bus, time: time, amount: amount}
+  def changeset(schema \\ %__MODULE__{}, params) do
+    schema
+    |> cast(params, [:cost, :volume, :bus_id, :date])
+    |> validate_required([:cost, :volume, :bus_id, :date])
   end
 end

@@ -59,9 +59,10 @@ defmodule UchukuziInterfaceWeb.Router do
     get "/buses", SchoolController, :list_buses
     get "/buses/:bus_id", SchoolController, :get_bus
     post "/buses", SchoolController, :create_bus
-    post "/buses/:bus_id/performed_repairs", SchoolController, :create_performed_repair
     get "/buses/:bus_id/crew", SchoolController, :get_crew_members_for_bus
     get "/buses/:bus_id/students_onboard", SchoolController, :get_students_onboard
+    post "/buses/:bus_id/performed_repairs", SchoolController, :create_performed_repair
+    post "/buses/:bus_id/fuel_reports", SchoolController, :create_fuel_report
 
     post "/devices", SchoolController, :register_device
 

@@ -89,8 +89,6 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     |> render("guardians.json", guardians: guardians)
   end
 
-
-
   def get_qr_code(%{query_params: %{"token" => token}} = conn, %{"student_id" => student_id}) do
     conn =
       %{assigns: %{manager: manager}} =
@@ -98,24 +96,23 @@ defmodule UchukuziInterfaceWeb.SchoolController do
       |> put_req_header("authorization", "Bearer " <> token)
       |> ManagerAuth.call(conn)
 
-      with student when not is_nil(student) <- School.student_for(manager.school_id, student_id) do
-        student = Repo.preload(student, :guardian)
+    with student when not is_nil(student) <- School.student_for(manager.school_id, student_id) do
+      student = Repo.preload(student, :guardian)
 
-        qr_code =
-          """
-          {"id": #{student.id}, "pno": #{student.guardian.phone_number}}
-          """
-          |> EQRCode.encode()
-          |> EQRCode.png()
+      qr_code =
+        """
+        {"id": #{student.id}, "pno": #{student.guardian.phone_number}}
+        """
+        |> EQRCode.encode()
+        |> EQRCode.png()
 
-        conn
-        |> put_resp_content_type("image/png")
-        |> send_resp(200, qr_code)
+      conn
+      |> put_resp_content_type("image/png")
+      |> send_resp(200, qr_code)
 
-
-        # conn
-        # |> send
-      end
+      # conn
+      # |> send
+    end
   end
 
   def create_bus(conn, bus_params, school_id) do
@@ -141,7 +138,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def get_bus(conn, %{"bus_id" => bus_id}, school_id) do
     with {:ok, bus} <- School.bus_for(school_id, bus_id) do
       bus = Repo.preload(bus, :device)
-      last_seen = Uchukuzi.Tracking.status_of(bus) |> IO.inspect()
+      last_seen = Uchukuzi.Tracking.status_of(bus)
 
       conn
       |> render("bus.json", bus: bus, last_seen: last_seen)
@@ -159,6 +156,16 @@ defmodule UchukuziInterfaceWeb.SchoolController do
       end
 
     with {:ok, _repair} <- School.create_performed_repair(school_id, bus_id, params) do
+      conn
+      |> resp(200, "{}")
+    end
+  end
+
+  def create_fuel_report(conn, %{"bus_id" => bus_id, "date" => date} = params, school_id) do
+    with {:ok, date} <-
+           DateTimeParser.parse_datetime(params["date"], assume_time: true),
+         params <- Map.put(params, "date", date),
+         {:ok, _repair} <- School.create_fuel_report(school_id, bus_id, params) do
       conn
       |> resp(200, "{}")
     end
@@ -218,7 +225,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
 
   def get_students_onboard(conn, %{"bus_id" => bus_id}, school_id) do
     with {:ok, bus} <- School.bus_for(school_id, bus_id) do
-      students = Uchukuzi.Tracking.students_onboard(bus) |> IO.inspect()
+      students = Uchukuzi.Tracking.students_onboard(bus)
 
       conn
       |> put_view(UchukuziInterfaceWeb.RolesView)
