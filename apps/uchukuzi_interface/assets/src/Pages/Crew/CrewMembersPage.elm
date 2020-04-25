@@ -413,9 +413,12 @@ viewBody model viewHeight =
             row [ height fill, width fill, spacing 40 ]
                 [ case data.buses of
                     [] ->
-                        column (width (fillPortion 2) :: centerX :: spacing 8 :: centerY :: Style.labelStyle)
-                            [ el [ centerX ] (text "You have buses set up.")
-                            , el [ centerX ] (text "Create one to assign crew members.")
+                        column [ centerX, spacing 20, width fill ]
+                            [ paragraph [ centerX, Font.center ] [ text "You have no buses set up" ]
+                            , StyledElement.ghostButtonLink [ centerX ]
+                                { title = "Add a bus"
+                                , route = Navigation.BusRegistration
+                                }
                             ]
 
                     _ ->

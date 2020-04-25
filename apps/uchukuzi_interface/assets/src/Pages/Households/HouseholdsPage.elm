@@ -374,13 +374,6 @@ viewHouseholdsTable students =
                             , onPress = Just (SelectedStudent (Just student))
                             }
               }
-
-            -- , { header = tableHeader "ROUTE"
-            --   , width = fill
-            --   , view =
-            --         \household ->
-            --             el rowTextStyle (Element.text household.route)
-            --   }
             , { header = tableHeader "MORNING"
               , width = fill
               , view =

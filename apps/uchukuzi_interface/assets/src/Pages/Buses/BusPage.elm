@@ -434,10 +434,10 @@ viewLoaded model busData viewHeight =
 
 viewHeading : BusData -> Element msg -> Element msg
 viewHeading busData button =
-    row [ width fill, paddingXY 8 12 ]
+    row [ width fill ]
         [ Element.column
             [ width fill ]
-            [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold ])
+            [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold, paddingXY 8 12 ])
                 [ el [] (text (pageName busData.currentPage))
                 , text " for "
                 , el
@@ -479,7 +479,7 @@ viewBody height busData =
             viewPage (RouteHistory.view subPageModel) GotRouteHistoryMsg
 
         FuelHistory subPageModel ->
-            viewPage (FuelHistory.view subPageModel) GotFuelHistoryMsg
+            viewPage (FuelHistory.view subPageModel (height - 300)) GotFuelHistoryMsg
 
         BusDevice subPageModel ->
             viewPage (BusDevice.view subPageModel) GotBusDeviceMsg

@@ -220,25 +220,9 @@ viewBuses buses filterText =
         (column [ width fill ]
             [ row [ width fill, spacing 10 ]
                 [ el Style.headerStyle (text "Vehicles")
-
-                -- , StyledElement.textInput
-                --     [ centerX, width (fill |> maximum 300), centerY ]
-                --     { title = ""
-                --     , caption = Nothing
-                --     , errorCaption = Nothing
-                --     , value = filterText
-                --     , onChange = String.toUpper >> ChangedFilterText
-                --     , placeholder = Just (Input.placeholder [] (text "Search"))
-                --     , ariaLabel = "Filter buses"
-                --     , icon = Just Icons.search
-                --     }
-                , StyledElement.button
-                    [ alignRight ]
-                    { label =
-                        row [ spacing 8 ]
-                            [ Icons.add [ alpha 1, Colors.fillWhite ]
-                            , el [ centerY ] (text "Add Bus")
-                            ]
+                , StyledElement.ghostButton [ centerY, alignRight ]
+                    { icon = Icons.add
+                    , title = "Add a Bus"
                     , onPress = Just CreateBus
                     }
                 ]

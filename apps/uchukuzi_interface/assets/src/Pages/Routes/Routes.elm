@@ -106,23 +106,9 @@ viewHeading : Model -> Element Msg
 viewHeading model =
     wrappedRow [ spacing 16, width fill ]
         [ el Style.headerStyle (text "All Routes")
-        , StyledElement.textInput
-            [ alignRight, width (fill |> maximum 300), centerY ]
-            { title = ""
-            , caption = Nothing
-            , errorCaption = Nothing
-            , value = model.filterText
-            , onChange = UpdatedSearchText
-            , placeholder = Just (Input.placeholder [] (text "Search"))
-            , ariaLabel = "Filter buses"
-            , icon = Just Icons.search
-            }
-        , StyledElement.iconButton
-            [ centerY
-            , alignRight
-            ]
+        , StyledElement.ghostButton [ centerY, alignRight ]
             { icon = Icons.add
-            , iconAttrs = [ Colors.fillWhite ]
+            , title = "Add a route"
             , onPress = Just CreateRoute
             }
         ]
