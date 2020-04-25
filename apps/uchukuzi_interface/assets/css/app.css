@@ -7,6 +7,12 @@ body {
   overflow: hidden;
 }
 
+text {
+  font-family: "SF Pro Text", sans-serif;
+  font-size: 10px;
+  fill: rgba(115, 115, 115, 1);
+}
+
 gmap,
 google-map-cached {
   width: 100%;

@@ -8,6 +8,7 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Html.Attributes exposing (id)
 import Icons
 import Json.Decode as Decode exposing (Decoder, int, list, string)
 import Models.FuelReport exposing (FuelReport, fuelRecordDecoder)
@@ -17,6 +18,7 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.Footer as Footer
+import StyledElement.Graph
 import Time
 import Utils.GroupBy
 
@@ -26,6 +28,13 @@ type alias Model =
     , busID : Int
     , currentPage : Page
     , reports : WebData (List GroupedReports)
+    , chartData : ChartData
+    }
+
+
+type alias ChartData =
+    { data : List Datum
+    , hinted : Maybe Datum
     }
 
 
@@ -57,6 +66,7 @@ init busID session =
       , busID = busID
       , currentPage = Summary
       , reports = Loading
+      , chartData = ChartData [] Nothing
       }
     , fetchFuelHistory session busID
     )
@@ -70,12 +80,20 @@ type Msg
     = ClickedSummaryPage
       --------------------
     | ClickedConsumptionSpikesPage
-    | RecordsResponse (WebData (List GroupedReports))
+    | RecordsResponse (WebData ( List ( FuelReport, Distance ), List GroupedReports ))
+    | Hover (Maybe Datum)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        chartData =
+            model.chartData
+    in
     case msg of
+        Hover hinted ->
+            ( { model | chartData = { chartData | hinted = hinted } }, Cmd.none )
+
         ClickedSummaryPage ->
             ( { model | currentPage = Summary }, Cmd.none )
 
@@ -83,37 +101,64 @@ update msg model =
             ( { model | currentPage = ConsumptionSpikes }, Cmd.none )
 
         RecordsResponse response ->
-            ( { model | reports = response }, Cmd.none )
+            case response of
+                Success ( distanced, grouped ) ->
+                    ( { model
+                        | reports = Success grouped
+                        , chartData =
+                            { chartData
+                                | data =
+                                    List.map
+                                        (\( report, distance ) ->
+                                            if report.volume > 0 then
+                                                Datum report.date (toFloat distance / report.volume / 1000)
+
+                                            else
+                                                Datum report.date 0
+                                        )
+                                        distanced
+                            }
+                      }
+                    , Cmd.none
+                    )
+
+                Failure e ->
+                    ( { model | reports = Failure e }, Cmd.none )
+
+                Loading ->
+                    ( { model | reports = Loading }, Cmd.none )
+
+                NotAsked ->
+                    ( { model | reports = NotAsked }, Cmd.none )
 
 
 
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model viewHeight =
     let
-        totalForGroup group =
-            List.foldl (\x y -> y + (Tuple.first >> .cost) x) 0 group
-
         totalCost =
             List.foldl (\x y -> y + totalForGroup (Tuple.second x)) 0
     in
     column
-        [ height fill
+        [ height (px viewHeight)
         , width fill
+        , clip
+        , scrollbarY
         , Style.clipStyle
         , Border.solid
         ]
         [ viewGraph model
         , case model.reports of
             Success reports ->
-                column []
+                column [ width fill ]
                     [ row (Style.header2Style ++ [ alignLeft, width fill, Font.color Colors.black, spacing 30 ])
                         [ text "Total Paid"
                         , el [ Font.size 21, Font.color Colors.darkGreen ] (text ("KES. " ++ String.fromInt (totalCost reports)))
                         ]
-                    , viewGroupedReports reports
+                    , viewGroupedReports model reports
                     ]
 
             Failure reports ->
@@ -126,75 +171,123 @@ view model =
         ]
 
 
-viewGraph : Model -> Element Msg
+type alias Datum =
+    { time : Time.Posix
+    , consumption : Float
+    }
+
+
+viewGraph : Model -> Element msg
 viewGraph model =
-    el [ width fill, height (px 500) ] none
-
-
-viewGroupedReports : List GroupedReports -> Element Msg
-viewGroupedReports groupedReports =
-    let
-        viewGroup ( month, reportsForDate ) =
-            column [ spacing 0, height fill, width fill ]
-                [ el (Style.header2Style ++ [ padding 0, Font.light ]) (text month)
-                , wrappedRow
-                    [ spacing 10
-                    , width (fill |> maximum 800)
-                    , paddingEach { edges | top = 10, right = 10 }
-                    ]
-                    (List.map viewReport reportsForDate)
+    column [ width fill, height fill ]
+        [ row [ width fill, height fill ]
+            [ el
+                [ width (px 1)
+                , height (px 1)
+                , rotate (-pi / 2)
+                , moveDown 50
                 ]
-    in
-    column [ scrollbarY, height fill, width (fillPortion 2), paddingXY 0 10 ]
-        (List.map viewGroup groupedReports)
-
-
-viewReport ( report, distance ) =
-    let
-        timeStyle =
-            Style.defaultFontFace
-                ++ [ Font.color Colors.darkText
-                   , Font.size 14
-                   , Font.bold
-                   ]
-
-        routeStyle =
-            Style.defaultFontFace
-                ++ [ Font.color (rgb255 85 88 98)
-                   , Font.size 14
-                   ]
-    in
-    column []
-        [ el (padding 4 :: routeStyle) (text (Date.format "MMM ddd" report.date))
-        , column
-            [ width (fillPortion 1 |> minimum 200)
-            , Border.color (Colors.withAlpha Colors.darkness 0.3)
-            , Border.solid
-            , Border.width 1
-
-            -- , onMouseEnter (HoveredOver (Just report))
-            -- , onMouseLeave (HoveredOver Nothing)
-            , Style.animatesShadow
+                (text "Fuel Consumption (km/l)")
+            , StyledElement.Graph.view
+                model.chartData
+                (Session.timeZone model.session)
+                Hover
             ]
-            [ row [ spacing 8, paddingXY 12 11 ]
-                (if distance > 0 then
-                    [ el [ padding 12 ] (text (String.fromFloat (round100 (Basics.toFloat distance / (report.volume * 1000))) ++ "KPL"))
-                    , el [ width (px 1), height fill, Background.color (Colors.withAlpha Colors.darkness 0.3) ] none
-                    , paragraph timeStyle [ text (String.fromInt (distance // 1000) ++ "km travelled") ]
-
-                    -- , el timeStyle (text ("KES." ++ String.fromInt report.cost))
-                    ]
-
-                 else
-                    [ el [] (text (Date.format "MMM ddd" report.date))
-                    ]
-                )
-            , el [ height (px 1), width fill, Background.color (Colors.withAlpha Colors.darkness 0.3) ] none
-            , row [ spacing 8, paddingXY 12 11 ]
-                [ el [] (text ("KES." ++ String.fromInt report.cost))
-                ]
+        , el
+            [ centerX
+            , moveUp 15
             ]
+            (text "Date")
         ]
+
+
+viewGroupedReports : Model -> List GroupedReports -> Element Msg
+viewGroupedReports model groupedReports =
+    let
+        timezone =
+            Session.timeZone model.session
+
+        tableHeader strings attr =
+            column Style.tableHeaderStyle
+                (List.map
+                    (\x -> el attr (text (String.toUpper x)))
+                    strings
+                )
+
+        rowTextStyle =
+            width (fill |> minimum 220) :: Style.tableElementStyle
+
+        viewGroup ( month, reportsForDate ) =
+            column [ spacing 12, height fill ]
+                [ el
+                    [ paddingXY 10 4
+                    , centerX
+                    , Border.widthEach { edges | bottom = 1 }
+                    , Border.color (Colors.withAlpha Colors.darkness 0.2)
+                    ]
+                    (el (Style.header2Style ++ [ padding 0, centerX ]) (text month))
+                , table [ spacingXY 30 15 ]
+                    { data = reportsForDate
+                    , columns =
+                        [ { header = tableHeader [ "DATE" ] []
+                          , width = fill
+                          , view =
+                                \( report, _ ) ->
+                                    let
+                                        dateText =
+                                            report.date |> Date.fromPosix timezone |> Date.format "MMM ddd"
+                                    in
+                                    el rowTextStyle (text dateText)
+                          }
+                        , { header = tableHeader [ "FUEL CONSUMPTION", "(KM/L)" ] [ alignRight ]
+                          , width = fill
+                          , view =
+                                \( report, distance ) ->
+                                    let
+                                        consumptionText =
+                                            String.fromFloat (round100 (Basics.toFloat distance / (report.volume * 1000)))
+                                    in
+                                    el rowTextStyle (text consumptionText)
+                          }
+                        , { header =
+                                column (alignRight :: Style.tableHeaderStyle)
+                                    [ el [ alignRight ] (text (String.toUpper "DISTANCE "))
+                                    , el [ alignRight ] (text (String.toUpper "TRAVELLED (KM)"))
+                                    ]
+                          , width = fill
+                          , view =
+                                \( report, distance ) ->
+                                    let
+                                        distanceText =
+                                            if distance > 0 then
+                                                String.fromInt (distance // 1000)
+
+                                            else
+                                                "-"
+                                    in
+                                    el (width fill :: Font.alignRight :: rowTextStyle) (text distanceText)
+                          }
+                        , { header = tableHeader [ "FUEL COST", "(KES)" ] [ alignRight ]
+                          , width = fill
+                          , view =
+                                \( report, distance ) ->
+                                    el (width fill :: Font.alignRight :: rowTextStyle) (text (String.fromInt report.cost))
+                          }
+                        ]
+                    }
+                , column [ alignRight, spacing 4 ]
+                    [ el [ width fill, height (px 2), Background.color (rgb255 96 96 96) ] none
+                    , el (Font.alignRight :: Font.bold :: Style.tableElementStyle) (text ("KES. " ++ String.fromInt (totalForGroup reportsForDate)))
+                    ]
+                ]
+    in
+    column
+        [ scrollbarY
+        , height fill
+        , width fill
+        , paddingXY 0 10
+        ]
+        (List.map viewGroup groupedReports)
 
 
 viewButtons model =
@@ -222,17 +315,21 @@ viewFooter model =
 
 fetchFuelHistory : Session -> Int -> Cmd Msg
 fetchFuelHistory session bus_id =
-    Api.get session (Endpoint.fuelReports bus_id) (list (fuelRecordDecoder (Session.timeZone session)))
-        |> Cmd.map (groupReports >> RecordsResponse)
+    Api.get session (Endpoint.fuelReports bus_id) (list fuelRecordDecoder)
+        |> Cmd.map (groupReports (Session.timeZone session) >> RecordsResponse)
 
 
-groupReports : WebData (List FuelReport) -> WebData (List GroupedReports)
-groupReports reports_ =
+groupReports : Time.Zone -> WebData (List FuelReport) -> WebData ( List ( FuelReport, Distance ), List GroupedReports )
+groupReports timezone reports_ =
     case reports_ of
         Success reports ->
             let
-                sortedReports : List ( FuelReport, Distance )
+                sortedReports : List FuelReport
                 sortedReports =
+                    List.sortWith compareReports reports
+
+                distancedReports : List ( FuelReport, Distance )
+                distancedReports =
                     Tuple.second
                         (List.foldl
                             (\report ( totalDistance, acc ) ->
@@ -241,16 +338,17 @@ groupReports reports_ =
                                 )
                             )
                             ( 0, [] )
-                            (List.sortWith compareReports reports)
+                            sortedReports
                         )
             in
             Success
-                (Utils.GroupBy.attr
-                    { groupBy = Tuple.first >> .date >> Date.format "yyyy MM"
-                    , nameAs = Tuple.first >> .date >> Date.format "MMM yyyy"
+                ( distancedReports
+                , Utils.GroupBy.attr
+                    { groupBy = Tuple.first >> .date >> Date.fromPosix timezone >> Date.format "yyyy MM"
+                    , nameAs = Tuple.first >> .date >> Date.fromPosix timezone >> Date.format "MMM yyyy"
                     , reverse = False
                     }
-                    sortedReports
+                    distancedReports
                 )
 
         Failure error ->
@@ -267,7 +365,7 @@ compareReports : FuelReport -> FuelReport -> Order
 compareReports report1 report2 =
     let
         getDate =
-            .date >> Date.format "yyyy MM"
+            .date >> Time.posixToMillis
     in
     case ( compare (getDate report1) (getDate report2), compare report1.distance_covered report2.distance_covered ) of
         ( GT, _ ) ->
@@ -283,3 +381,7 @@ compareReports report1 report2 =
 round100 : Float -> Float
 round100 float =
     toFloat (round (float * 100)) / 100
+
+
+totalForGroup group =
+    List.foldl (\x y -> y + (Tuple.first >> .cost) x) 0 group

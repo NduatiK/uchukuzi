@@ -3,7 +3,6 @@ module Models.FuelReport exposing
     , fuelRecordDecoder
     )
 
-import Date
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required, resolve)
@@ -15,12 +14,12 @@ type alias FuelReport =
     , cost : Int
     , volume : Float
     , distance_covered : Int
-    , date : Date.Date
+    , date : Time.Posix
     }
 
 
-fuelRecordDecoder : Time.Zone -> Decoder FuelReport
-fuelRecordDecoder timezone =
+fuelRecordDecoder : Decoder FuelReport
+fuelRecordDecoder =
     let
         decoder id cost volume distance_covered dateTimeString =
             case Iso8601.toTime dateTimeString of
@@ -30,7 +29,7 @@ fuelRecordDecoder timezone =
                         , cost = cost
                         , volume = volume
                         , distance_covered = distance_covered
-                        , date = Date.fromPosix timezone dateTime
+                        , date = dateTime
                         }
 
                 Result.Err _ ->
