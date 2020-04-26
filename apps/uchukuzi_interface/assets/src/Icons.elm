@@ -128,6 +128,11 @@ email =
     iconNamed "images/email.svg"
 
 
+show : List (Attribute msg) -> Element msg
+show =
+    iconNamed "images/show.svg"
+
+
 trash : List (Attribute msg) -> Element msg
 trash =
     iconNamed "images/trash.svg"

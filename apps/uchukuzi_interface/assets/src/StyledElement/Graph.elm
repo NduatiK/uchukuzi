@@ -7,12 +7,6 @@ import Colors
 import Date
 import DatePicker
 import Element exposing (..)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Events as Events
-import Element.Font as Font
-import Element.Input as Input
-import Errors exposing (InputError)
 import Html
 import Html.Attributes exposing (id)
 import Icons exposing (IconBuilder)
@@ -46,22 +40,26 @@ padding =
     30
 
 
-xScaleBuilder : Maybe Int -> Maybe Int -> ContinuousScale Time.Posix
-xScaleBuilder min max =
-    case ( min, max ) of
-        ( Just min_, Just max_ ) ->
-            if min_ == max_ then
-                Scale.time Time.utc ( 0, w - 2 * padding ) ( Time.millisToPosix min_, Time.millisToPosix max_ )
+xScaleBuilder : Maybe Int -> Maybe Int -> Time.Zone -> ContinuousScale Time.Posix
+xScaleBuilder min max timezone =
+    let
+        scale =
+            case ( min, max ) of
+                ( Just min_, Just max_ ) ->
+                    if min_ == max_ then
+                        Scale.time timezone ( 0, w - 2 * padding ) ( Time.millisToPosix min_, Time.millisToPosix max_ )
 
-            else
-                let
-                    oneDay =
-                        1000 * 3600 * 24
-                in
-                Scale.time Time.utc ( 0, w - 2 * padding ) ( Time.millisToPosix min_, Time.millisToPosix (max_ + oneDay) )
+                    else
+                        let
+                            oneDay =
+                                1000 * 3600 * 24
+                        in
+                        Scale.time timezone ( 0, w - 2 * padding ) ( Time.millisToPosix min_, Time.millisToPosix (max_ + oneDay) )
 
-        _ ->
-            Scale.time Time.utc ( 0, w - 2 * padding ) ( Time.millisToPosix 0, Time.millisToPosix 1000 )
+                _ ->
+                    Scale.time timezone ( 0, w - 2 * padding ) ( Time.millisToPosix 0, Time.millisToPosix 1000 )
+    in
+    scale
 
 
 yScaleBuilder : Float -> ContinuousScale Float
@@ -90,15 +88,15 @@ line model xScale yScale =
         |> Shape.line Shape.monotoneInXCurve
 
 
-viewChart : List ( Time.Posix, Float ) -> a -> b -> Element msg
-viewChart model timezone onHover =
+view : List ( Time.Posix, Float ) -> Time.Zone -> Element msg
+view chartData timezone =
     let
         times =
-            List.map (Tuple.first >> Time.posixToMillis) model
+            List.map (Tuple.first >> Time.posixToMillis) chartData
 
         ( xScale, yScale ) =
-            ( xScaleBuilder (List.minimum times) (List.maximum times)
-            , yScaleBuilder (Maybe.withDefault 3 (List.maximum (List.map Tuple.second model)))
+            ( xScaleBuilder (List.minimum times) (List.maximum times) timezone
+            , yScaleBuilder (Maybe.withDefault 3 (List.maximum (List.map Tuple.second chartData)))
             )
     in
     -- el [ width fill, height (px (round h)) ]
@@ -112,14 +110,14 @@ viewChart model timezone onHover =
                     [ transform [ Translate (padding - 1) (h - padding) ]
                     , fontFamily [ "SF Pro Text", "sans-serif" ]
                     ]
-                    [ xAxis model xScale ]
+                    [ xAxis chartData xScale ]
                 , g
                     [ transform [ Translate (padding - 1) padding ]
                     , fontFamily [ "SF Pro Text", "sans-serif" ]
                     ]
                     [ yAxis yScale ]
                 , g [ transform [ Translate padding padding ], class [ "series" ] ]
-                    [ Path.element (line model xScale yScale)
+                    [ Path.element (line chartData xScale yScale)
                         [ stroke <|
                             Paint <|
                                 Color.rgb255 30 165 145
@@ -130,11 +128,3 @@ viewChart model timezone onHover =
                 ]
             )
         )
-
-
-view chartData timezone onHover =
-    let
-        data =
-            List.map (\x -> ( x.time, x.consumption )) chartData.data
-    in
-    viewChart data timezone onHover

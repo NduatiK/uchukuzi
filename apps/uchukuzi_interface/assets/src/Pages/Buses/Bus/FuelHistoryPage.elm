@@ -2,6 +2,7 @@ module Pages.Buses.Bus.FuelHistoryPage exposing (Model, Msg, init, update, view,
 
 import Api
 import Api.Endpoint as Endpoint
+import Browser.Dom
 import Colors
 import Date
 import Element exposing (..)
@@ -19,6 +20,7 @@ import Style exposing (edges)
 import StyledElement
 import StyledElement.Footer as Footer
 import StyledElement.Graph
+import Task
 import Time
 import Utils.GroupBy
 
@@ -28,13 +30,11 @@ type alias Model =
     , busID : Int
     , currentPage : Page
     , reports : WebData (List GroupedReports)
-    , chartData : ChartData
-    }
-
-
-type alias ChartData =
-    { data : List Datum
-    , hinted : Maybe Datum
+    , chartData :
+        Maybe
+            { data : List ( Time.Posix, Float )
+            , month : String
+            }
     }
 
 
@@ -66,7 +66,7 @@ init busID session =
       , busID = busID
       , currentPage = Summary
       , reports = Loading
-      , chartData = ChartData [] Nothing
+      , chartData = Nothing
       }
     , fetchFuelHistory session busID
     )
@@ -81,7 +81,9 @@ type Msg
       --------------------
     | ClickedConsumptionSpikesPage
     | RecordsResponse (WebData ( List ( FuelReport, Distance ), List GroupedReports ))
-    | Hover (Maybe Datum)
+      -- | Show (GroupedReports)
+    | Show String
+    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -91,11 +93,47 @@ update msg model =
             model.chartData
     in
     case msg of
-        Hover hinted ->
-            ( { model | chartData = { chartData | hinted = hinted } }, Cmd.none )
+        Show month ->
+            case model.reports of
+                Success reports ->
+                    let
+                        matching =
+                            List.head (List.filter (Tuple.first >> (\x -> x == month)) reports)
+                    in
+                    case matching of
+                        Just match ->
+                            ( { model
+                                | chartData =
+                                    Just
+                                        { month = month
+                                        , data =
+                                            List.map
+                                                (\( report, distance ) ->
+                                                    if report.volume > 0 then
+                                                        ( report.date, toFloat distance / report.volume / 1000 )
+
+                                                    else
+                                                        ( report.date, 0 )
+                                                )
+                                                (Tuple.second match)
+                                        }
+                              }
+                            , Browser.Dom.setViewportOf "view" 0 0
+                                |> Task.onError (\_ -> Task.succeed ())
+                                |> Task.perform (\_ -> NoOp)
+                            )
+
+                        _ ->
+                            ( { model | chartData = Nothing }, Cmd.none )
+
+                _ ->
+                    ( { model | chartData = Nothing }, Cmd.none )
 
         ClickedSummaryPage ->
             ( { model | currentPage = Summary }, Cmd.none )
+
+        NoOp ->
+            ( model, Cmd.none )
 
         ClickedConsumptionSpikesPage ->
             ( { model | currentPage = ConsumptionSpikes }, Cmd.none )
@@ -106,18 +144,33 @@ update msg model =
                     ( { model
                         | reports = Success grouped
                         , chartData =
-                            { chartData
-                                | data =
-                                    List.map
-                                        (\( report, distance ) ->
-                                            if report.volume > 0 then
-                                                Datum report.date (toFloat distance / report.volume / 1000)
+                            case List.head grouped of
+                                Just head ->
+                                    Just
+                                        { month = Tuple.first head
+                                        , data =
+                                            List.map
+                                                (\( report, distance ) ->
+                                                    if report.volume > 0 then
+                                                        ( report.date, toFloat distance / report.volume / 1000 )
 
-                                            else
-                                                Datum report.date 0
-                                        )
-                                        distanced
-                            }
+                                                    else
+                                                        ( report.date, 0 )
+                                                )
+                                                (Tuple.second head)
+                                        }
+
+                                Nothing ->
+                                    Nothing
+
+                        -- List.map
+                        --     (\( report, distance ) ->
+                        --         if report.volume > 0 then
+                        --             ( report.date, toFloat distance / report.volume / 1000 )
+                        --         else
+                        --             ( report.date, 0 )
+                        --     )
+                        --     distanced
                       }
                     , Cmd.none
                     )
@@ -149,6 +202,9 @@ view model viewHeight =
         , scrollbarY
         , Style.clipStyle
         , Border.solid
+        , htmlAttribute (id "view")
+        , htmlAttribute (Html.Attributes.style "scroll-behavior" "smooth")
+        , Style.animatesAll
         ]
         [ viewGraph model
         , case model.reports of
@@ -171,34 +227,39 @@ view model viewHeight =
         ]
 
 
-type alias Datum =
-    { time : Time.Posix
-    , consumption : Float
-    }
-
-
 viewGraph : Model -> Element msg
 viewGraph model =
     column [ width fill, height fill ]
-        [ row [ width fill, height fill ]
-            [ el
-                [ width (px 1)
-                , height (px 1)
-                , rotate (-pi / 2)
-                , moveDown 50
+        (case model.chartData of
+            Just chartData ->
+                [ el (Style.header2Style ++ [ padding 0, centerX ])
+                    (text ("Fuel Consumption (km/l) for " ++ chartData.month))
+                , row [ width fill, height fill ]
+                    [ el
+                        [ width (px 1)
+                        , height (px 1)
+                        , rotate (-pi / 2)
+                        , moveDown 50
+                        ]
+                        (text "Fuel Consumption (km/l)")
+                    , StyledElement.Graph.view
+                        chartData.data
+                        (Session.timeZone model.session)
+                    ]
+                , el
+                    [ centerX
+                    , moveUp 15
+                    ]
+                    (text "Date")
                 ]
-                (text "Fuel Consumption (km/l)")
-            , StyledElement.Graph.view
-                model.chartData
-                (Session.timeZone model.session)
-                Hover
-            ]
-        , el
-            [ centerX
-            , moveUp 15
-            ]
-            (text "Date")
-        ]
+
+            Nothing ->
+                [ el [ height (px 300), width fill ]
+                    (el [ centerX, centerY ]
+                        (text "No fuel data available")
+                    )
+                ]
+        )
 
 
 viewGroupedReports : Model -> List GroupedReports -> Element Msg
@@ -225,7 +286,14 @@ viewGroupedReports model groupedReports =
                     , Border.widthEach { edges | bottom = 1 }
                     , Border.color (Colors.withAlpha Colors.darkness 0.2)
                     ]
-                    (el (Style.header2Style ++ [ padding 0, centerX ]) (text month))
+                    (row [ spacing 10 ]
+                        [ el (Style.header2Style ++ [ padding 0, centerX ]) (text month)
+                        , StyledElement.plainButton []
+                            { label = Icons.show [ mouseOver [ alpha 1 ], alpha 0.5 ]
+                            , onPress = Just (Show month)
+                            }
+                        ]
+                    )
                 , table [ spacingXY 30 15 ]
                     { data = reportsForDate
                     , columns =

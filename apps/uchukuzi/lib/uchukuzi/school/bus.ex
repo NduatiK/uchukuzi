@@ -66,4 +66,20 @@ defmodule Uchukuzi.School.Bus do
       [value] -> round(value)
     end
   end
+
+  def distance_travelled_before(bus, date) do
+    result =
+      Repo.all(
+        from(b in Bus,
+          left_join: t in assoc(b, :trips),
+          where: t.end_time <= ^date,
+          select: type(sum(t.distance_covered), :float)
+        )
+      ) |> IO.inspect()
+
+    case result do
+      [nil] -> 0
+      [value] -> round(value)
+    end
+  end
 end

@@ -74,7 +74,7 @@ defmodule Uchukuzi.School do
     with {:ok, bus} <- bus_for(school_id, bus_id) do
       distance_travelled =
         bus
-        |> Bus.distance_travelled()
+        |> Bus.distance_travelled_before(params["date"])
 
       params
       |> Map.put("distance_travelled", distance_travelled)
