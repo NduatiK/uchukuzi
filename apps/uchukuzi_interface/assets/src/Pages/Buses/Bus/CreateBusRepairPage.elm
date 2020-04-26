@@ -261,7 +261,14 @@ viewRecords model =
                 []
     in
     column [ height fill, width (fillPortion 4), centerX, centerY, spacing 10 ]
-        [ column [ htmlAttribute (id viewRecordsID), scrollbarY, width fill, spacing 10 ] (List.map (viewRecord model.problems) model.repairs)
+        [ column
+            [ htmlAttribute (id viewRecordsID)
+            , htmlAttribute (Html.Attributes.style "scroll-behavior" "smooth")
+            , scrollbarY
+            , width fill
+            , spacing 10
+            ]
+            (List.map (viewRecord model.problems) model.repairs)
         , el
             ([ height (px 66)
              , width fill

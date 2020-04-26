@@ -16,6 +16,7 @@ import Models.FuelReport exposing (FuelReport, fuelRecordDecoder)
 import Navigation
 import RemoteData exposing (..)
 import Session exposing (Session)
+import Statistics
 import Style exposing (edges)
 import StyledElement
 import StyledElement.Footer as Footer
@@ -30,6 +31,11 @@ type alias Model =
     , busID : Int
     , currentPage : Page
     , reports : WebData (List GroupedReports)
+    , statistics :
+        Maybe
+            { stdDev : Float
+            , mean : Float
+            }
     , chartData :
         Maybe
             { data : List ( Time.Posix, Float )
@@ -67,6 +73,7 @@ init busID session =
       , currentPage = Summary
       , reports = Loading
       , chartData = Nothing
+      , statistics = Nothing
       }
     , fetchFuelHistory session busID
     )
@@ -88,10 +95,10 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        chartData =
-            model.chartData
-    in
+    -- let
+    --     chartData =
+    --         model.chartData
+    -- in
     case msg of
         Show month ->
             case model.reports of
@@ -141,14 +148,12 @@ update msg model =
         RecordsResponse response ->
             case response of
                 Success ( distanced, grouped ) ->
-                    ( { model
-                        | reports = Success grouped
-                        , chartData =
+                    let
+                        ( chartData, statistics ) =
                             case List.head grouped of
                                 Just head ->
-                                    Just
-                                        { month = Tuple.first head
-                                        , data =
+                                    let
+                                        data =
                                             List.map
                                                 (\( report, distance ) ->
                                                     if report.volume > 0 then
@@ -158,19 +163,38 @@ update msg model =
                                                         ( report.date, 0 )
                                                 )
                                                 (Tuple.second head)
+
+                                        fuelConsuptions =
+                                            List.map Tuple.second data
+
+                                        stdDev =
+                                            Statistics.deviation fuelConsuptions
+
+                                        mean =
+                                            List.foldl (+) 0 fuelConsuptions / toFloat (List.length fuelConsuptions)
+                                    in
+                                    ( Just
+                                        { month = Tuple.first head
+                                        , data = data
                                         }
+                                    , case ( stdDev, mean ) of
+                                        ( Just stdDev_, mean_ ) ->
+                                            Just
+                                                { stdDev = stdDev_
+                                                , mean = mean_
+                                                }
+
+                                        _ ->
+                                            Nothing
+                                    )
 
                                 Nothing ->
-                                    Nothing
-
-                        -- List.map
-                        --     (\( report, distance ) ->
-                        --         if report.volume > 0 then
-                        --             ( report.date, toFloat distance / report.volume / 1000 )
-                        --         else
-                        --             ( report.date, 0 )
-                        --     )
-                        --     distanced
+                                    ( Nothing, Nothing )
+                    in
+                    ( { model
+                        | reports = Success grouped
+                        , statistics = statistics
+                        , chartData = chartData
                       }
                     , Cmd.none
                     )
@@ -209,12 +233,13 @@ view model viewHeight =
         [ viewGraph model
         , case model.reports of
             Success reports ->
-                column [ width fill ]
-                    [ row (Style.header2Style ++ [ alignLeft, width fill, Font.color Colors.black, spacing 30 ])
-                        [ text "Total Paid"
-                        , el [ Font.size 21, Font.color Colors.darkGreen ] (text ("KES. " ++ String.fromInt (totalCost reports)))
-                        ]
-                    , viewGroupedReports model reports
+                column []
+                    [ --     row (Style.header2Style ++ [ alignLeft, width fill, Font.color Colors.black, spacing 30 ])
+                      --     [ text "Total Paid"
+                      --     , el [ Font.size 21, Font.color Colors.darkGreen ] (text ("KES. " ++ String.fromInt (totalCost reports)))
+                      --     ]
+                      -- ,
+                      viewGroupedReports model reports
                     ]
 
             Failure reports ->
@@ -229,42 +254,42 @@ view model viewHeight =
 
 viewGraph : Model -> Element msg
 viewGraph model =
-    column [ width fill, height fill ]
-        (case model.chartData of
-            Just chartData ->
-                [ el (Style.header2Style ++ [ padding 0, centerX ])
-                    (text ("Fuel Consumption (km/l) for " ++ chartData.month))
-                , row [ width fill, height fill ]
-                    [ el
-                        [ width (px 1)
-                        , height (px 1)
-                        , rotate (-pi / 2)
-                        , moveDown 50
-                        ]
+    case model.chartData of
+        Just chartData ->
+            el
+                [ width (px 900)
+                , moveRight 20
+                , inFront
+                    (el (centerX :: Style.header2Style)
+                        (text ("Fuel Consumption (km/l) for " ++ chartData.month))
+                    )
+                , behindContent
+                    (el [ alignRight, alignBottom, moveDown 5 ] (text "Date"))
+                , inFront
+                    (el
+                        [ centerY, width (px 1), height (px 1), rotate (-pi / 2), moveDown 60, moveLeft 10 ]
                         (text "Fuel Consumption (km/l)")
-                    , StyledElement.Graph.view
-                        chartData.data
-                        (Session.timeZone model.session)
-                    ]
-                , el
-                    [ centerX
-                    , moveUp 15
-                    ]
-                    (text "Date")
-                ]
-
-            Nothing ->
-                [ el [ height (px 300), width fill ]
-                    (el [ centerX, centerY ]
-                        (text "No fuel data available")
                     )
                 ]
-        )
+                (StyledElement.Graph.view
+                    chartData.data
+                    model.statistics
+                    (Session.timeZone model.session)
+                )
+
+        Nothing ->
+            el [ height (px 300), width fill ]
+                (el [ centerX, centerY ]
+                    (text "No fuel data available")
+                )
 
 
 viewGroupedReports : Model -> List GroupedReports -> Element Msg
 viewGroupedReports model groupedReports =
     let
+        selectedMonth =
+            Maybe.andThen (.month >> Just) model.chartData
+
         timezone =
             Session.timeZone model.session
 
@@ -288,10 +313,14 @@ viewGroupedReports model groupedReports =
                     ]
                     (row [ spacing 10 ]
                         [ el (Style.header2Style ++ [ padding 0, centerX ]) (text month)
-                        , StyledElement.plainButton []
-                            { label = Icons.show [ mouseOver [ alpha 1 ], alpha 0.5 ]
-                            , onPress = Just (Show month)
-                            }
+                        , if selectedMonth /= Just month then
+                            StyledElement.plainButton []
+                                { label = Icons.show [ mouseOver [ alpha 1 ], alpha 0.5 ]
+                                , onPress = Just (Show month)
+                                }
+
+                          else
+                            none
                         ]
                     )
                 , table [ spacingXY 30 15 ]

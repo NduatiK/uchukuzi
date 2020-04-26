@@ -1,5 +1,6 @@
 module Colors exposing (..)
 
+import Color
 import Element exposing (..)
 import Element.Background as Background
 import Html.Attributes
@@ -7,6 +8,15 @@ import Html.Attributes
 
 
 -- COLORS
+
+
+toSVGColor : Color -> Color.Color
+toSVGColor color =
+    let
+        { red, green, blue } =
+            toRgb color
+    in
+    Color.rgb red green blue
 
 
 withGradient : Float -> Color -> Attr decorative msg
