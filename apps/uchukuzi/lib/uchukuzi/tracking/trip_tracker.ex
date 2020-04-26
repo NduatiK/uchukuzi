@@ -154,7 +154,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   def handle_info(:timeout, data) do
-    {:stop, {:shutdown, :timeout}, %{data | state: :complete}}
+    {:stop, {:shutdown, :timeout}, data}
   end
 
   def terminate(_reason, %{state: :complete} = data) do
