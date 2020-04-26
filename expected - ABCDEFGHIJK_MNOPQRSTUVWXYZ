@@ -1,0 +1,44 @@
+expected - ABCDEFGHIJK_MNOPQRSTUVWXYZ
+actual   - ABCDEF__IJKLMNOPQRSTUVWXYZ
+
+IDEAS
+ -  Will always match at start (the school)
+        A
+        A
+ -  Consume while matching
+        BCDEF
+        BCDEF
+
+ -  Read ahead to account for skipped tiles
+    (Here, the vehicle skipped GH and
+     immediately jumps to I, we can simply 
+     resume our predictions from I)
+        GHIJK
+        __IJK
+          ↓
+         IJK
+
+ -  When the vehicle enters an unexpected tile,
+    predict on the time taken to get to 
+    the nearest tile and add that time to the 
+    estimate
+    (Here, if N is closer to L than M, predict 
+     the time to get to N and resume estimations
+     from there)
+        _MNOPQRSTUVWXYZ
+        LMNOPQRSTUVWXYZ
+                ↓
+        L→N,NOPQRSTUVWXYZ
+
+So as we proceed, we will have generated three paths
+    ABCDEFGHIJKLMNOPQRSTUVWXYZ (when in 1)
+    ABCDEFIJKLMNOPQRSTUVWXYZ (after noticing a skip)
+    ABCDEFIJKL→NOPQRSTUVWXYZ (after noticing a deviation)
+
+But is it a deviation or a skip?
+    Discovery process is the same:
+        We assume it is a deviation, then if it is a skip,
+        we discover the distance to rectify is 0.
+        For example, going from F to I was  a deviation 
+        and the nearest tile ahead was I 
+        (0 seconds away from the tile deviated to)

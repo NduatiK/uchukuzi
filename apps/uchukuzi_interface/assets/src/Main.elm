@@ -1,7 +1,5 @@
 module Main exposing (..)
 
--- import Pages.Devices.DevicesPage as DevicesList
-
 import Api
 import Browser
 import Browser.Events
@@ -192,101 +190,6 @@ type Msg
     | BusMoved LocationUpdate
 
 
-
----- VIEW ----
-
-
-view : Model -> Browser.Document Msg
-view { page, route, navState, windowHeight, sideBarOpen } =
-    let
-        viewEmptyPage pageContents =
-            viewPage pageContents GotHomeMsg
-
-        viewPage pageContents toMsg =
-            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarOpen ToggleSideBar windowHeight
-
-        -- viewEmptyPage =
-        renderedView =
-            let
-                viewHeight =
-                    Page.viewHeight windowHeight
-            in
-            case page of
-                Home _ ->
-                    viewEmptyPage Home.view
-
-                Activate model ->
-                    viewPage (Activate.view model) GotActivateMsg
-
-                Login model ->
-                    viewPage (Login.view model) GotLoginMsg
-
-                Signup model ->
-                    viewPage (Signup.view model) GotSignupMsg
-
-                Redirect _ ->
-                    viewEmptyPage Pages.Blank.view
-
-                Logout _ ->
-                    viewEmptyPage Pages.Blank.view
-
-                NotFound _ ->
-                    viewEmptyPage NotFound.view
-
-                HouseholdList model ->
-                    viewPage (HouseholdList.view model viewHeight) GotHouseholdListMsg
-
-                StudentRegistration model ->
-                    viewPage (StudentRegistration.view model viewHeight) GotStudentRegistrationMsg
-
-                BusesList model ->
-                    viewPage (BusesList.view model viewHeight) GotBusesListMsg
-
-                BusRegistration model ->
-                    viewPage (BusRegistration.view model) GotBusRegistrationMsg
-
-                BusDetailsPage model ->
-                    viewPage (BusDetailsPage.view model viewHeight) GotBusDetailsPageMsg
-
-                CreateBusRepair model ->
-                    viewPage (CreateBusRepair.view model viewHeight) GotCreateBusRepairMsg
-
-                CreateFuelReport model ->
-                    viewPage (CreateFuelReport.view model viewHeight) GotCreateFuelReportMsg
-
-                -- DevicesList model ->
-                --     viewPage (DevicesList.view model) GotDevicesListMsg
-                DeviceRegistration model ->
-                    viewPage (DeviceRegistration.view model) GotDeviceRegistrationMsg
-
-                RoutesList model ->
-                    viewPage (RoutesList.view model viewHeight) GotRoutesListMsg
-
-                CreateRoute model ->
-                    viewPage (CreateRoute.view model viewHeight) GotCreateRouteMsg
-
-                CrewMembers model ->
-                    viewPage (CrewMembers.view model viewHeight) GotCrewMembersMsg
-
-                CrewMemberRegistration model ->
-                    viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg
-
-        layoutOptions =
-            { options =
-                [ focusStyle
-                    { borderColor = Nothing
-                    , backgroundColor = Nothing
-                    , shadow = Nothing
-                    }
-                ]
-            }
-    in
-    { title = "Uchukuzi"
-    , body =
-        [ Element.layoutWith layoutOptions Style.labelStyle renderedView ]
-    }
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -462,76 +365,6 @@ updatePage page_msg fullModel =
             ( fullModel, Cmd.none )
 
 
-getSession : Model -> Session
-getSession model =
-    toSession model.page
-
-
-toSession : PageModel -> Session
-toSession pageModel =
-    case pageModel of
-        Home home ->
-            home.session
-
-        Logout model ->
-            model.session
-
-        Activate subModel ->
-            subModel.session
-
-        Login subModel ->
-            subModel.session
-
-        Signup subModel ->
-            subModel.session
-
-        Redirect session ->
-            session
-
-        NotFound session ->
-            session
-
-        -- Dashboard subModel ->
-        --     subModel.session
-        HouseholdList subModel ->
-            subModel.session
-
-        StudentRegistration subModel ->
-            subModel.session
-
-        BusesList subModel ->
-            subModel.session
-
-        BusRegistration subModel ->
-            subModel.session
-
-        BusDetailsPage subModel ->
-            subModel.session
-
-        -- DevicesList subModel ->
-        --     subModel.session
-        DeviceRegistration subModel ->
-            subModel.session
-
-        RoutesList subModel ->
-            subModel.session
-
-        CreateRoute subModel ->
-            subModel.session
-
-        CrewMembers subModel ->
-            subModel.session
-
-        CrewMemberRegistration subModel ->
-            subModel.session
-
-        CreateBusRepair subModel ->
-            subModel.session
-
-        CreateFuelReport subModel ->
-            subModel.session
-
-
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
     let
@@ -631,6 +464,168 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                         |> updateWith CrewMemberRegistration GotCrewMemberRegistrationMsg
     in
     ( { model | page = updatedPage, route = maybeRoute }, msg )
+
+
+
+---- VIEW ----
+
+
+view : Model -> Browser.Document Msg
+view { page, route, navState, windowHeight, sideBarOpen } =
+    let
+        viewEmptyPage pageContents =
+            viewPage pageContents GotHomeMsg
+
+        viewPage pageContents toMsg =
+            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarOpen ToggleSideBar windowHeight
+
+        -- viewEmptyPage =
+        renderedView =
+            let
+                viewHeight =
+                    Page.viewHeight windowHeight
+            in
+            case page of
+                Home _ ->
+                    viewEmptyPage Home.view
+
+                Activate model ->
+                    viewPage (Activate.view model) GotActivateMsg
+
+                Login model ->
+                    viewPage (Login.view model) GotLoginMsg
+
+                Signup model ->
+                    viewPage (Signup.view model) GotSignupMsg
+
+                Redirect _ ->
+                    viewEmptyPage Pages.Blank.view
+
+                Logout _ ->
+                    viewEmptyPage Pages.Blank.view
+
+                NotFound _ ->
+                    viewEmptyPage NotFound.view
+
+                HouseholdList model ->
+                    viewPage (HouseholdList.view model viewHeight) GotHouseholdListMsg
+
+                StudentRegistration model ->
+                    viewPage (StudentRegistration.view model viewHeight) GotStudentRegistrationMsg
+
+                BusesList model ->
+                    viewPage (BusesList.view model viewHeight) GotBusesListMsg
+
+                BusRegistration model ->
+                    viewPage (BusRegistration.view model) GotBusRegistrationMsg
+
+                BusDetailsPage model ->
+                    viewPage (BusDetailsPage.view model viewHeight) GotBusDetailsPageMsg
+
+                CreateBusRepair model ->
+                    viewPage (CreateBusRepair.view model viewHeight) GotCreateBusRepairMsg
+
+                CreateFuelReport model ->
+                    viewPage (CreateFuelReport.view model viewHeight) GotCreateFuelReportMsg
+
+                -- DevicesList model ->
+                --     viewPage (DevicesList.view model) GotDevicesListMsg
+                DeviceRegistration model ->
+                    viewPage (DeviceRegistration.view model) GotDeviceRegistrationMsg
+
+                RoutesList model ->
+                    viewPage (RoutesList.view model viewHeight) GotRoutesListMsg
+
+                CreateRoute model ->
+                    viewPage (CreateRoute.view model viewHeight) GotCreateRouteMsg
+
+                CrewMembers model ->
+                    viewPage (CrewMembers.view model viewHeight) GotCrewMembersMsg
+
+                CrewMemberRegistration model ->
+                    viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg
+
+        layoutOptions =
+            { options =
+                [ focusStyle
+                    { borderColor = Nothing
+                    , backgroundColor = Nothing
+                    , shadow = Nothing
+                    }
+                ]
+            }
+    in
+    { title = "Uchukuzi"
+    , body =
+        [ Element.layoutWith layoutOptions Style.labelStyle renderedView ]
+    }
+
+
+toSession : PageModel -> Session
+toSession pageModel =
+    case pageModel of
+        Home home ->
+            home.session
+
+        Logout model ->
+            model.session
+
+        Activate subModel ->
+            subModel.session
+
+        Login subModel ->
+            subModel.session
+
+        Signup subModel ->
+            subModel.session
+
+        Redirect session ->
+            session
+
+        NotFound session ->
+            session
+
+        -- Dashboard subModel ->
+        --     subModel.session
+        HouseholdList subModel ->
+            subModel.session
+
+        StudentRegistration subModel ->
+            subModel.session
+
+        BusesList subModel ->
+            subModel.session
+
+        BusRegistration subModel ->
+            subModel.session
+
+        BusDetailsPage subModel ->
+            subModel.session
+
+        DeviceRegistration subModel ->
+            subModel.session
+
+        RoutesList subModel ->
+            subModel.session
+
+        CreateRoute subModel ->
+            subModel.session
+
+        CrewMembers subModel ->
+            subModel.session
+
+        CrewMemberRegistration subModel ->
+            subModel.session
+
+        CreateBusRepair subModel ->
+            subModel.session
+
+        CreateFuelReport subModel ->
+            subModel.session
+
+
+
+-- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
