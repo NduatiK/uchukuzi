@@ -1,19 +1,13 @@
 module StyledElement.Graph exposing (view)
 
 import Axis
-import Browser.Dom as Dom
-import Color
 import Colors
-import Date
-import DatePicker
 import Element exposing (..)
-import Html
 import Html.Attributes exposing (id)
 import Icons exposing (IconBuilder)
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)
 import Shape
-import Style
 import StyledElement exposing (wrappedInput)
 import Time
 import TypedSvg exposing (g, svg)
@@ -48,10 +42,6 @@ xScaleBuilder min max timezone =
 yScaleBuilder : Float -> ContinuousScale Float
 yScaleBuilder max =
     Scale.linear ( h - 2 * padding, 0 ) ( max * 1.5, 0 )
-
-
-
--- Scale.linear ( h - 2 * padding, 0 ) ( 0, max * 1.5 )
 
 
 xAxis : List ( Time.Posix, Float ) -> ContinuousScale Time.Posix -> Svg msg
@@ -123,8 +113,7 @@ viewOutlierLines stats distances min max xScale yScale =
                         ]
                     ]
                     [ TypedSvg.text_
-                        [-- fill (Paint (color label))
-                        ]
+                        []
                         [ TypedSvg.Core.text
                             (case distance of
                                 0 ->
@@ -167,19 +156,19 @@ view chartData statistics timezone =
         (html
             (svg
                 [ viewBox 0 0 (w + padding) h
-                , fontFamily [ "SF Pro Text", "sans-serif" ]
                 ]
                 ([ g
                     [ transform [ Translate (padding - 1) (h - padding) ]
-                    , fontFamily [ "SF Pro Text", "sans-serif" ]
                     ]
                     [ xAxis chartData xScale ]
                  , g
                     [ transform [ Translate (padding - 1) padding ]
-                    , fontFamily [ "SF Pro Text", "sans-serif" ]
                     ]
                     [ yAxis yScale ]
-                 , g [ transform [ Translate padding padding ], class [ "series" ] ]
+                 , g
+                    [ transform [ Translate padding padding ]
+                    , class [ "series" ]
+                    ]
                     [ Path.element (line chartData xScale yScale)
                         [ stroke <|
                             Paint <|

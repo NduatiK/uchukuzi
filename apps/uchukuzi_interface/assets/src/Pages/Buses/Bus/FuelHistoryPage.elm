@@ -257,7 +257,7 @@ viewGraph model =
     case model.chartData of
         Just chartData ->
             el
-                [ width (px 900)
+                [ width (fill |> maximum 900)
                 , moveRight 20
                 , inFront
                     (el (centerX :: Style.header2Style)
@@ -301,7 +301,7 @@ viewGroupedReports model groupedReports =
                 )
 
         rowTextStyle =
-            width (fill |> minimum 220) :: Style.tableElementStyle
+            width (fill |> minimum 180) :: Style.tableElementStyle
 
         viewGroup ( month, reportsForDate ) =
             column [ spacing 12, height fill ]

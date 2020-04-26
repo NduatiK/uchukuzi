@@ -23,7 +23,7 @@ import Pages.Buses.Bus.TripsHistoryPage as RouteHistory
 import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
-import Style
+import Style exposing (edges)
 
 
 type alias Model =
@@ -389,7 +389,7 @@ view : Model -> Int -> Element Msg
 view model viewHeight =
     case model.busData of
         Success busData ->
-            viewLoaded model busData viewHeight
+            viewLoaded busData viewHeight
 
         Failure _ ->
             el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
@@ -398,25 +398,25 @@ view model viewHeight =
             Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
 
 
-viewLoaded : Model -> BusData -> Int -> Element Msg
-viewLoaded model busData viewHeight =
+viewLoaded : BusData -> Int -> Element Msg
+viewLoaded busData viewHeight =
     let
         ( body, footer, buttons ) =
             ( viewBody viewHeight busData
             , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData)
             , viewButtons busData
             )
-
-        edges =
-            Style.edges
     in
     Element.column
         [ height fill
         , width fill
         , spacing 8
+        , case busData.currentPage of
+            FuelHistory _ ->
+                paddingEach { edges | left = 36 }
 
-        -- , spacing 24
-        , paddingXY 36 0
+            _ ->
+                paddingXY 36 0
         ]
         [ viewHeading busData buttons
         , Element.row
@@ -434,7 +434,10 @@ viewLoaded model busData viewHeight =
 
 viewHeading : BusData -> Element msg -> Element msg
 viewHeading busData button =
-    row [ width fill ]
+    row
+        [ width fill
+        , paddingEach { edges | right = 36 }
+        ]
         [ Element.column
             [ width fill ]
             [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold, paddingXY 8 12 ])
