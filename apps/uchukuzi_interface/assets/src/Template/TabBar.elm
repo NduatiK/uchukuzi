@@ -175,6 +175,9 @@ toNavigationPage route =
         Navigation.CreateBusRepair _ ->
             Buses
 
+        Navigation.EditBusDetails _ ->
+            Buses
+
         Navigation.CreateFuelReport _ ->
             Buses
 

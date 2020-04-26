@@ -1,34 +1,51 @@
 module Models.Bus exposing
     ( Bus
     , Device
+    , FuelType(..)
     , LocationUpdate
     , Part(..)
     , Repair
     , SimpleRoute
+    , VehicleClass(..)
     , VehicleType(..)
     , busDecoder
     , busDecoderWithCallback
+    , defaultConsumption
+    , defaultSeats
     , imageForPart
-    , routeDecoder
+    , simpleRouteDecoder
     , titleForPart
+    , vehicleClassToFuelType
+    , vehicleClassToType
+    , vehicleTypeToIcon
     , vehicleTypeToString
     )
 
 import Element
+import Icons
 import Icons.Repairs
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, float, int, list, nullable, string)
-import Json.Decode.Pipeline exposing (required, resolve)
+import Json.Decode.Pipeline exposing (optional, required, resolve)
 import Models.Location exposing (Location, locationDecoder)
 import Time
+
+
+type VehicleClass
+    = VehicleClass VehicleType FuelType
+
+
+type FuelType
+    = Gasoline
+    | Diesel
 
 
 type alias Bus =
     { id : Int
     , numberPlate : String
-    , seats_available : Int
-    , vehicleType : VehicleType
-    , stated_milage : Float
+    , seatsAvailable : Int
+    , vehicleClass : VehicleClass
+    , statedMilage : Float
     , route : Maybe SimpleRoute
     , device : Maybe Device
     , repairs : List Repair
@@ -39,6 +56,7 @@ type alias Bus =
 type alias SimpleRoute =
     { id : Int
     , name : String
+    , busID : Maybe Int
     }
 
 
@@ -187,7 +205,7 @@ titleForPart part =
 busDecoderWithCallback : (Bus -> a) -> Decoder a
 busDecoderWithCallback callback =
     let
-        busDataDecoder id number_plate seats_available vehicle_type stated_milage route device repairs update =
+        busDataDecoder id number_plate seats_available vehicle_type fuel_type stated_milage route device repairs update =
             let
                 bus =
                     let
@@ -197,6 +215,14 @@ busDecoderWithCallback callback =
                                     Just (LocationUpdate id update_.location update_.speed update_.bearing)
                                 )
                                 update
+
+                        fuelType =
+                            case fuel_type of
+                                "diesel" ->
+                                    Diesel
+
+                                _ ->
+                                    Gasoline
 
                         vehicleType =
                             case vehicle_type of
@@ -209,7 +235,7 @@ busDecoderWithCallback callback =
                                 _ ->
                                     SchoolBus
                     in
-                    Bus id number_plate seats_available vehicleType stated_milage route device repairs lastSeen
+                    Bus id number_plate seats_available (VehicleClass vehicleType fuelType) stated_milage route device repairs lastSeen
             in
             Decode.succeed (callback bus)
     in
@@ -218,8 +244,9 @@ busDecoderWithCallback callback =
         |> required "number_plate" string
         |> required "seats_available" int
         |> required "vehicle_type" string
+        |> required "fuel_type" string
         |> required "stated_milage" float
-        |> required "route" (nullable routeDecoder)
+        |> required "route" (nullable simpleRouteDecoder)
         |> required "device" (nullable string)
         |> required "performed_repairs" (list repairDecoder)
         |> required "last_seen" (nullable locationUpdateDecoder)
@@ -231,11 +258,12 @@ busDecoder =
     busDecoderWithCallback identity
 
 
-routeDecoder : Decoder SimpleRoute
-routeDecoder =
+simpleRouteDecoder : Decoder SimpleRoute
+simpleRouteDecoder =
     Decode.succeed SimpleRoute
         |> required "id" int
         |> required "name" string
+        |> required "bus_id" (nullable int)
 
 
 repairDecoder : Decoder Repair
@@ -271,3 +299,65 @@ locationUpdateDecoder =
         |> required "location" locationDecoder
         |> required "speed" float
         |> required "bearing" float
+
+
+defaultConsumption : VehicleClass -> Float
+defaultConsumption vehicleClass =
+    case vehicleClass of
+        VehicleClass Van Gasoline ->
+            7.4
+
+        VehicleClass Van Diesel ->
+            8.1
+
+        VehicleClass Shuttle Gasoline ->
+            3.3
+
+        VehicleClass Shuttle Diesel ->
+            3.3
+
+        VehicleClass SchoolBus Gasoline ->
+            2.7
+
+        VehicleClass SchoolBus Diesel ->
+            3.0
+
+
+defaultSeats : VehicleClass -> Int
+defaultSeats vehicleClass =
+    case vehicleClass of
+        VehicleClass Van _ ->
+            12
+
+        VehicleClass Shuttle _ ->
+            24
+
+        VehicleClass SchoolBus _ ->
+            48
+
+
+vehicleClassToType : VehicleClass -> VehicleType
+vehicleClassToType class =
+    case class of
+        VehicleClass vehicleType _ ->
+            vehicleType
+
+
+vehicleClassToFuelType : VehicleClass -> FuelType
+vehicleClassToFuelType class =
+    case class of
+        VehicleClass _ fuelType ->
+            fuelType
+
+
+vehicleTypeToIcon : VehicleType -> Icons.IconBuilder msg
+vehicleTypeToIcon vehicleType =
+    case vehicleType of
+        Van ->
+            Icons.van
+
+        Shuttle ->
+            Icons.shuttle
+
+        SchoolBus ->
+            Icons.bus

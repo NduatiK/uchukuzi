@@ -2,7 +2,7 @@ module Models.Household exposing (Household, Location, Student, TravelTime(..), 
 
 import Json.Decode as Decode exposing (Decoder, float, int, list, string, succeed)
 import Json.Decode.Pipeline exposing (required, resolve)
-import Models.Bus exposing (SimpleRoute, routeDecoder)
+import Models.Bus exposing (SimpleRoute, simpleRouteDecoder)
 import Utils.GroupBy
 
 
@@ -115,7 +115,7 @@ studentDecoder =
         |> required "travel_time" string
         |> required "home_location" locationDecoder
         |> required "pickup_location" locationDecoder
-        |> required "route" routeDecoder
+        |> required "route" simpleRouteDecoder
         |> resolve
 
 

@@ -51,6 +51,16 @@ defmodule Uchukuzi.School do
     |> Repo.insert()
   end
 
+  def update_bus(school_id, bus_id, params) do
+    with bus when not is_nil(bus) <- Repo.get_by(Bus, school_id: school_id, id: bus_id) do
+      bus
+      |> Bus.changeset(params)
+      |> Repo.update()
+    else
+      nil -> {:error, :not_found}
+    end
+  end
+
   def create_performed_repair(school_id, bus_id, params) do
     with {:ok, bus} <- bus_for(school_id, bus_id) do
       params
@@ -86,9 +96,10 @@ defmodule Uchukuzi.School do
   def fuel_reports(school_id, bus_id) do
     Repo.all(
       from(r in FuelReport,
-      left_join: b in assoc(r, :bus),
-      where: b.school_id == ^school_id and b.id == ^bus_id
-    ))
+        left_join: b in assoc(r, :bus),
+        where: b.school_id == ^school_id and b.id == ^bus_id
+      )
+    )
   end
 
   # ********* Devices *********
@@ -170,6 +181,17 @@ defmodule Uchukuzi.School do
         left_join: b in assoc(r, :bus),
         where: r.school_id == ^school_id,
         preload: [bus: b]
+      )
+    )
+  end
+
+  def routes_available_for(school_id, bus_id) do
+    Repo.all(
+      from(r in Route,
+        left_join: b in assoc(r, :bus),
+        where: r.school_id == ^school_id and (is_nil(b) or b.id == ^bus_id),
+        preload: [bus: b],
+        select: r
       )
     )
   end

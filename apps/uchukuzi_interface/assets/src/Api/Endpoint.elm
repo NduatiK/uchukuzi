@@ -17,6 +17,7 @@ module Api.Endpoint exposing
     , performedBusRepairs
     , post
     , routes
+    , routesAvailableForBus
     , signup
     , studentsOnboard
     , trips
@@ -26,7 +27,7 @@ import Http exposing (Body)
 import Json.Decode exposing (Decoder)
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
-import Url.Builder exposing (QueryParameter)
+import Url.Builder exposing (QueryParameter, int)
 
 
 type Endpoint
@@ -140,6 +141,8 @@ performedBusRepairs : Int -> Endpoint
 performedBusRepairs busID =
     url [ "school", "buses", String.fromInt busID, "performed_repairs" ]
         []
+
+
 fuelReports : Int -> Endpoint
 fuelReports busID =
     url [ "school", "buses", String.fromInt busID, "fuel_reports" ]
@@ -166,6 +169,18 @@ devices =
 routes : Endpoint
 routes =
     url [ "school", "routes" ] []
+
+
+routesAvailableForBus : Maybe Int -> Endpoint
+routesAvailableForBus busID =
+    url [ "school", "routes", "routes_available" ]
+        (case busID of
+            Just id ->
+                [ int "bus_id" id ]
+
+            Nothing ->
+                []
+        )
 
 
 

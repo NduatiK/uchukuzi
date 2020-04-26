@@ -400,6 +400,10 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     BusRegistration.init session
                         |> updateWith BusRegistration GotBusRegistrationMsg
 
+                Just (Navigation.EditBusDetails busID) ->
+                    BusRegistration.initEdit busID session
+                        |> updateWith BusRegistration GotBusRegistrationMsg
+
                 Just (Navigation.BusDeviceRegistration busID) ->
                     DeviceRegistration.init session busID
                         |> updateWith DeviceRegistration GotDeviceRegistrationMsg

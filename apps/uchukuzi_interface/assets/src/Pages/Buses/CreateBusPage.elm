@@ -1,7 +1,14 @@
-module Pages.Buses.CreateBusPage exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.Buses.CreateBusPage exposing
+    ( Model
+    , Msg
+    , init
+    , initEdit
+    , subscriptions
+    , update
+    , view
+    )
 
 import Api
-import Pages.Buses.Bus.Navigation exposing (BusPage(..))
 import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
@@ -15,9 +22,9 @@ import Http
 import Icons
 import Json.Decode exposing (Decoder, field, float, int, list, string)
 import Json.Encode as Encode
-import Models.Bus exposing (VehicleType(..))
-import Models.Route exposing (Route, routeDecoder)
+import Models.Bus exposing (..)
 import Navigation
+import Pages.Buses.Bus.Navigation exposing (BusPage(..))
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
@@ -36,12 +43,14 @@ import Views.Heading exposing (viewHeading)
 
 type alias Model =
     { session : Session
+    , busID : Maybe Int
     , form : Form
-    , routeDropdownState : Dropdown.State Route
+    , routeDropdownState : Dropdown.State SimpleRoute
     , fuelDropdownState : Dropdown.State FuelType
     , consumptionDropdownState : Dropdown.State ConsumptionType
     , requestState : WebData Int
-    , routeRequestState : WebData (List Route)
+    , routeRequestState : WebData (List SimpleRoute)
+    , editRequestState : WebData Form
     }
 
 
@@ -76,15 +85,6 @@ type ConsumptionType
     | Default
 
 
-type FuelType
-    = Gasoline
-    | Diesel
-
-
-type VehicleClass
-    = VehicleClass VehicleType FuelType
-
-
 type Field
     = VehicleType VehicleType
     | FuelType FuelType
@@ -95,13 +95,14 @@ type Field
     | FuelConsumptionAmount FloatInput
 
 
-emptyForm : Session -> Model
-emptyForm session =
+emptyForm : Maybe Int -> Session -> Model
+emptyForm busID session =
     let
         defaultVehicle =
             VehicleClass SchoolBus Diesel
     in
     { session = session
+    , busID = busID
     , form =
         { vehicleClass = defaultVehicle
         , numberPlate = ""
@@ -115,16 +116,34 @@ emptyForm session =
     , fuelDropdownState = Dropdown.init "fuelDropdown"
     , consumptionDropdownState = Dropdown.init "consumptionDropdown"
     , requestState = NotAsked
+    , editRequestState = NotAsked
     , routeRequestState = Loading
     }
 
 
 init : Session -> ( Model, Cmd Msg )
 init session =
-    ( emptyForm session
+    ( emptyForm Nothing session
     , Cmd.batch
         [ Ports.initializeMaps
-        , fetchRoutes session
+        , fetchRoutes Nothing session
+        , Task.succeed (FuelDropdownMsg (Dropdown.selectOption Diesel)) |> Task.perform identity
+        , Task.succeed (ConsumptionDropdownMsg (Dropdown.selectOption Default)) |> Task.perform identity
+        ]
+    )
+
+
+initEdit : Int -> Session -> ( Model, Cmd Msg )
+initEdit busID session =
+    let
+        defaultModel =
+            emptyForm (Just busID) session
+    in
+    ( { defaultModel | editRequestState = Loading }
+    , Cmd.batch
+        [ Ports.initializeMaps
+        , fetchBus busID session
+        , fetchRoutes (Just busID) session
         , Task.succeed (FuelDropdownMsg (Dropdown.selectOption Diesel)) |> Task.perform identity
         , Task.succeed (ConsumptionDropdownMsg (Dropdown.selectOption Default)) |> Task.perform identity
         ]
@@ -139,8 +158,9 @@ type Msg
     = Changed Field
     | SubmitButtonMsg
     | ServerResponse (WebData Int)
-    | RouteServerResponse (WebData (List Route))
-    | RouteDropdownMsg (Dropdown.Msg Route)
+    | RouteServerResponse (WebData (List SimpleRoute))
+    | EditServerResponse (WebData ( Form, Cmd Msg ))
+    | RouteDropdownMsg (Dropdown.Msg SimpleRoute)
     | FuelDropdownMsg (Dropdown.Msg FuelType)
     | ConsumptionDropdownMsg (Dropdown.Msg ConsumptionType)
 
@@ -192,11 +212,37 @@ update msg model =
                         | form = { form | problems = [] }
                         , requestState = Loading
                       }
-                    , submit model.session validForm
+                    , submit model model.session validForm
                     )
 
                 Err problems ->
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+
+        EditServerResponse response_ ->
+            let
+                ( response, cmd ) =
+                    case response_ of
+                        Success ( form, cmd_ ) ->
+                            ( Success form, cmd_ )
+
+                        Failure e ->
+                            ( Failure e, Cmd.none )
+
+                        Loading ->
+                            ( Loading, Cmd.none )
+
+                        NotAsked ->
+                            ( NotAsked, Cmd.none )
+
+                newModel =
+                    { model | editRequestState = response }
+            in
+            case response of
+                Success form ->
+                    ( { newModel | form = form }, cmd )
+
+                _ ->
+                    ( newModel, Cmd.none )
 
         ServerResponse response ->
             let
@@ -228,7 +274,23 @@ update msg model =
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
 
         RouteServerResponse response ->
-            ( { model | routeRequestState = response }, Cmd.none )
+            case response of
+                Success routes ->
+                    let
+                        match =
+                            List.head (List.filter (\route -> route.busID == model.busID) routes)
+                    in
+                    case match of
+                        Just route ->
+                            ( { model | routeRequestState = response }
+                            , Task.succeed (RouteDropdownMsg (Dropdown.selectOption route)) |> Task.perform identity
+                            )
+
+                        _ ->
+                            ( { model | routeRequestState = response }, Cmd.none )
+
+                _ ->
+                    ( { model | routeRequestState = response }, Cmd.none )
 
 
 updateField : Field -> Model -> ( Model, Cmd Msg )
@@ -241,7 +303,7 @@ updateField field model =
         VehicleType vehicleType ->
             let
                 vehicleClass =
-                    VehicleClass vehicleType (toFuelType form.vehicleClass)
+                    VehicleClass vehicleType (vehicleClassToFuelType form.vehicleClass)
 
                 updated_form =
                     { form
@@ -260,7 +322,7 @@ updateField field model =
         FuelType fuelType ->
             let
                 updated_form =
-                    { form | vehicleClass = VehicleClass (toVehicleType form.vehicleClass) fuelType }
+                    { form | vehicleClass = VehicleClass (vehicleClassToType form.vehicleClass) fuelType }
             in
             ( { model | form = updated_form }, Cmd.none )
 
@@ -322,9 +384,23 @@ view model =
 viewBody : Model -> Element Msg
 viewBody model =
     Element.column
-        [ width fill, spacing 40, paddingXY 24 8, alignTop ]
-        [ viewHeading "Add a Vehicle" Nothing
+        [ width fill, spacing 40, paddingXY 80 40, alignTop ]
+        [ viewHeading
+            (if isEditing model then
+                "Edit Vehicle"
+
+             else
+                "Add a Vehicle"
+            )
         , viewForm model
+        ]
+
+
+viewHeading : String -> Element msg
+viewHeading title =
+    Element.column
+        [ width fill ]
+        [ el Style.headerStyle (text title)
         ]
 
 
@@ -381,7 +457,7 @@ viewVehicle : VehicleType -> VehicleClass -> Element Msg
 viewVehicle vehicleType currentClass =
     let
         currentType =
-            toVehicleType currentClass
+            vehicleClassToType currentClass
 
         selected =
             currentType == vehicleType
@@ -594,7 +670,7 @@ fuelDropDown model =
             Errors.inputErrorsFor model.form.problems
 
         justFuelType x =
-            Maybe.withDefault (toFuelType model.form.vehicleClass) x
+            Maybe.withDefault (vehicleClassToFuelType model.form.vehicleClass) x
     in
     StyledElement.dropDown
         [ width
@@ -633,13 +709,14 @@ viewFuelTypeDropDown model =
     toDropDownView (fuelDropDown model)
 
 
-routeDropDown : Model -> ( Element Msg, Dropdown.Config Route Msg, List Route )
+routeDropDown : Model -> ( Element Msg, Dropdown.Config SimpleRoute Msg, List SimpleRoute )
 routeDropDown model =
     let
         routes =
             case model.routeRequestState of
                 Success routes_ ->
-                    List.filter (\r -> r.bus == Nothing) routes_
+                    -- List.filter (\r -> r.bus == Nothing) routes_
+                    routes_
 
                 _ ->
                     []
@@ -679,68 +756,6 @@ subscriptions _ =
         []
 
 
-defaultConsumption : VehicleClass -> Float
-defaultConsumption vehicleClass =
-    case vehicleClass of
-        VehicleClass Van Gasoline ->
-            7.4
-
-        VehicleClass Van Diesel ->
-            8.1
-
-        VehicleClass Shuttle Gasoline ->
-            3.3
-
-        VehicleClass Shuttle Diesel ->
-            3.3
-
-        VehicleClass SchoolBus Gasoline ->
-            2.7
-
-        VehicleClass SchoolBus Diesel ->
-            3.0
-
-
-defaultSeats : VehicleClass -> Int
-defaultSeats vehicleClass =
-    case vehicleClass of
-        VehicleClass Van _ ->
-            12
-
-        VehicleClass Shuttle _ ->
-            24
-
-        VehicleClass SchoolBus _ ->
-            48
-
-
-toVehicleType : VehicleClass -> VehicleType
-toVehicleType class =
-    case class of
-        VehicleClass vehicleType _ ->
-            vehicleType
-
-
-toFuelType : VehicleClass -> FuelType
-toFuelType class =
-    case class of
-        VehicleClass _ fuelType ->
-            fuelType
-
-
-vehicleTypeToIcon : VehicleType -> Icons.IconBuilder msg
-vehicleTypeToIcon vehicleType =
-    case vehicleType of
-        Van ->
-            Icons.van
-
-        Shuttle ->
-            Icons.shuttle
-
-        SchoolBus ->
-            Icons.bus
-
-
 validateForm : Form -> Result (List ( Problem, String )) ValidForm
 validateForm form =
     let
@@ -759,11 +774,11 @@ validateForm form =
                 ]
 
         vehicleType =
-            toVehicleType form.vehicleClass
+            vehicleClassToType form.vehicleClass
                 |> Models.Bus.vehicleTypeToString
 
         fuelType =
-            case toFuelType form.vehicleClass of
+            case vehicleClassToFuelType form.vehicleClass of
                 Diesel ->
                     "diesel"
 
@@ -785,8 +800,8 @@ validateForm form =
             Err problems
 
 
-submit : Session -> ValidForm -> Cmd Msg
-submit session form =
+submit : Model -> Session -> ValidForm -> Cmd Msg
+submit model session form =
     let
         params =
             Encode.object
@@ -801,8 +816,14 @@ submit session form =
                 )
                 |> Http.jsonBody
     in
-    Api.post session Endpoint.buses params busDecoder
-        |> Cmd.map ServerResponse
+    case ( isEditing model, model.busID ) of
+        ( True, Just busID ) ->
+            Api.patch session (Endpoint.bus busID) params busDecoder
+                |> Cmd.map ServerResponse
+
+        _ ->
+            Api.post session Endpoint.buses params busDecoder
+                |> Cmd.map ServerResponse
 
 
 busDecoder : Decoder Int
@@ -810,7 +831,36 @@ busDecoder =
     field "id" int
 
 
-fetchRoutes : Session -> Cmd Msg
-fetchRoutes session =
-    Api.get session Endpoint.routes (list routeDecoder)
+fetchRoutes : Maybe Int -> Session -> Cmd Msg
+fetchRoutes busID session =
+    Api.get session (Endpoint.routesAvailableForBus busID) (list simpleRouteDecoder)
         |> Cmd.map RouteServerResponse
+
+
+fetchBus : Int -> Session -> Cmd Msg
+fetchBus busID session =
+    Api.get session (Endpoint.bus busID) (busDecoderWithCallback busToForm)
+        |> Cmd.map EditServerResponse
+
+
+busToForm : Bus -> ( Form, Cmd Msg )
+busToForm bus =
+    ( { vehicleClass = bus.vehicleClass
+      , numberPlate = bus.numberPlate
+      , seatsAvailable = bus.seatsAvailable
+      , routeId = Nothing
+      , consumptionType = Custom
+      , consumptionAmount = FloatInput.fromFloat bus.statedMilage
+      , problems = []
+      }
+    , case bus.route of
+        Just route ->
+            Task.succeed (RouteDropdownMsg (Dropdown.selectOption route)) |> Task.perform identity
+
+        Nothing ->
+            Cmd.none
+    )
+
+
+isEditing model =
+    model.editRequestState /= NotAsked

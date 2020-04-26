@@ -15,17 +15,39 @@ defmodule UchukuziInterfaceWeb.SchoolView do
   def render("bus.json", %{school: params}), do: render("bus.json", params)
 
   def render("bus.json", %{bus: bus} = params) do
+    render_bus(bus, Map.get(params, :last_seen), Map.get(bus, :performed_repairs))
+  end
+
+  def render_bus(bus, last_seen \\ nil, performed_repairs \\ nil) do
     %{
       id: bus.id,
       number_plate: bus.number_plate,
       vehicle_type: bus.vehicle_type,
+      fuel_type: bus.fuel_type,
       stated_milage: bus.stated_milage,
       seats_available: bus.seats_available,
-      device: if(bus.device == nil, do: nil, else: bus.device.imei),
+      device: render_device(bus.device),
       route: render_bus_route(Map.get(bus, :route)),
       # route: bus.route,
-      last_seen: render_last_seen(Map.get(params, :last_seen)),
-      performed_repairs: render_performed_repairs(Map.get(bus, :performed_repairs))
+      last_seen: render_last_seen(last_seen),
+      performed_repairs: render_performed_repairs(performed_repairs)
+    }
+  end
+
+  def render("simple_routes.json", %{routes: routes}) do
+    routes
+    |> render_many(__MODULE__, "simple_route.json", as: :route)
+  end
+
+  def render("simple_route.json", %{route: route}) do
+    %{
+      id: route.id,
+      name: route.name,
+      path: route.path |> Enum.map(&render_location/1),
+      bus_id:
+        with bus = %Bus{} <- Map.get(route, :bus) do
+          bus.id
+        end
     }
   end
 
@@ -82,6 +104,10 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       time: report.time
     }
   end
+
+  def render_device(nil), do: nil
+  def render_device(%Ecto.Association.NotLoaded{}), do: nil
+  def render_device(device), do: device.imei
 
   def render_performed_repairs(nil), do: nil
   def render_performed_repairs(%Ecto.Association.NotLoaded{}), do: []

@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.AboutBus exposing (Model, Msg, init, locationUpdateMsg, update, view, viewFooter)
+module Pages.Buses.Bus.AboutBus exposing (Model, Msg, init, locationUpdateMsg, update, view, viewButtons, viewFooter)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -68,6 +68,7 @@ type Msg
     | CrewMemberServerResponse (WebData (List CrewMember))
       --------------------
     | LocationUpdate LocationUpdate
+    | EditDetails
 
 
 init : Session -> Bus -> ( Model, Cmd Msg )
@@ -115,6 +116,9 @@ update msg model =
 
         ClickedCrewPage ->
             ( { model | currentPage = Crew }, fetchCrewMembers model.session model.bus.id )
+
+        EditDetails ->
+            ( model, Navigation.rerouteTo model (Navigation.EditBusDetails model.bus.id) )
 
         LocationUpdate locationUpdate ->
             let
@@ -317,17 +321,17 @@ viewCrewPage model =
             el [ centerX, centerY ] (Icons.loading [])
 
 
-
--- wrappedRow
---     [ height fill
---     , width fill
---     , paddingXY 0 10
---     ]
---     [ if model.bus.device == Nothing then
---         viewAddDevice model
---       else
---         none
---     ]
+viewButtons : Model -> Element Msg
+viewButtons _ =
+    el
+        [ alignRight, paddingEach { edges | top = 12 } ]
+        (StyledElement.hoverButton
+            [ alignRight ]
+            { title = "Edit details"
+            , icon = Just Icons.edit
+            , onPress = Just EditDetails
+            }
+        )
 
 
 viewFooter : Model -> Element Msg

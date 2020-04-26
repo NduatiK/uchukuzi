@@ -125,6 +125,16 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
+  def update_bus(conn, %{"bus_id" => bus_id} = bus_params, school_id) do
+    with {:ok, bus} <- School.update_bus(school_id, bus_id, bus_params) do
+      bus = Repo.preload(bus, [:device, :route])
+
+      conn
+      |> put_status(:created)
+      |> render("bus.json", bus: bus)
+    end
+  end
+
   def list_buses(conn, _, school_id) do
     buses =
       for bus <- School.buses_for(school_id) do

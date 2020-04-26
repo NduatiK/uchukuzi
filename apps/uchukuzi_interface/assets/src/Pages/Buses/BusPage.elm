@@ -415,6 +415,9 @@ viewLoaded busData viewHeight =
             FuelHistory _ ->
                 paddingEach { edges | left = 36 }
 
+            About _ ->
+                paddingEach { edges | left = 36 }
+
             _ ->
                 paddingXY 36 0
         ]
@@ -521,6 +524,9 @@ viewButtons busData =
             Element.map toMsg pageView
     in
     case busData.currentPage of
+        About subPageModel ->
+            viewPage (About.viewButtons subPageModel) GotAboutMsg
+
         FuelHistory subPageModel ->
             viewPage (FuelHistory.viewButtons subPageModel) GotFuelHistoryMsg
 
