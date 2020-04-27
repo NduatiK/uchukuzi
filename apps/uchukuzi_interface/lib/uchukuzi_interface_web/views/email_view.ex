@@ -54,7 +54,7 @@ end
                                   <table width="100%" border="0" cellspacing="0" cellpadding="0" role="presentation">
                                     <tr>
                                       <td align="center" style="word-break: break-word; font-family: Helvetica, Arial, sans-serif; font-size: 16px;">
-                                        <a href="#{link}" style="color: #FFF; border-color: rgba(30,165,145,1); border-style: solid; border-width: 10px 18px; background-color: rgba(30,165,145,1); display: inline-block; text-decoration: none; border-radius: 3px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16); -webkit-text-size-adjust: none; box-sizing: border-box;">Access account</a>
+                                        <a href="#{link}" href="#{@website}" style="color: #FFF; border-color: rgba(30,165,145,1); border-style: solid; border-width: 10px 18px; background-color: rgba(30,165,145,1); display: inline-block; text-decoration: none; border-radius: 3px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16); -webkit-text-size-adjust: none; box-sizing: border-box;">Access account</a>
                                       </td>
                                     </tr>
                                   </table>
@@ -68,10 +68,8 @@ end
                               <tr>
                                 <td style="word-break: break-word; font-family: Helvetica, Arial, sans-serif; font-size: 16px;">
                                   <p class="f-fallback sub" style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">If you’re having trouble with the button above, copy and paste the URL below into your web browser.</p>
-                                  <!--                              <p class="f-fallback sub" style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">#{
-      link
-    }</p> -->
-    <a href=#{link} style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">#{
+
+    <a href=#{link} href="#{@website}" style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">#{
       link
     }</a>
                                 </td>
@@ -168,7 +166,7 @@ end
                                   <table width="100%" border="0" cellspacing="0" cellpadding="0" role="presentation">
                                     <tr>
                                       <td align="center" style="word-break: break-word; font-family: Helvetica, Arial, sans-serif; font-size: 16px;">
-                                        <a href="#{link}" target="_blank" style="color: #FFF; border-color: rgba(30,165,145,1); border-style: solid; border-width: 10px 18px; background-color: rgba(30,165,145,1); bg-color: rgba(30,165,145,1);display: inline-block; text-decoration: none; border-radius: 3px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16); -webkit-text-size-adjust: none; box-sizing: border-box;">Access account</a>
+                                        <a href="#{link}" href="#{@website}" target="_blank" style="color: #FFF; border-color: rgba(30,165,145,1); border-style: solid; border-width: 10px 18px; background-color: rgba(30,165,145,1); bg-color: rgba(30,165,145,1);display: inline-block; text-decoration: none; border-radius: 3px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16); -webkit-text-size-adjust: none; box-sizing: border-box;">Access account</a>
                                       </td>
                                     </tr>
                                   </table>
