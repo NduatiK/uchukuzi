@@ -69,23 +69,23 @@ defmodule UchukuziInterfaceWeb.AuthController do
     end
   end
 
-  def exchange_assistant_token(conn, %{"email_token" => email_token}) do
+  def exchange_assistant_token(conn, %{"token" => email_token}) do
     with {:ok, user_id} <- AssistantAuth.verify(email_token, 3600),
-         {:ok, assistant} <- Roles.get_assistant_by(id: user_id) do
+          assistant  when not is_nil(assistant)<- Roles.get_assistant_by(id: user_id) do
       assistant = Repo.preload(assistant, :school)
 
       conn
       |> put_view(UchukuziInterfaceWeb.RolesView)
       |> render("assistant.json", assistant: assistant, token: AssistantAuth.sign(assistant.id))
     else
-      {:error, :expired} ->
+      {:error, _} ->
         conn
         |> resp(:unauthorized, "expired")
         |> send_resp()
 
-      {:error, _} ->
+      _ ->
         conn
-        |> resp(:unauthorized, "Unauthorized")
+        |> resp(:not_found, "Unauthorized")
         |> send_resp()
     end
   end
