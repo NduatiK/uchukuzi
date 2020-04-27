@@ -263,7 +263,7 @@ simpleRouteDecoder =
     Decode.succeed SimpleRoute
         |> required "id" int
         |> required "name" string
-        |> required "bus_id" (nullable int)
+        |> optional "bus_id" (nullable int) Nothing
 
 
 repairDecoder : Decoder Repair
