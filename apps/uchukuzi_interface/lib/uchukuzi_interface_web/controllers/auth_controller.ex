@@ -71,7 +71,7 @@ defmodule UchukuziInterfaceWeb.AuthController do
 
   def exchange_assistant_token(conn, %{"token" => email_token}) do
     with {:ok, user_id} <- AssistantAuth.verify(email_token, 3600),
-          assistant  when not is_nil(assistant)<- Roles.get_assistant_by(id: user_id) do
+         assistant when not is_nil(assistant) <- Roles.get_assistant_by(id: user_id) do
       assistant = Repo.preload(assistant, :school)
 
       conn
@@ -88,6 +88,11 @@ defmodule UchukuziInterfaceWeb.AuthController do
         |> resp(:not_found, "Unauthorized")
         |> send_resp()
     end
+  end
+
+  def deep_link_redirect(%{query_params: %{"token" => token}} = conn, _) do
+    conn
+    |> redirect(external: "uchukuzi://uchukuzi.com/?token=#{token}")
   end
 
   def send_token_email_to(assistant, token) do

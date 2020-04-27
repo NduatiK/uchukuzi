@@ -42,15 +42,19 @@ defmodule UchukuziInterfaceWeb.Router do
 
   end
 
+  scope "/", UchukuziInterfaceWeb do
+
+    get "assistant_login", AuthController, :deep_link_redirect
+  end
   scope "/api/auth", UchukuziInterfaceWeb do
     pipe_through :api
 
+    post "/manager/exchange_token", AuthController, :exchange_manager_token
     post "/manager/login", AuthController, :login_manager
+
+
     post "/assistant/request_token", AuthController, :request_assistant_token
     post "/assistant/exchange_token", AuthController, :exchange_assistant_token
-    post "/manager/exchange_token", AuthController, :exchange_manager_token
-
-
   end
 
   scope "/api/school", UchukuziInterfaceWeb do
@@ -85,6 +89,14 @@ defmodule UchukuziInterfaceWeb.Router do
 
     post "/routes", SchoolController, :create_route
     get "/routes", SchoolController, :list_routes
+
+    get "/routes/routes_available/", SchoolController, :list_routes_available
+  end
+
+  scope "/api/school/assistant", UchukuziInterfaceWeb do
+    pipe_through [:assistant_api, :authenticate_assistant]
+
+    get "/routes/:assistant_id", SchoolController, :route_for_assistant
   end
 
   scope "/api/tracking", UchukuziInterfaceWeb do

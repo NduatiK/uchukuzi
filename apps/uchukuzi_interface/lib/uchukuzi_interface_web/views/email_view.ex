@@ -3,13 +3,13 @@ defmodule UchukuziInterfaceWeb.EmailView do
 
   if Mix.env() == :dev do
     @website "http://localhost:4000"
-
   else
-  @website "https://uchukuzi.herokuapp.com"
-end
+    @website "https://uchukuzi.herokuapp.com"
+  end
 
   def render_assistant_login("html", %Uchukuzi.Roles.CrewMember{} = assistant, token) do
-    link = "uchukuzi://uchukuzi.com/?token=#{token}"
+    text_link = "#{@website}/assistant_login?token=#{token}"
+    link = "href = \"#{text_link}\""
 
     """
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -54,7 +54,7 @@ end
                                   <table width="100%" border="0" cellspacing="0" cellpadding="0" role="presentation">
                                     <tr>
                                       <td align="center" style="word-break: break-word; font-family: Helvetica, Arial, sans-serif; font-size: 16px;">
-                                        <a href="#{link}" href="#{@website}" style="color: #FFF; border-color: rgba(30,165,145,1); border-style: solid; border-width: 10px 18px; background-color: rgba(30,165,145,1); display: inline-block; text-decoration: none; border-radius: 3px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16); -webkit-text-size-adjust: none; box-sizing: border-box;">Access account</a>
+                                        <a #{link} style="color: #FFF; border-color: rgba(30,165,145,1); border-style: solid; border-width: 10px 18px; background-color: rgba(30,165,145,1); display: inline-block; text-decoration: none; border-radius: 3px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16); -webkit-text-size-adjust: none; box-sizing: border-box;">Access account</a>
                                       </td>
                                     </tr>
                                   </table>
@@ -69,8 +69,8 @@ end
                                 <td style="word-break: break-word; font-family: Helvetica, Arial, sans-serif; font-size: 16px;">
                                   <p class="f-fallback sub" style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">If you’re having trouble with the button above, copy and paste the URL below into your web browser.</p>
 
-    <a href=#{link} href="#{@website}" style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">#{
-      link
+    <a #{link} style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">#{
+      text_link
     }</a>
                                 </td>
                               </tr>
@@ -91,7 +91,8 @@ end
   end
 
   def render_assistant_login("text", %Uchukuzi.Roles.CrewMember{} = assistant, token) do
-    link = "uchukuzi://uchukuzi.com/?token=#{token}"
+    # link = "uchukuzi://uchukuzi.com/?token=#{token}"
+    link = "#{@website}/assistant_login?token=#{token}"
 
     """
     Use this link to reset your password. The link is only valid for 1 hour.
@@ -119,7 +120,8 @@ end
   end
 
   def render_manager_signup("html", %Uchukuzi.Roles.Manager{} = manager, token) do
-    link = "#{@website}/#/activate/?token=#{token}"
+    text_link = "#{@website}/#/activate/?token=#{token}"
+    link = "href = \"#{text_link}\""
 
     """
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -166,7 +168,7 @@ end
                                   <table width="100%" border="0" cellspacing="0" cellpadding="0" role="presentation">
                                     <tr>
                                       <td align="center" style="word-break: break-word; font-family: Helvetica, Arial, sans-serif; font-size: 16px;">
-                                        <a href="#{link}" href="#{@website}" target="_blank" style="color: #FFF; border-color: rgba(30,165,145,1); border-style: solid; border-width: 10px 18px; background-color: rgba(30,165,145,1); bg-color: rgba(30,165,145,1);display: inline-block; text-decoration: none; border-radius: 3px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16); -webkit-text-size-adjust: none; box-sizing: border-box;">Access account</a>
+                                        <a #{link} target="_blank" style="color: #FFF; border-color: rgba(30,165,145,1); border-style: solid; border-width: 10px 18px; background-color: rgba(30,165,145,1); bg-color: rgba(30,165,145,1);display: inline-block; text-decoration: none; border-radius: 3px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16); -webkit-text-size-adjust: none; box-sizing: border-box;">Access account</a>
                                       </td>
                                     </tr>
                                   </table>
@@ -180,11 +182,8 @@ end
                               <tr>
                                 <td style="word-break: break-word; font-family: Helvetica, Arial, sans-serif; font-size: 16px;">
                                   <p class="f-fallback sub" style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">If you’re having trouble with the button above, copy and paste the URL below into your web browser.</p>
-                                  <!--                              <p class="f-fallback sub" style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">#{
-      link
-    }</p> -->
-    <a href=#{link} class="f-fallback sub" style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">#{
-      link
+    <a #{link} class="f-fallback sub" style="font-size: 13px; line-height: 1.625; color: #6B6E76; margin: .4em 0 1.1875em;">#{
+      text_link
     }</a>
                                 </td>
                               </tr>
