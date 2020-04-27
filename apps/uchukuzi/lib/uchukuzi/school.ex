@@ -175,6 +175,52 @@ defmodule Uchukuzi.School do
 
   # ********* Routes *********
 
+  def route_for_assistant(school_id, assistant_id, travel_time) do
+    crew_member =
+      CrewMember
+      |> where(school_id: ^school_id, id: ^assistant_id)
+      |> Uchukuzi.Repo.one()
+
+    if crew_member.bus_id == nil do
+      {:error, :not_found}
+    else
+      crew_member = crew_member |> Repo.preload(:bus)
+
+      if crew_member.bus.route_id == nil do
+        {:error, :not_found}
+      else
+        bus = crew_member.bus |> Repo.preload(:route)
+
+        students =
+          Repo.all(
+            from(s in Student,
+              left_join: g in assoc(s, :guardian),
+              where: s.route_id == ^bus.route.id and (s.travel_time == ^travel_time or s.travel_time == "two-way"),
+              preload: [guardian: g],
+              select: [s, g.phone_number, g.name]
+            )
+          )
+
+        {:ok,
+         %{
+           crew_member: crew_member,
+           bus: bus,
+           students: students
+         }}
+      end
+    end
+
+    # bus.
+
+    # Repo.all(
+    #   from(r in Route,
+    #     left_join: b in assoc(r, :bus),
+    #     where: r.school_id == ^school_id,
+    #     preload: [bus: b]
+    #   )
+    # )
+  end
+
   def routes_for(school_id) do
     Repo.all(
       from(r in Route,

@@ -8,10 +8,6 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     |> render_many(__MODULE__, "bus.json")
   end
 
-  def render("show.json", %{bus: bus}) do
-    render_one(bus, __MODULE__, "bus.json", as: :bus)
-  end
-
   def render("bus.json", %{school: params}), do: render("bus.json", params)
 
   def render("bus.json", %{bus: bus} = params) do
@@ -31,6 +27,20 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       # route: bus.route,
       last_seen: render_last_seen(last_seen),
       performed_repairs: render_performed_repairs(performed_repairs)
+    }
+  end
+
+  def render("route_for_assistant.json", %{
+        data: %{
+          crew_member: crew_member,
+          bus: bus,
+          students: students
+        }
+      }) do
+    %{
+      bus: render_bus(bus),
+      students: UchukuziInterfaceWeb.RolesView.render_students(students),
+      crew_member: UchukuziInterfaceWeb.RolesView.render_crew_member(crew_member)
     }
   end
 
@@ -75,6 +85,7 @@ defmodule UchukuziInterfaceWeb.SchoolView do
 
   def render("fuel_report.json", %{fuel_report: fuel_report}) do
     IO.inspect(fuel_report)
+
     %{
       id: fuel_report.id,
       cost: fuel_report.cost,

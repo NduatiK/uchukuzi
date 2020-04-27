@@ -8,7 +8,12 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def action(conn, _) do
     arg_list =
       with :no_manager <- Map.get(conn.assigns, :manager, :no_manager) do
-        [conn, conn.params]
+        with :no_assistant <- Map.get(conn.assigns, :assistant, :no_assistant) do
+          [conn, conn.params]
+        else
+          assistant ->
+            [conn, conn.params, assistant.school_id]
+        end
       else
         manager ->
           [conn, conn.params, manager.school_id]
@@ -43,6 +48,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
+  @spec create_houshold(any, map, any) :: any
   def create_houshold(
         conn,
         %{
@@ -291,5 +297,25 @@ defmodule UchukuziInterfaceWeb.SchoolController do
 
     conn
     |> render("routes.json", routes: routes)
+  end
+
+  def list_routes_available(%{query_params: %{"bus_id" => bus_id}} = conn, _, school_id) do
+    routes = School.routes_available_for(school_id, bus_id)
+
+    conn
+    |> render("simple_routes.json", routes: routes)
+  end
+
+  @spec route_for_assistant(%{query_params: map}, map, any) ::
+          {:error, :not_found} | Plug.Conn.t()
+  def route_for_assistant(
+        %{query_params: %{"travel_time" => travel_time}} = conn,
+        %{"assistant_id" => assistant_id},
+        school_id
+      ) do
+    with {:ok, data} <- School.route_for_assistant(school_id, assistant_id, travel_time) do
+      conn
+      |> render("route_for_assistant.json", data: data)
+    end
   end
 end
