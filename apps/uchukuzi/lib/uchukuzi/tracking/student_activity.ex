@@ -41,6 +41,10 @@ defmodule Uchukuzi.Tracking.StudentActivity do
     %StudentActivity{student_activity | infered_location: location}
   end
 
+  def set_inferred_location(nil, %StudentActivity{} = student_activity) do
+    %StudentActivity{student_activity | infered_location:  nil}
+  end
+
   @doc """
   Calculate where an activity happened based on a trip's information
   """

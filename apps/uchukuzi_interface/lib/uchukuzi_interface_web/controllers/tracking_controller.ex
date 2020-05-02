@@ -74,4 +74,5 @@ defmodule UchukuziInterfaceWeb.TrackingController do
       |> render("trips.json", trips: trips)
     end
   end
+
 end

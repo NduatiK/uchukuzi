@@ -363,4 +363,25 @@ defmodule UchukuziInterfaceWeb.SchoolController do
       |> render("route_for_assistant.json", data: data)
     end
   end
+
+  def student_boarded(conn, %{"student_id" => student_id}, school_id) do
+    with :ok <- School.student_boarded(school_id, conn.assigns.assistant, student_id) do
+      conn
+      |> resp(200, "{}")
+    end
+  end
+
+  def student_exited(conn, %{"student_id" => student_id}, school_id) do
+    with :ok <- School.student_exited(school_id, conn.assigns.assistant, student_id) do
+      conn
+      |> resp(200, "{}")
+    end
+  end
+
+  # def data_for_household(%{assigns: }conn, %{"student_id" => student_id}) do
+  #   with :ok <- School.student_exited(school_id, conn.assigns.assistant, student_id) do
+  #     conn
+  #     |> resp(200, "{}")
+  #   end
+  # end
 end

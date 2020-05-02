@@ -104,7 +104,10 @@ defmodule UchukuziInterfaceWeb.Router do
   scope "/api/school/assistant", UchukuziInterfaceWeb do
     pipe_through [:assistant_api, :authenticate_assistant]
 
-    get "/routes/:assistant_id", SchoolController, :route_for_assistant
+    get "/trip/start", SchoolController, :route_for_assistant
+    post "/trip/student_boarded/:student_id/", SchoolController, :student_boarded
+    post "/trip/student_exited/:student_id/", SchoolController, :student_exited
+    get "/trip/end", SchoolController, :route_for_assistant
   end
 
   scope "/api/tracking", UchukuziInterfaceWeb do

@@ -176,49 +176,59 @@ defmodule Uchukuzi.School do
   # ********* Routes *********
 
   def route_for_assistant(school_id, assistant_id, travel_time) do
-    crew_member =
-      CrewMember
-      |> where(school_id: ^school_id, id: ^assistant_id)
-      |> Uchukuzi.Repo.one()
-
-    if crew_member.bus_id == nil do
-      {:error, :not_found}
-    else
-      crew_member = crew_member |> Repo.preload(:bus)
-
-      if crew_member.bus.route_id == nil do
-        {:error, :not_found}
-      else
-        bus = crew_member.bus |> Repo.preload(:route)
-
-        students =
-          Repo.all(
-            from(s in Student,
-              left_join: g in assoc(s, :guardian),
-              where: s.route_id == ^bus.route.id and (s.travel_time == ^travel_time or s.travel_time == "two-way"),
-              preload: [guardian: g],
-              select: [s, g.phone_number, g.name]
-            )
+    with crew_member when not is_nil(crew_member) <-
+           CrewMember |> where(school_id: ^school_id, id: ^assistant_id) |> Uchukuzi.Repo.one(),
+         bus_id when not is_nil(bus_id) <- crew_member.bus_id,
+         crew_member <- crew_member |> Repo.preload(:bus),
+         route_id when not is_nil(route_id) <- crew_member.bus.route_id,
+         bus <- crew_member.bus |> Repo.preload(:route) do
+      students =
+        Repo.all(
+          from(s in Student,
+            left_join: g in assoc(s, :guardian),
+            where:
+              s.route_id == ^bus.route.id and
+                (s.travel_time == ^travel_time or s.travel_time == "two-way"),
+            preload: [guardian: g],
+            select: [s, g.phone_number, g.name]
           )
+        )
 
-        {:ok,
-         %{
-           crew_member: crew_member,
-           bus: bus,
-           students: students
-         }}
-      end
+      {:ok,
+       %{
+         crew_member: crew_member,
+         bus: bus,
+         students: students,
+         route: bus.route
+       }}
+    else
+      nil ->
+        {:error, :not_found}
     end
+  end
 
-    # bus.
+  def student_boarded(school_id, assistant, student_id) do
+    with student when not is_nil(student) <-
+           Student |> where(school_id: ^school_id, id: ^student_id) |> Uchukuzi.Repo.one(),
+         bus_id when not is_nil(bus_id) <- assistant.bus_id,
+         bus <- (assistant |> Repo.preload(:bus)).bus do
+      Uchukuzi.Tracking.TripTracker.student_boarded(
+        bus,
+        Uchukuzi.Tracking.StudentActivity.boarded(student, assistant)
+      )
+    end
+  end
 
-    # Repo.all(
-    #   from(r in Route,
-    #     left_join: b in assoc(r, :bus),
-    #     where: r.school_id == ^school_id,
-    #     preload: [bus: b]
-    #   )
-    # )
+  def student_exited(school_id, assistant, student_id) do
+    with student when not is_nil(student) <-
+           Student |> where(school_id: ^school_id, id: ^student_id) |> Uchukuzi.Repo.one(),
+         bus_id when not is_nil(bus_id) <- assistant.bus_id,
+         bus <- (assistant |> Repo.preload(:bus)).bus do
+      Uchukuzi.Tracking.TripTracker.student_exited(
+        bus,
+        Uchukuzi.Tracking.StudentActivity.exited(student, assistant)
+      )
+    end
   end
 
   def routes_for(school_id) do

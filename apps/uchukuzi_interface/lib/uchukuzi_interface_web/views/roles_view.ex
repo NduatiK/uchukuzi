@@ -118,6 +118,18 @@ defmodule UchukuziInterfaceWeb.RolesView do
     |> Map.put("guardian_name", guardian_name)
   end
 
+  def render_students_with_bus(students) do
+    Enum.map(students, &render_student_with_bus/1)
+  end
+
+  def render_student_with_bus({student, bus}) do
+    IO.inspect(bus)
+
+    student
+    |> render_student
+    |> Map.put("bus", UchukuziInterfaceWeb.SchoolView.render_bus(bus))
+  end
+
   def render_student(%Uchukuzi.Roles.Student{} = student) do
     student = Uchukuzi.Repo.preload(student, :route)
 
