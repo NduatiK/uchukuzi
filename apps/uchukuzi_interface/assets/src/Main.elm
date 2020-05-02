@@ -21,9 +21,11 @@ import Pages.Buses.CreateBusPage as BusRegistration
 import Pages.Crew.CrewMemberRegistrationPage as CrewMemberRegistration
 import Pages.Crew.CrewMembersPage as CrewMembers
 import Pages.Devices.DeviceRegistrationPage as DeviceRegistration
+import Pages.ErrorPage as ErrorPage
 import Pages.Home as Home
 import Pages.Households.HouseholdRegistrationPage as StudentRegistration
 import Pages.Households.HouseholdsPage as HouseholdList
+import Pages.LoadingPage as LoadingPage
 import Pages.Login as Login
 import Pages.Logout as Logout
 import Pages.NotFound as NotFound
@@ -52,6 +54,8 @@ type alias Model =
     , url : Url.Url
     , locationUpdates : Dict Int LocationUpdate
     , allowReroute : Bool
+    , loading : Bool
+    , error : Bool
     }
 
 
@@ -128,6 +132,32 @@ init args url navKey =
         session =
             Session.fromCredentials navKey Time.utc creds
 
+        loading =
+            Maybe.withDefault False
+                (Maybe.andThen
+                    (\x ->
+                        Result.toMaybe
+                            (Json.Decode.decodeValue
+                                (Json.Decode.at [ "loading" ] Json.Decode.bool)
+                                x
+                            )
+                    )
+                    args
+                )
+
+        error =
+            Maybe.withDefault False
+                (Maybe.andThen
+                    (\x ->
+                        Result.toMaybe
+                            (Json.Decode.decodeValue
+                                (Json.Decode.at [ "error" ] Json.Decode.bool)
+                                x
+                            )
+                    )
+                    args
+                )
+
         ( model, cmds ) =
             changeRouteTo (Navigation.fromUrl url session)
                 { page = Redirect session
@@ -138,6 +168,8 @@ init args url navKey =
                 , url = url
                 , locationUpdates = Dict.fromList []
                 , allowReroute = True
+                , loading = loading
+                , error = error
                 }
     in
     ( model
@@ -475,8 +507,11 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
 
 
 view : Model -> Browser.Document Msg
-view { page, route, navState, windowHeight, sideBarOpen } =
+view appModel =
     let
+        { page, route, navState, windowHeight, sideBarOpen } =
+            appModel
+
         viewEmptyPage pageContents =
             viewPage pageContents GotHomeMsg
 
@@ -561,7 +596,18 @@ view { page, route, navState, windowHeight, sideBarOpen } =
     in
     { title = "Uchukuzi"
     , body =
-        [ Element.layoutWith layoutOptions Style.labelStyle renderedView ]
+        [ Element.layoutWith layoutOptions
+            Style.labelStyle
+            (if appModel.loading then
+                LoadingPage.view
+
+             else if appModel.error then
+                ErrorPage.view
+
+             else
+                renderedView
+            )
+        ]
     }
 
 

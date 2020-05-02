@@ -23,7 +23,7 @@ view404 =
         , Font.size 220
         , Font.center
         , Font.bold
-        , Font.color (Colors.withAlpha Colors.simpleGrey 0.2)
+        , Font.color (Colors.withAlpha Colors.simpleGrey 0.4)
         , inFront
             (paragraph
                 [ centerY
