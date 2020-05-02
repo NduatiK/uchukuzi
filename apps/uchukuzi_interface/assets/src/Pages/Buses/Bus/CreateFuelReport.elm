@@ -121,7 +121,11 @@ update msg model =
                                 form
 
                         Nothing ->
-                            form
+                            if cost_ == "" then
+                                { form | cost = 0 }
+
+                            else
+                                form
             in
             ( { model | form = updatedForm }, Cmd.none )
 
@@ -140,7 +144,11 @@ update msg model =
                                 form
 
                         Nothing ->
-                            form
+                            if volume_ == "" then
+                                { form | cost = 0 }
+
+                            else
+                                form
             in
             ( { model | form = updatedForm }, Cmd.none )
 

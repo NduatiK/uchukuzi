@@ -44,7 +44,7 @@ yScaleBuilder max =
     Scale.linear ( h - 2 * padding, 0 ) ( max * 1.5, 0 )
 
 
-xAxis : List ( Time.Posix, Float ) -> ContinuousScale Time.Posix -> Svg msg
+xAxis : List a -> ContinuousScale Time.Posix -> Svg msg
 xAxis model xScale =
     Axis.bottom [ Axis.tickCount (List.length model) ] xScale
 
@@ -135,11 +135,13 @@ viewOutlierLines stats distances min max xScale yScale =
         validThreshholds
 
 
-view : List ( Time.Posix, Float ) -> Maybe { a | mean : Float, stdDev : Float } -> Time.Zone -> Element msg
+view : List ( Time.Posix, Float, Float ) -> Maybe { a | mean : Float, stdDev : Float } -> Time.Zone -> Element msg
 view chartData statistics timezone =
     let
         times =
-            List.map (Tuple.first >> Time.posixToMillis) chartData
+            List.map
+                ((\( a, _, _ ) -> a) >> Time.posixToMillis)
+                chartData
 
         min =
             Maybe.withDefault 0 (List.minimum times)
@@ -149,7 +151,7 @@ view chartData statistics timezone =
 
         ( xScale, yScale ) =
             ( xScaleBuilder min max timezone
-            , yScaleBuilder (Maybe.withDefault 3 (List.maximum (List.map Tuple.second chartData)))
+            , yScaleBuilder (Maybe.withDefault 3 (List.maximum (List.map (\( _, b, _ ) -> b) chartData)))
             )
     in
     el [ width fill, height fill ]
@@ -169,7 +171,7 @@ view chartData statistics timezone =
                     [ transform [ Translate padding padding ]
                     , class [ "series" ]
                     ]
-                    [ Path.element (line chartData xScale yScale)
+                    [ Path.element (line (List.map (\( a, b, _ ) -> ( a, b )) chartData) xScale yScale)
                         [ stroke <|
                             Paint <|
                                 Colors.toSVGColor Colors.darkGreen
@@ -177,7 +179,46 @@ view chartData statistics timezone =
                         , TypedSvg.Attributes.fill PaintNone
                         ]
                     ]
+                 , g
+                    [ transform [ Translate padding padding ]
+                    , class [ "series" ]
+                    ]
+                    [ Path.element (line (List.map (\( a, _, c ) -> ( a, c )) chartData) xScale yScale)
+                        [ stroke <|
+                            Paint <|
+                                Colors.toSVGColor Colors.sassyGrey
+                        , strokeWidth 2
+                        , TypedSvg.Attributes.fill PaintNone
+                        ]
+                    ]
                  ]
+                    ++ (case List.head (List.reverse chartData) of
+                            Just ( _, _, consumption ) ->
+                                [ g
+                                    [ transform
+                                        [ Translate (w - 2 * padding + 10) (Scale.convert yScale consumption + padding - 25)
+                                        ]
+                                    ]
+                                    [ TypedSvg.text_
+                                        []
+                                        [ TypedSvg.Core.text "Running Average"
+                                        ]
+                                    ]
+                                , g
+                                    [ transform
+                                        [ Translate (w - 2 * padding + 10) (Scale.convert yScale consumption + padding - 15)
+                                        ]
+                                    ]
+                                    [ TypedSvg.text_
+                                        []
+                                        [ TypedSvg.Core.text (String.fromFloat (round100 consumption) ++ " km/l")
+                                        ]
+                                    ]
+                                ]
+
+                            Nothing ->
+                                []
+                       )
                     ++ (case statistics of
                             Just stats ->
                                 viewOutlierLines stats [ 0, 1, 2, 3 ] min max xScale yScale
@@ -188,3 +229,8 @@ view chartData statistics timezone =
                 )
             )
         )
+
+
+round100 : Float -> Float
+round100 float =
+    toFloat (round (float * 100)) / 100
