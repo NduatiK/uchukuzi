@@ -20,10 +20,20 @@ defmodule Uchukuzi.Roles.Guardian do
   end
 
   def changeset(schema, params) do
-    schema
-    |> cast(params, __MODULE__.__schema__(:fields))
-    |> validate_required([:name, :email])
-    |> Validation.validate_email()
-    |> unique_constraint(:email)
+    changeset =
+      schema
+      |> cast(params, __MODULE__.__schema__(:fields))
+      |> validate_required([:name, :email])
+      |> update_change(:email, &String.downcase/1)
+      |> Validation.validate_email()
+
+    case changeset do
+      %Ecto.Changeset{valid?: true, changes: %{email: _}} ->
+        changeset
+        |> unique_constraint(:email)
+
+      _ ->
+        changeset
+    end
   end
 end

@@ -25,7 +25,6 @@ import Style
 import StyledElement exposing (toDropDownView, wrappedInput)
 import StyledElement.DropDown as Dropdown
 import Utils.Validator as Validator
-import Views.Heading exposing (viewHeading)
 
 
 
@@ -241,6 +240,23 @@ viewBody model =
         [ width fill, spacing 40, paddingXY 24 8, alignTop ]
         [ viewHeading "Register Your Device" Nothing
         , viewForm model
+        ]
+
+
+viewHeading : String -> Maybe String -> Element msg
+viewHeading title subLine =
+    Element.column
+        [ width fill ]
+        [ el
+            Style.headerStyle
+            (text title)
+        , case subLine of
+            Nothing ->
+                none
+
+            Just caption ->
+                el Style.captionStyle (text caption)
+        , viewDivider
         ]
 
 

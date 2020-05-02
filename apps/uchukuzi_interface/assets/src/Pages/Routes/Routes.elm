@@ -69,7 +69,7 @@ update msg model =
             case response of
                 Success routes ->
                     ( newModel
-                    , Ports.bulkDrawPath (List.map (\route -> { routeID = route.id, path = route.path }) routes)
+                    , Ports.bulkDrawPath (List.map (\route -> { routeID = route.id, path = route.path, highlighted = False }) routes)
                     )
 
                 Failure error ->

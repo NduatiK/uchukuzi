@@ -25,6 +25,7 @@ defmodule UchukuziInterfaceWeb do
       import UchukuziInterfaceWeb.Gettext
       alias UchukuziInterfaceWeb.Router.Helpers, as: Routes
       alias UchukuziInterfaceWeb.AuthPlugs.ManagerAuth
+      alias UchukuziInterfaceWeb.AuthPlugs.HouseholdAuth
       alias UchukuziInterfaceWeb.AuthPlugs.AssistantAuth
       # alias UchukuziInterfaceWeb.ManagerAuth
       alias Uchukuzi.Repo
@@ -60,6 +61,9 @@ defmodule UchukuziInterfaceWeb do
 
       alias UchukuziInterfaceWeb.AuthPlugs.AssistantAuth
       import UchukuziInterfaceWeb.AuthPlugs.AssistantAuth, only: [authenticate_assistant: 2]
+
+      alias UchukuziInterfaceWeb.AuthPlugs.HouseholdAuth
+      import UchukuziInterfaceWeb.AuthPlugs.HouseholdAuth, only: [authenticate_household: 2]
     end
   end
 

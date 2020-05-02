@@ -34,27 +34,35 @@ defmodule UchukuziInterfaceWeb.Router do
     :authenticate_assistant
   end
 
+  pipeline :household_api do
+    plug :accepts, ["json"]
+    plug HouseholdAuth
+    :authenticate_household
+  end
+
   scope "/api", UchukuziInterfaceWeb do
     pipe_through :api
 
     post "/school/create", SchoolController, :create_school
     get "/school/households/:student_id/qr_code.svg", SchoolController, :get_qr_code
-
   end
 
   scope "/", UchukuziInterfaceWeb do
-
-    get "assistant_login", AuthController, :deep_link_redirect
+    get "/assistant_login", AuthController, :deep_link_redirect_assistant
+    get "/household_login", AuthController, :deep_link_redirect_household
   end
+
   scope "/api/auth", UchukuziInterfaceWeb do
     pipe_through :api
 
     post "/manager/exchange_token", AuthController, :exchange_manager_token
     post "/manager/login", AuthController, :login_manager
 
-
     post "/assistant/request_token", AuthController, :request_assistant_token
     post "/assistant/exchange_token", AuthController, :exchange_assistant_token
+
+    post "/household/request_token", AuthController, :request_household_token
+    post "/household/exchange_token", AuthController, :exchange_household_token
   end
 
   scope "/api/school", UchukuziInterfaceWeb do
@@ -73,6 +81,8 @@ defmodule UchukuziInterfaceWeb.Router do
 
     post "/devices", SchoolController, :register_device
 
+    get "/households/:guardian_id", SchoolController, :get_household
+    patch "/households/:guardian_id", SchoolController, :update_household
     get "/households", SchoolController, :list_households
     post "/households", SchoolController, :create_houshold
 
@@ -84,8 +94,6 @@ defmodule UchukuziInterfaceWeb.Router do
 
     get "/crew_and_buses", SchoolController, :list_crew_and_buses
     patch "/crew_and_buses", SchoolController, :update_crew_assignments
-
-
 
     post "/routes", SchoolController, :create_route
     get "/routes", SchoolController, :list_routes
@@ -109,5 +117,11 @@ defmodule UchukuziInterfaceWeb.Router do
     pipe_through :api
 
     post "/devices/:device_id/reports", TrackingController, :create_report
+  end
+
+  scope "/api/school/household", UchukuziInterfaceWeb do
+    pipe_through :household_api
+
+    get "/mine", SchoolController, :data_for_household
   end
 end

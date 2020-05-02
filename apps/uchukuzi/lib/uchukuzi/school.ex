@@ -288,11 +288,109 @@ defmodule Uchukuzi.School do
     |> IO.inspect()
   end
 
+  def update_household(
+        school_id,
+        guardian_id,
+        guardian_params,
+        student_edits,
+        student_deletes,
+        pickup_location,
+        home_location,
+        route_id
+      ) do
+    matching_id = fn x ->
+      fn y ->
+        y.id == x
+      end
+    end
+
+    cond do
+      guardian = Uchukuzi.Roles.get_guardian_by(id: guardian_id) |> IO.inspect(label: "asdas d") ->
+        guardian =
+          Repo.preload(guardian, :students)
+          |> IO.inspect()
+
+        Multi.new()
+        |> Multi.update("guardian", Guardian.changeset(guardian, guardian_params))
+        |> Multi.merge(fn %{"guardian" => guardian} ->
+          student_edits
+          |> Enum.with_index()
+          |> Enum.reduce(Multi.new(), fn {student_edit, idx}, multi ->
+            cond do
+              student_edit["id"] < 0 ->
+                multi
+                |> Multi.insert(
+                  "student" <> Integer.to_string(idx),
+                  guardian
+                  |> Ecto.build_assoc(:students)
+                  |> Student.changeset(
+                    student_edit,
+                    pickup_location,
+                    home_location,
+                    school_id,
+                    route_id
+                  )
+                )
+
+              existing =
+                  student_edit["id"] > 0 &&
+                    Enum.find(guardian.students, matching_id.(student_edit["id"])) ->
+                multi
+                |> Multi.update(
+                  "student" <> Integer.to_string(idx),
+                  existing
+                  |> Student.changeset(
+                    student_edit,
+                    pickup_location,
+                    home_location,
+                    school_id,
+                    route_id
+                  )
+                )
+
+              true ->
+                multi
+                |> Multi.error(:error, :not_found)
+            end
+          end)
+        end)
+        |> Multi.merge(fn %{"guardian" => guardian} ->
+          student_deletes
+          |> Enum.with_index()
+          |> Enum.reduce(Multi.new(), fn {delete_id, idx}, multi ->
+            cond do
+              existing = Enum.find(guardian.students, matching_id.(delete_id)) ->
+                multi
+                |> Ecto.Multi.delete("delete" <> Integer.to_string(idx), existing)
+
+              true ->
+                multi
+            end
+          end)
+        end)
+        |> Repo.transaction()
+        |> IO.inspect()
+
+      true ->
+        {:error, :not_found}
+    end
+  end
+
   def guardians_for(school_id) do
     Repo.all(
       from(g in Guardian,
         join: s in assoc(g, :students),
         where: s.school_id == ^school_id,
+        preload: [students: s]
+      )
+    )
+  end
+
+  def guardian_for(school_id, guardian_id) do
+    Repo.one(
+      from(g in Guardian,
+        join: s in assoc(g, :students),
+        where: s.school_id == ^school_id and g.id == ^guardian_id,
         preload: [students: s]
       )
     )

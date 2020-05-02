@@ -86,7 +86,50 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
-  @spec list_households(Plug.Conn.t(), any, any) :: Plug.Conn.t()
+  def update_household(
+        conn,
+        %{
+          "guardian_id" => guardian_id,
+          "guardian" => guardian_params,
+          "student_edits" => %{"deletes" => deletes, "edits" => edits},
+          "pickup_location" => pickup_location_params,
+          "home_location" => home_location_params,
+          "route" => route_id
+        },
+        school_id
+      ) do
+    with pickup_location <- %{
+           lng: pickup_location_params["lng"],
+           lat: pickup_location_params["lat"]
+         },
+         home_location <- %{
+           lng: home_location_params["lng"],
+           lat: home_location_params["lat"]
+         },
+         {:ok, _} <-
+           School.update_household(
+             school_id,
+             guardian_id,
+             guardian_params,
+             edits,
+             deletes,
+             pickup_location,
+             home_location,
+             route_id
+           ) do
+      conn
+      |> resp(200, "{}")
+    end
+  end
+
+  def get_household(conn, %{"guardian_id" => guardian_id}, school_id) do
+    with guardian <- School.guardian_for(school_id, guardian_id) do
+      conn
+      |> put_view(UchukuziInterfaceWeb.RolesView)
+      |> render("guardian.json", guardian: guardian)
+    end
+  end
+
   def list_households(conn, _, school_id) do
     guardians = School.guardians_for(school_id)
 
@@ -107,7 +150,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
 
       qr_code =
         """
-        {"id": #{student.id}, "pno": #{student.guardian.phone_number}}
+        {"id": #{student.id}, "pno": "#{student.guardian.phone_number}"}
         """
         |> EQRCode.encode()
         |> EQRCode.png()
@@ -310,9 +353,11 @@ defmodule UchukuziInterfaceWeb.SchoolController do
           {:error, :not_found} | Plug.Conn.t()
   def route_for_assistant(
         %{query_params: %{"travel_time" => travel_time}} = conn,
-        %{"assistant_id" => assistant_id},
+        _,
         school_id
       ) do
+    assistant_id = conn.assigns.assistant.id
+
     with {:ok, data} <- School.route_for_assistant(school_id, assistant_id, travel_time) do
       conn
       |> render("route_for_assistant.json", data: data)

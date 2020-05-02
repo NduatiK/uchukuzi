@@ -26,7 +26,6 @@ import Style exposing (edges)
 import StyledElement exposing (toDropDownView)
 import StyledElement.DropDown as Dropdown
 import Utils.Validator exposing (..)
-import Views.Heading exposing (viewHeading)
 
 
 
@@ -177,6 +176,22 @@ view model viewHeight =
         [ viewHeading "Create Route" Nothing
         , googleMap model
         , viewBody model
+        ]
+
+
+viewHeading : String -> Maybe String -> Element msg
+viewHeading title subLine =
+    Element.column
+        [ width fill ]
+        [ el
+            Style.headerStyle
+            (text title)
+        , case subLine of
+            Nothing ->
+                none
+
+            Just caption ->
+                el Style.captionStyle (text caption)
         ]
 
 

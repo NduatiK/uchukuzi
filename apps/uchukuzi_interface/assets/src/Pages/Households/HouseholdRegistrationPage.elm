@@ -2,10 +2,12 @@ module Pages.Households.HouseholdRegistrationPage exposing (Model, Msg, init, su
 
 import Api
 import Api.Endpoint as Endpoint
+import Browser.Dom as Dom
 import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Errors exposing (Errors, InputError)
@@ -16,18 +18,19 @@ import Icons
 import Json.Decode as Decode exposing (Decoder, field, float, int, list, string)
 import Json.Decode.Pipeline exposing (hardcoded)
 import Json.Encode as Encode
-import Models.Household exposing (TravelTime(..))
+import Models.Household exposing (Guardian, Household, TravelTime(..))
 import Models.Location exposing (Location)
 import Models.Route exposing (Route, routeDecoder)
 import Navigation
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
+import Set
 import Style exposing (edges)
 import StyledElement exposing (toDropDownView)
 import StyledElement.DropDown as Dropdown
+import Task
 import Utils.Validator exposing (..)
-import Views.Heading exposing (viewHeading)
 
 
 
@@ -40,6 +43,8 @@ type alias Model =
     , routeDropdownState : Dropdown.State Route
     , routeRequestState : WebData (List Route)
     , requestState : WebData ()
+    , editState : Maybe EditState
+    , index : Int
     }
 
 
@@ -52,6 +57,8 @@ type alias Form =
     , route : Maybe Int
     , searchText : String
     , problems : List (Errors Problem)
+    , editingStudent : Maybe Student
+    , deletedStudents : Set.Set Int
     }
 
 
@@ -77,15 +84,20 @@ type alias ValidForm =
 
 
 type alias Student =
-    { name : String
+    { id : Int
+    , name : String
     , time : TravelTime
     }
 
 
-type alias Guardian =
-    { name : String
-    , phoneNumber : String
-    , email : String
+isEditing : Model -> Bool
+isEditing model =
+    model.editState /= Nothing
+
+
+type alias EditState =
+    { requestState : WebData Models.Household.Household
+    , guardianID : Int
     }
 
 
@@ -100,21 +112,8 @@ type Field
     | TravelTime Student TravelTime Bool
 
 
-type Msg
-    = Changed Field
-    | DropdownMsg (Dropdown.Msg Route)
-    | SaveStudentPressed
-    | DeleteStudentMsg Student
-    | SubmitButtonMsg
-    | SearchTextChanged String
-    | ServerResponse (WebData ())
-    | AutocompleteError
-    | ReceivedMapLocation Location
-    | RouteServerResponse (WebData (List Route))
-
-
-emptyForm : Session -> Model
-emptyForm session =
+emptyForm : Session -> Maybe Int -> Model
+emptyForm session guardianID =
     { session = session
     , routeDropdownState = Dropdown.init "routeDropdown"
     , routeRequestState = Loading
@@ -123,7 +122,8 @@ emptyForm session =
         , students =
             []
         , guardian =
-            { name = ""
+            { id = -1
+            , name = ""
             , phoneNumber = ""
             , email = ""
             }
@@ -132,23 +132,51 @@ emptyForm session =
         , route = Nothing
         , searchText = ""
         , problems = []
+        , editingStudent = Nothing
+        , deletedStudents = Set.fromList []
         }
     , requestState = NotAsked
+    , editState =
+        Maybe.andThen (EditState Loading >> Just) guardianID
+    , index = -1
     }
 
 
-init : Session -> ( Model, Cmd Msg )
-init session =
-    ( emptyForm session
+init : Session -> Maybe Int -> ( Model, Cmd Msg )
+init session guardianID =
+    ( emptyForm session guardianID
     , Cmd.batch
-        [ Ports.initializeSearch
-        , fetchRoutes session
+        [ fetchRoutes session
+        , case guardianID of
+            Just id_ ->
+                fetchHousehold session id_
+
+            Nothing ->
+                Cmd.none
         ]
     )
 
 
 
 -- UPDATE
+
+
+type Msg
+    = NoOp
+    | Changed Field
+    | DropdownMsg (Dropdown.Msg Route)
+    | SaveStudentPressed
+    | SelectedStudent (Maybe Student)
+    | DeselectedStudent Student
+    | UpdatedSelectedStudentName String
+    | DeletedStudent Student
+    | SubmitButtonPressed
+    | SearchTextChanged String
+    | ServerResponse (WebData ())
+    | AutocompleteError
+    | ReceivedMapLocation Location
+    | RouteServerResponse (WebData (List Route))
+    | HouseholdResponse (WebData Household)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -158,6 +186,9 @@ update msg model =
             model.form
     in
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         Changed field ->
             updateField field model
 
@@ -174,10 +205,16 @@ update msg model =
         SearchTextChanged text ->
             ( { model | form = { form | searchText = text } }, Cmd.none )
 
-        SubmitButtonMsg ->
+        SubmitButtonPressed ->
             case validateForm form of
                 Ok validForm ->
-                    ( { model | form = { form | problems = [] } }, submit model.session validForm )
+                    ( { model | form = { form | problems = [] } }
+                    , if isEditing model then
+                        submitEdit model validForm
+
+                      else
+                        submitNew model.session validForm
+                    )
 
                 Err problems ->
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
@@ -185,7 +222,8 @@ update msg model =
         SaveStudentPressed ->
             let
                 newStudent =
-                    { name = form.currentStudent
+                    { id = model.index
+                    , name = form.currentStudent
                     , time = TwoWay
                     }
 
@@ -199,17 +237,78 @@ update msg model =
                             , currentStudent = ""
                         }
             in
-            ( { model | form = updated_form }, Cmd.none )
+            ( { model
+                | form = updated_form
+                , index = model.index - 1
+              }
+            , Cmd.none
+            )
 
-        DeleteStudentMsg deletedStudent ->
+        UpdatedSelectedStudentName name ->
             let
-                shouldDelete student =
-                    deletedStudent /= student
-
                 updated_form =
-                    { form | students = List.filter shouldDelete form.students }
+                    { form
+                        | editingStudent =
+                            case form.editingStudent of
+                                Just student ->
+                                    Just { student | name = name }
+
+                                Nothing ->
+                                    form.editingStudent
+                    }
             in
             ( { model | form = updated_form }, Cmd.none )
+
+        DeselectedStudent student ->
+            let
+                students =
+                    List.map
+                        (\x ->
+                            if x.id == student.id then
+                                student
+
+                            else
+                                x
+                        )
+                        model.form.students
+            in
+            ( { model | form = { form | students = students, editingStudent = Nothing } }, Cmd.none )
+
+        SelectedStudent student ->
+            let
+                updated_form =
+                    { form | editingStudent = student }
+            in
+            ( { model | form = updated_form }
+            , case student of
+                Just student_ ->
+                    Task.attempt (always NoOp) (Dom.focus (String.fromInt student_.id ++ "-student-input"))
+
+                Nothing ->
+                    Cmd.none
+            )
+
+        DeletedStudent deletedStudent ->
+            if isEditing model then
+                let
+                    updated_form =
+                        if Set.member deletedStudent.id form.deletedStudents then
+                            { form | deletedStudents = Set.remove deletedStudent.id form.deletedStudents }
+
+                        else
+                            { form | deletedStudents = Set.insert deletedStudent.id form.deletedStudents }
+                in
+                ( { model | form = updated_form }, Cmd.none )
+
+            else
+                let
+                    shouldDelete student =
+                        deletedStudent /= student
+
+                    updated_form =
+                        { form | students = List.filter shouldDelete form.students }
+                in
+                ( { model | form = updated_form }, Cmd.none )
 
         AutocompleteError ->
             let
@@ -228,7 +327,128 @@ update msg model =
             ( { model | form = { form | homeLocation = Just location } }, Cmd.none )
 
         RouteServerResponse response ->
-            ( { model | routeRequestState = response }, Cmd.none )
+            let
+                newModel =
+                    { model | routeRequestState = response }
+            in
+            case response of
+                Success routes ->
+                    let
+                        match =
+                            case model.editState of
+                                Just editState ->
+                                    case editState.requestState of
+                                        Success household ->
+                                            List.head (List.filter (\route -> route.id == household.route) routes)
+
+                                        _ ->
+                                            Nothing
+
+                                Nothing ->
+                                    Nothing
+                    in
+                    case match of
+                        Just route ->
+                            ( newModel
+                            , Cmd.batch
+                                [ Task.succeed (DropdownMsg (Dropdown.selectOption route)) |> Task.perform identity
+                                , buildMapCmds newModel
+                                ]
+                            )
+
+                        _ ->
+                            ( newModel
+                            , Cmd.batch
+                                [ buildMapCmds newModel
+                                ]
+                            )
+
+                _ ->
+                    ( newModel, Cmd.none )
+
+        HouseholdResponse response ->
+            let
+                editState =
+                    model.editState
+
+                newModel =
+                    { model | editState = Maybe.andThen (\x -> Just { x | requestState = response }) editState }
+            in
+            case response of
+                Success household ->
+                    let
+                        newForm =
+                            { form
+                                | currentStudent = ""
+                                , students =
+                                    List.map
+                                        (\x ->
+                                            { id = x.id
+                                            , name = x.name
+                                            , time = x.travelTime
+                                            }
+                                        )
+                                        household.students
+                                , guardian =
+                                    { id = household.guardian.id
+                                    , name = household.guardian.name
+                                    , phoneNumber = household.guardian.phoneNumber
+                                    , email = household.guardian.email
+                                    }
+                                , canTrack = True
+                                , homeLocation = Just household.homeLocation
+                                , route = Just household.route
+                                , searchText = ""
+                            }
+                    in
+                    ( { newModel | form = newForm }
+                    , Cmd.batch
+                        [ buildMapCmds newModel
+                        , case model.routeRequestState of
+                            Success routes ->
+                                let
+                                    -- _ =
+                                    match =
+                                        List.head (List.filter (\route -> route.id == household.route) routes)
+                                in
+                                case match of
+                                    Just route ->
+                                        Task.succeed (DropdownMsg (Dropdown.selectOption route)) |> Task.perform identity
+
+                                    Nothing ->
+                                        Cmd.none
+
+                            _ ->
+                                Cmd.none
+                        ]
+                    )
+
+                _ ->
+                    ( newModel, Cmd.none )
+
+
+buildMapCmds model =
+    case model.routeRequestState of
+        Success routes ->
+            case Maybe.andThen (.requestState >> Just) model.editState of
+                Just (Success household) ->
+                    Cmd.batch
+                        [ Ports.initializeSearch
+                        , Ports.showHomeLocation household.homeLocation
+                        , Ports.bulkDrawPath (List.map (\r -> { routeID = r.id, path = r.path, highlighted = r.id == household.route }) routes)
+                        ]
+
+                Nothing ->
+                    Cmd.batch
+                        [ Ports.initializeSearch
+                        , Ports.bulkDrawPath (List.map (\r -> { routeID = r.id, path = r.path, highlighted = False }) routes)
+                        ]
+
+                _ ->
+                    Cmd.none
+
+        _ ->
+            Cmd.none
 
 
 updateStatus : Model -> WebData () -> ( Model, Cmd Msg )
@@ -274,7 +494,11 @@ updateField field model =
                 updated_form =
                     { form | currentStudent = name }
             in
-            ( { model | form = updated_form }, Cmd.none )
+            ( { model
+                | form = updated_form
+              }
+            , Cmd.none
+            )
 
         GuardianName name ->
             let
@@ -284,7 +508,11 @@ updateField field model =
                 updated_form =
                     { form | guardian = { guardian | name = name } }
             in
-            ( { model | form = updated_form }, Cmd.none )
+            ( { model
+                | form = updated_form
+              }
+            , Cmd.none
+            )
 
         PhoneNumber phoneNumber ->
             let
@@ -310,8 +538,23 @@ updateField field model =
             let
                 updated_form =
                     { form | route = route }
+
+                cmds =
+                    [ case form.route of
+                        Just originalRoute ->
+                            Ports.highlightPath { routeID = originalRoute, highlighted = False }
+
+                        Nothing ->
+                            Cmd.none
+                    , case route of
+                        Just newRoute ->
+                            Ports.highlightPath { routeID = newRoute, highlighted = True }
+
+                        Nothing ->
+                            Cmd.none
+                    ]
             in
-            ( { model | form = updated_form }, Cmd.none )
+            ( { model | form = updated_form }, Cmd.batch cmds )
 
         HomeLocation homeLocation ->
             let
@@ -377,29 +620,51 @@ view model viewHeight =
         , spacing 24
         , padding 24
         ]
-        [ viewHeading "Register Household" Nothing
-        , case model.routeRequestState of
-            Success _ ->
-                -- row [ width fill, height fill, spacing 24 ]
-                --     [ viewBody model
-                --     , googleMap model
-                --     ]
-                column [ width fill, height fill, spacing 24 ]
-                    [ googleMap model
+        [ viewHeading model
+        , case model.editState of
+            Just state ->
+                case state.requestState of
+                    Success _ ->
+                        viewFormWrapper model
 
-                    -- [ row [ width fill ]
-                    --     [ el [ width (fillPortion 1) ] none
-                    --     , el [ width (fillPortion 2) ] (googleMap model)
-                    --     , el [ width (fillPortion 1) ] none
-                    --     ]
-                    , viewBody model
-                    ]
+                    Loading ->
+                        el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
 
-            Failure _ ->
-                el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+                    _ ->
+                        el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
 
-            _ ->
-                Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
+            Nothing ->
+                viewFormWrapper model
+        ]
+
+
+viewFormWrapper model =
+    case model.routeRequestState of
+        Success _ ->
+            column [ width fill, height fill, spacing 24 ]
+                [ googleMap model
+                , viewBody model
+                ]
+
+        Failure _ ->
+            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+
+        _ ->
+            Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
+
+
+viewHeading : Model -> Element Msg
+viewHeading model =
+    let
+        title =
+            if isEditing model then
+                "Edit Household"
+
+            else
+                "Add a Household"
+    in
+    row [ width fill ]
+        [ el Style.headerStyle (text title)
         ]
 
 
@@ -505,7 +770,7 @@ viewForm model =
 
 
 viewStudentsInput : Form -> Element Msg
-viewStudentsInput { students, problems, currentStudent } =
+viewStudentsInput { students, problems, currentStudent, editingStudent, deletedStudents } =
     let
         onEnter msg =
             Element.htmlAttribute
@@ -524,7 +789,10 @@ viewStudentsInput { students, problems, currentStudent } =
 
         inputFooter =
             if List.length students > 0 then
-                el [ paddingEach { edges | top = 20 } ] (viewStudentsTable students)
+                column [ spacing 16 ]
+                    [ el [ paddingEach { edges | top = 20 } ] (viewStudentsTable deletedStudents editingStudent students)
+                    , el Style.captionStyle (text "Double-click a student's name to edit it")
+                    ]
 
             else
                 Element.none
@@ -569,7 +837,7 @@ viewStudentsInput { students, problems, currentStudent } =
         ]
 
 
-viewStudentsTable students =
+viewStudentsTable deletedStudents editingStudent students =
     let
         includesMorningTrip time =
             time == Morning || time == TwoWay
@@ -589,14 +857,50 @@ viewStudentsTable students =
             [ { header = tableHeader "NAME"
               , width = fill
               , view =
-                    \person ->
-                        el (width (fill |> minimum 220) :: Style.tableElementStyle) (Element.text person.name)
+                    \student ->
+                        let
+                            nameEl =
+                                el
+                                    ([ width (fill |> minimum 220)
+                                     , Events.onClick (SelectedStudent (Just student))
+                                     , pointer
+                                     , if Set.member student.id deletedStudents then
+                                        Font.strike
+
+                                       else
+                                        moveUp 0
+                                     ]
+                                        ++ Style.tableElementStyle
+                                    )
+                                    (Element.text student.name)
+                        in
+                        case editingStudent of
+                            Just editingStudent_ ->
+                                if student.id == editingStudent_.id then
+                                    Input.text
+                                        [ width (fill |> minimum 220)
+
+                                        -- , Events.onDoubleClick (SelectedStudent (Just student))
+                                        , Events.onLoseFocus (DeselectedStudent editingStudent_)
+                                        , htmlAttribute (Html.Attributes.id (String.fromInt student.id ++ "-student-input"))
+                                        ]
+                                        { label = Input.labelHidden "Update name"
+                                        , onChange = UpdatedSelectedStudentName
+                                        , placeholder = Nothing
+                                        , text = editingStudent_.name
+                                        }
+
+                                else
+                                    nameEl
+
+                            Nothing ->
+                                nameEl
               }
             , { header = tableHeader "MORNING"
               , width = shrink
               , view =
                     \student ->
-                        Input.checkbox []
+                        Input.checkbox [ centerY ]
                             { onChange = TravelTime student Morning >> Changed
                             , icon = StyledElement.checkboxIcon
                             , checked = includesMorningTrip student.time
@@ -608,7 +912,7 @@ viewStudentsTable students =
               , width = shrink
               , view =
                     \student ->
-                        Input.checkbox []
+                        Input.checkbox [ centerY ]
                             { onChange = TravelTime student Evening >> Changed
                             , icon = StyledElement.checkboxIcon
                             , checked = includesEveningTrip student.time
@@ -621,8 +925,8 @@ viewStudentsTable students =
               , view =
                     \student ->
                         Input.button
-                            []
-                            { onPress = Just (DeleteStudentMsg student)
+                            [ centerY ]
+                            { onPress = Just (DeletedStudent student)
                             , label =
                                 Icons.trash
                                     [ Element.mouseOver
@@ -779,18 +1083,18 @@ viewButton model =
         Failure _ ->
             StyledElement.failureButton [ alignRight ]
                 { title = "Try Again"
-                , onPress = Just SubmitButtonMsg
+                , onPress = Just SubmitButtonPressed
                 }
 
         _ ->
             StyledElement.button [ alignRight ]
-                { onPress = Just SubmitButtonMsg
+                { onPress = Just SubmitButtonPressed
                 , label = text "Submit"
                 }
 
 
-submit : Session -> ValidForm -> Cmd Msg
-submit session household =
+submitNew : Session -> ValidForm -> Cmd Msg
+submitNew session household =
     let
         guardian =
             Encode.object
@@ -810,6 +1114,39 @@ submit session household =
                 |> Http.jsonBody
     in
     Api.post session Endpoint.households params aDecoder
+        |> Cmd.map ServerResponse
+
+
+submitEdit : Model -> ValidForm -> Cmd Msg
+submitEdit model household =
+    let
+        studentEdits =
+            Encode.object
+                [ ( "deletes", Encode.list Encode.int (Set.toList model.form.deletedStudents) )
+                , ( "edits"
+                  , Encode.list encodeStudent
+                        (List.filter (\x -> not (Set.member x.id model.form.deletedStudents)) model.form.students)
+                  )
+                ]
+
+        guardian =
+            Encode.object
+                [ ( "name", Encode.string household.guardian.name )
+                , ( "phone_number", Encode.string household.guardian.phoneNumber )
+                , ( "email", Encode.string household.guardian.email )
+                ]
+
+        params =
+            Encode.object
+                [ ( "student_edits", studentEdits )
+                , ( "guardian", guardian )
+                , ( "route", Encode.int household.route )
+                , ( "home_location", encodeLocation household.homeLocation )
+                , ( "pickup_location", encodeLocation household.homeLocation )
+                ]
+                |> Http.jsonBody
+    in
+    Api.patch model.session (Endpoint.household model.form.guardian.id) params aDecoder
         |> Cmd.map ServerResponse
 
 
@@ -840,7 +1177,8 @@ encodeStudent student =
                     "evening"
     in
     Encode.object
-        [ ( "name", Encode.string student.name )
+        [ ( "id", Encode.int student.id )
+        , ( "name", Encode.string student.name )
         , ( "travel_time", Encode.string travelTime )
         ]
 
@@ -935,3 +1273,9 @@ fetchRoutes : Session -> Cmd Msg
 fetchRoutes session =
     Api.get session Endpoint.routes (list routeDecoder)
         |> Cmd.map RouteServerResponse
+
+
+fetchHousehold : Session -> Int -> Cmd Msg
+fetchHousehold session id =
+    Api.get session (Endpoint.household id) Models.Household.householdDecoder
+        |> Cmd.map HouseholdResponse

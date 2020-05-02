@@ -40,6 +40,7 @@ type Route
     | EditCrewMember Int
       -------------
     | HouseholdList
+    | EditHousehold Int
     | StudentRegistration
       -------------
     | Buses
@@ -66,14 +67,13 @@ loggedInParser =
                 [ Buses
                 , Routes
                 , HouseholdList
-
-                -- , DeviceList
                 , CrewMembers
                 ]
             ++ [ Parser.map CreateFuelReport (s (routeName Buses) </> int </> s (busPageToString FuelHistory) </> s (routeName (CreateFuelReport -1)))
                , Parser.map CreateBusRepair (s (routeName Buses) </> int </> s (busPageToString BusRepairs) </> s (routeName (CreateBusRepair -1)))
                , Parser.map CreateRoute (s (routeName Routes) </> s (routeName CreateRoute))
                , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s (routeName (EditCrewMember -1)))
+               , Parser.map EditHousehold (s (routeName HouseholdList) </> int </> s (routeName (EditHousehold -1)))
                , Parser.map EditBusDetails (s (routeName Buses) </> int </> s (routeName (EditBusDetails -1)))
                , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
                ]
@@ -305,8 +305,9 @@ routeToString page =
                 StudentRegistration ->
                     [ routeName HouseholdList, routeName page ]
 
-                -- DeviceList ->
-                --     [ routeName page ]
+                EditHousehold guardianID ->
+                    [ routeName HouseholdList, String.fromInt guardianID, routeName page ]
+
                 BusDeviceRegistration busID ->
                     [ routeName Buses, String.fromInt busID, routeName page ]
 
@@ -404,6 +405,9 @@ routeName page =
             "new"
 
         EditCrewMember _ ->
+            "edit"
+
+        EditHousehold _ ->
             "edit"
 
 

@@ -25,8 +25,9 @@ config =
             DatePicker.defaultSettings
     in
     { default
-        | dateFormatter = Date.format "dd/MM/yyyy"
-        , placeholder = "Select a date eg 31/12/2020"
+        | dateFormatter = Date.format "yyyy-MM-dd"
+        , placeholder = "Select a date eg 2020-12-31"
+        , parser = Date.fromIsoString
     }
 
 

@@ -21,7 +21,6 @@ import StyledElement
 import StyledElement.DropDown as Dropdown
 import Task
 import Utils.Validator as Validator
-import Views.Heading exposing (viewHeading)
 
 
 

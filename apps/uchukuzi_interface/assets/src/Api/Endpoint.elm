@@ -11,6 +11,7 @@ module Api.Endpoint exposing
     , devices
     , fuelReports
     , get
+    , household
     , households
     , login
     , patch
@@ -113,6 +114,11 @@ crewMembersAndBuses =
 crewAssignmentChanges : Endpoint
 crewAssignmentChanges =
     url [ "school", "crew_and_buses" ] []
+
+
+household : Int -> Endpoint
+household id =
+    url [ "school", "households", String.fromInt id ] []
 
 
 households : Endpoint

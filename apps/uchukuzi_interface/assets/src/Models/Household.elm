@@ -1,4 +1,13 @@
-module Models.Household exposing (Household, Location, Student, TravelTime(..), householdDecoder, studentByRouteDecoder, studentDecoder)
+module Models.Household exposing
+    ( Guardian
+    , Household
+    , Location
+    , Student
+    , TravelTime(..)
+    , householdDecoder
+    , studentByRouteDecoder
+    , studentDecoder
+    )
 
 import Json.Decode as Decode exposing (Decoder, float, int, list, string, succeed)
 import Json.Decode.Pipeline exposing (required, resolve)
@@ -8,19 +17,11 @@ import Utils.GroupBy
 
 type alias Household =
     { id : Int
+    , route : Int
     , guardian : Guardian
+    , homeLocation : Location
     , students : List Student
     }
-
-
-
--- type alias StudentViewModel =
---     { name : String
---     , pickup_location : Location
---     , time : String
---     , household_id : Int
---     , route : String
---     }
 
 
 type alias Guardian =
@@ -80,7 +81,12 @@ householdDecoder : Decoder Household
 householdDecoder =
     let
         decoder id name email phoneNumber students =
-            succeed (Household id (Guardian id name phoneNumber email) students)
+            case List.head students of
+                Just student ->
+                    succeed (Household id student.route.id (Guardian id name phoneNumber email) student.homeLocation students)
+
+                Nothing ->
+                    Decode.fail "Expected more than one student"
     in
     Decode.succeed decoder
         |> required "id" int

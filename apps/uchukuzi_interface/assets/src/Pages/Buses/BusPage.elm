@@ -81,24 +81,6 @@ pageName =
     pageToBusPage >> busPageToString >> String.replace "_" " "
 
 
-type Msg
-    = GotAboutMsg About.Msg
-    | GotRouteHistoryMsg RouteHistory.Msg
-    | GotFuelHistoryMsg FuelHistory.Msg
-    | GotBusDeviceMsg BusDevice.Msg
-    | GotBusRepairsMsg BusRepairs.Msg
-      ----------------
-    | SelectedPage Int
-    | ServerResponse (WebData BusData)
-      ----------------
-    | LocationUpdate LocationUpdate
-    | MapReady Bool
-
-
-locationUpdateMsg data =
-    LocationUpdate data
-
-
 init : Int -> Session -> Maybe LocationUpdate -> BusPage -> ( Model, Cmd Msg )
 init busID session locationUpdate currentPage =
     ( { session = session
@@ -172,6 +154,24 @@ repairsPage bus session =
 
 
 -- UPDATE
+
+
+type Msg
+    = GotAboutMsg About.Msg
+    | GotRouteHistoryMsg RouteHistory.Msg
+    | GotFuelHistoryMsg FuelHistory.Msg
+    | GotBusDeviceMsg BusDevice.Msg
+    | GotBusRepairsMsg BusRepairs.Msg
+      ----------------
+    | SelectedPage Int
+    | ServerResponse (WebData BusData)
+      ----------------
+    | LocationUpdate LocationUpdate
+    | MapReady Bool
+
+
+locationUpdateMsg data =
+    LocationUpdate data
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

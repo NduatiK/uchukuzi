@@ -34,7 +34,6 @@ import StyledElement.DropDown as Dropdown
 import StyledElement.FloatInput as FloatInput exposing (FloatInput)
 import Task
 import Utils.Validator as Validator
-import Views.Heading exposing (viewHeading)
 
 
 

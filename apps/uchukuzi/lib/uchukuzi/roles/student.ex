@@ -18,8 +18,8 @@ defmodule Uchukuzi.Roles.Student do
 
     field(:travel_time, :string)
 
-    embeds_one(:pickup_location, Location)
-    embeds_one(:home_location, Location)
+    embeds_one(:pickup_location, Location, on_replace: :delete)
+    embeds_one(:home_location, Location, on_replace: :delete)
 
     belongs_to(:school, Uchukuzi.School.School)
     belongs_to(:guardian, Guardian)

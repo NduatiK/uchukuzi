@@ -20,19 +20,23 @@ defmodule Uchukuzi.Roles do
     end
   end
 
-
   def set_manager_email_verified(manager) do
     manager
     |> change(email_verified: true)
     |> Repo.update()
   end
 
-
   def get_manager_by(params),
     do: get_by(Manager, params)
 
   def get_assistant_by(params),
     do: get_by(CrewMember, Keyword.put(params, :role, "assistant"))
+
+  def get_student_by(params),
+    do: get_by(Student, params)
+
+  def get_guardian_by(params),
+    do: get_by(Guardian, params)
 
   @spec get_by(any, any) :: any
   def get_by(module, params),

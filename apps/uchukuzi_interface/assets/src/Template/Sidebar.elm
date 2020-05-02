@@ -244,6 +244,9 @@ toNavigationPage route =
         Navigation.StudentRegistration ->
             HouseholdList
 
+        Navigation.EditHousehold _ ->
+            HouseholdList
+
         Navigation.Home ->
             Buses
 

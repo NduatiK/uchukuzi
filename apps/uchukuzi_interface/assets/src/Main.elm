@@ -456,11 +456,12 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     HouseholdList.init session
                         |> updateWith HouseholdList GotHouseholdListMsg
 
-                -- Just Navigation.DeviceList ->
-                --     DevicesList.init session
-                --         |> updateWith DevicesList GotDevicesListMsg
                 Just Navigation.StudentRegistration ->
-                    StudentRegistration.init session
+                    StudentRegistration.init session Nothing
+                        |> updateWith StudentRegistration GotStudentRegistrationMsg
+
+                Just (Navigation.EditHousehold guardianId) ->
+                    StudentRegistration.init session (Just guardianId)
                         |> updateWith StudentRegistration GotStudentRegistrationMsg
 
                 Just (Navigation.Activate token) ->

@@ -34,13 +34,19 @@ defmodule UchukuziInterfaceWeb.SchoolView do
         data: %{
           crew_member: crew_member,
           bus: bus,
-          students: students
+          students: students,
+          route: route
         }
       }) do
     %{
       bus: render_bus(bus),
       students: UchukuziInterfaceWeb.RolesView.render_students(students),
-      crew_member: UchukuziInterfaceWeb.RolesView.render_crew_member(crew_member)
+      crew_member: UchukuziInterfaceWeb.RolesView.render_crew_member(crew_member),
+      route: %{
+        id: route.id,
+        name: route.name,
+        path: route.path |> Enum.map(&render_location/1)
+      }
     }
   end
 

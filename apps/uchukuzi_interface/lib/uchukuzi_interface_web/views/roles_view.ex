@@ -29,6 +29,34 @@ defmodule UchukuziInterfaceWeb.RolesView do
     }
   end
 
+  def render("guardian_login.json", %{
+        guardian: %Uchukuzi.Roles.Guardian{} = guardian,
+        students: students,
+        token: token
+      }) do
+    %{
+      "id" => guardian.id,
+      "name" => guardian.name,
+      "email" => guardian.email,
+      "students" => render_students_with_bus(students),
+      "token" => token
+    }
+  end
+
+  def render("student_login.json", %{
+        student: %Uchukuzi.Roles.Student{} = student,
+        students: students,
+        token: token
+      }) do
+    %{
+      "id" => student.id,
+      "name" => student.name,
+      "email" => student.email,
+      "students" => render_students_with_bus(students),
+      "token" => token
+    }
+  end
+
   def render("crew_and_buses.json", %{crew_members: crew_members, buses: buses}) do
     %{
       "crew" => render_one(crew_members, __MODULE__, "crew_members.json", as: :crew_members),

@@ -21,7 +21,6 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
-import Views.Heading exposing (viewHeading)
 
 
 
@@ -44,20 +43,6 @@ type alias Model =
     }
 
 
-type Msg
-    = SelectedHousehold
-    | SelectedStudent (Maybe Student)
-    | GenerateCard
-    | StudentsResponse (WebData ( List GroupedStudents, List Household ))
-    | RegisterStudent
-    | SelectedRoute GroupedStudents
-    | NoOp
-
-
-
--- | NoOp
-
-
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
@@ -71,6 +56,21 @@ init session =
 
 
 -- UPDATE
+
+
+type Msg
+    = SelectedHousehold
+    | SelectedStudent (Maybe Student)
+    | GenerateCard
+    | StudentsResponse (WebData ( List GroupedStudents, List Household ))
+    | RegisterStudent
+    | SelectedRoute GroupedStudents
+    | EditHousehold Household
+    | NoOp
+
+
+
+-- | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -138,6 +138,9 @@ update msg model =
 
         GenerateCard ->
             ( model, Ports.printCard )
+
+        EditHousehold household ->
+            ( model, Navigation.rerouteTo model (Navigation.EditHousehold household.id) )
 
         NoOp ->
             ( model, Cmd.none )
@@ -226,7 +229,7 @@ viewOverlay { selectedStudent, session } =
                                     , StyledElement.hoverButton [ alignRight ]
                                         { title = "Edit details"
                                         , icon = Just Icons.edit
-                                        , onPress = Nothing
+                                        , onPress = Just (EditHousehold household)
                                         }
                                     ]
                                 )
@@ -395,9 +398,7 @@ viewHouseholdsTable students =
                         Input.checkbox []
                             { onChange = always NoOp
                             , icon = StyledElement.checkboxIcon
-
-                            -- , checked = includesEveningTrip student.time
-                            , checked = True
+                            , checked = includesEveningTrip student.travelTime
                             , label =
                                 Input.labelHidden "Takes evening bus"
                             }
