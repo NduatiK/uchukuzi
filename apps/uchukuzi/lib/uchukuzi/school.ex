@@ -295,7 +295,7 @@ defmodule Uchukuzi.School do
       end)
     end)
     |> Repo.transaction()
-    |> IO.inspect()
+
   end
 
   def update_household(
@@ -315,10 +315,10 @@ defmodule Uchukuzi.School do
     end
 
     cond do
-      guardian = Uchukuzi.Roles.get_guardian_by(id: guardian_id) |> IO.inspect(label: "asdas d") ->
+      guardian = Uchukuzi.Roles.get_guardian_by(id: guardian_id)  ->
         guardian =
           Repo.preload(guardian, :students)
-          |> IO.inspect()
+
 
         Multi.new()
         |> Multi.update("guardian", Guardian.changeset(guardian, guardian_params))
@@ -379,7 +379,7 @@ defmodule Uchukuzi.School do
           end)
         end)
         |> Repo.transaction()
-        |> IO.inspect()
+
 
       true ->
         {:error, :not_found}

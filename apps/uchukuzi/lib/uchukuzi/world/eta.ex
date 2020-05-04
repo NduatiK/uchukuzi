@@ -51,7 +51,7 @@ defmodule Uchukuzi.World.ETA do
   def coordinate_hash(%Location{} = coordinate) do
     :crypto.hash(:sha, "#{coordinate.lat}_#{coordinate.lng}")
     |> Base.encode32()
-    |> IO.inspect()
+
   end
 
   def predict_cross_time(%Tile{} = tile, current_time),

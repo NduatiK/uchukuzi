@@ -12,6 +12,7 @@ defmodule Uchukuzi.World do
 
     if previous_report == nil do
       TileSupervisor.enter(bus_server, current_tile, current_report.time)
+
       [current_tile]
     else
       current_report = Report.to_report(current_report)
@@ -31,8 +32,6 @@ defmodule Uchukuzi.World do
             crossed_tiles,
             current_tile
           )
-
-        # IO.inspect("leave")
 
         TileSupervisor.leave(bus_server, previous_tile, exit_time)
 

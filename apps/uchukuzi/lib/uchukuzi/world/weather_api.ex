@@ -91,7 +91,7 @@ defmodule Uchukuzi.World.WeatherAPI do
        }}
     else
       _ ->
-        # IO.inspect(e)
+
         :error
     end
   end

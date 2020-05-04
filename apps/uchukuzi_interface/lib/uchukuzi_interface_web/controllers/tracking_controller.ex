@@ -18,10 +18,6 @@ defmodule UchukuziInterfaceWeb.TrackingController do
                  Location.new(report["lng"], report["lat"]),
                {:ok, time} <- DateTimeParser.parse_datetime(report["time"], assume_utc: true) do
             Report.new(time, location)
-          else
-            e ->
-              # IO.inspect(report)
-              IO.inspect(e)
           end
         end
 
@@ -38,8 +34,6 @@ defmodule UchukuziInterfaceWeb.TrackingController do
       bus
       |> Tracking.status_of()
       |> broadcast_location_update(bus.id, bus.school_id)
-
-      IO.inspect("Done")
 
       status =
         if Tracking.in_school?(bus) do
@@ -74,5 +68,4 @@ defmodule UchukuziInterfaceWeb.TrackingController do
       |> render("trips.json", trips: trips)
     end
   end
-
 end

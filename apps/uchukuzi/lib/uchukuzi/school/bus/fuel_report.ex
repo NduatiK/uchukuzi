@@ -11,7 +11,7 @@ defmodule Uchukuzi.School.Bus.FuelReport do
   end
 
   def changeset(schema \\ %__MODULE__{}, params) do
-    params |> IO.inspect(label: "Uchukuzi.School.Bus.FuelReport")
+
     schema
     |> cast(params, [:cost, :volume, :bus_id, :date, :distance_travelled])
     |> validate_required([:cost, :volume, :bus_id, :date,:distance_travelled])

@@ -60,7 +60,7 @@ defmodule Uchukuzi.School.Bus do
           select: type(sum(t.distance_covered), :float)
         )
       )
-      |> IO.inspect()
+
 
     Repo.all(
       from(b in Bus,
@@ -69,7 +69,6 @@ defmodule Uchukuzi.School.Bus do
         select: count(t.distance_covered)
       )
     )
-    |> IO.inspect()
 
     case result do
       [nil] -> 0
@@ -88,7 +87,7 @@ defmodule Uchukuzi.School.Bus do
           select: type(sum(t.distance_covered), :float)
         )
       )
-      |> IO.inspect()
+
 
     case result do
       [nil] -> 0

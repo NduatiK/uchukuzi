@@ -32,7 +32,6 @@ defmodule Uchukuzi.Tracking do
   end
 
   def move(%Bus{} = bus, %Report{} = report) do
-    # IO.inspect(report)
     bus_server = BusServer.pid_from(bus)
 
     previous_report = BusServer.last_seen_status(bus_server)
