@@ -40,14 +40,19 @@ defmodule Uchukuzi.World.TileServer do
 
   @impl true
   def handle_call({:leave, pid, exit_time}, _from, state) do
-    WorldManager.crossed_tile(
-      state.tile,
-      pid,
-      DateTime.diff(exit_time, state.pids[pid].entry_time),
-      state.pids[pid].entry_time
-    )
+    state =
+      if state.pids[pid] != nil do
+        WorldManager.crossed_tile(
+          state.tile,
+          pid,
+          DateTime.diff(exit_time, state.pids[pid].entry_time),
+          state.pids[pid].entry_time
+        )
 
-    state = remove(state, pid)
+        remove(state, pid)
+      else
+        state
+      end
 
     if state.pids == %{} do
       {:stop, :normal, :ok, state}

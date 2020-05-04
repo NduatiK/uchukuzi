@@ -130,27 +130,21 @@ defmodule UchukuziInterfaceWeb.AuthController do
         guardian = role == "guardian" && Roles.get_guardian_by(id: id) ->
           guardian = Repo.preload(guardian, :students)
 
-          students =
-            guardian.students
-            |> preloadData()
-
           conn
           |> put_view(UchukuziInterfaceWeb.RolesView)
-          |> render("guardian_login.json",
-            guardian: guardian,
-            students: students,
+          |> render("customer_login.json",
+            email: guardian.email,
+            name: guardian.name,
             token: HouseholdAuth.sign(%{"role" => role, "id" => id, "type" => "bearer"})
           )
 
         student = role == "student" && Roles.get_student_by(id: id) ->
-          students =
-            [student]
-            |> preloadData()
 
           conn
           |> put_view(UchukuziInterfaceWeb.RolesView)
-          |> render("student_login.json",
-            students: students,
+          |> render("customer_login.json",
+            email: student.email,
+            name: student.name,
             token: HouseholdAuth.sign(%{"role" => role, "id" => id, "type" => "bearer"})
           )
 
@@ -174,15 +168,15 @@ defmodule UchukuziInterfaceWeb.AuthController do
 
   def preloadData(students) do
     for student <- students do
-      with route <- Repo.preload(student, :route).route,
-           bus <- Repo.preload(route, :bus).bus do
+      with student <- Repo.preload(student, [:route, :school]),
+           bus <- Repo.preload(student.route, :bus).bus do
         {student, bus}
       end
     end
   end
 
   def deep_link_redirect_household(%{query_params: %{"token" => token}} = conn, _) do
-    IO.inspect("uchukuzi://uchukuzi.com/?token=#{token}")
+
 
     conn
     |> redirect(external: "uchukuzi://uchukuzi.com/?token=#{token}")

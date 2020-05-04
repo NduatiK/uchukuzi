@@ -11,7 +11,6 @@ models_dir = "./models"
 
 
 def model_name(name):
-    print('{}/{}.pkl'.format(models_dir, name))
     return '{}/{}.pkl'.format(models_dir, name)
 
 

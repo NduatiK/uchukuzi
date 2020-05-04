@@ -43,8 +43,9 @@ defmodule Uchukuzi.Tracking do
     # being inside a tile for a long time
     # if not in_school?(bus) do
 
+    # if DateTime.compare(report.time, previous_report.time) == :gt      do
     tiles =
-      if previous_report == nil or DateTime.compare(report.time, previous_report.time) == :gt do
+      if true do
         World.update(bus_server, previous_report, report)
       else
         []

@@ -34,6 +34,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def init(bus) do
     data = %{
       bus_id: bus.id,
+      route_id: bus.route_id,
       school: Uchukuzi.Repo.preload(bus, :school).school,
       trip: Trip.new(bus),
       trip_path: nil,
@@ -74,23 +75,31 @@ defmodule Uchukuzi.Tracking.TripTracker do
         |> Trip.insert_report(report)
         |> Trip.infer_trip_travel_time()
 
+      # if Mix.env()
       similarTrip =
         Trip
-        |> where([t], t.bus_id == ^data.bus_id and t.travel_time == ^startedTrip.travel_time)
+        # |> where([t], t.bus_id == ^data.bus_id and t.travel_time == ^startedTrip.travel_time)
+        |> where([t], t.bus_id == ^data.bus_id)
         |> Ecto.Query.first(desc_nulls_last: :start_time)
         |> Uchukuzi.Repo.one()
 
+      IO.puts("TripPath.new")
+        :timer.sleep((1000))
       trip_path =
-        with trip when not is_nil(trip) <- similarTrip do
-          trip.crossed_tiles
+        with trip_ when not is_nil(trip_) <- similarTrip do
+          trip_.crossed_tiles
           |> TripPath.new()
-          |> TripPath.update_predictions()
+          |> TripPath.update_predictions(report.time)
+        else
+          _ ->
+            TripPath.new(nil)
         end
 
       data = %{
         data
         | trip: startedTrip,
-          state: :ongoing
+          state: :ongoing,
+          trip_path: trip_path
       }
 
       {:noreply, data, @message_timeout}
@@ -120,30 +129,42 @@ defmodule Uchukuzi.Tracking.TripTracker do
 
   # provided `tiles` are in LRF order here
   # they are stored in MRF order
-  def handle_cast({:crossed_tiles, tiles}, data) do
+  def handle_cast({:crossed_tiles, []}, data) do
+    {:noreply, data, @message_timeout}
+  end
+  def handle_cast({:crossed_tiles, [h|_] = tiles}, data) do
     is_in_student_trip = Enum.member?(Trip.travel_times(), data.trip.travel_time)
 
-    if is_in_student_trip do
-      trip_path =
-        with path when not is_nil(path) <- data.trip_path do
-          # Match crossed tiles to historical tiles
-          # • Find out what tiles need to be crossed
-          # • Predict
-          # • Report to tile members
+    trip_path =
+      if true do
+        # if is_in_student_trip do
+          # with path when not is_nil(path) <- data.trip_path do
+            # Match crossed tiles to historical tiles
+            # • Find out what tiles need to be crossed
+            # • Predict
+            # • Report to tile members
 
-          path =
-            path
-            |> TripPath.crossed_tiles(tiles)
-            |> TripPath.update_predictions()
+            path =
+              data.trip_path
+              |> TripPath.crossed_tiles(tiles)
+              |> TripPath.update_predictions(data.trip.end_time)
 
-          PubSub.publish(:prediction_update, {self(), data.bus_id, path.eta})
+              PubSub.publish(
+                :eta_prediction_update,
+                {:eta_prediction_update, self(), data.route_id, path.eta}
+                )
 
-          path
-        end
+                path
+            # IO.inspect("as", label: "Received")
 
-      # UchukuziInterfaceWeb.Endpoint.broadcast("school:#{school_id}", "bus_moved", output)
-      %{data | trip_path: trip_path}
-    end
+          #   path
+          # end
+
+        # UchukuziInterfaceWeb.Endpoint.broadcast("school:#{school_id}", "bus_moved", output)
+      else
+        data.trip_path
+      end
+    data = %{data | trip_path: trip_path}
 
     {:noreply, data, @message_timeout}
   end
@@ -158,20 +179,25 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   def terminate(_reason, %{state: :complete} = data) do
-    data = %{data | trip: Trip.clean_up_trip(data.trip)}
-    Uchukuzi.Repo.insert(data.trip)
-    # :ets.delete(tableName(), data.bus_id)
+    IO.puts("terminate")
+
+
+
+    %Trip{data.trip | crossed_tiles: data.trip_path.consumed_tile_locs}
+    |> Trip.clean_up_trip()
+    |> Uchukuzi.Repo.insert()
   end
 
   def terminate({:shutdown, :timeout}, %{state: :ongoing} = data) do
+    IO.puts("terminate")
 
-      data = %{data | trip: Trip.clean_up_trip(data.trip)}
-      Uchukuzi.Repo.insert(data.trip)
+    %Trip{data.trip | crossed_tiles: data.trip_path.consumed_tile_locs}
+    |> Trip.clean_up_trip()
+    |> Uchukuzi.Repo.insert()
   end
 
   # if stop when incomplete
-  def terminate(_reason, data) do
-    IO.puts("# TODO - No")
+  def terminate(_reason, _data) do
     # :ets.insert(tableName(), {data.bus_id, data})
   end
 

@@ -5,7 +5,7 @@ defmodule Uchukuzi.World.ETA.PredictionWorker do
   alias Uchukuzi.World.ETA
   alias Uchukuzi.World.ETA.ETASupervisor
 
-  @python_dir "../uchukuzi/lib/python"
+  @python_dir "../uchukuzi_backend/apps/uchukuzi/lib/python"
   @python_module "ml"
   @python_method "predict"
 
@@ -28,7 +28,7 @@ defmodule Uchukuzi.World.ETA.PredictionWorker do
   def terminate(_reason, state) do
     state.py
     |> Python.stop()
-    IO.inspect("Crash!!!")
+
     :ok
   end
 

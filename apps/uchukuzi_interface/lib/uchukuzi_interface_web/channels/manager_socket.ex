@@ -8,7 +8,7 @@ defmodule UchukuziInterfaceWeb.ManagerSocket do
     with {:ok, manager_id} <- ManagerAuth.verify(token),
          manager when not is_nil(manager) <- Uchukuzi.Roles.get_manager_by(id: manager_id),
          school_id when not is_nil(school_id) <- manager.school_id do
-          IO.inspect(manager)
+
       {:ok,
        socket
        |> assign(:manager_id, manager_id)

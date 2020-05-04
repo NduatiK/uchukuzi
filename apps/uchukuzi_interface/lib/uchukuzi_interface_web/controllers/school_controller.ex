@@ -1,6 +1,8 @@
 defmodule UchukuziInterfaceWeb.SchoolController do
   use UchukuziInterfaceWeb, :controller
 
+  use Uchukuzi.Roles.Model
+
   alias Uchukuzi.School
   action_fallback(UchukuziInterfaceWeb.FallbackController)
   alias UchukuziInterfaceWeb.Email.{Email, Mailer}
@@ -9,7 +11,12 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     arg_list =
       with :no_manager <- Map.get(conn.assigns, :manager, :no_manager) do
         with :no_assistant <- Map.get(conn.assigns, :assistant, :no_assistant) do
-          [conn, conn.params]
+          with :no_household <- Map.get(conn.assigns, :household, :no_household) do
+            [conn, conn.params]
+          else
+            customer ->
+              [conn, conn.params, customer]
+          end
         else
           assistant ->
             [conn, conn.params, assistant.school_id]
@@ -378,10 +385,38 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
-  # def data_for_household(%{assigns: }conn, %{"student_id" => student_id}) do
-  #   with :ok <- School.student_exited(school_id, conn.assigns.assistant, student_id) do
-  #     conn
-  #     |> resp(200, "{}")
-  #   end
-  # end
+  def data_for_household(conn, _, %Guardian{} = guardian) do
+    guardian = Repo.preload(guardian, :students)
+
+    students =
+      guardian.students
+      |> preloadData()
+
+    conn
+    |> put_view(UchukuziInterfaceWeb.RolesView)
+    |> render("customer_data.json",
+      students: students
+    )
+  end
+
+  def data_for_household(conn, _, %Student{} = student) do
+    students =
+      [student]
+      |> preloadData()
+
+    conn
+    |> put_view(UchukuziInterfaceWeb.RolesView)
+    |> render("customer_data.json",
+      students: students
+    )
+  end
+
+  def preloadData(students) do
+    for student <- students do
+      with student <- Repo.preload(student, [:route, :school]),
+           bus <- Repo.preload(student.route, :bus).bus do
+        {student, bus}
+      end
+    end
+  end
 end

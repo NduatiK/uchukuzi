@@ -5,7 +5,7 @@ defmodule Uchukuzi.World.ETA.LearnerWorker do
   alias Uchukuzi.World.ETA
   alias Uchukuzi.World.ETA.ETASupervisor
 
-  @python_dir "../uchukuzi/lib/python"
+  @python_dir "../uchukuzi_backend/apps/uchukuzi/lib/python"
   @python_module "ml"
   @python_method "learn"
 

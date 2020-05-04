@@ -123,7 +123,7 @@ defmodule UchukuziInterfaceWeb.Router do
   end
 
   scope "/api/school/household", UchukuziInterfaceWeb do
-    pipe_through :household_api
+    pipe_through [:household_api, :authenticate_household]
 
     get "/mine", SchoolController, :data_for_household
   end

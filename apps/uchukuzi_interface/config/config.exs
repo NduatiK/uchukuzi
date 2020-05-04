@@ -5,7 +5,7 @@ config :uchukuzi_interface, UchukuziInterfaceWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "3CuzHDvMrRgq2EWUHWD2tiJiprpdnr6HpP2VQeqEQrl3dSINIwdxiKdt+Uy7BLyQ",
   render_errors: [view: UchukuziInterfaceWeb.ErrorView, accepts: ~w(html json)],
-  pubsub: [name: UchukuziInterface.PubSub, adapter: Phoenix.PubSub.PG2]
+  pubsub: [name: Uchukuzi.PubSub, adapter: Phoenix.PubSub.PG2]
 
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",

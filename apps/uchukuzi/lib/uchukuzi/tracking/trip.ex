@@ -9,7 +9,7 @@ defmodule Uchukuzi.Tracking.Trip do
 
   if Mix.env() == :dev do
     # dublin
-    @naive_timezone -1
+    @naive_timezone +1
   else
     # nairobi
     @naive_timezone 3
