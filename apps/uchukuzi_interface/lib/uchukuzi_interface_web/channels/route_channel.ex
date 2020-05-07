@@ -21,36 +21,11 @@ defmodule UchukuziInterfaceWeb.RouteChannel do
     end
   end
 
-  # alias Phoenix.Socket.Broadcast
-
-  # def handle_info(%Broadcast{topic: _, event: "prediction_update", payload: payload}, socket) do
-  #   broadcast(socket, "prediction_update", payload.eta_sequence)
-
-  #   {:noreply, socket}
-  # end
-  # alias Phoenix.Socket.Broadcast
-
-  def handle_info(%{type: "prediction_update"} = e, socket) do
-
-    broadcast(socket, "prediction_update", e.payload)
-
-    {:noreply, socket}
-  end
-
-
-
-  # def handle_in("prediction_update", payload, socket) do
-  #   IO.inspect(payload)
-
-
-  #   {:noreply, socket}
-  # end
-
   def send_to_channel(route_id, type, data) do
-    Phoenix.PubSub.broadcast(
-      Uchukuzi.PubSub,
+    UchukuziInterfaceWeb.Endpoint.broadcast(
       "routes:" <> Integer.to_string(route_id),
-      %{type: type, payload: data}
+      type,
+      data
     )
   end
 end

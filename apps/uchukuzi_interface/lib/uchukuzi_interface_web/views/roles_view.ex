@@ -29,31 +29,23 @@ defmodule UchukuziInterfaceWeb.RolesView do
     }
   end
 
-  def render("guardian_login.json", %{
-        guardian: %Uchukuzi.Roles.Guardian{} = guardian,
-        students: students,
+  def render("customer_login.json", %{
+        name: name,
+        email: email,
         token: token
       }) do
     %{
-      "id" => guardian.id,
-      "name" => guardian.name,
-      "email" => guardian.email,
-      "students" => render_students_with_bus(students),
+      "name" => name,
+      "email" => email,
       "token" => token
     }
   end
 
-  def render("student_login.json", %{
-        student: %Uchukuzi.Roles.Student{} = student,
-        students: students,
-        token: token
+  def render("customer_data.json", %{
+        students: students
       }) do
     %{
-      "id" => student.id,
-      "name" => student.name,
-      "email" => student.email,
-      "students" => render_students_with_bus(students),
-      "token" => token
+      "students" => render_students_with_bus_and_school(students)
     }
   end
 
@@ -83,8 +75,6 @@ defmodule UchukuziInterfaceWeb.RolesView do
   end
 
   def render("guardians.json", %{guardians: guardians}) do
-    IO.inspect(guardians)
-
     guardians
     |> render_many(__MODULE__, "guardian.json", as: :guardian)
   end
@@ -118,18 +108,6 @@ defmodule UchukuziInterfaceWeb.RolesView do
     |> Map.put("guardian_name", guardian_name)
   end
 
-  def render_students_with_bus(students) do
-    Enum.map(students, &render_student_with_bus/1)
-  end
-
-  def render_student_with_bus({student, bus}) do
-    IO.inspect(bus)
-
-    student
-    |> render_student
-    |> Map.put("bus", UchukuziInterfaceWeb.SchoolView.render_bus(bus))
-  end
-
   def render_student(%Uchukuzi.Roles.Student{} = student) do
     student = Uchukuzi.Repo.preload(student, :route)
 
@@ -139,9 +117,24 @@ defmodule UchukuziInterfaceWeb.RolesView do
       "email" => student.email,
       "travel_time" => student.travel_time,
       "home_location" => render_location(student.home_location),
+      "home_hash" => Uchukuzi.World.ETA.coordinate_hash(student.home_location),
       "pickup_location" => render_location(student.pickup_location),
       "route" => UchukuziInterfaceWeb.SchoolView.render_bus_route(student.route)
     }
+  end
+
+  def render_students_with_bus_and_school(students) do
+    Enum.map(students, &render_student_with_bus_and_school/1)
+  end
+
+  def render_student_with_bus_and_school({student, bus}) do
+    student
+    |> render_student
+    |> Map.put("bus", UchukuziInterfaceWeb.SchoolView.render_bus(bus))
+    |> Map.put("school", %{
+      "name" => student.school.name,
+      "id" => student.school.id
+    })
   end
 
   def render_location(nil), do: nil

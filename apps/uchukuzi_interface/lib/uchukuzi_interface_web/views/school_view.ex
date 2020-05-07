@@ -14,7 +14,13 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     render_bus(bus, Map.get(params, :last_seen), Map.get(bus, :performed_repairs))
   end
 
-  def render_bus(bus, last_seen \\ nil, performed_repairs \\ nil) do
+  def render_bus(bus, last_seen \\ nil, performed_repairs \\ nil)
+
+  def render_bus(nil, _, _) do
+    nil
+  end
+
+  def render_bus(bus, last_seen, performed_repairs) do
     %{
       id: bus.id,
       number_plate: bus.number_plate,
@@ -90,8 +96,6 @@ defmodule UchukuziInterfaceWeb.SchoolView do
   end
 
   def render("fuel_report.json", %{fuel_report: fuel_report}) do
-    IO.inspect(fuel_report)
-
     %{
       id: fuel_report.id,
       cost: fuel_report.cost,
