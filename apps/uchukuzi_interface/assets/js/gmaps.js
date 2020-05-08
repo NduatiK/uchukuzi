@@ -54,11 +54,14 @@ function initializeMaps(app, clickable, drawable, numberOfRetries, schoolLocatio
         .then(insertMap)
         .then(setupMapCallbacks(app, clickable))
         .then(addDrawTools(app, drawable))
+
     initializingMapsChain
         .catch(() => {
             runningRequest = null
         })
-        .then(() => { initializingMapsChain = null })
+        .then(() => {
+            initializingMapsChain = null
+        })
     return initializingMapsChain
 }
 
@@ -128,6 +131,23 @@ let drawingManager = null
 let schoolCircle = null
 
 
+
+/**
+ * Places the map within a google-map dom element
+ */
+function insertMap(data) {
+    const { dom, map } = data
+
+    var mapDiv = document.getElementById('google-map')
+
+    if (dom.parentNode) {
+        dom.parentNode.removeChild(dom)
+    }
+    mapDiv.prepend(dom)
+    pushSchool(map)
+    return Promise.resolve(map)
+}
+
 /**
  * Removes items from the map before reuse
  */
@@ -144,24 +164,11 @@ function cleanMap() {
     if (schoolCircle) {
         schoolCircle.setMap(null)
     }
-}
 
-/**
- * Places the map within a google-map dom element
- */
-function insertMap(data) {
-    const { dom, map } = data
-
-    var mapDiv = document.getElementById('google-map')
-
-    if (dom.parentNode) {
-        dom.parentNode.removeChild(dom)
+    if (polylineCompleteListener) {
+        google.maps.event.removeListener(polylineCompleteListener)
     }
-    mapDiv.prepend(dom)
-    pushSchool(map)
-    return Promise.resolve(data)
 }
-
 var schoolMarker = null
 
 /**
@@ -197,7 +204,7 @@ function pushSchool(map) {
 let hasSetup = false
 let clickListener = null
 const setupMapCallbacks = (app, clickable) => (data) => {
-    const { dom, map } = data
+    const map = data
 
     if (clickable) {
         if (!google.maps.event.hasListeners(map, 'click')) {
@@ -245,7 +252,7 @@ function insertCircle(pos, app, map) {
     }
 
     getMap()
-        .then(({ map }) => {
+        .then((map) => {
 
             schoolCircle = new google.maps.Circle({
                 strokeColor: darkGreen,
@@ -285,12 +292,12 @@ function insertCircle(pos, app, map) {
         })
 }
 
-let polylineListener = null
+let polylineCompleteListener = null
 let polylineClickListener = null
 let polylines = []
 
 const addDrawTools = (app, drawable) => (data) => {
-    const { dom, map } = data
+    const map = data
 
     if (drawable) {
 
@@ -305,19 +312,17 @@ const addDrawTools = (app, drawable) => (data) => {
                 }
 
             })
-
         } else {
             drawingManager.setMap(null)
-            google.maps.event.removeListener(polylineListener)
+            google.maps.event.removeListener(polylineCompleteListener)
         }
-        polylineListener = google.maps.event.addListener(drawingManager, 'polylinecomplete', function (polyline) {
-            polylines.push(polyline)
-            polyline.setEditable(true);
 
-            drawingManager.setDrawingMode(null);
+
+
+        polylineCompleteListener = google.maps.event.addListener(drawingManager, 'polylinecomplete', function (polyline) {
+            polylines.push(polyline)
 
             setupClicksPolyline(polyline, app)
-
 
         })
         console.log("drawingManager", drawingManager)
@@ -326,15 +331,22 @@ const addDrawTools = (app, drawable) => (data) => {
         if (drawingManager) {
             drawingManager.setMap(null)
         }
+        if (polylineCompleteListener) {
+            google.maps.event.removeListener(polylineCompleteListener)
+        }
     }
 
 
     return Promise.resolve(data)
 }
 
-function setupClicksPolyline(line, app) {
+function setupClicksPolyline(line, app, ignoreClickListener = false) {
+    line.setEditable(true);
+
+    drawingManager.setDrawingMode(null);
+
     // Adapted from http://bl.ocks.org/knownasilya/89a32e572989f0aff1f8
-    if (polylineClickListener) {
+    if (polylineClickListener && !ignoreClickListener) {
         return
     }
     const locations = line.getPath().getArray().map((v, _, _array) => {
@@ -357,6 +369,7 @@ function setupClicksPolyline(line, app) {
                 line.setMap(null);
                 app.ports.updatedPath.send([])
                 drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYLINE);
+                google.maps.event.removeListener(polylineClickListener);
                 polylineClickListener = null
             } else {
                 const locations = line.getPath().getArray().map((v, _, _array) => {
@@ -370,7 +383,7 @@ function setupClicksPolyline(line, app) {
             }
 
         }
-    });
+    })
 }
 
 
@@ -427,7 +440,7 @@ function initializeSearch(app) {
     sleep(100).then(() => {
 
         const setup = initializeMaps(app, false, false)
-            .then(({ dom, map }) => {
+            .then((map) => {
                 setupHomeMarker(app, map)
 
 
@@ -539,7 +552,7 @@ function setupPorts(app) {
         // One time actions, we don't want too many subscriptions
         const updateMarker = function (update) {
             initializeMaps(app, false, false)
-                .then(({ dom, map }) => {
+                .then((map) => {
                     if (isDevelopment) {
                         console.log("updateMarker")
                     }
@@ -572,7 +585,7 @@ function setupPorts(app) {
 
         app.ports.showHomeLocation.subscribe((location) => {
             initializeMaps(app, false, false)
-                .then(({ dom, map }) => {
+                .then((map) => {
                     setupHomeMarker(app, map)
 
                     homeMarker.setPosition(location)
@@ -582,7 +595,7 @@ function setupPorts(app) {
 
         app.ports.showHomeLocation.subscribe((location) => {
             initializeMaps(app, false, false)
-                .then(({ dom, map }) => {
+                .then((map) => {
                     setupHomeMarker(app, map)
                     homeMarker.setPosition(location)
                 })
@@ -591,7 +604,7 @@ function setupPorts(app) {
 
         app.ports.updateBusMap.subscribe((update) => {
             initializeMaps(app, false, false)
-                .then(({ dom, map }) => {
+                .then((map) => {
                     sleep(100).then(() => {
 
                         if (initializingMapsChain) {
@@ -607,7 +620,7 @@ function setupPorts(app) {
 
         app.ports.bulkUpdateBusMap.subscribe((updates) => {
             initializeMaps(app, false, false)
-                .then(({ dom, map }) => {
+                .then((map) => {
                     sleep(100).then(() => {
                         if (initializingMapsChain) {
                             initializingMapsChain.then(() => {
@@ -647,7 +660,7 @@ function setupPorts(app) {
 
         })
 
-        const drawPath = (map) => ({ routeID, path, highlighted }) => {
+        const drawPath = (map, editable = false) => ({ routeID, path, highlighted }) => {
 
             if (isDevelopment) {
                 console.log("drawPath")
@@ -662,9 +675,17 @@ function setupPorts(app) {
                     path: path,
                     geodesic: false,
                     strokeColor: highlighted ? purple : darkGreen,
+                    editable: editable,
                     id: routeID
                 });
                 polylines.push(polyline)
+            }
+
+
+            if (editable) {
+                addDrawTools(app, editable)(map).then(() => {
+                    setupClicksPolyline(polyline, app, true)
+                })
             }
 
             if (highlighted) {
@@ -681,19 +702,28 @@ function setupPorts(app) {
 
         app.ports.drawPath.subscribe((path) => {
             initializeMaps(app, false, false)
-                .then(({ dom, map }) => {
+                .then((map) => {
                     sleep(100).then(() => {
                         drawPath(map)(path)
                     })
                 })
         })
 
+        app.ports.drawEditablePath.subscribe((path) => {
+            initializeMaps(app, false, false)
+                .then((map) => {
+                    sleep(100).then(() => {
+                        drawPath(map, true)(path)
+                    })
+                })
+        })
+
         app.ports.bulkDrawPath.subscribe((paths) => {
             initializeMaps(app, false, false)
-                .then(({ dom, map }) => {
+                .then((map) => {
                     sleep(100).then(() => {
                         if (initializingMapsChain) {
-                            initializingMapsChain.then(({ map }) => {
+                            initializingMapsChain.then((map) => {
 
                                 pushSchool(map)
                                 paths.forEach(drawPath(map))
@@ -717,7 +747,7 @@ function setupPorts(app) {
         })
         app.ports.selectPoint.subscribe(function (gmPos) {
             initializeMaps(app, false, false)
-                .then(({ dom, map }) => {
+                .then((map) => {
                     markers.forEach((marker, i, a) => {
                         marker.setMap(null)
                     })

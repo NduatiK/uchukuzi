@@ -6,7 +6,7 @@ import Browser.Events
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
 import Element exposing (..)
-import Html.Attributes exposing (src)
+import Html.Attributes
 import Json.Decode exposing (Value)
 import Models.Bus exposing (LocationUpdate)
 import Navigation exposing (Route)
@@ -485,7 +485,11 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                         |> updateWith RoutesList GotRoutesListMsg
 
                 Just Navigation.CreateRoute ->
-                    CreateRoute.init session
+                    CreateRoute.init session Nothing
+                        |> updateWith CreateRoute GotCreateRouteMsg
+
+                Just (Navigation.EditRoute id) ->
+                    CreateRoute.init session (Just id)
                         |> updateWith CreateRoute GotCreateRouteMsg
 
                 Just Navigation.CrewMembers ->

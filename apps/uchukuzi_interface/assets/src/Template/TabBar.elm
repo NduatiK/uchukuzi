@@ -212,6 +212,9 @@ toNavigationPage route =
         Navigation.Routes ->
             Routes
 
+        Navigation.EditRoute _ ->
+            Routes
+
         Navigation.CreateRoute ->
             Routes
 

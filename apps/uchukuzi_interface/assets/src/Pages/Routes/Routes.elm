@@ -30,6 +30,7 @@ type alias Model =
 
 type Msg
     = CreateRoute
+    | EditRoute Route
     | UpdatedSearchText String
     | ServerResponse (WebData (List Route))
     | HoverOver Route
@@ -54,6 +55,9 @@ update msg model =
 
         CreateRoute ->
             ( model, Navigation.rerouteTo model Navigation.CreateRoute )
+
+        EditRoute route ->
+            ( model, Navigation.rerouteTo model (Navigation.EditRoute route.id) )
 
         HoverOver route ->
             ( model, Ports.highlightPath { routeID = route.id, highlighted = True } )
@@ -192,6 +196,14 @@ viewRoute route =
          , htmlAttribute (Html.Events.onMouseOver (HoverOver route))
          , htmlAttribute (Html.Events.onMouseLeave (HoverLeft route))
          , Style.animatesShadow
+         , inFront
+            (Icons.edit [ alpha 0.3, alignRight, padding 12, centerY ])
+         , inFront
+            (StyledElement.plainButton [ alignRight, padding 12, centerY, alpha 0.01, mouseOver [ alpha 1 ] ]
+                { label = Icons.edit [ Colors.fillPurple ]
+                , onPress = Just (EditRoute route)
+                }
+            )
          ]
             ++ selectionStyles
         )
@@ -199,7 +211,7 @@ viewRoute route =
             [ el routeStyle (text route.name)
             , el timeStyle
                 (text
-                    (Maybe.withDefault "" (Maybe.andThen (.numberPlate >> Just) route.bus))
+                    (Maybe.withDefault "No bus assigned" (Maybe.andThen (.numberPlate >> Just) route.bus))
                 )
 
             --  el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.startTime))

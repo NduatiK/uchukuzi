@@ -64,9 +64,17 @@ printCard =
 port printCardPort : () -> Cmd msg
 
 
+drawEditableRoute : Route -> Cmd msg
+drawEditableRoute route =
+    drawEditablePath { routeID = route.id, path = route.path, highlighted = False }
+
+
 drawRoute : Route -> Cmd msg
 drawRoute route =
     drawPath { routeID = route.id, path = route.path, highlighted = False }
+
+
+port drawEditablePath : { routeID : Int, path : List Location, highlighted : Bool } -> Cmd msg
 
 
 port drawPath : { routeID : Int, path : List Location, highlighted : Bool } -> Cmd msg

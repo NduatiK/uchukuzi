@@ -4,9 +4,7 @@ import Api
 import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
-import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font
 import Element.Input as Input
 import Errors exposing (Errors, InputError)
 import Html.Attributes exposing (id)
@@ -18,13 +16,13 @@ import Json.Decode.Pipeline exposing (hardcoded)
 import Json.Encode as Encode
 import Models.Household exposing (TravelTime(..))
 import Models.Location exposing (Location)
-import Navigation exposing (..)
+import Models.Route exposing (Route, routeDecoder)
+import Navigation
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
-import StyledElement exposing (toDropDownView)
-import StyledElement.DropDown as Dropdown
+import StyledElement
 import Utils.Validator exposing (..)
 
 
@@ -35,6 +33,8 @@ import Utils.Validator exposing (..)
 type alias Model =
     { session : Session
     , form : Form
+    , editState : Maybe EditState
+    , requestState : WebData ()
     }
 
 
@@ -50,22 +50,15 @@ type Problem
     | EmptyPath
 
 
+type alias EditState =
+    { requestState : WebData Route
+    , routeID : Int
+    }
+
+
 type alias ValidForm =
     { name : String
     , path : List Location
-    }
-
-
-type alias Student =
-    { name : String
-    , time : TravelTime
-    }
-
-
-type alias Guardian =
-    { name : String
-    , phoneNumber : String
-    , email : String
     }
 
 
@@ -75,24 +68,30 @@ type Msg
     | SubmitButtonMsg
     | MapPathUpdated (List Location)
     | ServerResponse (WebData ())
+    | RouteResponse (WebData Route)
 
 
-emptyForm : Session -> Model
-emptyForm session =
-    { session = session
-    , form =
-        { name = ""
-        , path = []
-        , problems = []
-        }
-    }
-
-
-init : Session -> ( Model, Cmd msg )
-init session =
-    ( emptyForm session
+init : Session -> Maybe Int -> ( Model, Cmd Msg )
+init session id =
+    ( { session = session
+      , form =
+            { name = ""
+            , path = []
+            , problems = []
+            }
+      , editState =
+            Maybe.andThen (EditState Loading >> Just) id
+      , requestState = NotAsked
+      }
     , Cmd.batch
-        [ Ports.initializeCustomMap { clickable = False, drawable = True }
+        [ Ports.cleanMap ()
+        , Ports.initializeMaps
+        , case id of
+            Just id_ ->
+                fetchRoute session id_
+
+            Nothing ->
+                Cmd.none
         ]
     )
 
@@ -114,7 +113,9 @@ update msg model =
         SubmitButtonMsg ->
             case validateForm form of
                 Ok validForm ->
-                    ( { model | form = { form | problems = [] } }, submit model.session validForm )
+                    ( { model | form = { form | problems = [] } }
+                    , submit model.session validForm (Maybe.andThen (.routeID >> Just) model.editState)
+                    )
 
                 Err problems ->
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
@@ -128,10 +129,40 @@ update msg model =
         MapPathUpdated newPath ->
             ( { model | form = { form | path = newPath } }, Cmd.none )
 
+        RouteResponse response ->
+            let
+                editState =
+                    model.editState
+
+                newModel =
+                    { model | editState = Maybe.andThen (\x -> Just { x | requestState = response }) editState }
+            in
+            case response of
+                Success route ->
+                    let
+                        editForm =
+                            { name = route.name
+                            , path = route.path
+                            , problems = []
+                            }
+                    in
+                    ( { newModel | form = editForm }, Ports.drawEditableRoute route )
+
+                _ ->
+                    ( newModel, Cmd.none )
+
+
+
+-- ( { model | form = { form | path = newPath } }, Cmd.none )
+
 
 updateStatus : Model -> WebData () -> ( Model, Cmd Msg )
-updateStatus model webData =
-    case webData of
+updateStatus model_ response =
+    let
+        model =
+            { model_ | requestState = response }
+    in
+    case response of
         Loading ->
             ( model, Cmd.none )
 
@@ -259,21 +290,7 @@ viewForm model =
     Element.column
         [ width (fillPortion 1), spacing 26 ]
         [ viewRouteNameInput model.form.problems model.form.name
-
-        -- -- , viewDivider
-        -- , el Style.header2Style (text "Students")
-        -- -- , viewLocationInput household.home_location
-        -- , viewStudentsInput model.form
-        -- , viewDivider
-        -- , el Style.header2Style
-        --     (text "Guardian's contacts")
-        -- , viewGuardianNameInput model.form.problems household.guardian.name
-        -- , wrappedRow [ spacing 24 ]
-        --     [ viewEmailInput model.form.problems household.guardian.email
-        --     , viewPhoneInput model.form.problems household.guardian.phoneNumber
-        --     ]
-        -- , viewShareLocationInput model.form.canTrack
-        , viewButton
+        , viewButton model.requestState
         ]
 
 
@@ -313,18 +330,29 @@ viewDivider =
         Element.none
 
 
-viewButton : Element Msg
-viewButton =
+viewButton : WebData a -> Element Msg
+viewButton requestState =
     el (Style.labelStyle ++ [ width fill, paddingEach { edges | right = 24 } ])
-        (StyledElement.button [ alignRight ]
-            { onPress = Just SubmitButtonMsg
-            , label = text "Save"
-            }
+        (case requestState of
+            Loading ->
+                Icons.loading [ alignRight, width (px 46), height (px 46) ]
+
+            Failure _ ->
+                StyledElement.failureButton [ alignRight ]
+                    { title = "Try Again"
+                    , onPress = Just SubmitButtonMsg
+                    }
+
+            _ ->
+                StyledElement.button [ alignRight ]
+                    { onPress = Just SubmitButtonMsg
+                    , label = text "Save"
+                    }
         )
 
 
-submit : Session -> ValidForm -> Cmd Msg
-submit session form =
+submit : Session -> ValidForm -> Maybe Int -> Cmd Msg
+submit session form editingID =
     let
         params =
             Encode.object
@@ -333,8 +361,14 @@ submit session form =
                 ]
                 |> Http.jsonBody
     in
-    Api.post session Endpoint.routes params aDecoder
-        |> Cmd.map ServerResponse
+    case editingID of
+        Just id ->
+            Api.patch session (Endpoint.route id) params aDecoder
+                |> Cmd.map ServerResponse
+
+        Nothing ->
+            Api.post session Endpoint.routes params aDecoder
+                |> Cmd.map ServerResponse
 
 
 aDecoder : Decoder ()
@@ -384,3 +418,8 @@ subscriptions model =
         [ --     Ports.autocompleteError (always AutocompleteError)
           Ports.updatedPath MapPathUpdated
         ]
+
+
+fetchRoute session id =
+    Api.get session (Endpoint.route id) routeDecoder
+        |> Cmd.map RouteResponse

@@ -262,6 +262,20 @@ defmodule Uchukuzi.School do
     |> Repo.insert()
   end
 
+  def get_route(school_id, route_id) do
+    Route
+    |> where(school_id: ^school_id, id: ^route_id)
+    |> Repo.one()
+  end
+
+  def update_route(school_id, route_id, params) do
+    Route
+    |> where(school_id: ^school_id, id: ^route_id)
+    |> Repo.one()
+    |> Route.changeset(params)
+    |> Repo.update()
+  end
+
   # ********* HOUSEHOLDS *********
   def create_household(
         school_id,
@@ -295,7 +309,6 @@ defmodule Uchukuzi.School do
       end)
     end)
     |> Repo.transaction()
-
   end
 
   def update_household(
@@ -315,10 +328,8 @@ defmodule Uchukuzi.School do
     end
 
     cond do
-      guardian = Uchukuzi.Roles.get_guardian_by(id: guardian_id)  ->
-        guardian =
-          Repo.preload(guardian, :students)
-
+      guardian = Uchukuzi.Roles.get_guardian_by(id: guardian_id) ->
+        guardian = Repo.preload(guardian, :students)
 
         Multi.new()
         |> Multi.update("guardian", Guardian.changeset(guardian, guardian_params))
@@ -379,7 +390,6 @@ defmodule Uchukuzi.School do
           end)
         end)
         |> Repo.transaction()
-
 
       true ->
         {:error, :not_found}

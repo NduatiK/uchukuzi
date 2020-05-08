@@ -117,11 +117,11 @@ var app = Elm.Main.init({
 })
 
 
-// if (env.isDevelopment) {
-//     console.log("inite")
-//     init()
-//     return
-// }
+if (env.isDevelopment) {
+    console.log("inite")
+    init()
+    return
+}
 
 
 loadMapAPI().then(init).catch((_) => {

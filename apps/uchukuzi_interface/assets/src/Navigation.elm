@@ -34,6 +34,7 @@ type Route
       -------------
     | Routes
     | CreateRoute
+    | EditRoute Int
       -------------
     | CrewMembers
     | CrewMemberRegistration
@@ -72,6 +73,7 @@ loggedInParser =
             ++ [ Parser.map CreateFuelReport (s (routeName Buses) </> int </> s (busPageToString FuelHistory) </> s (routeName (CreateFuelReport -1)))
                , Parser.map CreateBusRepair (s (routeName Buses) </> int </> s (busPageToString BusRepairs) </> s (routeName (CreateBusRepair -1)))
                , Parser.map CreateRoute (s (routeName Routes) </> s (routeName CreateRoute))
+               , Parser.map EditRoute (s (routeName Routes) </> int </> s (routeName (EditRoute -1)))
                , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s (routeName (EditCrewMember -1)))
                , Parser.map EditHousehold (s (routeName HouseholdList) </> int </> s (routeName (EditHousehold -1)))
                , Parser.map EditBusDetails (s (routeName Buses) </> int </> s (routeName (EditBusDetails -1)))
@@ -332,6 +334,9 @@ routeToString page =
                 Routes ->
                     [ routeName Routes ]
 
+                EditRoute id ->
+                    [ routeName Routes, String.fromInt id, routeName page ]
+
                 CreateRoute ->
                     [ routeName Routes, routeName CreateRoute ]
 
@@ -397,6 +402,9 @@ routeName page =
 
         Routes ->
             "routes"
+
+        EditRoute _ ->
+            "edit"
 
         CrewMembers ->
             "crew"

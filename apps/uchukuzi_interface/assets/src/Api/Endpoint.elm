@@ -17,6 +17,7 @@ module Api.Endpoint exposing
     , patch
     , performedBusRepairs
     , post
+    , route
     , routeForBus
     , routes
     , routesAvailableForBus
@@ -100,6 +101,11 @@ signup =
 crewMember : Int -> Endpoint
 crewMember id =
     url [ "school", "crew", String.fromInt id ] []
+
+
+route : Int -> Endpoint
+route id =
+    url [ "school", "routes", String.fromInt id ] []
 
 
 crewMembers : Endpoint

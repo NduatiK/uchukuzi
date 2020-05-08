@@ -10,7 +10,7 @@ defmodule Uchukuzi.School.Route do
   schema "routes" do
     field(:name, :string)
 
-    embeds_many(:path, Location)
+    embeds_many(:path, Location, on_replace: :delete)
 
     belongs_to(:school, School)
     has_one(:bus, Bus)

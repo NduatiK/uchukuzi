@@ -101,9 +101,16 @@ defmodule UchukuziInterfaceWeb.Router do
 
     get "/crew_and_buses", SchoolController, :list_crew_and_buses
     patch "/crew_and_buses", SchoolController, :update_crew_assignments
+  end
+
+  scope "/api/school", UchukuziInterfaceWeb do
+    pipe_through [:manager_api, :authenticate_manager]
+
+    get "/routes", SchoolController, :list_routes
 
     post "/routes", SchoolController, :create_route
-    get "/routes", SchoolController, :list_routes
+    get "/routes/:route_id", SchoolController, :get_route
+    patch "/routes/:route_id", SchoolController, :update_route
 
     get "/routes/routes_available/", SchoolController, :list_routes_available
   end
