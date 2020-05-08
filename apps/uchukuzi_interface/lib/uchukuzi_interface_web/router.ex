@@ -69,16 +69,23 @@ defmodule UchukuziInterfaceWeb.Router do
     pipe_through [:manager_api, :authenticate_manager]
 
     get "/buses", SchoolController, :list_buses
+    post "/buses", SchoolController, :create_bus
+
     get "/buses/:bus_id", SchoolController, :get_bus
     patch "/buses/:bus_id", SchoolController, :update_bus
-
-    post "/buses", SchoolController, :create_bus
     get "/buses/:bus_id/crew", SchoolController, :get_crew_members_for_bus
     get "/buses/:bus_id/students_onboard", SchoolController, :get_students_onboard
+
     post "/buses/:bus_id/performed_repairs", SchoolController, :create_performed_repair
+
     get "/buses/:bus_id/fuel_reports", SchoolController, :list_fuel_reports
     post "/buses/:bus_id/fuel_reports", SchoolController, :create_fuel_report
 
+    get "/buses/:bus_id/route", SchoolController, :get_bus_route
+  end
+
+  scope "/api/school", UchukuziInterfaceWeb do
+    pipe_through [:manager_api, :authenticate_manager]
     post "/devices", SchoolController, :register_device
 
     get "/households/:guardian_id", SchoolController, :get_household

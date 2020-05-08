@@ -86,6 +86,11 @@ darkGreen =
     Element.rgb255 30 165 145
 
 
+backgroundGreen : Color
+backgroundGreen =
+    Element.rgba255 30 165 145 0.7
+
+
 darkText : Color
 darkText =
     Element.rgb255 4 31 38

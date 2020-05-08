@@ -26,12 +26,7 @@ type alias Trip =
 
 
 type alias StudentActivity =
-    { --   location: render_location(report.infered_location),
-      --   time: report.time,
-      --   activity: report.activity,
-      --   student: report.student_id,
-      --   student_name: student_name(report.student_id)
-      location : Location
+    { location : Location
     , time : Time.Posix
     , activity : String
     , student : Int

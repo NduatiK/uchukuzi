@@ -500,7 +500,7 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     CrewMemberRegistration.init session (Just id)
                         |> updateWith CrewMemberRegistration GotCrewMemberRegistrationMsg
     in
-    ( { model | page = updatedPage, route = maybeRoute }, msg )
+    ( { model | page = updatedPage, route = maybeRoute }, Cmd.batch [ msg, Ports.cleanMap () ] )
 
 
 

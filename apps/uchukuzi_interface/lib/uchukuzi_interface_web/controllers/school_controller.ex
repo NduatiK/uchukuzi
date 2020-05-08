@@ -306,6 +306,15 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
+  def get_bus_route(conn, %{"bus_id" => bus_id}, school_id) do
+    with {:ok, bus} <- School.bus_for(school_id, bus_id) do
+      route = Repo.preload(bus, :route).route
+
+      conn
+      |> render("route.json", route: route)
+    end
+  end
+
   def update_crew_member(conn, %{"crew_member_id" => crew_member_id} = params, school_id) do
     with {:ok, crew_member} <-
            School.update_crew_member_for(school_id, crew_member_id, params) do

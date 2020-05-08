@@ -17,6 +17,7 @@ module Api.Endpoint exposing
     , patch
     , performedBusRepairs
     , post
+    , routeForBus
     , routes
     , routesAvailableForBus
     , signup
@@ -175,6 +176,11 @@ devices =
 routes : Endpoint
 routes =
     url [ "school", "routes" ] []
+
+
+routeForBus : Int -> Endpoint
+routeForBus busID =
+    url [ "school", "buses", String.fromInt busID, "route" ] []
 
 
 routesAvailableForBus : Maybe Int -> Endpoint

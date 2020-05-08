@@ -9,6 +9,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Errors
+import Html.Attributes exposing (id)
 import Icons
 import Json.Decode exposing (Decoder)
 import Models.Bus exposing (Bus, LocationUpdate, busDecoderWithCallback)
@@ -58,75 +59,6 @@ type Page
     | BusRepairs BusRepairs.Model
 
 
-pageToBusPage : Page -> BusPage
-pageToBusPage page =
-    case page of
-        About _ ->
-            Pages.Buses.Bus.Navigation.About
-
-        RouteHistory _ ->
-            Pages.Buses.Bus.Navigation.RouteHistory
-
-        FuelHistory _ ->
-            Pages.Buses.Bus.Navigation.FuelHistory
-
-        BusDevice _ ->
-            Pages.Buses.Bus.Navigation.BusDevice
-
-        BusRepairs _ ->
-            Pages.Buses.Bus.Navigation.BusRepairs
-
-
-pageName =
-    pageToBusPage >> busPageToString >> String.replace "_" " "
-
-
-init : Int -> Session -> Maybe LocationUpdate -> BusPage -> ( Model, Cmd Msg )
-init busID session locationUpdate currentPage =
-    ( { session = session
-      , busData = Loading
-      , busID = busID
-      , locationUpdate = locationUpdate
-      , currentPage = currentPage
-      }
-    , Cmd.batch
-        [ fetchBus busID session currentPage
-        , Ports.initializeLiveView ()
-        ]
-    )
-
-
-allPagesFromSession : Bus -> Session -> BusPage -> BusData
-allPagesFromSession bus session currentPage =
-    let
-        defaultPage =
-            ( Icons.info, aboutPage bus session )
-
-        pages =
-            [ defaultPage
-            , ( Icons.timeline, routePage bus session )
-            , ( Icons.fuel, fuelPage bus session )
-            , ( Icons.repairs, repairsPage bus session )
-            , ( Icons.hardware, devicePage bus session )
-            ]
-
-        ( pageIndex, initialPage ) =
-            Maybe.withDefault
-                ( 0, defaultPage )
-                (List.head
-                    (List.filter (\( index, ( _, ( page, _ ) ) ) -> pageToBusPage page == currentPage)
-                        (List.indexedMap Tuple.pair pages)
-                    )
-                )
-    in
-    { bus = bus
-    , currentPage = Tuple.first (Tuple.second initialPage)
-    , pendingAction = Tuple.second (Tuple.second initialPage)
-    , pages = pages
-    , pageIndex = List.length pages - pageIndex - 1
-    }
-
-
 aboutPage : Bus -> Session -> ( Page, Cmd Msg )
 aboutPage bus session =
     Page.transformToModelMsg About GotAboutMsg (About.init session bus)
@@ -152,6 +84,21 @@ repairsPage bus session =
     Page.transformToModelMsg BusRepairs GotBusRepairsMsg (BusRepairs.init bus.id bus.repairs (Session.timeZone session))
 
 
+init : Int -> Session -> Maybe LocationUpdate -> BusPage -> ( Model, Cmd Msg )
+init busID session locationUpdate currentPage =
+    ( { session = session
+      , busData = Loading
+      , busID = busID
+      , locationUpdate = locationUpdate
+      , currentPage = currentPage
+      }
+    , Cmd.batch
+        [ fetchBus busID session currentPage
+        , Ports.initializeLiveView ()
+        ]
+    )
+
+
 
 -- UPDATE
 
@@ -167,7 +114,6 @@ type Msg
     | ServerResponse (WebData BusData)
       ----------------
     | LocationUpdate LocationUpdate
-    | MapReady Bool
 
 
 locationUpdateMsg data =
@@ -274,28 +220,6 @@ update msg model =
             in
             ( { model | busData = response }, next_msg )
 
-        MapReady _ ->
-            let
-                msg_ =
-                    case model.locationUpdate of
-                        Just locationUpdate_ ->
-                            Ports.updateBusMap locationUpdate_
-
-                        _ ->
-                            case model.busData of
-                                Success busData__ ->
-                                    case busData__.bus.last_seen of
-                                        Just locationUpdate_ ->
-                                            Ports.updateBusMap locationUpdate_
-
-                                        _ ->
-                                            Cmd.none
-
-                                _ ->
-                                    Cmd.none
-            in
-            ( model, msg_ )
-
 
 mapModel : Model -> (subModel -> Page) -> (subCmd -> Msg) -> ( subModel, Cmd subCmd ) -> ( Model, Cmd Msg )
 mapModel model pageModelMapper pageMsgMapper ( subModel, subCmd ) =
@@ -374,6 +298,7 @@ changeCurrentPage selectedPageIndex_ model_ =
             , Cmd.batch
                 [ msg
                 , Navigation.replaceUrl (Session.navKey model_.session) (Navigation.Bus model_.busID (pageToBusPage selectedPage))
+                , Ports.cleanMap ()
                 ]
             )
 
@@ -411,6 +336,7 @@ viewLoaded busData viewHeight =
         [ height fill
         , width fill
         , spacing 8
+        , htmlAttribute (id (pageName busData.currentPage))
         , case busData.currentPage of
             FuelHistory _ ->
                 paddingEach { edges | left = 36 }
@@ -637,5 +563,58 @@ busDecoder session currentPage =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Ports.mapReady MapReady
-        ]
+        []
+
+
+pageToBusPage : Page -> BusPage
+pageToBusPage page =
+    case page of
+        About _ ->
+            Pages.Buses.Bus.Navigation.About
+
+        RouteHistory _ ->
+            Pages.Buses.Bus.Navigation.RouteHistory
+
+        FuelHistory _ ->
+            Pages.Buses.Bus.Navigation.FuelHistory
+
+        BusDevice _ ->
+            Pages.Buses.Bus.Navigation.BusDevice
+
+        BusRepairs _ ->
+            Pages.Buses.Bus.Navigation.BusRepairs
+
+
+pageName =
+    pageToBusPage >> busPageToString >> String.replace "_" " "
+
+
+allPagesFromSession : Bus -> Session -> BusPage -> BusData
+allPagesFromSession bus session currentPage =
+    let
+        defaultPage =
+            ( Icons.info, aboutPage bus session )
+
+        pages =
+            [ defaultPage
+            , ( Icons.timeline, routePage bus session )
+            , ( Icons.fuel, fuelPage bus session )
+            , ( Icons.repairs, repairsPage bus session )
+            , ( Icons.hardware, devicePage bus session )
+            ]
+
+        ( pageIndex, initialPage ) =
+            Maybe.withDefault
+                ( 0, defaultPage )
+                (List.head
+                    (List.filter (\( index, ( _, ( page, _ ) ) ) -> pageToBusPage page == currentPage)
+                        (List.indexedMap Tuple.pair pages)
+                    )
+                )
+    in
+    { bus = bus
+    , currentPage = Tuple.first (Tuple.second initialPage)
+    , pendingAction = Tuple.second (Tuple.second initialPage)
+    , pages = pages
+    , pageIndex = List.length pages - pageIndex - 1
+    }

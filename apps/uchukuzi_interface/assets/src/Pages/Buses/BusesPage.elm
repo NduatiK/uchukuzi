@@ -40,7 +40,6 @@ type Msg
     | ChangedFilterText String
     | ServerResponse (WebData (List Bus))
     | LocationUpdate (Dict Int LocationUpdate)
-    | MapReady Bool
     | PreviewBus (Maybe Bus)
 
 
@@ -101,9 +100,6 @@ update msg model =
 
         LocationUpdate locationUpdates ->
             ( { model | locationUpdates = locationUpdates }, Ports.bulkUpdateBusMap (locationUpdatesFrom model) )
-
-        MapReady _ ->
-            ( model, Ports.bulkUpdateBusMap (locationUpdatesFrom model) )
 
         PreviewBus bus ->
             if bus == model.selectedBus then
@@ -247,7 +243,7 @@ viewTable buses =
             el Style.tableHeaderStyle (Element.text (String.toUpper text))
     in
     Element.table
-        [ spacing 20, paddingEach { edges | top = 16, left = 16, right = 16, bottom = 24 } ]
+        [ spacing 20, paddingEach { edges | top = 16, left = 0, right = 16, bottom = 24 } ]
         { data = buses
         , columns =
             [ { header = tableHeader "NUMBER PLATE"
@@ -291,12 +287,9 @@ viewTable buses =
 
 googleMap : Maybe (List Bus) -> Maybe Bus -> Element Msg
 googleMap buses bus =
-    column
-        [ width fill
-        , height fill
-        , clip
-        , inFront
-            (column
+    let
+        overlay =
+            column
                 [ width (px 300)
                 , alignRight
                 , height fill
@@ -317,13 +310,12 @@ googleMap buses bus =
                     (viewMapDetails bus)
                 , el [ height (px 2), width fill ] none
                 ]
-            )
-        ]
-        [ StyledElement.googleMap
-            [ width fill
-            , height (fill |> minimum 500)
-            ]
-        , el [ height (px 2), width fill, Background.color Colors.darkness ] none
+    in
+    StyledElement.googleMap
+        [ width fill
+        , height (fill |> minimum 500)
+        , clip
+        , inFront overlay
         ]
 
 
@@ -393,5 +385,4 @@ busesFromModel model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Ports.mapReady MapReady
-        ]
+        []

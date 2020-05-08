@@ -564,7 +564,7 @@ googleMap mapClasses =
     el
         ([ height fill
          , width fill
-         , Background.color (rgb255 237 237 237)
+         , Background.color (rgb255 115 115 115)
          , Border.color Colors.white
          , Border.width 2
          , padding 2

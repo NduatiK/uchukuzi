@@ -117,16 +117,19 @@ var app = Elm.Main.init({
 })
 
 
-if (env.isDevelopment) {
-    console.log("inite")
-    init()
-} else {
-    loadMapAPI().then(init).catch((_) => {
-        var app = Elm.Main.init({
-            flags: { window: windowSize, error: true },
-            node: document.getElementById("elm")
-        })
+// if (env.isDevelopment) {
+//     console.log("inite")
+//     init()
+//     return
+// }
 
+
+loadMapAPI().then(init).catch((_) => {
+    var app = Elm.Main.init({
+        flags: { window: windowSize, error: true },
+        node: document.getElementById("elm")
     })
-}
+
+})
+
 

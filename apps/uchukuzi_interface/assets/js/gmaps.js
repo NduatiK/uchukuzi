@@ -51,7 +51,6 @@ function initializeMaps(app, clickable, drawable, numberOfRetries, schoolLocatio
     }
     initializingMapsChain = scriptRequest()
         .then(createMapDom)
-        .then(cleanMap)
         .then(insertMap)
         .then(setupMapCallbacks(app, clickable))
         .then(addDrawTools(app, drawable))
@@ -132,8 +131,7 @@ let schoolCircle = null
 /**
  * Removes items from the map before reuse
  */
-function cleanMap(data) {
-    const { dom, map } = data
+function cleanMap() {
     polylines.forEach((x) => {
         x.setMap(null)
     })
@@ -146,7 +144,6 @@ function cleanMap(data) {
     if (schoolCircle) {
         schoolCircle.setMap(null)
     }
-    return Promise.resolve(data)
 }
 
 /**
@@ -219,7 +216,7 @@ const setupMapCallbacks = (app, clickable) => (data) => {
     }
     hasSetup = true
 
-    app.ports.mapReady.send(true)
+
 
     return Promise.resolve(data)
 }
@@ -533,6 +530,12 @@ function setupHomeMarker(app, map) {
 function setupPorts(app) {
 
     if (!hasSetup) {
+        hasSetup = true
+
+        app.ports.cleanMap.subscribe((location) => {
+            cleanMap()
+        })
+
         // One time actions, we don't want too many subscriptions
         const updateMarker = function (update) {
             initializeMaps(app, false, false)
@@ -676,7 +679,14 @@ function setupPorts(app) {
 
         }
 
-
+        app.ports.drawPath.subscribe((path) => {
+            initializeMaps(app, false, false)
+                .then(({ dom, map }) => {
+                    sleep(100).then(() => {
+                        drawPath(map)(path)
+                    })
+                })
+        })
 
         app.ports.bulkDrawPath.subscribe((paths) => {
             initializeMaps(app, false, false)

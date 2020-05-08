@@ -13,6 +13,7 @@ import Json.Decode exposing (list)
 import Models.Bus exposing (Bus, LocationUpdate)
 import Models.CrewMember exposing (CrewMember, crewDecoder)
 import Models.Household exposing (Student, studentDecoder)
+import Models.Route exposing (Route)
 import Navigation
 import Ports
 import RemoteData exposing (..)
@@ -24,6 +25,7 @@ import StyledElement.Footer as Footer
 
 type alias Model =
     { bus : Bus
+    , route : WebData (Maybe Route)
     , crew : WebData (List CrewMember)
     , studentsOnboard : WebData (List Student)
     , session : Session
@@ -34,7 +36,6 @@ type alias Model =
 type Page
     = Statistics
     | Students (Maybe Int)
-    | Route
     | Crew
 
 
@@ -46,9 +47,6 @@ pageToString page =
 
         Students _ ->
             "Students Onboard"
-
-        Route ->
-            "Route"
 
         Crew ->
             "Crew"
@@ -62,10 +60,10 @@ type Msg
     | StudentsOnboardServerResponse (WebData (List Student))
     | SelectedStudent Int
       --------------------
-    | ClickedRoute
-      --------------------
     | ClickedCrewPage
     | CrewMemberServerResponse (WebData (List CrewMember))
+      --------------------
+    | RouteServerResponse (WebData (Maybe Route))
       --------------------
     | LocationUpdate LocationUpdate
     | EditDetails
@@ -75,6 +73,7 @@ init : Session -> Bus -> ( Model, Cmd Msg )
 init session bus =
     ( { bus = bus
       , crew = NotAsked
+      , route = Loading
       , studentsOnboard = Loading
       , session = session
       , currentPage = Statistics
@@ -82,6 +81,7 @@ init session bus =
     , Cmd.batch
         [ Ports.initializeMaps
         , fetchStudentsOnboard session bus.id
+        , fetchRoute session bus.id
         ]
     )
 
@@ -94,7 +94,17 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ClickedStatisticsPage ->
-            ( { model | currentPage = Statistics }, Ports.initializeMaps )
+            ( { model | currentPage = Statistics }
+            , Cmd.batch
+                [ Ports.initializeMaps
+                , case model.route of
+                    Success (Just route) ->
+                        Ports.drawRoute route
+
+                    _ ->
+                        Cmd.none
+                ]
+            )
 
         ClickedStudentsPage ->
             ( { model | currentPage = Students Nothing }, Cmd.none )
@@ -105,11 +115,18 @@ update msg model =
         StudentsOnboardServerResponse response ->
             ( { model | studentsOnboard = response }, Cmd.none )
 
+        RouteServerResponse response ->
+            ( { model | route = response }
+            , case response of
+                Success (Just route) ->
+                    Ports.drawRoute route
+
+                _ ->
+                    Cmd.none
+            )
+
         FetchStudentsOnboard ->
             ( model, fetchStudentsOnboard model.session model.bus.id )
-
-        ClickedRoute ->
-            ( { model | currentPage = Route }, Ports.initializeMaps )
 
         CrewMemberServerResponse response ->
             ( { model | crew = response }, Cmd.none )
@@ -146,9 +163,6 @@ view model viewHeight =
         Students _ ->
             viewStudentsPage model viewHeight
 
-        Route ->
-            viewRoutePage model
-
         Crew ->
             viewCrewPage model
 
@@ -162,25 +176,23 @@ viewStatisticsPage : Model -> Element Msg
 viewStatisticsPage model =
     let
         sidebarViews =
-            List.concat
-                [ [ el [] none ]
-                , case model.bus.last_seen of
-                    Nothing ->
-                        []
+            case model.bus.last_seen of
+                Nothing ->
+                    el [] none
 
-                    Just last_seen ->
-                        [ textStack "Distance Travelled" "2,313 km"
-
-                        -- , textStack "Fuel Consumed" "3,200 l"
+                Just last_seen ->
+                    --  textStack "Distance Travelled" "2,313 km"
+                    -- , textStack "Fuel Consumed" "3,200 l"
+                    column [ height fill, spaceEvenly, width (px 300) ]
+                        [ el [] none
                         , textStack "Current Speed" (String.fromFloat last_seen.speed ++ " km/h")
                         , textStack "Repairs Made" (String.fromInt (List.length model.bus.repairs))
+                        , el [] none
                         ]
-                , [ el [] none ]
-                ]
     in
-    wrappedRow [ width fill, height fill, spacing 24 ]
+    row [ width fill, height fill, spacing 24 ]
         [ viewGMAP
-        , column [ height fill, spaceEvenly, width (px 300) ] sidebarViews
+        , sidebarViews
         ]
 
 
@@ -273,12 +285,6 @@ viewStudentsPage model viewHeight =
         ]
 
 
-viewRoutePage : Model -> Element Msg
-viewRoutePage model =
-    wrappedRow [ width fill, height fill, spacing 24 ]
-        [ viewGMAP ]
-
-
 viewCrewPage : Model -> Element Msg
 viewCrewPage model =
     let
@@ -350,15 +356,6 @@ viewFooter model =
 
             _ ->
                 ( Students Nothing, "", ClickedStudentsPage )
-
-        -- , ( Route
-        --   , case model.bus.route of
-        --         Just route ->
-        --             route.name
-        --         _ ->
-        --             "Not set"
-        --   , ClickedRoute
-        --   )
         , ( Crew, "", ClickedCrewPage )
         ]
 
@@ -371,3 +368,8 @@ fetchCrewMembers session busID =
 fetchStudentsOnboard session busID =
     Api.get session (Endpoint.studentsOnboard busID) (list studentDecoder)
         |> Cmd.map StudentsOnboardServerResponse
+
+
+fetchRoute session busID =
+    Api.get session (Endpoint.routeForBus busID) (Json.Decode.nullable Models.Route.routeDecoder)
+        |> Cmd.map RouteServerResponse

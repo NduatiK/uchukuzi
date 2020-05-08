@@ -4,6 +4,7 @@ port module Ports exposing (..)
 
 import Models.Bus exposing (LocationUpdate)
 import Models.Location exposing (Location)
+import Models.Route exposing (Route)
 
 
 
@@ -63,6 +64,11 @@ printCard =
 port printCardPort : () -> Cmd msg
 
 
+drawRoute : Route -> Cmd msg
+drawRoute route =
+    drawPath { routeID = route.id, path = route.path, highlighted = False }
+
+
 port drawPath : { routeID : Int, path : List Location, highlighted : Bool } -> Cmd msg
 
 
@@ -73,6 +79,9 @@ port showHomeLocation : Location -> Cmd msg
 
 
 port highlightPath : { routeID : Int, highlighted : Bool } -> Cmd msg
+
+
+port cleanMap : () -> Cmd msg
 
 
 
@@ -95,9 +104,6 @@ port receivedMapLocation : (Location -> msg) -> Sub msg
 
 
 port onBusMove : (LocationUpdate -> msg) -> Sub msg
-
-
-port mapReady : (Bool -> msg) -> Sub msg
 
 
 port autocompleteError : (Bool -> msg) -> Sub msg
