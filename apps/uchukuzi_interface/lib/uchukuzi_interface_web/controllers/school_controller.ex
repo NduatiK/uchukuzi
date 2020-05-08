@@ -369,6 +369,14 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
+  def delete_route(conn, %{"route_id" => route_id} = params, school_id) do
+    with {:ok, _route} <-
+           School.delete_route(school_id, route_id, params) do
+      conn
+      |> resp(200, "{}")
+    end
+  end
+
   @spec list_routes(Plug.Conn.t(), any, any) :: Plug.Conn.t()
   def list_routes(conn, _, school_id) do
     routes = School.routes_for(school_id)

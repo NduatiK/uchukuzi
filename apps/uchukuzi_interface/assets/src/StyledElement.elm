@@ -7,6 +7,7 @@ module StyledElement exposing
     , failureButton
     , ghostButton
     , ghostButtonLink
+    , ghostButtonWithCustom
     , googleMap
     , hoverButton
     , iconButton
@@ -223,20 +224,29 @@ failureButton attrs { title, onPress } =
         }
 
 
-ghostButton :
+ghostButtonWithCustom :
     List (Attribute msg)
+    -> List (Attribute msg)
     -> { title : String, onPress : Maybe msg, icon : Icons.IconBuilder msg }
     -> Element msg
-ghostButton attrs { title, onPress, icon } =
+ghostButtonWithCustom attrs innerAttrs { title, onPress, icon } =
     button
         ([ Border.width 3, Border.color Colors.purple, Background.color Colors.white ] ++ attrs)
         { label =
             row [ spacing 8 ]
-                [ icon [ alpha 1, Colors.fillPurple ]
-                , el [ centerY, Font.color Colors.purple ] (text title)
+                [ icon ([ alpha 1, Colors.fillPurple ] ++ innerAttrs)
+                , el ([ centerY, Font.color Colors.purple ] ++ innerAttrs) (text title)
                 ]
         , onPress = onPress
         }
+
+
+ghostButton :
+    List (Attribute msg)
+    -> { title : String, onPress : Maybe msg, icon : Icons.IconBuilder msg }
+    -> Element msg
+ghostButton attrs config =
+    ghostButtonWithCustom attrs [] config
 
 
 unstyledIconButton :

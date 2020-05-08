@@ -142,11 +142,11 @@ viewDevice device =
             ]
         , el [] none
         , el [ alignRight, alignBottom ]
-            (StyledElement.button
-                [ Background.color Colors.errorRed, alignBottom, alignRight ]
-                { label =
-                    row [ spacing 8 ]
-                        [ Icons.trash [ centerY, Colors.fillWhite, alpha 1 ], el [ centerY, paddingEach { edges | top = 2 } ] (text "Remove from bus") ]
+            (StyledElement.ghostButtonWithCustom
+                [ Border.color Colors.errorRed, alignBottom, alignRight ]
+                [ Colors.fillErrorRed, Font.color Colors.errorRed ]
+                { icon = Icons.trash
+                , title = "Remove from bus"
                 , onPress = Just RemoveDevice
                 }
             )
@@ -168,11 +168,11 @@ viewDeviceFeatures device =
             ]
         , el [] none
         , el [ alignRight, alignBottom ]
-            (StyledElement.button
-                [ Background.color Colors.errorRed, alignBottom, alignRight ]
-                { label =
-                    row [ spacing 8 ]
-                        [ Icons.trash [ centerY, Colors.fillWhite, alpha 1 ], el [ centerY, paddingEach { edges | top = 2 } ] (text "Remove from bus") ]
+            (StyledElement.ghostButtonWithCustom
+                [ Border.color Colors.errorRed, alignBottom, alignRight ]
+                [ Colors.fillErrorRed, Font.color Colors.errorRed ]
+                { icon = Icons.trash
+                , title = "Remove from bus"
                 , onPress = Just RemoveDevice
                 }
             )

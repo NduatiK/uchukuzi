@@ -276,6 +276,13 @@ defmodule Uchukuzi.School do
     |> Repo.update()
   end
 
+  def delete_route(school_id, route_id, params) do
+    Route
+    |> where(school_id: ^school_id, id: ^route_id)
+    |> Repo.one()
+    |> Repo.delete()
+  end
+
   # ********* HOUSEHOLDS *********
   def create_household(
         school_id,

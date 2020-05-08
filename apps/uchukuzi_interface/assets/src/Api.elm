@@ -11,6 +11,11 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Cred, Session)
 
 
+delete : Session -> Endpoint -> Decoder a -> Cmd (WebData a)
+delete session url decoder =
+    Endpoint.delete url session decoder
+
+
 get : Session -> Endpoint -> Decoder a -> Cmd (WebData a)
 get session url decoder =
     Endpoint.get url session decoder

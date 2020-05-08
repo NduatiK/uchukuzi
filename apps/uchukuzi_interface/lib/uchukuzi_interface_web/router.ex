@@ -111,6 +111,7 @@ defmodule UchukuziInterfaceWeb.Router do
     post "/routes", SchoolController, :create_route
     get "/routes/:route_id", SchoolController, :get_route
     patch "/routes/:route_id", SchoolController, :update_route
+    delete "/routes/:route_id", SchoolController, :delete_route
 
     get "/routes/routes_available/", SchoolController, :list_routes_available
   end

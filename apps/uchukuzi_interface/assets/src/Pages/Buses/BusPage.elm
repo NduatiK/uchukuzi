@@ -46,7 +46,7 @@ type alias BusData =
 
 
 type alias Icon =
-    List (Attribute Msg) -> Element Msg
+    Element Msg
 
 
 {-| Make sure to extend the updatePage method when you add a page
@@ -527,21 +527,19 @@ iconForPage pageIcon page currentPage =
                 ]
 
             else
-                []
+                [ alpha 0.54 ]
     in
-    el [ Border.rounded 25, centerX ]
+    el [ Border.rounded 25, centerX, padding 14 ]
         (el
-            [ padding 14
-            ]
-            (pageIcon
-                ([ centerY
-                 , centerX
-                 , height (px 20)
-                 , width (px 20)
-                 ]
-                    ++ iconFillColor
-                )
+            ([ centerY
+             , centerX
+             , height (px 20)
+             , width (px 20)
+             , alpha 1
+             ]
+                ++ iconFillColor
             )
+            pageIcon
         )
 
 
@@ -593,14 +591,22 @@ allPagesFromSession : Bus -> Session -> BusPage -> BusData
 allPagesFromSession bus session currentPage =
     let
         defaultPage =
-            ( Icons.info, aboutPage bus session )
+            ( Icons.info iconStyle, aboutPage bus session )
+
+        iconStyle =
+            [ centerY
+            , centerX
+            , height (px 20)
+            , width (px 20)
+            , alpha 1
+            ]
 
         pages =
             [ defaultPage
-            , ( Icons.timeline, routePage bus session )
-            , ( Icons.fuel, fuelPage bus session )
-            , ( Icons.repairs, repairsPage bus session )
-            , ( Icons.hardware, devicePage bus session )
+            , ( Icons.timeline iconStyle, routePage bus session )
+            , ( Icons.fuel iconStyle, fuelPage bus session )
+            , ( Icons.repairs iconStyle, repairsPage bus session )
+            , ( Icons.hardware iconStyle, devicePage bus session )
             ]
 
         ( pageIndex, initialPage ) =

@@ -8,6 +8,7 @@ module Api.Endpoint exposing
     , crewMembers
     , crewMembersAndBuses
     , crewMembersForBus
+    , delete
     , devices
     , fuelReports
     , get
@@ -41,6 +42,20 @@ get : Endpoint -> Session -> Decoder a -> Cmd (WebData a)
 get endpoint session decoder =
     Http.request
         { method = "GET"
+        , headers = Session.authHeader session
+        , url = unwrap endpoint
+        , body = Http.emptyBody
+        , expect = Http.expectJson decoder
+        , timeout = Nothing
+        , withCredentials = False
+        }
+        |> RemoteData.sendRequest
+
+
+delete : Endpoint -> Session -> Decoder a -> Cmd (WebData a)
+delete endpoint session decoder =
+    Http.request
+        { method = "DELETE"
         , headers = Session.authHeader session
         , url = unwrap endpoint
         , body = Http.emptyBody

@@ -362,27 +362,29 @@ function setupClicksPolyline(line, app, ignoreClickListener = false) {
 
         var line = this;
 
-        if (typeof e.vertex === 'number') {
-            var path = line.getPath();
-            path.removeAt(e.vertex);
-            if (path.length < 2) {
-                line.setMap(null);
-                app.ports.updatedPath.send([])
-                drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYLINE);
-                google.maps.event.removeListener(polylineClickListener);
-                polylineClickListener = null
-            } else {
-                const locations = line.getPath().getArray().map((v, _, _array) => {
-                    return {
-                        lat: v.lat(),
-                        lng: v.lng()
-                    }
-                })
-
-                app.ports.updatedPath.send(locations)
-            }
-
+        if (typeof e.vertex !== 'number') {
+            return
         }
+
+        var path = line.getPath();
+        path.removeAt(e.vertex);
+        if (path.length < 2) {
+            line.setMap(null);
+            app.ports.updatedPath.send([])
+            drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYLINE);
+            google.maps.event.removeListener(polylineClickListener);
+            polylineClickListener = null
+        } else {
+            const locations = line.getPath().getArray().map((v, _, _array) => {
+                return {
+                    lat: v.lat(),
+                    lng: v.lng()
+                }
+            })
+
+            app.ports.updatedPath.send(locations)
+        }
+
     })
 }
 

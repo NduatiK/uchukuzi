@@ -4,7 +4,9 @@ import Api
 import Api.Endpoint as Endpoint
 import Colors
 import Element exposing (..)
+import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input
 import Errors exposing (Errors, InputError)
 import Html.Attributes exposing (id)
@@ -35,6 +37,7 @@ type alias Model =
     , form : Form
     , editState : Maybe EditState
     , requestState : WebData ()
+    , deleteRequestState : WebData ()
     }
 
 
@@ -64,11 +67,12 @@ type alias ValidForm =
 
 type Msg
     = RouteNameChanged String
-    | DeleteRoute
+    | DeleteRoute Int
     | SubmitButtonMsg
     | MapPathUpdated (List Location)
     | ServerResponse (WebData ())
     | RouteResponse (WebData Route)
+    | DeleteResponse (WebData ())
 
 
 init : Session -> Maybe Int -> ( Model, Cmd Msg )
@@ -82,17 +86,20 @@ init session id =
       , editState =
             Maybe.andThen (EditState Loading >> Just) id
       , requestState = NotAsked
+      , deleteRequestState = NotAsked
       }
     , Cmd.batch
-        [ Ports.cleanMap ()
-        , Ports.initializeMaps
-        , case id of
-            Just id_ ->
-                fetchRoute session id_
+        (Ports.cleanMap ()
+            :: (case id of
+                    Just id_ ->
+                        [ Ports.initializeMaps
+                        , fetchRoute session id_
+                        ]
 
-            Nothing ->
-                Cmd.none
-        ]
+                    Nothing ->
+                        [ Ports.initializeCustomMap { clickable = False, drawable = True } ]
+               )
+        )
     )
 
 
@@ -123,8 +130,24 @@ update msg model =
         ServerResponse response ->
             updateStatus model response
 
-        DeleteRoute ->
-            ( { model | form = { form | path = [] } }, Cmd.none )
+        DeleteRoute routeID ->
+            ( { model | deleteRequestState = Loading }
+            , deleteRoute model.session routeID
+            )
+
+        DeleteResponse response ->
+            let
+                model_ =
+                    { model | deleteRequestState = response }
+            in
+            case response of
+                Success _ ->
+                    ( model_
+                    , Navigation.rerouteTo model Navigation.Routes
+                    )
+
+                _ ->
+                    ( model_, Cmd.none )
 
         MapPathUpdated newPath ->
             ( { model | form = { form | path = newPath } }, Cmd.none )
@@ -150,10 +173,6 @@ update msg model =
 
                 _ ->
                     ( newModel, Cmd.none )
-
-
-
--- ( { model | form = { form | path = newPath } }, Cmd.none )
 
 
 updateStatus : Model -> WebData () -> ( Model, Cmd Msg )
@@ -186,7 +205,7 @@ updateStatus model_ response =
         NotAsked ->
             ( model, Cmd.none )
 
-        Success creds ->
+        Success _ ->
             ( model
             , Navigation.rerouteTo model Navigation.Routes
             )
@@ -197,33 +216,52 @@ updateStatus model_ response =
 
 
 view : Model -> Int -> Element Msg
-view model viewHeight =
+view model _ =
     column
         [ width fill
         , height fill
         , spacing 24
         , padding 24
         ]
-        [ viewHeading "Create Route" Nothing
+        [ viewHeading model.editState model.deleteRequestState
         , googleMap model
         , viewBody model
         ]
 
 
-viewHeading : String -> Maybe String -> Element msg
-viewHeading title subLine =
-    Element.column
+viewHeading : Maybe EditState -> WebData () -> Element Msg
+viewHeading editState deleteRouteState =
+    Element.row
         [ width fill ]
-        [ el
-            Style.headerStyle
-            (text title)
-        , case subLine of
+        (case editState of
             Nothing ->
-                none
+                [ el Style.headerStyle (text "Create Route")
+                ]
 
-            Just caption ->
-                el Style.captionStyle (text caption)
-        ]
+            Just editState_ ->
+                [ el Style.headerStyle (text "Edit Route")
+                , el [ alignRight, alignBottom ]
+                    (case deleteRouteState of
+                        Loading ->
+                            Icons.loading [ alignRight, width (px 46), height (px 46) ]
+
+                        Failure _ ->
+                            StyledElement.failureButton [ centerX ]
+                                { title = "Try Again"
+                                , onPress = Just (DeleteRoute editState_.routeID)
+                                }
+
+                        _ ->
+                            StyledElement.ghostButtonWithCustom
+                                [ Border.color Colors.errorRed, alignBottom, alignRight ]
+                                [ Colors.fillErrorRed, Font.color Colors.errorRed ]
+                                { icon = Icons.trash
+                                , title = "Delete Route"
+                                , onPress = Just (DeleteRoute editState_.routeID)
+                                }
+                    )
+                ]
+        )
 
 
 googleMap : Model -> Element Msg
@@ -266,8 +304,6 @@ googleMap model =
             (StyledElement.googleMap
                 ([ width fill
                  , height fill
-
-                 --  , Background.color Colors.darkGreen
                  , Border.width 1
                  ]
                     ++ mapBorderStyle
@@ -290,7 +326,9 @@ viewForm model =
     Element.column
         [ width (fillPortion 1), spacing 26 ]
         [ viewRouteNameInput model.form.problems model.form.name
-        , viewButton model.requestState
+        , row []
+            [ viewButton model.requestState
+            ]
         ]
 
 
@@ -311,23 +349,6 @@ viewRouteNameInput problems name =
         , title = "Name"
         , value = name
         }
-
-
-viewDivider : Element Msg
-viewDivider =
-    el
-        [ width (fill |> maximum 480)
-        , padding 10
-        , spacing 7
-        , Border.widthEach
-            { bottom = 2
-            , left = 0
-            , right = 0
-            , top = 0
-            }
-        , Border.color (rgb255 243 243 243)
-        ]
-        Element.none
 
 
 viewButton : WebData a -> Element Msg
@@ -413,13 +434,19 @@ validateForm form =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
-        [ --     Ports.autocompleteError (always AutocompleteError)
-          Ports.updatedPath MapPathUpdated
+        [ Ports.updatedPath MapPathUpdated
         ]
 
 
+fetchRoute : Session -> Int -> Cmd Msg
 fetchRoute session id =
     Api.get session (Endpoint.route id) routeDecoder
         |> Cmd.map RouteResponse
+
+
+deleteRoute : Session -> Int -> Cmd Msg
+deleteRoute session id =
+    Api.delete session (Endpoint.route id) (Decode.succeed ())
+        |> Cmd.map DeleteResponse
