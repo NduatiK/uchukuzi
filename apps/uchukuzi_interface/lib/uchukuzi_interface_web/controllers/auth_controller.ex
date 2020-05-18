@@ -19,7 +19,9 @@ defmodule UchukuziInterfaceWeb.AuthController do
         conn
         |> resp(
           :bad_request,
-          "{\"errors\": {\"detail\": \"Please verify your email account before logging in\"} }"
+          """
+          {"errors": {"detail": "Please verify your email account before logging in"} }
+          """
         )
         |> send_resp()
 
@@ -93,7 +95,8 @@ defmodule UchukuziInterfaceWeb.AuthController do
   @spec deep_link_redirect_assistant(Plug.Conn.t(), any) :: Plug.Conn.t()
   def deep_link_redirect_assistant(%{query_params: %{"token" => token}} = conn, _) do
     conn
-    |> redirect(external: "uchukuzi_assistant://uchukuzi.com/?token=#{token}")
+    |> redirect(external: "uchast://uchukuzi.com/?token=#{token}")
+    |> IO.inspect()
   end
 
   def request_household_token(conn, %{"email" => email}) do
@@ -101,7 +104,12 @@ defmodule UchukuziInterfaceWeb.AuthController do
       guardian = Roles.get_guardian_by(email: email) ->
         send_token_email_to(
           guardian,
-          HouseholdAuth.sign(%{"role" => "guardian", "id" => guardian.id, "type" => "exchange"})
+          HouseholdAuth.sign(%{
+            "role" => "guardian",
+            "id" => guardian.id,
+            "type" => "exchange",
+            "email" => guardian.email
+          })
         )
 
         conn
@@ -110,7 +118,12 @@ defmodule UchukuziInterfaceWeb.AuthController do
       student = Roles.get_student_by(email: email) ->
         send_token_email_to(
           Repo.preload(student, :school),
-          HouseholdAuth.sign(%{"role" => "student", "id" => student.id, "type" => "exchange"})
+          HouseholdAuth.sign(%{
+            "role" => "student",
+            "id" => student.id,
+            "type" => "exchange",
+            "email" => student.email
+          })
         )
 
         conn
@@ -124,7 +137,7 @@ defmodule UchukuziInterfaceWeb.AuthController do
   end
 
   def exchange_household_token(conn, %{"token" => email_token}) do
-    with {:ok, %{"role" => role, "id" => id, "type" => "exchange"}} <-
+    with {:ok, %{"role" => role, "id" => id, "type" => "exchange", "email" => email}} <-
            HouseholdAuth.verify(email_token, 3600) do
       cond do
         guardian = role == "guardian" && Roles.get_guardian_by(id: id) ->
@@ -139,24 +152,31 @@ defmodule UchukuziInterfaceWeb.AuthController do
           )
 
         student = role == "student" && Roles.get_student_by(id: id) ->
-
-          conn
-          |> put_view(UchukuziInterfaceWeb.RolesView)
-          |> render("customer_login.json",
-            email: student.email,
-            name: student.name,
-            token: HouseholdAuth.sign(%{"role" => role, "id" => id, "type" => "bearer"})
-          )
+          # Shares are more volatile than other logins
+          # Make sure the email is still allowed
+          if email == student.email do
+            conn
+            |> put_view(UchukuziInterfaceWeb.RolesView)
+            |> render("customer_login.json",
+              email: student.email,
+              name: student.name,
+              token: HouseholdAuth.sign(%{"role" => role, "id" => id, "type" => "bearer"})
+            )
+          else
+            conn
+            |> resp(:unauthorized, "You no longer have permission to access this information")
+            |> send_resp()
+          end
 
         true ->
           conn
-          |> resp(:not_found, "Unauthorized")
+          |> resp(:unauthorized, "This account no longer exists, please talk to your school")
           |> send_resp()
       end
     else
       {:error, _} ->
         conn
-        |> resp(:unauthorized, "expired")
+        |> resp(:unauthorized, "This session has expired. Please login again.")
         |> send_resp()
 
       _ ->
@@ -176,8 +196,6 @@ defmodule UchukuziInterfaceWeb.AuthController do
   end
 
   def deep_link_redirect_household(%{query_params: %{"token" => token}} = conn, _) do
-
-
     conn
     |> redirect(external: "uchukuzi://uchukuzi.com/?token=#{token}")
   end
@@ -187,5 +205,34 @@ defmodule UchukuziInterfaceWeb.AuthController do
     Email.send_token_email_to(person, token)
     # Send your email
     |> Mailer.deliver_now()
+  end
+
+  def invite_student(conn, %{"student_id" => student_id, "email" => email}) do
+    # with :no_household <- Map.get(conn.assigns, :household, :no_household) do
+    with %Guardian{} = guardian <- conn.assigns.household do
+      guardian = Repo.preload(guardian, :students)
+
+      with matching_student when not is_nil(matching_student) <-
+             guardian.students |> Enum.find(&(&1.id == student_id)),
+           {:ok, _student} <- Roles.update_student_email(matching_student, email) do
+        # if email != nil do
+        # Email.send_student_invite_to(email)
+        # |> Mailer.deliver_now()
+        # end
+
+        conn
+        |> resp(200, "{}")
+      else
+        _ ->
+          conn
+          |> resp(:not_found, "Unauthorized")
+          |> send_resp()
+      end
+    else
+      _ ->
+        conn
+        |> resp(:not_found, "Unauthorized")
+        |> send_resp()
+    end
   end
 end

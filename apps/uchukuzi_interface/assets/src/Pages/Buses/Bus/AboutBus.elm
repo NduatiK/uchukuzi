@@ -69,8 +69,8 @@ type Msg
     | EditDetails
 
 
-init : Session -> Bus -> ( Model, Cmd Msg )
-init session bus =
+init : Session -> Bus -> Maybe LocationUpdate -> ( Model, Cmd Msg )
+init session bus locationUpdate_ =
     ( { bus = bus
       , crew = NotAsked
       , route = Loading
@@ -82,6 +82,12 @@ init session bus =
         [ Ports.initializeMaps
         , fetchStudentsOnboard session bus.id
         , fetchRoute session bus.id
+        , case locationUpdate_ of
+            Just locationUpdate ->
+                Ports.updateBusMap locationUpdate
+
+            Nothing ->
+                Cmd.none
         ]
     )
 

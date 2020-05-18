@@ -16,8 +16,6 @@ defmodule Uchukuzi.Application do
       Uchukuzi.Scheduler
     ]
 
-    # :ets.new(Uchukuzi.Tracking.TripTracker.tableName(), [:public, :named_table])
-
     opts = [strategy: :one_for_one, name: Uchukuzi.Supervisor]
 
     Supervisor.start_link(children, opts)

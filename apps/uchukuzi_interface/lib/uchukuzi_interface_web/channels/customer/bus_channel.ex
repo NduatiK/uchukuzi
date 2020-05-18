@@ -1,4 +1,4 @@
-defmodule UchukuziInterfaceWeb.RouteChannel do
+defmodule UchukuziInterfaceWeb.CustomerSocket.BusChannel do
   use UchukuziInterfaceWeb, :channel
 
   @moduledoc """
@@ -6,14 +6,11 @@ defmodule UchukuziInterfaceWeb.RouteChannel do
   front-end in realtime
   """
 
-  # alias Uchukuzi.School
-  # alias Uchukuzi.School.BusesSupervisor
-
   defp authorized?(socket, route_id) do
     Enum.member?(socket.assigns[:allowed_routes], route_id)
   end
 
-  def join("routes:" <> route_id, _payload, socket) do
+  def join("bus_location:" <> route_id, _payload, socket) do
     if authorized?(socket, String.to_integer(route_id)) do
       {:ok, socket}
     else
@@ -21,11 +18,11 @@ defmodule UchukuziInterfaceWeb.RouteChannel do
     end
   end
 
-  def send_to_channel(route_id, type, data) do
+  def send_bus_location(route_id, last_seen_report) do
     UchukuziInterfaceWeb.Endpoint.broadcast(
-      "routes:" <> Integer.to_string(route_id),
-      type,
-      data
+      "bus_location:" <> Integer.to_string(route_id),
+      "update",
+      last_seen_report
     )
   end
 end

@@ -6,22 +6,24 @@ defmodule Uchukuzi.Tracking.BusServer do
   alias Uchukuzi.School.School
   alias Uchukuzi.Common.Report
   alias Uchukuzi.Tracking.BusesSupervisor
+  alias Uchukuzi.Tracking.TripTracker
 
   alias __MODULE__
 
   defmodule State do
     alias __MODULE__
-    defstruct [:bus, :school, last_seen: nil, speed: 0, bearing: 0]
+    defstruct [:bus, :school, :report]
 
     def set_location(%State{} = state, %Report{} = report) do
-      with last_seen when not is_nil(last_seen) <- state.last_seen,
-           comparison when comparison in [:gt, :eq] <-
-             DateTime.compare(report.time, last_seen.time) do
-        d = Location.distance_between(report.location, last_seen.location) / 1000
-        t = DateTime.diff(report.time, last_seen.time) / 3600
+      # with prev_report when not is_nil(prev_report) <- state.report,
+      #      comparison when comparison in [:gt, :eq] <-
+      #        DateTime.compare(report.time, prev_report.time) do
+      with prev_report when not is_nil(prev_report) <- state.report do
+        d = Location.distance_between(report.location, prev_report.location) / 1000
+        t = DateTime.diff(report.time, prev_report.time) / 3600
         s = if(t == 0, do: 0, else: d / t)
 
-        bearing = Location.bearing(last_seen.location, report.location)
+        bearing = Location.bearing(prev_report.location, report.location)
 
         bearing =
           if bearing < 0 do
@@ -32,34 +34,17 @@ defmodule Uchukuzi.Tracking.BusServer do
 
         %{
           state
-          | last_seen: %{
-              time: report.time,
-              location: report.location
-            },
-            speed: s,
-            bearing: bearing
+          | report: %Report{report | speed: s, bearing: bearing}
         }
       else
-        nil -> %{state | last_seen: report}
+        nil -> %{state | report: %{report | speed: 0, bearing: 0}}
         :lt -> state
       end
     end
 
     @spec last_seen(Uchukuzi.Tracking.BusServer.State.t()) :: any
     def last_seen(%State{} = state) do
-      with report when not is_nil(report) <- Map.get(state, :last_seen),
-           speed when not is_nil(speed) <- Map.get(state, :speed),
-           bearing when not is_nil(bearing) <- Map.get(state, :bearing) do
-        %{
-          speed: speed,
-          time: report.time,
-          location: report.location,
-          bearing: bearing
-        }
-      else
-        _ ->
-          nil
-      end
+      state.report
     end
 
     def bus(%State{} = state) do
@@ -67,10 +52,10 @@ defmodule Uchukuzi.Tracking.BusServer do
     end
 
     def in_school?(%State{} = state) do
-      case {state.school, state.last_seen} do
-        {_, nil} -> true
-        {nil, _} -> true
-        {school, _} -> School.contains_point?(school, state.last_seen.location)
+      case {state.school, state.report} do
+        {_, nil} -> false
+        {nil, _} -> false
+        {school, _} -> School.contains_point?(school, state.report.location)
       end
     end
   end
@@ -78,19 +63,19 @@ defmodule Uchukuzi.Tracking.BusServer do
   @spec start_link(Uchukuzi.School.Bus.t()) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(%Bus{} = bus), do: GenServer.start_link(__MODULE__, bus, name: via_tuple(bus))
 
-  def via_tuple(%Bus{} = bus),
+  defp via_tuple(%Bus{} = bus),
     do: Uchukuzi.service_name({__MODULE__, bus.id})
 
   @spec pid_from(Uchukuzi.School.Bus.t()) :: nil | pid | {atom, atom}
   def pid_from(%Bus{} = bus) do
     with nil <-
            bus
-           |> BusServer.via_tuple()
+           |> via_tuple()
            |> GenServer.whereis() do
       BusesSupervisor.start_bus(bus)
 
       bus
-      |> BusServer.via_tuple()
+      |> via_tuple()
       |> GenServer.whereis()
     end
   end
@@ -130,6 +115,9 @@ defmodule Uchukuzi.Tracking.BusServer do
   @impl true
   def handle_call({:move, report}, _from, state) do
     state = State.set_location(state, report)
+
+    # Add that report to the trip tracker
+    TripTracker.add_report(state.bus, State.last_seen(state))
 
     if State.in_school?(state) do
       {:reply, state, state, :hibernate}

@@ -1109,7 +1109,6 @@ submitNew session household =
                 , ( "students", Encode.list encodeStudent (Tuple.first household.students :: Tuple.second household.students) )
                 , ( "route", Encode.int household.route )
                 , ( "home_location", encodeLocation household.homeLocation )
-                , ( "pickup_location", encodeLocation household.homeLocation )
                 ]
                 |> Http.jsonBody
     in
@@ -1142,7 +1141,6 @@ submitEdit model household =
                 , ( "guardian", guardian )
                 , ( "route", Encode.int household.route )
                 , ( "home_location", encodeLocation household.homeLocation )
-                , ( "pickup_location", encodeLocation household.homeLocation )
                 ]
                 |> Http.jsonBody
     in

@@ -44,6 +44,9 @@ defmodule Uchukuzi.Common.Location do
   def is_location(%Location{}), do: true
   def is_location(_), do: false
 
+  @doc """
+  The distance between two locations in meters
+  """
   def distance_between(%Location{} = loc1, %Location{} = loc2) do
     [loc1, loc2]
     |> Enum.map(&{&1.lng, &1.lat})
@@ -59,7 +62,9 @@ defmodule Uchukuzi.Common.Location do
   """
   @pi :math.pi()
 
-  def bearing(%Location{} = loc_1, %Location{} = loc_2) do
+  def bearing(%Location{} = from, %Location{} = to) do
+    loc_1 = to
+    loc_2 = from
     lat_1 = degrees_to_radians(loc_1.lat)
     lat_2 = degrees_to_radians(loc_2.lat)
     lng_1 = degrees_to_radians(loc_1.lng)

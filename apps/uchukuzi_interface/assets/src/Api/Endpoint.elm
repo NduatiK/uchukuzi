@@ -10,6 +10,7 @@ module Api.Endpoint exposing
     , crewMembersForBus
     , delete
     , devices
+    , editSchoolLocation
     , fuelReports
     , get
     , household
@@ -18,6 +19,7 @@ module Api.Endpoint exposing
     , patch
     , performedBusRepairs
     , post
+    , reportsForTrip
     , route
     , routeForBus
     , routes
@@ -113,6 +115,11 @@ signup =
     url [ "school", "create" ] []
 
 
+editSchoolLocation : Endpoint
+editSchoolLocation =
+    url [ "school", "edit_location" ] []
+
+
 crewMember : Int -> Endpoint
 crewMember id =
     url [ "school", "crew", String.fromInt id ] []
@@ -150,7 +157,13 @@ households =
 
 trips : { bus | bus_id : Int } -> Endpoint
 trips { bus_id } =
-    url [ "tracking", "trips", String.fromInt bus_id ]
+    url [ "school", "trips" ]
+        [ int "bus_id" bus_id ]
+
+
+reportsForTrip : Int -> Endpoint
+reportsForTrip tripID =
+    url [ "school", "trips", String.fromInt tripID ]
         []
 
 
@@ -206,7 +219,7 @@ routeForBus busID =
 
 routesAvailableForBus : Maybe Int -> Endpoint
 routesAvailableForBus busID =
-    url [ "school", "routes", "routes_available" ]
+    url [ "school", "routes_available" ]
         (case busID of
             Just id ->
                 [ int "bus_id" id ]

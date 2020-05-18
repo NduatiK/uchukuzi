@@ -19,15 +19,4 @@ defmodule UchukuziInterfaceWeb.AssistantChannel do
       {:error, %{reason: "unauthorized"}}
     end
   end
-
-  def handle_in("bus_locations", _payload, socket) do
-    reply = %{
-      bus_data:
-        socket.assigns[:school_id]
-        |> School.buses_for()
-        |> Tracking.add_location_to_buses()
-    }
-
-    {:reply, {:ok, reply}, socket}
-  end
 end

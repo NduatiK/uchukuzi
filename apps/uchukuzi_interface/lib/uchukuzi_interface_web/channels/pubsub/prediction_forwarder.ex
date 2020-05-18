@@ -18,31 +18,29 @@ defmodule UchukuziInterfaceWeb.PredictionForwarder do
   end
 
   # GenServer.whereis UchukuziInterfaceWeb.PredictionForwarder
-  # send(pid, {:eta_prediction_update, 0, 2, [{"CDUAGGDOARXDTACFIRPVCZBHKC5S5BKY", 8}]})
+  # send(GenServer.whereis UchukuziInterfaceWeb.PredictionForwarder, {:eta_prediction_update, 0, 2, [{"CDUAGGDOARXDTACFIRPVCZBHKC5S5BKY", 8}]})
   # CDUAGGDOARXDTACFIRPVCZBHKC5S5BKY
-  def handle_info({:eta_prediction_update, _tracker_pid, route_id, eta_sequence} = _event, state) do
-    UchukuziInterfaceWeb.RouteChannel.send_to_channel(
-      route_id,
-      "prediction_update",
-      %{
-        route_id: route_id,
-        eta_sequence:
-          eta_sequence
-          |> Enum.map(fn
-            {%Location{} = loc, time} ->
-              %{
-                id: Uchukuzi.World.ETA.coordinate_hash(loc),
-                time: time
-              }
+  def handle_info({:eta_prediction_update, _tracker_pid, nil, _eta_sequence} = _event, state) do
+    {:noreply, state}
+  end
 
-            {loc, time} when is_binary(loc) ->
-              %{
-                id: loc,
-                time: time
-              }
-          end)
-      }
-    )
+
+  def handle_info({:eta_prediction_update, _tracker_pid, route_id, eta_sequence} = _event, state) do
+    eta_sequence
+    |> Enum.map(fn
+      {%Location{} = loc, time} ->
+        {Uchukuzi.World.ETA.coordinate_hash(loc), time}
+
+      {loc, time} when is_binary(loc) ->
+        {loc, time}
+    end)
+    |> Enum.map(fn {tile_hash, eta} ->
+      UchukuziInterfaceWeb.CustomerSocket.PredictionsChannel.send_prediction(
+        route_id,
+        tile_hash,
+        %{eta: eta + 0.0}
+      )
+    end)
 
     {:noreply, state}
   end

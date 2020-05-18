@@ -9,7 +9,12 @@ defmodule Uchukuzi.Tracking.BusSupervisor do
     Supervisor.start_link(__MODULE__, bus, name: via_tuple(bus))
   end
 
-  def via_tuple(%Bus{} = bus),
+  def pid_from(%Bus{} = bus) do
+    bus
+    |> via_tuple()
+    |> GenServer.whereis()
+  end
+  defp via_tuple(%Bus{} = bus),
     do: Uchukuzi.service_name({__MODULE__, bus.id})
 
   def init(bus) do

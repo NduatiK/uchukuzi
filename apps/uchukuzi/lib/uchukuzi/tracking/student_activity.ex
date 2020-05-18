@@ -1,9 +1,8 @@
 defmodule Uchukuzi.Tracking.StudentActivity do
   alias __MODULE__
-  alias Uchukuzi.Tracking.Trip
-  alias Uchukuzi.Common.Location
   alias Uchukuzi.Roles.CrewMember
   use Uchukuzi.School.Model
+  use Uchukuzi.Tracking.Model
 
   @activities ["boarded_vehicle", "exited_vehicle"]
 
@@ -42,20 +41,20 @@ defmodule Uchukuzi.Tracking.StudentActivity do
   end
 
   def set_inferred_location(nil, %StudentActivity{} = student_activity) do
-    %StudentActivity{student_activity | infered_location:  nil}
+    %StudentActivity{student_activity | infered_location: nil}
   end
 
   @doc """
   Calculate where an activity happened based on a trip's information
   """
-  def infer_location(_, %Trip{reports: []}), do: nil
+  def infer_location(_, %ReportCollection{reports: []}), do: nil
 
-  def infer_location(%StudentActivity{} = student_activity, %Trip{} = trip) do
+  def infer_location(%StudentActivity{} = student_activity, %ReportCollection{} = collection) do
     is_before_activity = fn report -> report.time < student_activity.time end
 
     # A bit complex but reduces runtime to O(n) instead of O(n²)
     result =
-      trip.reports
+      collection.reports
       |> Enum.reduce(nil, fn report, acc ->
         case acc do
           # if the result has already been found

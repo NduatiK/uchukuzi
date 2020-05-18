@@ -7,9 +7,7 @@ defmodule Uchukuzi.Tracking do
 
   * 2. Calls into the World Context to provide ETA information
 
-   Trips are created for two reasons:
-   1. When the bus leaves the school
-   2. When the assistant begins taking attendance of students boarding the bus
+   Trips are created when the bus leaves the school
   """
 
   alias Uchukuzi.School.Bus
@@ -17,13 +15,9 @@ defmodule Uchukuzi.Tracking do
   alias Uchukuzi.Roles.CrewMember
   alias Uchukuzi.Roles.Student
 
-  alias Uchukuzi.Tracking
-  alias Uchukuzi.Tracking.TripTracker
-  alias Uchukuzi.Tracking.BusServer
-  alias Uchukuzi.Tracking.StudentActivity
+  use Uchukuzi.Tracking.Model
 
   alias Uchukuzi.Common.Report
-
   alias Uchukuzi.World
 
   def student_boarded(%Bus{} = bus, %Student{} = student, %CrewMember{} = assistant) do
@@ -36,22 +30,17 @@ defmodule Uchukuzi.Tracking do
 
     previous_report = BusServer.last_seen_status(bus_server)
 
+    # Update the bus location, speed, beaering...
     BusServer.move(bus_server, report)
 
-    # Only perform World updates when the bus is outside school,
-    # This avoids tracking its presence in the school as
-    # being inside a tile for a long time
-    # if not in_school?(bus) do
-
-    # if DateTime.compare(report.time, previous_report.time) == :gt      do
+    # Simulate the bus moving through the world
+    # Return the tiles it crossed through
     tiles =
-      if true do
-        World.update(bus_server, previous_report, report)
-      else
-        []
-      end
+      World.update(bus_server, previous_report, report)
 
-    TripTracker.add_report(bus, report)
+
+    # And let it know which tiles have been crossed so far so
+    # that it can try to predict the future
     TripTracker.crossed_tiles(bus, tiles |> Enum.map(fn x -> x.coordinate end))
   end
 
@@ -82,5 +71,15 @@ defmodule Uchukuzi.Tracking do
     |> Enum.map(fn {bus, location} ->
       %{bus: bus.id, loc: if(is_nil(location), do: nil, else: location)}
     end)
+  end
+
+  def trip_for(school_id, trip_id) do
+    Repo.one(
+      from(t in Trip,
+        join: b in assoc(t, :bus),
+        where: b.school_id == ^school_id and t.id == ^trip_id,
+        preload: [bus: b]
+      )
+    )
   end
 end

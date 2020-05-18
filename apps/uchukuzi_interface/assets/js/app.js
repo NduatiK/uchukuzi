@@ -1,5 +1,5 @@
 import { Elm } from '../src/Main.elm'
-import { initializeMaps, loadMapAPI, requestGeoLocation, initializeSearch, schoolLocationStorageKey, setupPorts } from './gmaps'
+import { initializeMaps, loadMapAPI, requestGeoLocation, initializeSearch, schoolLocationStorageKey, setupMapPorts } from './gmaps'
 import { initializeCamera } from './camera'
 import { initializeLiveView, killLiveView } from './liveView'
 import { printCard } from './card'
@@ -40,7 +40,7 @@ function init() {
         node: document.getElementById("elm")
     })
 
-    setupPorts(app)
+    setupMapPorts(app)
 
     app.ports.printCardPort.subscribe(() => {
         printCard("")
@@ -50,11 +50,8 @@ function init() {
     })
 
     app.ports.initializeCustomMap.subscribe(({ clickable, drawable }) => {
-        let numberOfRetries = 5
 
-        const schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey));
-
-        initializeMaps(app, clickable, drawable, numberOfRetries, schoolLocation)
+        initializeMaps(app, clickable, drawable)
     })
 
 
@@ -85,6 +82,9 @@ function init() {
     app.ports.storeCache.subscribe(function (credentials) {
         localStorage.setItem(credentialsStorageKey,
             JSON.stringify(credentials));
+        if (credentials == null) {
+            localStorage.setItem(schoolLocationStorageKey, null);
+        }
         credentialsUpdated(credentials)
     });
 
@@ -106,30 +106,26 @@ function init() {
 
 }
 
-
-// ElmLoading.LoadingPage.init({
-
-// })
-
 var app = Elm.Main.init({
     flags: { window: windowSize, loading: true },
     node: document.getElementById("elm-loading")
 })
 
 
-if (env.isDevelopment) {
-    console.log("inite")
-    init()
-    return
-}
 
+loadMapAPI()
+    .then(init)
+    .catch((_) => {
+        var app = Elm.Main.init({
+            flags: { window: windowSize, error: true },
+            node: document.getElementById("elm")
+        })
 
-loadMapAPI().then(init).catch((_) => {
-    var app = Elm.Main.init({
-        flags: { window: windowSize, error: true },
-        node: document.getElementById("elm")
     })
-
-})
-
+    .then((_) => {
+        if (env.isDevelopment) {
+            console.log("inite")
+            init()
+        }
+    })
 

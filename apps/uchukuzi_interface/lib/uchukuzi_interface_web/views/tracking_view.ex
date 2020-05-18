@@ -14,30 +14,30 @@ defmodule UchukuziInterfaceWeb.TrackingView do
       end_time: trip.end_time,
       distance_covered: trip.distance_covered,
       travel_time: trip.travel_time,
-      # student_activities: Enum.map(trip.student_activities, &render_student_activities/1),
-      student_activities:
-        Enum.map(
-          [
-            %Uchukuzi.Tracking.StudentActivity{
-              activity: "boarded_vehicle",
-              crew_member_id: "1",
-              id: "123",
-              infered_location: %Uchukuzi.Common.Location{lat: 53.294594, lng: -6.308969},
-              student_id: 1,
-              time: ~U[2012-11-19 16:38:08Z]
-            },
-            %Uchukuzi.Tracking.StudentActivity{
-              activity: "boarded_vehicle",
-              crew_member_id: "1",
-              id: "123",
-              infered_location: %Uchukuzi.Common.Location{lat: 53.294594, lng: -6.308969},
-              student_id: 1,
-              time: ~U[2012-11-19 16:38:08Z]
-            }
-          ],
-          &render_student_activities/1
-        ),
-      reports: Enum.map(trip.reports, &render_report/1)
+      student_activities: Enum.map(trip.student_activities, &render_student_activities/1),
+      # student_activities:
+      #   Enum.map(
+      #     [
+      #       %Uchukuzi.Tracking.StudentActivity{
+      #         activity: "boarded_vehicle",
+      #         crew_member_id: "1",
+      #         id: "123",
+      #         infered_location: %Uchukuzi.Common.Location{lat: 53.294594, lng: -6.308969},
+      #         student_id: 1,
+      #         time: ~U[2012-11-19 16:38:08Z]
+      #       },
+      #       %Uchukuzi.Tracking.StudentActivity{
+      #         activity: "boarded_vehicle",
+      #         crew_member_id: "1",
+      #         id: "123",
+      #         infered_location: %Uchukuzi.Common.Location{lat: 53.294594, lng: -6.308969},
+      #         student_id: 1,
+      #         time: ~U[2012-11-19 16:38:08Z]
+      #       }
+      #     ],
+      #     &render_student_activities/1
+      #   ),
+      reports: render_reports(trip.report_collection)
     }
   end
 
@@ -66,25 +66,21 @@ defmodule UchukuziInterfaceWeb.TrackingView do
     }
   end
 
-  def render_report(report) do
-    %{
-      id: report.id,
-      location: render_location(report.location),
-      time: report.time
-    }
+  def render_reports(nil), do: nil
+  def render_reports(%Ecto.Association.NotLoaded{}), do: []
+
+  def render_reports(%{reports: reports}) do
+    Enum.map(reports, &render_report/1)
   end
 
-  # def render_last_seen(nil), do: nil
+  def render_report(nil), do: nil
 
-  # def render_last_seen(report) do
-  #   %{
-  #     location: %{
-  #       lng: report.location.lng,
-  #       lat: report.location.lat
-  #     },
-  #     speed: Float.round(report.speed + 0.0, 1),
-  #     bearing: Float.round(report.bearing + 0.0, 1),
-  #     time: report.time
-  #   }
-  # end
+  def render_report(report) do
+    %{
+      location: render_location(report.location),
+      time: report.time,
+      speed: Float.round(report.speed + 0.0, 1),
+      bearing: Float.round(report.bearing + 0.0, 1)
+    }
+  end
 end

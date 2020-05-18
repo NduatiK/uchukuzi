@@ -26,7 +26,7 @@ import Icons
 import Icons.Repairs
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, float, int, list, nullable, string)
-import Json.Decode.Pipeline exposing (optional, required, resolve)
+import Json.Decode.Pipeline exposing (optional, optionalAt, required, resolve)
 import Models.Location exposing (Location, locationDecoder)
 import Time
 
@@ -263,7 +263,7 @@ simpleRouteDecoder =
     Decode.succeed SimpleRoute
         |> required "id" int
         |> required "name" string
-        |> optional "bus_id" (nullable int) Nothing
+        |> optionalAt [ "bus", "id" ] (nullable int) Nothing
 
 
 repairDecoder : Decoder Repair

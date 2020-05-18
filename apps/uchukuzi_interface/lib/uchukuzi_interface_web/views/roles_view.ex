@@ -118,7 +118,6 @@ defmodule UchukuziInterfaceWeb.RolesView do
       "travel_time" => student.travel_time,
       "home_location" => render_location(student.home_location),
       "home_hash" => Uchukuzi.World.ETA.coordinate_hash(student.home_location),
-      "pickup_location" => render_location(student.pickup_location),
       "route" => UchukuziInterfaceWeb.SchoolView.render_bus_route(student.route)
     }
   end

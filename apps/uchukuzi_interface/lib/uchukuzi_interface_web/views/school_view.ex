@@ -2,6 +2,15 @@ defmodule UchukuziInterfaceWeb.SchoolView do
   use UchukuziInterfaceWeb, :view
   use Uchukuzi.School.Model
 
+  def render("school.json", %{school: school}) do
+    %{
+      "location" => %{
+        "lat" => school.perimeter.center.lat,
+        "lng" => school.perimeter.center.lng
+      }
+    }
+  end
+
   def render("buses.json", %{buses: buses}) do
     buses
     |> Enum.map(fn {bus, last_seen} -> %{bus: bus, last_seen: last_seen} end)
@@ -31,7 +40,7 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       device: render_device(bus.device),
       route: render_bus_route(Map.get(bus, :route)),
       # route: bus.route,
-      last_seen: render_last_seen(last_seen),
+      last_seen: UchukuziInterfaceWeb.TrackingView.render_report(last_seen),
       performed_repairs: render_performed_repairs(performed_repairs)
     }
   end
@@ -66,7 +75,7 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       id: route.id,
       name: route.name,
       path: route.path |> Enum.map(&render_location/1),
-      bus_id:
+      bus:
         with bus = %Bus{} <- Map.get(route, :bus) do
           %{id: bus.id, number_plate: bus.number_plate}
         else
@@ -78,6 +87,10 @@ defmodule UchukuziInterfaceWeb.SchoolView do
   def render("routes.json", %{routes: routes}) do
     routes
     |> render_many(__MODULE__, "route.json", as: :route)
+  end
+
+  def render("route.json", %{route: nil}) do
+    nil
   end
 
   def render("route.json", %{route: route}) do
@@ -116,17 +129,12 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     %{id: route.id, name: route.name}
   end
 
-  def render_last_seen(nil), do: nil
 
-  def render_last_seen(report) do
+
+  def render_location(location) do
     %{
-      location: %{
-        lng: report.location.lng,
-        lat: report.location.lat
-      },
-      speed: Float.round(report.speed + 0.0, 1),
-      bearing: Float.round(report.bearing + 0.0, 1),
-      time: report.time
+      lng: location.lng,
+      lat: location.lat
     }
   end
 
@@ -147,12 +155,5 @@ defmodule UchukuziInterfaceWeb.SchoolView do
         description: repair.description || ""
       }
     end)
-  end
-
-  def render_location(location) do
-    %{
-      lng: location.lng,
-      lat: location.lat
-    }
   end
 end

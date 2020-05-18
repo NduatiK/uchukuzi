@@ -18,7 +18,6 @@ defmodule Uchukuzi.Roles.Student do
 
     field(:travel_time, :string)
 
-    embeds_one(:pickup_location, Location, on_replace: :delete)
     embeds_one(:home_location, Location, on_replace: :delete)
 
     belongs_to(:school, Uchukuzi.School.School)
@@ -31,10 +30,9 @@ defmodule Uchukuzi.Roles.Student do
   # def new(school, name, travel_time, email \\ nil),
   #   do: changeset(%{name: name, travel_time: travel_time, email: email, school_id: school})
 
-  def changeset(schema \\ %Student{}, params, pickup_location, home_location, school_id, route_id) do
+  def changeset(schema \\ %Student{}, params,home_location, school_id, route_id) do
     params =
       params
-      |> Map.put("pickup_location", pickup_location)
       |> Map.put("home_location", home_location)
       |> Map.put("school_id", school_id)
       |> Map.put("route_id", route_id)
@@ -46,7 +44,6 @@ defmodule Uchukuzi.Roles.Student do
     schema
     |> cast(params, [:name, :email, :school_id, :route_id, :guardian_id, :travel_time])
     |> validate_required([:name, :travel_time])
-    |> cast_embed(:pickup_location, with: &Location.changeset/2)
     |> cast_embed(:home_location, with: &Location.changeset/2)
     |> Validation.validate_email()
     |> unique_constraint(:email)

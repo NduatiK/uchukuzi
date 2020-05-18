@@ -23,6 +23,20 @@ defmodule Uchukuzi.School do
     |> Repo.transaction()
   end
 
+  def update_location(school_id, location, radius \\ 50) do
+    school =
+      School
+      |> where(id: ^school_id)
+      |> Repo.one()
+
+    perimeter = %{school.perimeter | center: location, radius: radius}
+
+    school
+    |> change(perimeter: perimeter)
+    |> Repo.update()
+  end
+
+  @spec get_school(any) :: any
   def get_school(school_id),
     do: Repo.get(School, school_id)
 
@@ -37,6 +51,8 @@ defmodule Uchukuzi.School do
   end
 
   def bus_for(school_id, bus_id) do
+    IO.inspect(bus_id)
+
     with bus when not is_nil(bus) <- Repo.get_by(Bus, school_id: school_id, id: bus_id) do
       {:ok, Repo.preload(bus, [:performed_repairs])}
     else
@@ -221,7 +237,9 @@ defmodule Uchukuzi.School do
 
   def student_exited(school_id, assistant, student_id) do
     with student when not is_nil(student) <-
-           Student |> where(school_id: ^school_id, id: ^student_id) |> Uchukuzi.Repo.one(),
+           Student
+           |> where(school_id: ^school_id, id: ^student_id)
+           |> Uchukuzi.Repo.one(),
          bus_id when not is_nil(bus_id) <- assistant.bus_id,
          bus <- (assistant |> Repo.preload(:bus)).bus do
       Uchukuzi.Tracking.TripTracker.student_exited(
@@ -288,7 +306,6 @@ defmodule Uchukuzi.School do
         school_id,
         guardian_params,
         students_params,
-        pickup_location,
         home_location,
         route_id
       ) do
@@ -307,7 +324,6 @@ defmodule Uchukuzi.School do
           |> Ecto.build_assoc(:students)
           |> Student.changeset(
             student_params,
-            pickup_location,
             home_location,
             school_id,
             route_id
@@ -324,7 +340,6 @@ defmodule Uchukuzi.School do
         guardian_params,
         student_edits,
         student_deletes,
-        pickup_location,
         home_location,
         route_id
       ) do
@@ -353,7 +368,6 @@ defmodule Uchukuzi.School do
                   |> Ecto.build_assoc(:students)
                   |> Student.changeset(
                     student_edit,
-                    pickup_location,
                     home_location,
                     school_id,
                     route_id
@@ -369,7 +383,6 @@ defmodule Uchukuzi.School do
                   existing
                   |> Student.changeset(
                     student_edit,
-                    pickup_location,
                     home_location,
                     school_id,
                     route_id

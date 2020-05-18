@@ -17,6 +17,8 @@ defmodule Uchukuzi.World.ETA.ETASupervisor do
     pool_name(LearnerWorker)
   end
 
+
+  # Do not expose this, it makes atoms
   defp pool_name(module),
     do: String.to_atom(Atom.to_string(module) <> "Pool")
 

@@ -29,39 +29,33 @@ let purple = "#594fee"
 let runningRequest = null
 let initializingMapsChain = null
 
-let defaultLocation = { center: { lat: -1.2921, lng: 36.8219 }, zoom: 10 }
+let defaultLocation = { center: { lat: -1.2921, lng: 36.8219 }, zoom: 16 }
 
 if (schoolLocation) {
-    defaultLocation = { center: schoolLocation, zoom: 10 }
+    defaultLocation = { center: schoolLocation, zoom: 16 }
 }
 
 /**
  * Completely sets up the map for a page
  */
-function initializeMaps(app, clickable, drawable, numberOfRetries, schoolLocation) {
+function initializeMaps(app, clickable = false, drawable = false, sleepTime = 800) {
     if (schoolLocation) {
-        defaultLocation = { center: schoolLocation, zoom: 10 }
+        const credentialsStorageKey = 'credentials'
+        const storedCredentials = parse(localStorage.getItem(credentialsStorageKey));
+        if (storedCredentials) {
+            defaultLocation = { center: schoolLocation, zoom: 16 }
+        }
     }
 
-    // Piggyback on existing request if necessary
-    const scriptRequest = runningRequest ? () => { return runningRequest } : loadMapAPI
 
     if (isDevelopment) {
         console.log("initializeMaps")
     }
-    initializingMapsChain = scriptRequest()
-        .then(createMapDom)
-        .then(insertMap)
+    initializingMapsChain = createMapDom()
+        .then(insertMap(sleepTime))
         .then(setupMapCallbacks(app, clickable))
         .then(addDrawTools(app, drawable))
 
-    initializingMapsChain
-        .catch(() => {
-            runningRequest = null
-        })
-        .then(() => {
-            initializingMapsChain = null
-        })
     return initializingMapsChain
 }
 
@@ -71,9 +65,7 @@ function initializeMaps(app, clickable, drawable, numberOfRetries, schoolLocatio
 function loadMapAPI() {
     // only load if google has not loaded
     if (typeof google !== typeof undefined) {
-        return sleep(300).then(() => {
-            return Promise.resolve(google)
-        })
+        return Promise.resolve(google)
     }
 
     runningRequest = new Promise((resolve, reject) => {
@@ -93,12 +85,9 @@ let MapDomElement = null
 /**
  * Creates a GMAPs Library Map instance and its dom element for reuse across the application
  */
-function createMapDom(google) {
+function createMapDom() {
     runningRequest = null
     if (MapDomElement && MapLibraryInstance) {
-        // Reset location
-        MapLibraryInstance.panTo(new google.maps.LatLng(defaultLocation.center))
-        MapLibraryInstance.setZoom(defaultLocation.zoom)
         return Promise.resolve({ dom: MapDomElement, map: MapLibraryInstance })
     }
 
@@ -135,17 +124,19 @@ let schoolCircle = null
 /**
  * Places the map within a google-map dom element
  */
-function insertMap(data) {
-    const { dom, map } = data
+const insertMap = (sleepTime) => (data) => {
+    return sleep(sleepTime).then(() => {
+        const { dom, map } = data
 
-    var mapDiv = document.getElementById('google-map')
+        var mapDiv = document.getElementById('google-map')
 
-    if (dom.parentNode) {
-        dom.parentNode.removeChild(dom)
-    }
-    mapDiv.prepend(dom)
-    pushSchool(map)
-    return Promise.resolve(map)
+        if (dom.parentNode) {
+            dom.parentNode.removeChild(dom)
+        }
+        mapDiv.prepend(dom)
+        pushSchool(map)
+        return Promise.resolve(map)
+    })
 }
 
 /**
@@ -168,6 +159,12 @@ function cleanMap() {
     if (polylineCompleteListener) {
         google.maps.event.removeListener(polylineCompleteListener)
     }
+    // Reset location
+    if (MapLibraryInstance) {
+        MapLibraryInstance.panTo(new google.maps.LatLng(defaultLocation.center))
+        MapLibraryInstance.setZoom(defaultLocation.zoom)
+    }
+
 }
 var schoolMarker = null
 
@@ -194,18 +191,16 @@ function pushSchool(map) {
         schoolMarker = new google.maps.Marker({
             icon: image,
             map: map,
-            title: "School"
+            title: `School [${schoolLocation.lng}, ${schoolLocation.lat}]`
         })
     }
     schoolMarker.setPosition(schoolLocation)
 
 }
 
-let hasSetup = false
 let clickListener = null
 const setupMapCallbacks = (app, clickable) => (data) => {
     const map = data
-
     if (clickable) {
         if (!google.maps.event.hasListeners(map, 'click')) {
             clickListener = google.maps.event.addListener(map, 'click', function (args) {
@@ -243,53 +238,41 @@ function insertCircle(pos, app, map) {
         schoolCircle.setMap(null)
     }
 
-    function getMap() {
-        if (map) {
-            return Promise.resolve({ map: map })
-        } else {
-            return initializeMaps(app, true)
-        }
+
+    schoolCircle = new google.maps.Circle({
+        strokeColor: darkGreen,
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: darkGreen,
+        fillOpacity: 0.35,
+        map: map,
+        draggable: true,
+        geodesic: true,
+        editable: true,
+        center: pos,
+        radius: radius // metres
+    })
+
+
+    function sendSchoolCircle(schoolCircle) {
+        app.ports.receivedMapClickLocation.send({
+            lat: schoolCircle.center.lat(),
+            lng: schoolCircle.center.lng(),
+            radius: schoolCircle.getRadius()
+        })
+    }
+    if (!google.maps.event.hasListeners(schoolCircle, 'radius_changed')) {
+        google.maps.event.addListener(schoolCircle, 'radius_changed', function () {
+            sendSchoolCircle(schoolCircle)
+        })
+        google.maps.event.addListener(schoolCircle, 'center_changed', function () {
+            sendSchoolCircle(schoolCircle)
+        })
     }
 
-    getMap()
-        .then((map) => {
-
-            schoolCircle = new google.maps.Circle({
-                strokeColor: darkGreen,
-                strokeOpacity: 0.8,
-                strokeWeight: 2,
-                fillColor: darkGreen,
-                fillOpacity: 0.35,
-                map: map,
-                draggable: true,
-                geodesic: true,
-                editable: editable || false,
-                center: pos,
-                radius: radius // metres
-            })
-
-
-            function sendSchoolCircle(schoolCircle) {
-                app.ports.receivedMapClickLocation.send({
-                    lat: schoolCircle.center.lat(),
-                    lng: schoolCircle.center.lng(),
-                    radius: schoolCircle.getRadius()
-                })
-            }
-            if (!google.maps.event.hasListeners(schoolCircle, 'radius_changed')) {
-                google.maps.event.addListener(schoolCircle, 'radius_changed', function () {
-                    sendSchoolCircle(schoolCircle)
-                })
-                google.maps.event.addListener(schoolCircle, 'center_changed', function () {
-                    sendSchoolCircle(schoolCircle)
-                })
-            }
-
-            map.panTo(schoolCircle.center)
-            map.setZoom(17)
-            sendSchoolCircle(schoolCircle)
-
-        })
+    map.panTo(schoolCircle.center)
+    map.setZoom(17)
+    sendSchoolCircle(schoolCircle)
 }
 
 let polylineCompleteListener = null
@@ -418,7 +401,7 @@ function requestGeoLocation(app) {
             lng: data.coords.longitude,
             radius: 50
         }
-        insertCircle(pos, app)
+        insertCircle(pos, app, MapDomElement)
     }
 
     const failure = (error) => {
@@ -441,7 +424,7 @@ function initializeSearch(app) {
     console.log("entered initializeSearch")
     sleep(100).then(() => {
 
-        const setup = initializeMaps(app, false, false)
+        const setup = initializeMaps(app)
             .then((map) => {
                 setupHomeMarker(app, map)
 
@@ -499,13 +482,6 @@ function initializeSearch(app) {
                             (place.address_components[2] && place.address_components[2].short_name || '')
                         ].join(' ')
                     }
-
-
-                    // console.log(place.name)
-                    // console.log(address)
-                    // // infowindowContent.children['place-name'].textContent = place.name
-                    // // infowindowContent.children['place-address'].textContent = address
-                    // // infowindow.open(map, marker)
                 })
 
 
@@ -542,7 +518,8 @@ function setupHomeMarker(app, map) {
     })
 }
 
-function setupPorts(app) {
+let hasSetup = false
+function setupMapPorts(app) {
 
     if (!hasSetup) {
         hasSetup = true
@@ -553,7 +530,7 @@ function setupPorts(app) {
 
         // One time actions, we don't want too many subscriptions
         const updateMarker = function (update) {
-            initializeMaps(app, false, false)
+            initializeMaps(app)
                 .then((map) => {
                     if (isDevelopment) {
                         console.log("updateMarker")
@@ -563,6 +540,17 @@ function setupPorts(app) {
                         return value.id == bus
                     })
 
+                    if (marker === undefined) {
+                        marker = new google.maps.Marker({
+                            id: bus,
+                            map: map,
+                            title: `Bus [${location.lng}, ${location.lat}]`
+                        })
+
+                        markers.push(marker)
+                    }
+                    marker.setPosition(location)
+
                     var image = {
                         url: `/images/buses/${getCardinalDirection(update.bearing)}.svg`,
                         size: new google.maps.Size(90, 90),
@@ -570,23 +558,16 @@ function setupPorts(app) {
                         scaledSize: new google.maps.Size(90, 90)
                     }
 
-                    if (marker === undefined) {
-                        marker = new google.maps.Marker({
-                            id: bus,
-                            map: map,
-                            title: "Bus"
-                        })
-                        markers.push(marker)
-                    }
-                    marker.setPosition(location)
+
                     marker.setIcon(image)
+
 
                 })
         }
 
 
         app.ports.showHomeLocation.subscribe((location) => {
-            initializeMaps(app, false, false)
+            initializeMaps(app)
                 .then((map) => {
                     setupHomeMarker(app, map)
 
@@ -596,7 +577,7 @@ function setupPorts(app) {
         })
 
         app.ports.showHomeLocation.subscribe((location) => {
-            initializeMaps(app, false, false)
+            initializeMaps(app)
                 .then((map) => {
                     setupHomeMarker(app, map)
                     homeMarker.setPosition(location)
@@ -605,7 +586,7 @@ function setupPorts(app) {
         })
 
         app.ports.updateBusMap.subscribe((update) => {
-            initializeMaps(app, false, false)
+            initializeMaps(app)
                 .then((map) => {
                     sleep(100).then(() => {
 
@@ -621,7 +602,7 @@ function setupPorts(app) {
         })
 
         app.ports.bulkUpdateBusMap.subscribe((updates) => {
-            initializeMaps(app, false, false)
+            initializeMaps(app)
                 .then((map) => {
                     sleep(100).then(() => {
                         if (initializingMapsChain) {
@@ -656,7 +637,7 @@ function setupPorts(app) {
                 performHighlighting()
             } else {
 
-                initializeMaps(app, false, false)
+                initializeMaps(app)
                     .then(performHighlighting)
             }
 
@@ -703,7 +684,7 @@ function setupPorts(app) {
         }
 
         app.ports.drawPath.subscribe((path) => {
-            initializeMaps(app, false, false)
+            initializeMaps(app)
                 .then((map) => {
                     sleep(100).then(() => {
                         drawPath(map)(path)
@@ -712,7 +693,7 @@ function setupPorts(app) {
         })
 
         app.ports.drawEditablePath.subscribe((path) => {
-            initializeMaps(app, false, false)
+            initializeMaps(app)
                 .then((map) => {
                     sleep(100).then(() => {
                         drawPath(map, true)(path)
@@ -721,7 +702,7 @@ function setupPorts(app) {
         })
 
         app.ports.bulkDrawPath.subscribe((paths) => {
-            initializeMaps(app, false, false)
+            initializeMaps(app)
                 .then((map) => {
                     sleep(100).then(() => {
                         if (initializingMapsChain) {
@@ -747,32 +728,36 @@ function setupPorts(app) {
             })
             markers = []
         })
-        app.ports.selectPoint.subscribe(function (gmPos) {
-            initializeMaps(app, false, false)
+        app.ports.selectPoint.subscribe(function (input) {
+            console.log(input)
+            const { location, bearing } = input
+            initializeMaps(app, false, false, 0)
                 .then((map) => {
-                    markers.forEach((marker, i, a) => {
-                        marker.setMap(null)
+                    const markerID = 'trip'
+                    var marker = markers.find((value, _indx, _list) => {
+                        return value.id == markerID
                     })
-                    markers = []
 
-                    var image = {
-                        url: "/images/map_bus.svg",
-                        size: new google.maps.Size(64, 64),
-                        // origin: new google.maps.Point(0, 0),
-                        anchor: new google.maps.Point(32, 32),
-                        // scaledSize: new google.maps.Size(64, 64)
+                    if (marker === undefined) {
+
+                        marker = new google.maps.Marker({
+                            id: markerID,
+                            map: map
+                        })
+                        markers.push(marker)
                     }
 
-                    var marker = new google.maps.Marker({
-                        position: gmPos,
-                        map: map,
-                        icon: image
-                    })
 
-                    // map.setZoom(17)
-
-                    markers.push(marker)
-                    map.panTo(gmPos)
+                    marker.setPosition(location)
+                    var image = {
+                        url: `/images/buses/${getCardinalDirection(bearing)}.svg`,
+                        size: new google.maps.Size(90, 90),
+                        anchor: new google.maps.Point(45, 45),
+                        scaledSize: new google.maps.Size(90, 90)
+                    }
+                    marker.setIcon(image)
+                    console.log(marker)
+                    map.panTo(location)
                 })
         })
     }
@@ -788,6 +773,6 @@ export {
     requestGeoLocation,
     initializeSearch,
     schoolLocationStorageKey,
-    setupPorts,
+    setupMapPorts,
     loadMapAPI
 }

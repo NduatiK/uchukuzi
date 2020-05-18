@@ -76,7 +76,7 @@ defmodule Uchukuzi.World.ETA do
     |> Enum.reduce({hour_value, []}, fn tile, {hour_value, acc} ->
       [prediction] =
         predict_cross_time(tile, hour_value)
-        |> IO.inspect()
+
 
       hour_value = hour_value + prediction / 3600
 

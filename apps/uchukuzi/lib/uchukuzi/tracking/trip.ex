@@ -1,10 +1,6 @@
 defmodule Uchukuzi.Tracking.Trip do
   alias __MODULE__
-  alias Uchukuzi.Common.Location
-  alias Uchukuzi.School.Bus
-  alias Uchukuzi.Common.Report
-  alias Uchukuzi.Tracking.StudentActivity
-  alias Uchukuzi.World.Tile
+
   use Uchukuzi.Tracking.Model
 
   if Mix.env() == :dev do
@@ -21,18 +17,20 @@ defmodule Uchukuzi.Tracking.Trip do
     field(:start_time, :utc_datetime)
     field(:end_time, :utc_datetime)
 
-    embeds_many(:reports, Report)
     embeds_many(:crossed_tiles, Location)
-    field(:crossed_tiles_hash, :string)
 
     embeds_many(:student_activities, StudentActivity)
 
+    has_one(:report_collection, ReportCollection, on_delete: :delete_all)
     field(:distance_covered, :float)
     field(:travel_time, :string)
   end
 
   def new(bus) do
-    %Trip{bus_id: bus.id}
+    %Trip{
+      bus_id: bus.id,
+      report_collection: ReportCollection.new()
+    }
   end
 
   def insert_report(%Trip{} = trip, %Report{} = report) do
@@ -41,12 +39,14 @@ defmodule Uchukuzi.Tracking.Trip do
   end
 
   defp insert_sorted(trip, %Report{} = report) do
-    reports = Enum.sort([report | trip.reports], &(&1.time >= &2.time))
+    reports = Enum.sort([report | trip.report_collection.reports], &(&1.time >= &2.time))
     [latest_report | _] = reports
+
+    report_collection = %{trip.report_collection | reports: reports}
 
     %Trip{
       trip
-      | reports: reports,
+      | report_collection: report_collection,
         start_time: trip.start_time || latest_report.time,
         end_time: latest_report.time
     }
@@ -75,7 +75,7 @@ defmodule Uchukuzi.Tracking.Trip do
   """
   def update_distance_covered(trip) do
     {distance_covered, _last_report} =
-      trip.reports
+      trip.report_collection.reports
       |> Enum.reduce({0, nil}, fn current_report, acc ->
         {sum, previous_report_or_nil} = acc
 
@@ -121,14 +121,12 @@ defmodule Uchukuzi.Tracking.Trip do
           ""
       end
 
-
     %{trip | travel_time: travel_time}
   end
 
   def latest_location(%Trip{} = trip) do
-    hd(trip.reports).location
+    hd(trip.report_collection.reports).location
   end
-
 
   @doc """
   Find out which students are currently

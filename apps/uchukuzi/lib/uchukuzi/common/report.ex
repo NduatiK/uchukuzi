@@ -5,8 +5,11 @@ defmodule Uchukuzi.Common.Report do
   use Ecto.Schema
 
   embedded_schema do
-    field(:time, :utc_datetime)
     embeds_one(:location, Location)
+
+    field(:time, :utc_datetime)
+    field(:bearing, :float, default: 0)
+    field(:speed, :float, default: 0)
   end
 
   def new(time, %Location{} = location) do

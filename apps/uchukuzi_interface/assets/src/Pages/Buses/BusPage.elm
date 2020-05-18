@@ -39,7 +39,7 @@ type alias Model =
 type alias BusData =
     { bus : Bus
     , currentPage : Page
-    , pages : List ( Icon, ( Page, Cmd Msg ) )
+    , pages : List ( Page, Cmd Msg )
     , pageIndex : Int
     , pendingAction : Cmd Msg
     }
@@ -59,9 +59,9 @@ type Page
     | BusRepairs BusRepairs.Model
 
 
-aboutPage : Bus -> Session -> ( Page, Cmd Msg )
-aboutPage bus session =
-    Page.transformToModelMsg About GotAboutMsg (About.init session bus)
+aboutPage : Bus -> Session -> Maybe LocationUpdate -> ( Page, Cmd Msg )
+aboutPage bus session locationUpdate =
+    Page.transformToModelMsg About GotAboutMsg (About.init session bus locationUpdate)
 
 
 routePage : Bus -> Session -> ( Page, Cmd Msg )
@@ -93,7 +93,7 @@ init busID session locationUpdate currentPage =
       , currentPage = currentPage
       }
     , Cmd.batch
-        [ fetchBus busID session currentPage
+        [ fetchBus busID session currentPage locationUpdate
         , Ports.initializeLiveView ()
         ]
     )
@@ -157,8 +157,8 @@ update msg model =
                         bus =
                             busData.bus
 
-                        ( newModel, busPageMsg ) =
-                            ( { model | busData = Success { busData | bus = { bus | last_seen = Just locationUpdate } } }, Ports.updateBusMap locationUpdate )
+                        newModel =
+                            { model | busData = Success { busData | bus = { bus | last_seen = Just locationUpdate } } }
                     in
                     case busData.currentPage of
                         About pageModel ->
@@ -167,10 +167,10 @@ update msg model =
                                     About.update (About.locationUpdateMsg locationUpdate) pageModel
                                         |> mapModel newModel About GotAboutMsg
                             in
-                            ( newerModel, Cmd.batch [ childMsg, busPageMsg ] )
+                            ( newerModel, childMsg )
 
                         _ ->
-                            ( newModel, busPageMsg )
+                            ( newModel, Cmd.none )
 
                 Nothing ->
                     ( model, Ports.updateBusMap locationUpdate )
@@ -190,9 +190,9 @@ update msg model =
                                 ( _, pageMsg ) =
                                     case List.head (List.drop selectedPageIndex pages) of
                                         Nothing ->
-                                            aboutPage busData.bus model.session
+                                            aboutPage busData.bus model.session model.locationUpdate
 
-                                        Just ( _, ( page, msg_ ) ) ->
+                                        Just ( page, msg_ ) ->
                                             ( page, msg_ )
                             in
                             Cmd.batch
@@ -282,9 +282,9 @@ changeCurrentPage selectedPageIndex_ model_ =
                 ( selectedPage, msg ) =
                     case List.head (List.drop selectedPageIndex pages) of
                         Nothing ->
-                            aboutPage busData_.bus model_.session
+                            aboutPage busData_.bus model_.session model_.locationUpdate
 
-                        Just ( _, ( page, msg_ ) ) ->
+                        Just ( page, msg_ ) ->
                             ( page, msg_ )
             in
             ( { model_
@@ -366,6 +366,7 @@ viewHeading busData button =
     row
         [ width fill
         , paddingEach { edges | right = 36 }
+        , height (px 68)
         ]
         [ Element.column
             [ width fill ]
@@ -473,8 +474,8 @@ viewSidebar busData =
         pageCount =
             List.length allPages_
 
-        iconize index ( icon, _ ) =
-            iconForPage icon index (List.length busData.pages - busData.pageIndex - 1)
+        iconize index ( page, _ ) =
+            iconForPage page index (List.length busData.pages - busData.pageIndex - 1)
     in
     el [ height fill ]
         (column
@@ -517,11 +518,36 @@ slider pageCount pageIndex visible =
         )
 
 
-iconForPage : Icon -> Int -> Int -> Element Msg
-iconForPage pageIcon page currentPage =
+iconForPage : Page -> Int -> Int -> Element Msg
+iconForPage page pageIndex currentPageIndex =
     let
+        iconStyle =
+            [ centerY
+            , centerX
+            , height (px 20)
+            , width (px 20)
+            , alpha 1
+            ]
+
+        icon =
+            case page of
+                FuelHistory _ ->
+                    Icons.fuel iconStyle
+
+                About _ ->
+                    Icons.info iconStyle
+
+                RouteHistory _ ->
+                    Icons.timeline iconStyle
+
+                BusDevice _ ->
+                    Icons.hardware iconStyle
+
+                BusRepairs _ ->
+                    Icons.repairs iconStyle
+
         iconFillColor =
-            if page == currentPage then
+            if pageIndex == currentPageIndex then
                 [ Colors.fillPurple
                 , alpha 1
                 ]
@@ -539,7 +565,7 @@ iconForPage pageIcon page currentPage =
              ]
                 ++ iconFillColor
             )
-            pageIcon
+            icon
         )
 
 
@@ -547,15 +573,15 @@ iconForPage pageIcon page currentPage =
 -- NETWORK
 
 
-fetchBus : Int -> Session -> BusPage -> Cmd Msg
-fetchBus busID session currentPage =
-    Api.get session (Endpoint.bus busID) (busDecoder session currentPage)
+fetchBus : Int -> Session -> BusPage -> Maybe LocationUpdate -> Cmd Msg
+fetchBus busID session currentPage locationUpdate =
+    Api.get session (Endpoint.bus busID) (busDecoder session currentPage locationUpdate)
         |> Cmd.map ServerResponse
 
 
-busDecoder : Session -> BusPage -> Decoder BusData
-busDecoder session currentPage =
-    busDecoderWithCallback (\bus -> allPagesFromSession bus session currentPage)
+busDecoder : Session -> BusPage -> Maybe LocationUpdate -> Decoder BusData
+busDecoder session currentPage locationUpdate =
+    busDecoderWithCallback (\bus -> allPagesFromSession bus session locationUpdate currentPage)
 
 
 subscriptions : Model -> Sub Msg
@@ -587,40 +613,31 @@ pageName =
     pageToBusPage >> busPageToString >> String.replace "_" " "
 
 
-allPagesFromSession : Bus -> Session -> BusPage -> BusData
-allPagesFromSession bus session currentPage =
+allPagesFromSession : Bus -> Session -> Maybe LocationUpdate -> BusPage -> BusData
+allPagesFromSession bus session locationUpdate currentPage =
     let
         defaultPage =
-            ( Icons.info iconStyle, aboutPage bus session )
-
-        iconStyle =
-            [ centerY
-            , centerX
-            , height (px 20)
-            , width (px 20)
-            , alpha 1
-            ]
+            aboutPage bus session locationUpdate
 
         pages =
             [ defaultPage
-            , ( Icons.timeline iconStyle, routePage bus session )
-            , ( Icons.fuel iconStyle, fuelPage bus session )
-            , ( Icons.repairs iconStyle, repairsPage bus session )
-            , ( Icons.hardware iconStyle, devicePage bus session )
+            , routePage bus session
+            , fuelPage bus session
+            , repairsPage bus session
+            , devicePage bus session
             ]
 
         ( pageIndex, initialPage ) =
-            Maybe.withDefault
-                ( 0, defaultPage )
-                (List.head
-                    (List.filter (\( index, ( _, ( page, _ ) ) ) -> pageToBusPage page == currentPage)
-                        (List.indexedMap Tuple.pair pages)
-                    )
-                )
+            pages
+                |> List.indexedMap Tuple.pair
+                |> List.filter (\( index, ( page, cmd ) ) -> pageToBusPage page == currentPage)
+                |> List.head
+                |> Maybe.withDefault
+                    ( 0, defaultPage )
     in
     { bus = bus
-    , currentPage = Tuple.first (Tuple.second initialPage)
-    , pendingAction = Tuple.second (Tuple.second initialPage)
+    , currentPage = Tuple.first initialPage
+    , pendingAction = Tuple.second initialPage
     , pages = pages
     , pageIndex = List.length pages - pageIndex - 1
     }

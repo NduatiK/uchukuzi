@@ -5,8 +5,6 @@ defmodule Uchukuzi.School.Bus do
   @fuel_types ~w(gasoline diesel)
 
   schema "buses" do
-    field(:name, :string)
-
     field(:number_plate, :string)
     field(:seats_available, :integer)
     field(:vehicle_type, :string)

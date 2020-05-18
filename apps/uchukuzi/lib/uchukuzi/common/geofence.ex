@@ -33,17 +33,7 @@ defmodule Uchukuzi.Common.Geofence do
     |> validate_required([:type])
     |> cast_embed(:perimeter, with: &Location.changeset/2)
   end
-
-  # def put_pass_hash(changeset) do
-  #   case changeset do
-  #     %Ecto.Changeset{valid?: true, changes: %{password: pass}} ->
-  #       put_change(changeset, :password_hash, Pbkdf2.hash_pwd_salt(pass))
-
-  #     _ ->
-  #       changeset
-  #   end
-  # end
-
+  
   def new_school_fence(%{lat: _lat, lng: _lng} = center, radius)
       when is_number(radius) do
     %Geofence{}
@@ -57,18 +47,10 @@ defmodule Uchukuzi.Common.Geofence do
   defp new(type, perimeter) when is_list(perimeter) when type in @types do
     %Geofence{}
     |> changeset(%{type: type, perimeter: perimeter})
-
-    # with true <- Enum.all?(perimeter, &is_location/1) do
-    #   {:ok, %Geofence{type: type, perimeter: perimeter}}
-    # else
-    #   _ ->
-    #     {:error, "The perimeter must be made up of location objects"}
-    # end
-  end
+    end
 
   def contains_point?(%Geofence{type: "school"} = geofence, %Location{} = location) do
-    Distance.GreatCircle.distance(Location.to_coord(geofence.center), Location.to_coord(location)) <=
-      geofence.radius
+    Location.distance_between(geofence.center, location) <= geofence.radius
   end
 
   @spec contains_point?(Uchukuzi.Common.Geofence.t(), Uchukuzi.Common.Location.t()) :: boolean

@@ -5,7 +5,11 @@ defmodule UchukuziInterfaceWeb.Endpoint do
     websocket: [timeout: 45_000],
     longpoll: false
 
-  socket "/socket", UchukuziInterfaceWeb.RouteSocket,
+  socket "/socket", UchukuziInterfaceWeb.CustomerSocket,
+    websocket: [timeout: 45_000],
+    longpoll: false
+
+  socket "/socket/assistant", UchukuziInterfaceWeb.AssisantSocket,
     websocket: [timeout: 45_000],
     longpoll: false
 

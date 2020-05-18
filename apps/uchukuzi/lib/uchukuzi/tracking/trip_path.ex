@@ -10,7 +10,8 @@ defmodule Uchukuzi.Tracking.TripPath do
     # Tiles crossed
     consumed_tile_locs: [],
     eta: %{},
-    needs_prediction_update: false
+    needs_prediction_update: false,
+    deviation_positions: []
   ]
 
   def new(nil) do
@@ -28,38 +29,40 @@ defmodule Uchukuzi.Tracking.TripPath do
   end
 
   def crossed_tiles(%TripPath{} = path, tile_locs) do
-    newPath =
-      case {path.consumed_tile_locs, tile_locs} do
-        #  If the tiles overlap, ignore the first new tile
-        {[h | _], [h | tail]} ->
-          tail
-          |> Enum.reduce(path, fn t, path ->
-            entered_tile(path, t)
-          end)
+    case {path.consumed_tile_locs, tile_locs} do
+      #  If the tiles overlap, ignore the first new tile
+      {[h | _], [h | tail]} ->
+        tail
+        |> Enum.reduce(path, fn t, path ->
+          entered_tile(path, t)
+        end)
 
-        #  Otherwise just add it
-        _ ->
-          tile_locs
-          |> Enum.reduce(path, fn t, path ->
-            entered_tile(path, t)
-          end)
-      end
-      |> set_needs_update()
+      #  Otherwise just add it
+      _ ->
+        tile_locs
+        |> Enum.reduce(path, fn t, path ->
+          entered_tile(path, t)
+        end)
+    end
+    |> set_needs_update()
   end
 
   def set_needs_update(%TripPath{} = path) do
     %{path | needs_prediction_update: true}
   end
 
-  def update_predictions(path, date )
+  def update_predictions(path, nil), do: path
+  def update_predictions(path, %{time: time}), do: update_predictions(%TripPath{} = path, time)
+
   def update_predictions(%TripPath{anticipated_tile_locs: nil} = path, _) do
     path
   end
+
   def update_predictions(%TripPath{needs_prediction_update: false} = path, _) do
     path
   end
 
-  def update_predictions(%TripPath{} = path, date ) do
+  def update_predictions(%TripPath{} = path, date) do
     if date != nil do
       {_final_arrival_time, predictions} =
         ETA.predict_on_sequence_of_tiles(path.anticipated_tile_locs, date)
@@ -73,16 +76,16 @@ defmodule Uchukuzi.Tracking.TripPath do
   end
 
   def entered_tile(%TripPath{anticipated_tile_locs: nil} = path, %Location{} = tile) do
-          path
-                |> prepend_tile(tile)
-                  end
+    path
+    |> prepend_tile(tile)
+  end
+
   def entered_tile(%TripPath{} = path, %Location{} = tile) do
     anticipated = calculate_anticipated_tile_locs(path, tile)
 
     path
     |> prepend_tile(tile)
     |> apply_anticipated_tile_locs(anticipated)
-
   end
 
   def prepend_tile(%TripPath{} = path, %Location{} = tile),
@@ -141,7 +144,9 @@ defmodule Uchukuzi.Tracking.TripPath do
   end
 
   def apply_anticipated_tile_locs(%TripPath{} = path, {:error, :major_deviation, _tile}) do
-    path
-    # %{path | deviated: true}
+    %{
+      path
+      | deviation_positions: [Enum.count(path.consumed_tile_locs) - 1 | path.deviation_positions]
+    }
   end
 end

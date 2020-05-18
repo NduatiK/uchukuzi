@@ -43,7 +43,6 @@ type alias Student =
     , name : String
     , travelTime : TravelTime
     , homeLocation : Location
-    , pickupLocation : Location
     , route : SimpleRoute
     }
 
@@ -100,7 +99,7 @@ householdDecoder =
 studentDecoder : Decoder Student
 studentDecoder =
     let
-        decoder id name travel_time home_location pickup_location route =
+        decoder id name travel_time home_location route =
             let
                 travelTime =
                     case travel_time of
@@ -113,14 +112,13 @@ studentDecoder =
                         _ ->
                             TwoWay
             in
-            succeed (Student id name travelTime home_location pickup_location route)
+            succeed (Student id name travelTime home_location route)
     in
     Decode.succeed decoder
         |> required "id" int
         |> required "name" string
         |> required "travel_time" string
         |> required "home_location" locationDecoder
-        |> required "pickup_location" locationDecoder
         |> required "route" simpleRouteDecoder
         |> resolve
 

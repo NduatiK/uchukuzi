@@ -6,13 +6,13 @@ defmodule Uchukuzi.Roles do
   use Uchukuzi.Roles.Model
 
   def login_manager(email, password) do
-    person = get_by(Manager, email: email)
+    manager = get_by(Manager, email: email)
 
     cond do
-      person && person.password_hash && Pbkdf2.verify_pass(password, person.password_hash) ->
-        {:ok, person}
+      manager && manager.password_hash && Pbkdf2.verify_pass(password, manager.password_hash) ->
+        {:ok, manager}
 
-      person ->
+      manager ->
         {:error, :unauthorized}
 
       true ->
@@ -41,4 +41,12 @@ defmodule Uchukuzi.Roles do
   @spec get_by(any, any) :: any
   def get_by(module, params),
     do: Repo.get_by(module, params)
+
+
+  def update_student_email(%Student{} = student, email) do
+    student
+    |> change(email: email)
+    |> Repo.update()
+  end
+
 end

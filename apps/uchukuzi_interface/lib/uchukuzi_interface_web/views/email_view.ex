@@ -4,6 +4,7 @@ defmodule UchukuziInterfaceWeb.EmailView do
   if Mix.env() == :dev do
     # @website "http://10.0.2.2:4000"
     @website "http://localhost:4000"
+    # @website "http://192.168.42.220:4000"
   else
     @website "https://uchukuzi.herokuapp.com"
   end

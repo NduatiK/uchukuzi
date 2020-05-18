@@ -67,6 +67,7 @@ defmodule UchukuziInterfaceWeb.Router do
 
   scope "/api/school", UchukuziInterfaceWeb do
     pipe_through [:manager_api, :authenticate_manager]
+    post "/edit_location", SchoolController, :edit_school_location
 
     get "/buses", SchoolController, :list_buses
     post "/buses", SchoolController, :create_bus
@@ -113,7 +114,7 @@ defmodule UchukuziInterfaceWeb.Router do
     patch "/routes/:route_id", SchoolController, :update_route
     delete "/routes/:route_id", SchoolController, :delete_route
 
-    get "/routes/routes_available/", SchoolController, :list_routes_available
+    get "/routes_available/", SchoolController, :list_routes_available
   end
 
   scope "/api/school/assistant", UchukuziInterfaceWeb do
@@ -125,10 +126,11 @@ defmodule UchukuziInterfaceWeb.Router do
     get "/trip/end", SchoolController, :route_for_assistant
   end
 
-  scope "/api/tracking", UchukuziInterfaceWeb do
+  scope "/api/school", UchukuziInterfaceWeb do
     pipe_through [:manager_api, :authenticate_manager]
 
-    get "/trips/:bus_id", TrackingController, :list_trips
+    get "/trips", SchoolController, :list_trips
+    get "/trips/:trip_id", SchoolController, :trip_details
   end
 
   scope "/api/tracking", UchukuziInterfaceWeb do
@@ -141,5 +143,10 @@ defmodule UchukuziInterfaceWeb.Router do
     pipe_through [:household_api, :authenticate_household]
 
     get "/mine", SchoolController, :data_for_household
+    post "/invite", AuthController, :invite_student
   end
+
+  # scope "/", UchukuziInterfaceWeb do
+  #   get "/uchukuzi_assistant:/uchukuzi.com", ApplicationController
+  # end
 end

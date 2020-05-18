@@ -18,6 +18,10 @@ def learn(name, data):
 
     data = [list(row) for row in data]
     data = pd.DataFrame(data)
+
+    # Remove outliers
+    # - Outliers are records that are more than 3
+    # standard deviations from the mean
     data = data[((data[1] - data[1].mean()) / data[1].std()).abs() < 3]
 
     if data.size < 10:
@@ -55,10 +59,12 @@ def predict(name, time):
         # find the model for the tile
         model = load(open(model_name(name), 'rb'))
     except:
-        return 240  # seconds
+        # if no model is found, assume a speed of 16km/h (500m/8min)
+        return 60 * 8
 
     try:
         # It may be an average
+        # try to pattern match on that
         (_, average) = model
         return average
     except:

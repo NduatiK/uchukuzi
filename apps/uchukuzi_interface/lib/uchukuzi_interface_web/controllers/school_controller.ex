@@ -39,7 +39,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
            center: center
          },
          school <- School.School.new(school_params["name"], geofence),
-         {:ok, %{manager: manager, school: _school}} <-
+         {:ok, %{"manager" => manager, "school" => _school}} <-
            School.create_school(school, manager_params) do
       manager = Repo.preload(manager, :school)
 
@@ -55,23 +55,38 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
+  def edit_school_location(
+        conn,
+        %{
+          "location" => %{
+            "lng" => lng,
+            "lat" => lat
+          }
+        } = params,
+        school_id
+      )
+      when is_number(lng) and is_number(lat) do
+    with {:ok, location} <- Location.new(lng, lat),
+         {:ok, school} <-
+           School.update_location(school_id, location, Map.get(params, "radius")) do
+      conn
+      |> put_status(200)
+      |> render("school.json", school: school)
+    end
+  end
+
   @spec create_houshold(any, map, any) :: any
   def create_houshold(
         conn,
         %{
           "guardian" => guardian_params,
           "students" => students_params,
-          "pickup_location" => pickup_location_params,
           "home_location" => home_location_params,
           "route" => route_id
         },
         school_id
       ) do
-    with pickup_location <- %{
-           lng: pickup_location_params["lng"],
-           lat: pickup_location_params["lat"]
-         },
-         home_location <- %{
+    with home_location <- %{
            lng: home_location_params["lng"],
            lat: home_location_params["lat"]
          },
@@ -80,7 +95,6 @@ defmodule UchukuziInterfaceWeb.SchoolController do
              school_id,
              guardian_params,
              students_params,
-             pickup_location,
              home_location,
              route_id
            ) do
@@ -99,17 +113,12 @@ defmodule UchukuziInterfaceWeb.SchoolController do
           "guardian_id" => guardian_id,
           "guardian" => guardian_params,
           "student_edits" => %{"deletes" => deletes, "edits" => edits},
-          "pickup_location" => pickup_location_params,
           "home_location" => home_location_params,
           "route" => route_id
         },
         school_id
       ) do
-    with pickup_location <- %{
-           lng: pickup_location_params["lng"],
-           lat: pickup_location_params["lat"]
-         },
-         home_location <- %{
+    with home_location <- %{
            lng: home_location_params["lng"],
            lat: home_location_params["lat"]
          },
@@ -120,7 +129,6 @@ defmodule UchukuziInterfaceWeb.SchoolController do
              guardian_params,
              edits,
              deletes,
-             pickup_location,
              home_location,
              route_id
            ) do
@@ -385,8 +393,8 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     |> render("routes.json", routes: routes)
   end
 
-  def list_routes_available(%{query_params: %{"bus_id" => bus_id}} = conn, _, school_id) do
-    routes = School.routes_available_for(school_id, bus_id)
+  def list_routes_available(conn, _, school_id) do
+    routes = School.routes_available_for(school_id, Map.get(conn.query_params, "bus_id"))
 
     conn
     |> render("simple_routes.json", routes: routes)
@@ -453,6 +461,30 @@ defmodule UchukuziInterfaceWeb.SchoolController do
            bus <- Repo.preload(student.route, :bus).bus do
         {student, bus}
       end
+    end
+  end
+
+  def list_trips(%{query_params: %{"bus_id" => bus_id}} = conn, _, school_id) do
+    IO.inspect(school_id)
+
+    with {bus_id, ""} <- Integer.parse(bus_id),
+         {:ok, bus} <- School.bus_for(school_id, bus_id) do
+      trips = Repo.preload(bus, :trips).trips
+
+      conn
+      |> put_view(UchukuziInterfaceWeb.TrackingView)
+      |> render("trips.json", trips: trips)
+    end
+  end
+
+  def trip_details(conn, %{"trip_id" => trip_id}, school_id) do
+    with {trip_id, ""} <- Integer.parse(trip_id),
+         trip <- Uchukuzi.Tracking.trip_for(school_id, trip_id) do
+      trip = Repo.preload(trip, :report_collection)
+
+      conn
+      |> put_view(UchukuziInterfaceWeb.TrackingView)
+      |> render("trip.json", trip: trip)
     end
   end
 end

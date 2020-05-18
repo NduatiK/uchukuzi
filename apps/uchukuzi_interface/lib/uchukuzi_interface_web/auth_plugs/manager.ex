@@ -39,7 +39,7 @@ defmodule UchukuziInterfaceWeb.AuthPlugs.ManagerAuth do
   end
 
   @salt "6t04lfTC2EeOIcaWQ+WlJbzhnK+JxehvSCGyDcvBXsKCoBjXncdOH2BI1/u7t+L2"
-  @day 86400
+  @day (3600 * 24)
 
   def sign(user_id),
     do: Phoenix.Token.sign(UchukuziInterfaceWeb.Endpoint, @salt, user_id)

@@ -1,9 +1,12 @@
-defmodule UchukuziInterfaceWeb.RouteSocket do
+defmodule UchukuziInterfaceWeb.CustomerSocket do
   use Phoenix.Socket
-  # Any topics starting with bus go through BusChannel
-  channel "routes:*", UchukuziInterfaceWeb.RouteChannel
+
   alias UchukuziInterfaceWeb.AuthPlugs.HouseholdAuth
-  @spec connect(any, any, any) :: {:ok, any}
+
+
+  channel "predictions:*", UchukuziInterfaceWeb.CustomerSocket.PredictionsChannel
+  channel "bus_location:*", UchukuziInterfaceWeb.CustomerSocket.BusChannel
+
 
   def connect(params, socket, _connect_info) do
     with {:ok, %{"role" => role, "id" => user_id, "type" => "bearer"}} <-
