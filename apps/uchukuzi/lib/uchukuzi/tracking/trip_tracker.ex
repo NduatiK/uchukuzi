@@ -32,19 +32,33 @@ defmodule Uchukuzi.Tracking.TripTracker do
     do: Uchukuzi.service_name({__MODULE__, bus.id})
 
   @spec pid_from(Uchukuzi.School.Bus.t()) :: nil | pid | {atom, atom}
-  def pid_from(%Bus{} = bus) do
+  def pid_from(%Bus{} = bus, retries \\ 0) do
     pid =
       bus
       |> via_tuple()
       |> GenServer.whereis()
 
-    with nil <- pid do
+    result = with nil <- pid do
       BusesSupervisor.start_bus(bus)
 
       bus
       |> via_tuple()
       |> GenServer.whereis()
     end
+
+    if result == nil do
+      if retries > 1 do
+        nil
+      else
+        retries = retries + 1
+        :timer.sleep(100 * (retries))
+
+        pid_from(bus, retries)
+      end
+    else
+      result
+    end
+
   end
 
   def init(bus) do
@@ -60,24 +74,22 @@ defmodule Uchukuzi.Tracking.TripTracker do
     {:ok, data}
   end
 
-  def handle_cast({:add_report, %Report{} = report}, %{state: @new} = data) do
+  def handle_call({:add_report, %Report{} = report}, _from, %{state: @new} = data) do
     if School.School.contains_point?(data.school, report.location) do
       # trips only start when we exit the school
-      {:noreply, data}
+      {:reply, :ok, data, @message_timeout}
     else
-      report = %{report | speed: 0, bearing: 0}
-
       data =
         data
         |> insert_trip_path(report)
         |> insert_report(report)
         |> set_state(@ongoing)
 
-      {:noreply, data, @message_timeout}
+      {:reply, :ok, data, @message_timeout}
     end
   end
 
-  def handle_cast({:add_report, %Report{} = report}, %{state: @ongoing} = data) do
+  def handle_call({:add_report, %Report{} = report}, _from, %{state: @ongoing} = data) do
     data =
       data
       |> insert_trip_path(report)
@@ -86,10 +98,15 @@ defmodule Uchukuzi.Tracking.TripTracker do
     if School.School.contains_point?(data.school, report.location) do
       IO.inspect(report.location)
       IO.inspect("School.contains_point")
-      {:stop, :normal, data |> set_state(@complete)}
+      {:stop, :normal, :ok, data |> set_state(@complete)}
     else
-      {:noreply, data, @message_timeout}
+      {:reply, :ok, data, @message_timeout}
     end
+  end
+
+  def handle_call(:students_onboard, _from, data) do
+    students = Trip.students_onboard(data.trip)
+    {:reply, students, data, @message_timeout}
   end
 
   def handle_cast({:student_boarded, activity}, data) do
@@ -153,11 +170,6 @@ defmodule Uchukuzi.Tracking.TripTracker do
     data = %{data | trip_path: trip_path}
 
     {:noreply, data, @message_timeout}
-  end
-
-  def handle_call(:students_onboard, _from, data) do
-    students = Trip.students_onboard(data.trip)
-    {:reply, students, data, @message_timeout}
   end
 
   def handle_info(:timeout, data) do
@@ -250,7 +262,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
   # *************************** CLIENT ***************************#
 
   def add_report(bus, report),
-    do: cast_tracker(bus, {:add_report, report})
+    do: call_tracker(bus, {:add_report, report})
 
   @spec student_boarded(Uchukuzi.School.Bus.t(), any) :: :ok
   def student_boarded(bus, student_activity),
@@ -259,11 +271,8 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def student_exited(bus, student_activity),
     do: cast_tracker(bus, {:student_exited, student_activity})
 
-  def students_onboard(bus) do
-    bus
-    |> pid_from()
-    |> GenServer.call(:students_onboard)
-  end
+  def students_onboard(bus),
+    do: call_tracker(bus, :students_onboard)
 
   # Expects tiles sorted first crossed to last crossed
   def crossed_tiles(bus, tiles),
@@ -273,5 +282,11 @@ defmodule Uchukuzi.Tracking.TripTracker do
     bus
     |> pid_from()
     |> GenServer.cast(arguments)
+  end
+
+  defp call_tracker(bus, arguments) do
+    bus
+    |> pid_from()
+    |> GenServer.call(arguments)
   end
 end
