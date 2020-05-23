@@ -100,6 +100,7 @@ function createMapDom() {
         },
         mapTypeControl: false,
         streetViewControl: false,
+        clickableIcons: false,
         overviewMapControl: false,
         ...defaultLocation,
         styles: mapStyles,
@@ -148,6 +149,11 @@ function cleanMap() {
         x.setMap(null)
     })
     polylines = []
+
+    polylineMarkers.forEach((x) => {
+        x.setMap(null)
+    })
+    polylineMarkers = []
 
     if (homeMarker) {
         homeMarker.setMap(null)
@@ -208,12 +214,12 @@ function pushSchool(map) {
 
 }
 
-let clickListener = null
+let circleClickListener = null
 const setupMapCallbacks = (app, clickable) => (data) => {
     const map = data
     if (clickable) {
         if (!google.maps.event.hasListeners(map, 'click')) {
-            clickListener = google.maps.event.addListener(map, 'click', function (args) {
+            circleClickListener = google.maps.event.addListener(map, 'click', function (args) {
                 const pos = {
                     lat: args.latLng.lat(),
                     lng: args.latLng.lng()
@@ -222,8 +228,8 @@ const setupMapCallbacks = (app, clickable) => (data) => {
             })
         }
     } else {
-        if (clickListener) {
-            google.maps.event.removeListener(clickListener)
+        if (circleClickListener) {
+            google.maps.event.removeListener(circleClickListener)
         }
     }
 
@@ -285,100 +291,103 @@ function insertCircle(pos, app, map) {
 let polylineCompleteListener = null
 let polylineClickListener = null
 let polylines = []
+let polylineMarkers = []
+let markerIdx = 0
 
+function rerenderPolylines() {
+    polylineMarkers.forEach((val, _idx, array) => {
+        const isMarker = _idx % 2 == 0
+        if (!isMarker) {
+            val.setPath([
+                polylineMarkers[_idx - 1].position,
+                polylineMarkers[_idx + 1].position
+
+            ]);
+        }
+    })
+}
+function updatePolyline(app) {
+    rerenderPolylines()
+
+
+    const locations = polylineMarkers
+        .filter((_1, idx, _2) => {
+            const isMarker = idx % 2 == 0
+            return isMarker
+        }).map((v, _1, _2) => {
+            return {
+                lat: v.position.lat(),
+                lng: v.position.lng()
+            }
+        })
+
+
+    app.ports.updatedPath.send(locations)
+}
+
+let clickListener = null
 const addDrawTools = (app, drawable) => (data) => {
     const map = data
 
     if (drawable) {
-
-        if (!drawingManager) {
-            drawingManager = new google.maps.drawing.DrawingManager({
-                drawingControl: false,
-                drawingMode: google.maps.drawing.OverlayType.POLYLINE,
-                polylineOptions: {
-                    editable: true,
-                    draggable: true,
-                    strokeColor: darkGreen
-                }
-
+        clickListener = google.maps.event.addListener(map, 'click', function (args) {
+            markerIdx += 1
+            var marker = new google.maps.Marker({
+                id: markerIdx.toString(),
+                position: args.latLng,
+                icon: {
+                    url: "https://maps.gstatic.com/intl/en_us/mapfiles/markers2/measle.png",
+                    size: new google.maps.Size(7, 7),
+                    anchor: new google.maps.Point(3.5, 3.5)
+                },
+                draggable: true,
+                map: map,
             })
-        } else {
-            drawingManager.setMap(null)
-            google.maps.event.removeListener(polylineCompleteListener)
-        }
 
+            if (polylineMarkers.length === 0) {
+                polylineMarkers.push(marker)
+            } else {
+                const lastMarker = polylineMarkers[polylineMarkers.length - 1]
+                let polyline = new google.maps.Polyline({
+                    path: [lastMarker.position, marker.position],
+                    map: map,
+                    id: markerIdx.toString()
+                })
+                polyline.set('strokeColor', darkGreen);
 
+                polylineMarkers.push(polyline)
+                polylineMarkers.push(marker)
+            }
 
-        polylineCompleteListener = google.maps.event.addListener(drawingManager, 'polylinecomplete', function (polyline) {
-            polylines.push(polyline)
+            google.maps.event.addListener(marker, 'click', function (args) {
+                polylineMarkers = polylineMarkers.filter((val, _, _2) => {
+                    return val.id !== marker.id
+                })
 
-            setupClicksPolyline(polyline, app)
+                polyline.setMap(null)
+                polyline = null
+
+                marker.setMap(null)
+                marker = null
+
+                updatePolyline(app)
+            })
+
+            google.maps.event.addListener(marker, 'dragend', function (args) {
+                updatePolyline(app)
+            })
+
+            updatePolyline(app)
 
         })
-        console.log("drawingManager", drawingManager)
-        drawingManager.setMap(map)
-    } else {
-        if (drawingManager) {
-            drawingManager.setMap(null)
-        }
-        if (polylineCompleteListener) {
-            google.maps.event.removeListener(polylineCompleteListener)
-        }
-    }
 
+    } else {
+        google.maps.event.removeListener(clickListener);
+        clickListener = null;
+    }
 
     return Promise.resolve(data)
 }
-
-function setupClicksPolyline(line, app, ignoreClickListener = false) {
-    line.setEditable(true);
-
-    drawingManager.setDrawingMode(null);
-
-    // Adapted from http://bl.ocks.org/knownasilya/89a32e572989f0aff1f8
-    if (polylineClickListener && !ignoreClickListener) {
-        return
-    }
-    const locations = line.getPath().getArray().map((v, _, _array) => {
-        return {
-            lat: v.lat(),
-            lng: v.lng()
-        }
-    })
-
-    app.ports.updatedPath.send(locations)
-
-    polylineClickListener = google.maps.event.addListener(line, 'click', function (e) {
-
-        var line = this;
-        console.log(e)
-        if (typeof e.vertex !== 'number') {
-            return
-        }
-
-        var path = line.getPath();
-        path.removeAt(e.vertex);
-        if (path.length < 2) {
-            line.setMap(null);
-            app.ports.updatedPath.send([])
-            drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYLINE);
-            google.maps.event.removeListener(polylineClickListener);
-            polylineClickListener = null
-        } else {
-            const locations = line.getPath().getArray().map((v, _, _array) => {
-                return {
-                    lat: v.lat(),
-                    lng: v.lng()
-                }
-            })
-
-            app.ports.updatedPath.send(locations)
-        }
-
-    })
-}
-
-
 function requestGeoLocation(app) {
 
     function handleLocationError(error) {
@@ -632,7 +641,6 @@ function setupMapPorts(app) {
 
     app.ports.highlightPath.subscribe(({ routeID, highlighted }) => {
         const performHighlighting = () => {
-            console.log("highlightPath")
             let polyline = polylines.find((value, _indx, _list) => {
                 return value.id == routeID
             })
@@ -650,7 +658,6 @@ function setupMapPorts(app) {
         if (MapLibraryInstance) {
             performHighlighting()
         } else {
-
             initializeMaps(app)
                 .then(performHighlighting)
         }
@@ -662,39 +669,94 @@ function setupMapPorts(app) {
         if (isDevelopment) {
             console.log("drawPath")
         }
-
-        let polyline = polylines.find((value, _indx, _list) => {
-            return value.id == routeID
-        })
-        if (!polyline) {
-
-            polyline = new google.maps.Polyline({
-                geodesic: false,
-                strokeColor: highlighted ? purple : darkGreen,
-                editable: editable,
-                id: routeID
-            });
-            polylines.push(polyline)
-        } else {
-            polyline.setMap(null)
-        }
-
         if (editable) {
-            addDrawTools(app, editable)(map).then(() => {
-                setupClicksPolyline(polyline, app, true)
+            addDrawTools(app, true)(map).then((_map) => {
+                path.forEach((position, _idx, _array) => {
+
+                    var marker = new google.maps.Marker({
+
+                        id: markerIdx.toString(),
+                        position: position,
+                        icon: {
+                            url: "https://maps.gstatic.com/intl/en_us/mapfiles/markers2/measle.png",
+                            size: new google.maps.Size(7, 7),
+                            anchor: new google.maps.Point(3.5, 3.5)
+                        },
+                        draggable: true,
+                        map: map,
+                    })
+
+                    if (polylineMarkers.length === 0) {
+                        polylineMarkers.push(marker)
+                    } else {
+                        const lastMarker = polylineMarkers[polylineMarkers.length - 1]
+                        let polyline = new google.maps.Polyline({
+                            path: [lastMarker.position, marker.position],
+                            map: map,
+                            id: markerIdx.toString()
+                        })
+                        polyline.set('strokeColor', darkGreen);
+
+                        polylineMarkers.push(polyline)
+                        polylineMarkers.push(marker)
+                    }
+
+
+                    google.maps.event.addListener(marker, 'click', function (args) {
+                        polylineMarkers = polylineMarkers.filter((val, _, _2) => {
+                            return val.id !== marker.id
+                        })
+
+                        if (polyline) {
+                            polyline.setMap(null)
+                            polyline = null
+                        }
+
+                        marker.setMap(null)
+                        marker = null
+
+                        updatePolyline(app)
+                    })
+
+                    google.maps.event.addListener(marker, 'dragend', function (args) {
+                        updatePolyline(app)
+                    })
+
+                    updatePolyline(app)
+
+                })
+
             })
-        }
-
-        if (highlighted) {
-            polyline.set('strokeColor', purple);
-
         } else {
-            polyline.set('strokeColor', darkGreen);
+            let polyline = polylines.find((value, _indx, _list) => {
+                return value.id == routeID
+            })
+            if (!polyline) {
+
+                polyline = new google.maps.Polyline({
+                    geodesic: false,
+                    strokeColor: highlighted ? purple : darkGreen,
+                    editable: editable,
+                    id: routeID
+                });
+                polylines.push(polyline)
+            } else {
+                polyline.setMap(null)
+            }
+            if (highlighted) {
+                polyline.set('strokeColor', purple);
+
+            } else {
+                polyline.set('strokeColor', darkGreen);
+
+            }
+
+            polyline.setPath(path);
+            polyline.setMap(map);
 
         }
 
-        polyline.setPath(path);
-        polyline.setMap(map);
+
 
     }
 
