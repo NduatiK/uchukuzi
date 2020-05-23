@@ -196,16 +196,15 @@ update msg model =
                                             ( page, msg_ )
                             in
                             Cmd.batch
-                                [ case ( model.locationUpdate, busData.bus.last_seen ) of
-                                    ( Just locationUpdate_, _ ) ->
-                                        Ports.updateBusMap locationUpdate_
-
-                                    ( _, Just locationUpdate_ ) ->
-                                        Ports.updateBusMap locationUpdate_
-
-                                    _ ->
-                                        Cmd.none
-                                , pageMsg
+                                [ -- case ( model.locationUpdate, busData.bus.last_seen ) of
+                                  -- ( Just locationUpdate_, _ ) ->
+                                  --     Ports.updateBusMap locationUpdate_
+                                  -- ( _, Just locationUpdate_ ) ->
+                                  --     Ports.updateBusMap locationUpdate_
+                                  -- _ ->
+                                  --     Cmd.none
+                                  -- ,
+                                  pageMsg
                                 ]
 
                         Failure error ->

@@ -406,7 +406,8 @@ viewFooter model =
     Footer.coloredView model.currentPage
         pageToString
         [ { page = Summary, body = "", action = ClickedSummaryPage, highlightColor = Colors.darkGreen }
-        , { page = ConsumptionSpikes, body = "3", action = ClickedConsumptionSpikesPage, highlightColor = Colors.errorRed }
+
+        -- , { page = ConsumptionSpikes, body = "3", action = ClickedConsumptionSpikesPage, highlightColor = Colors.errorRed }
         ]
 
 

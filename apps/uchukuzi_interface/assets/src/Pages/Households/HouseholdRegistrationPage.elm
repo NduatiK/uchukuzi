@@ -769,6 +769,31 @@ viewForm model =
         ]
 
 
+
+-- Element.column
+--     [ width fill, spacing 26 ]
+--     [ wrappedRow [ width fill ]
+--         [ column [ spacing 26, alignTop, width fill ]
+--             [ el [ width (fill |> maximum 300) ] (toDropDownView <| routeDropDown model)
+--             , el Style.header2Style (text "Students")
+--             , viewStudentsInput model.form
+--             ]
+--         , viewVerticalDivider
+--         , column [ spacing 26, alignTop, width fill ]
+--             [ el Style.header2Style
+--                 (text "Guardian's contacts")
+--             , viewGuardianNameInput model.form.problems household.guardian.name
+--             , wrappedRow [ spacing 24 ]
+--                 [ viewEmailInput model.form.problems household.guardian.email
+--                 , viewPhoneInput model.form.problems household.guardian.phoneNumber
+--                 ]
+--             ]
+--         ]
+--     -- , viewShareLocationInput model.form.canTrack
+--     , viewButton model
+--     ]
+
+
 viewStudentsInput : Form -> Element Msg
 viewStudentsInput { students, problems, currentStudent, editingStudent, deletedStudents } =
     let

@@ -89,16 +89,15 @@ init session id =
       , deleteRequestState = NotAsked
       }
     , Cmd.batch
-        (Ports.cleanMap ()
-            :: (case id of
-                    Just id_ ->
-                        [ Ports.initializeMaps
-                        , fetchRoute session id_
-                        ]
+        (case id of
+            Just id_ ->
+                [ Ports.cleanMap ()
+                , Ports.initializeMaps
+                , fetchRoute session id_
+                ]
 
-                    Nothing ->
-                        [ Ports.initializeCustomMap { clickable = False, drawable = True } ]
-               )
+            Nothing ->
+                [ Ports.initializeCustomMap { clickable = False, drawable = True } ]
         )
     )
 

@@ -1,9 +1,17 @@
 import { Elm } from '../src/Main.elm'
-import { initializeMaps, loadMapAPI, requestGeoLocation, initializeSearch, schoolLocationStorageKey, setupMapPorts } from './gmaps'
 import { initializeCamera } from './camera'
 import { initializeLiveView, killLiveView } from './liveView'
 import { printCard } from './card'
 import env from './env'
+import {
+    cleanMap,
+    initializeMaps,
+    loadMapAPI,
+    requestGeoLocation,
+    initializeSearch,
+    schoolLocationStorageKey,
+    setupMapPorts
+} from './gmaps'
 
 const windowSize = {
     width: window.innerWidth,
@@ -50,7 +58,9 @@ function init() {
     })
 
     app.ports.initializeCustomMap.subscribe(({ clickable, drawable }) => {
-
+        if (drawable) {
+            cleanMap()
+        }
         initializeMaps(app, clickable, drawable)
     })
 
@@ -121,8 +131,6 @@ loadMapAPI()
             node: document.getElementById("elm")
         })
 
-    })
-    .then((_) => {
         if (env.isDevelopment) {
             console.log("inite")
             init()

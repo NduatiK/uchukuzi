@@ -24,24 +24,32 @@ defmodule UchukuziInterfaceWeb.TrackingController do
 
       reports = Enum.sort(reports, &(DateTime.compare(&2.time, &1.time) != :lt))
 
+      Task.async(fn ->
       for report <- reports do
         Tracking.move(bus, report)
 
-        # Task.async(fn ->
         #   :timer.sleep(10)
 
         #   bus
         #   |> Tracking.status_of()
         #   |> broadcast_location_update(bus, bus.school_id)
-        # end)
       end
+
 
       bus
       |> Tracking.status_of()
       |> broadcast_location_update(bus, bus.school_id)
 
+      end)
+
+      bus = Repo.preload(bus, :school)
+
+      last_point =
+        reports
+        |> Enum.drop(Enum.count(reports) - 1)
+        |> hd()
       status =
-        if Tracking.in_school?(bus) do
+        if last_point && School.School.contains_point?(bus.school, last_point.location) do
           201
         else
           200

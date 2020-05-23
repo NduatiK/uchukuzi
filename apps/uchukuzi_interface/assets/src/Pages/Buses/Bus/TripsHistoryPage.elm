@@ -116,13 +116,19 @@ update msg model =
                         ]
                     )
 
-                Just report -> 
+                Just report ->
                     ( { model | sliderValue = sliderValue }
                     , Cmd.batch
                         [ Ports.selectPoint
                             { location = report.location
                             , bearing = report.bearing
                             }
+                        , case model.selectedTrip of
+                            Nothing ->
+                                Cmd.none
+
+                            Just trip ->
+                                drawPath trip sliderValue
                         , scrollToStudentActivity
                         ]
                     )
@@ -179,11 +185,13 @@ update msg model =
 
         ClickedOn tripID ->
             if Just tripID == Maybe.andThen (.id >> Just) model.selectedTrip then
-                -- clicked on selected trip
+                -- clicked on currently selected trip
                 ( { model | selectedTrip = Nothing, sliderValue = 0 }
-                , Ports.deselectPoint ()
+                , Cmd.batch
+                    [ Ports.deselectPoint ()
+                    , Ports.cleanMap ()
+                    ]
                 )
-                -- ( model, Cmd.none )
 
             else
                 case Dict.get tripID model.loadedTrips of
@@ -193,19 +201,27 @@ update msg model =
                             , requestedTrip = Nothing
                             , sliderValue = 0
                           }
-                        , case pointAt model.sliderValue loadedTrip of
-                            Nothing ->
-                                Ports.deselectPoint ()
+                        , Cmd.batch
+                            [ case pointAt model.sliderValue loadedTrip of
+                                Nothing ->
+                                    Ports.deselectPoint ()
 
-                            Just report ->
-                                Ports.selectPoint
-                                    { location = report.location
-                                    , bearing = report.bearing
-                                    }
+                                Just report ->
+                                    Ports.selectPoint
+                                        { location = report.location
+                                        , bearing = report.bearing
+                                        }
+                            , Ports.cleanMap ()
+                            ]
                         )
 
                     Nothing ->
-                        ( { model | loadingTrip = Loading, requestedTrip = Just tripID }, fetchReportsForTrip model.session tripID )
+                        ( { model | loadingTrip = Loading, requestedTrip = Just tripID }
+                        , Cmd.batch
+                            [ fetchReportsForTrip model.session tripID
+                            , Ports.cleanMap ()
+                            ]
+                        )
 
         SelectedGroup selection ->
             ( { model
@@ -679,3 +695,24 @@ toGPS location =
 pointAt : Int -> Trip -> Maybe Report
 pointAt index trip =
     List.head (List.drop index trip.reports)
+
+
+drawPath trip sliderValue =
+    Cmd.batch
+        [ Ports.bulkDrawPath
+            [ { routeID = 0
+              , path =
+                    trip.reports
+                        |> List.take (sliderValue + 1)
+                        |> List.map .location
+              , highlighted = True
+              }
+            , { routeID = 1
+              , path =
+                    trip.reports
+                        |> List.drop sliderValue
+                        |> List.map .location
+              , highlighted = False
+              }
+            ]
+        ]

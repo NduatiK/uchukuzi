@@ -58,6 +58,7 @@ init session locationUpdates =
       }
     , Cmd.batch
         [ fetchBuses session
+        , Ports.cleanMap ()
         , Ports.initializeMaps
         , Ports.initializeLiveView ()
         ]
@@ -328,8 +329,9 @@ viewMapDetails maybeBus =
                     row []
                         [ column [ spacing 8 ]
                             [ el (Style.header2Style ++ [ Font.color Colors.white ]) (text "Students")
-                            , el (Style.labelStyle ++ [ Font.color Colors.white ]) (text "3 Onboard")
-                            , el (Style.labelStyle ++ [ Font.color Colors.white ]) (text "4 Registered")
+
+                            -- , el (Style.labelStyle ++ [ Font.color Colors.white ]) (text "3 Onboard")
+                            -- , el (Style.labelStyle ++ [ Font.color Colors.white ]) (text "4 Registered")
                             ]
                         ]
 

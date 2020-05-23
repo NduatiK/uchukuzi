@@ -33,7 +33,6 @@ function initializeLiveView(app) {
 }
 
 function on_join(channel, app) {
-    console.log(app)
     return (resp) => {
         console.log("Joined successfully", resp)
         channel.on("bus_moved", response => {

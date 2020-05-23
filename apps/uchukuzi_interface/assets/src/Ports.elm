@@ -35,12 +35,6 @@ port initializeSearchPort : () -> Cmd msg
 port requestGeoLocation : () -> Cmd msg
 
 
-port selectPoint : { location : { lat : Float, lng : Float }, bearing : Float } -> Cmd msg
-
-
-port deselectPoint : () -> Cmd msg
-
-
 port initializeCamera : () -> Cmd msg
 
 
@@ -48,6 +42,12 @@ port disableCamera : Int -> Cmd msg
 
 
 port setFrameFrozen : Bool -> Cmd msg
+
+
+port selectPoint : { location : { lat : Float, lng : Float }, bearing : Float } -> Cmd msg
+
+
+port deselectPoint : () -> Cmd msg
 
 
 port updateBusMap : LocationUpdate -> Cmd msg

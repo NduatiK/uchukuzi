@@ -219,7 +219,6 @@ update msg model =
 
         EditServerResponse response_ ->
             let
-
                 ( response, cmd ) =
                     case response_ of
                         Success ( form, cmd_ ) ->
@@ -586,7 +585,7 @@ viewButton requestState =
                 _ ->
                     StyledElement.button [ alignRight ]
                         { onPress = Just SubmitButtonMsg
-                        , label = text "Submit"
+                        , label = text "Save"
                         }
     in
     el (Style.labelStyle ++ [ width fill, paddingEach { edges | right = 24 } ])

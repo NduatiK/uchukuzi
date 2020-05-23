@@ -3,7 +3,7 @@ function printCard(id) {
     var prtContent = document.getElementById("cards");
 
     // Copy dom stylesheets into string
-    // Reference https://developer.mozilla.org/en-US/docs/Web/API/StyleSheetLis
+    // Code Reference: https://developer.mozilla.org/en-US/docs/Web/API/StyleSheetLis
     const allCSS = [...document.styleSheets]
         .map(styleSheet => {
             try {
