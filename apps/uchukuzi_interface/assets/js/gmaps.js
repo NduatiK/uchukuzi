@@ -143,10 +143,16 @@ const insertMap = (sleepTime) => (data) => {
  * Removes items from the map before reuse
  */
 function cleanMap() {
+    console.log("cleanMap")
     polylines.forEach((x) => {
         x.setMap(null)
     })
     polylines = []
+
+    if (homeMarker) {
+        homeMarker.setMap(null)
+        homeMarker = null
+    }
     markers.forEach((x) => {
         x.setMap(null)
     })
@@ -156,8 +162,12 @@ function cleanMap() {
         schoolCircle.setMap(null)
     }
 
+
     if (polylineCompleteListener) {
         google.maps.event.removeListener(polylineCompleteListener)
+    }
+    if (polylineClickListener) {
+        google.maps.event.removeListener(polylineClickListener)
     }
     // Reset location
     if (MapLibraryInstance) {
@@ -216,9 +226,6 @@ const setupMapCallbacks = (app, clickable) => (data) => {
             google.maps.event.removeListener(clickListener)
         }
     }
-    hasSetup = true
-
-
 
     return Promise.resolve(data)
 }
@@ -344,7 +351,7 @@ function setupClicksPolyline(line, app, ignoreClickListener = false) {
     polylineClickListener = google.maps.event.addListener(line, 'click', function (e) {
 
         var line = this;
-
+        console.log(e)
         if (typeof e.vertex !== 'number') {
             return
         }
@@ -518,251 +525,216 @@ function setupHomeMarker(app, map) {
     })
 }
 
-let hasSetup = false
+
 function setupMapPorts(app) {
 
-    if (!hasSetup) {
-        hasSetup = true
 
-        app.ports.cleanMap.subscribe((location) => {
-            cleanMap()
-        })
+    app.ports.cleanMap.subscribe((location) => {
+        cleanMap()
+    })
 
-        // One time actions, we don't want too many subscriptions
-        const updateMarker = function (update) {
-            initializeMaps(app)
-                .then((map) => {
-                    if (isDevelopment) {
-                        console.log("updateMarker")
-                    }
-                    let { bus, location } = update
-                    let marker = markers.find((value, _indx, _list) => {
-                        return value.id == bus
+    // One time actions, we don't want too many subscriptions
+    const updateMarker = function ({ location, bearing, markerID, bus }) {
+        initializeMaps(app, false, false, 0)
+            .then((map) => {
+                var marker = markers.find((value, _indx, _list) => {
+                    return value.id == markerID
+                })
+
+                if (marker === undefined) {
+
+                    marker = new google.maps.Marker({
+                        id: markerID ?? bus,
+                        map: map,
+                        title: "Bus Trip"
                     })
-
-                    if (marker === undefined) {
-                        marker = new google.maps.Marker({
-                            id: bus,
-                            map: map,
-                            title: `Bus [${location.lng}, ${location.lat}]`
-                        })
-
-                        markers.push(marker)
-                    }
-                    marker.setPosition(location)
-
+                    markers.push(marker)
                     var image = {
-                        url: `/images/buses/${getCardinalDirection(update.bearing)}.svg`,
+                        // url: `/images/buses/${getCardinalDirection(bearing)}.svg`,
+                        url: `/images/buses/N.svg`,
                         size: new google.maps.Size(90, 90),
                         anchor: new google.maps.Point(45, 45),
                         scaledSize: new google.maps.Size(90, 90)
                     }
-
-
                     marker.setIcon(image)
-
-
-                })
-        }
-
-
-        app.ports.showHomeLocation.subscribe((location) => {
-            initializeMaps(app)
-                .then((map) => {
-                    setupHomeMarker(app, map)
-
-                    homeMarker.setPosition(location)
-
-                })
-        })
-
-        app.ports.showHomeLocation.subscribe((location) => {
-            initializeMaps(app)
-                .then((map) => {
-                    setupHomeMarker(app, map)
-                    homeMarker.setPosition(location)
-                })
-
-        })
-
-        app.ports.updateBusMap.subscribe((update) => {
-            initializeMaps(app)
-                .then((map) => {
-                    sleep(100).then(() => {
-
-                        if (initializingMapsChain) {
-                            initializingMapsChain.then(() => {
-                                updateMarker(update)
-                            })
-                        } else {
-                            updateMarker(update)
-                        }
-                    })
-                })
-        })
-
-        app.ports.bulkUpdateBusMap.subscribe((updates) => {
-            initializeMaps(app)
-                .then((map) => {
-                    sleep(100).then(() => {
-                        if (initializingMapsChain) {
-                            initializingMapsChain.then(() => {
-                                updates.forEach(updateMarker)
-                            })
-                        } else {
-                            updates.forEach(updateMarker)
-                        }
-                    })
-                })
-        })
-
-        app.ports.highlightPath.subscribe(({ routeID, highlighted }) => {
-            const performHighlighting = () => {
-                console.log("highlightPath")
-                let polyline = polylines.find((value, _indx, _list) => {
-                    return value.id == routeID
-                })
-                if (polyline) {
-                    if (highlighted) {
-                        polyline.set('strokeColor', purple);
-
-                    } else {
-                        polyline.set('strokeColor', darkGreen);
-
-                    }
                 }
 
-            }
-            if (MapLibraryInstance) {
-                performHighlighting()
-            } else {
 
-                initializeMaps(app)
-                    .then(performHighlighting)
-            }
+                marker.setPosition(location)
 
+                console.log(marker)
+                map.panTo(location)
+
+
+                document.querySelectorAll('img[src="/images/buses/N.svg"]').forEach((node) => {
+                    node.style['transform'] = `rotate(${bearing}deg)`
+                    node.style['webkitTransform'] = `rotate(${bearing}deg)`
+                    node.style['MozTransform'] = `rotate(${bearing}deg)`
+                    node.style['msTransform'] = `rotate(${bearing}deg)`
+                    node.style['OTransform'] = `rotate(${bearing}deg)`
+                })
+            })
+
+    }
+
+
+    app.ports.updateBusMap.subscribe((update) => {
+        initializeMaps(app)
+            .then((map) => {
+                updateMarker(update)
+            })
+    })
+
+    app.ports.bulkUpdateBusMap.subscribe((updates) => {
+        initializeMaps(app)
+            .then((map) => {
+                updates.forEach((update) => {
+                    console.log(update)
+                    updateMarker(update)
+
+                })
+            })
+    })
+
+    // Trips Map Callbacks
+    app.ports.deselectPoint.subscribe(() => {
+
+        markers.forEach((x) => {
+            x.setMap(null)
         })
+        markers = []
+    })
+    console.log("Registered selectPoint")
+    app.ports.selectPoint.subscribe(({ location, bearing }) => {
+        const markerID = 'trip'
+        updateMarker({ location: location, bearing: bearing, markerID: markerID })
 
-        const drawPath = (map, editable = false) => ({ routeID, path, highlighted }) => {
+    })
 
-            if (isDevelopment) {
-                console.log("drawPath")
-            }
+    app.ports.showHomeLocation.subscribe((location) => {
+        initializeMaps(app)
+            .then((map) => {
+                setupHomeMarker(app, map)
 
+                homeMarker.setPosition(location)
+
+            })
+    })
+
+    app.ports.showHomeLocation.subscribe((location) => {
+        initializeMaps(app)
+            .then((map) => {
+                setupHomeMarker(app, map)
+                homeMarker.setPosition(location)
+            })
+
+    })
+
+    app.ports.highlightPath.subscribe(({ routeID, highlighted }) => {
+        const performHighlighting = () => {
+            console.log("highlightPath")
             let polyline = polylines.find((value, _indx, _list) => {
                 return value.id == routeID
             })
-            if (!polyline) {
+            if (polyline) {
+                if (highlighted) {
+                    polyline.set('strokeColor', purple);
 
-                polyline = new google.maps.Polyline({
-                    path: path,
-                    geodesic: false,
-                    strokeColor: highlighted ? purple : darkGreen,
-                    editable: editable,
-                    id: routeID
-                });
-                polylines.push(polyline)
+                } else {
+                    polyline.set('strokeColor', darkGreen);
+
+                }
             }
 
+        }
+        if (MapLibraryInstance) {
+            performHighlighting()
+        } else {
 
-            if (editable) {
-                addDrawTools(app, editable)(map).then(() => {
-                    setupClicksPolyline(polyline, app, true)
-                })
-            }
+            initializeMaps(app)
+                .then(performHighlighting)
+        }
 
-            if (highlighted) {
-                polyline.set('strokeColor', purple);
+    })
 
-            } else {
-                polyline.set('strokeColor', darkGreen);
+    const drawPath = (map, editable = false) => ({ routeID, path, highlighted }) => {
 
-            }
+        if (isDevelopment) {
+            console.log("drawPath")
+        }
 
-            polyline.setMap(map);
+        let polyline = polylines.find((value, _indx, _list) => {
+            return value.id == routeID
+        })
+        if (!polyline) {
+
+            polyline = new google.maps.Polyline({
+                geodesic: false,
+                strokeColor: highlighted ? purple : darkGreen,
+                editable: editable,
+                id: routeID
+            });
+            polylines.push(polyline)
+        } else {
+            polyline.setMap(null)
+        }
+
+        if (editable) {
+            addDrawTools(app, editable)(map).then(() => {
+                setupClicksPolyline(polyline, app, true)
+            })
+        }
+
+        if (highlighted) {
+            polyline.set('strokeColor', purple);
+
+        } else {
+            polyline.set('strokeColor', darkGreen);
 
         }
 
-        app.ports.drawPath.subscribe((path) => {
-            initializeMaps(app)
-                .then((map) => {
-                    sleep(100).then(() => {
-                        drawPath(map)(path)
-                    })
-                })
-        })
+        polyline.setPath(path);
+        polyline.setMap(map);
 
-        app.ports.drawEditablePath.subscribe((path) => {
-            initializeMaps(app)
-                .then((map) => {
-                    sleep(100).then(() => {
-                        drawPath(map, true)(path)
-                    })
-                })
-        })
-
-        app.ports.bulkDrawPath.subscribe((paths) => {
-            initializeMaps(app)
-                .then((map) => {
-                    sleep(100).then(() => {
-                        if (initializingMapsChain) {
-                            initializingMapsChain.then((map) => {
-
-                                pushSchool(map)
-                                paths.forEach(drawPath(map))
-                            })
-                        } else {
-                            pushSchool(map)
-                            paths.forEach(drawPath(map))
-                        }
-                    })
-                })
-        })
-
-
-        // Trips Map Callbacks
-        app.ports.deselectPoint.subscribe(function () {
-
-            markers.forEach((x) => {
-                x.setMap(null)
-            })
-            markers = []
-        })
-        app.ports.selectPoint.subscribe(function (input) {
-            console.log(input)
-            const { location, bearing } = input
-            initializeMaps(app, false, false, 0)
-                .then((map) => {
-                    const markerID = 'trip'
-                    var marker = markers.find((value, _indx, _list) => {
-                        return value.id == markerID
-                    })
-
-                    if (marker === undefined) {
-
-                        marker = new google.maps.Marker({
-                            id: markerID,
-                            map: map
-                        })
-                        markers.push(marker)
-                    }
-
-
-                    marker.setPosition(location)
-                    var image = {
-                        url: `/images/buses/${getCardinalDirection(bearing)}.svg`,
-                        size: new google.maps.Size(90, 90),
-                        anchor: new google.maps.Point(45, 45),
-                        scaledSize: new google.maps.Size(90, 90)
-                    }
-                    marker.setIcon(image)
-                    console.log(marker)
-                    map.panTo(location)
-                })
-        })
     }
 
+    app.ports.drawPath.subscribe((path) => {
+        initializeMaps(app)
+            .then((map) => {
+                sleep(100).then(() => {
+                    drawPath(map)(path)
+                })
+            })
+    })
+
+    app.ports.drawEditablePath.subscribe((path) => {
+        initializeMaps(app)
+            .then((map) => {
+                sleep(100).then(() => {
+                    drawPath(map, true)(path)
+                })
+            })
+    })
+
+    app.ports.bulkDrawPath.subscribe((paths) => {
+        initializeMaps(app)
+            .then((map) => {
+                if (initializingMapsChain) {
+                    initializingMapsChain.then((map) => {
+
+                        pushSchool(map)
+                        paths.forEach(drawPath(map))
+                    })
+                } else {
+                    pushSchool(map)
+                    paths.forEach(drawPath(map))
+                }
+            })
+    })
+
+
 }
+
 
 function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time))
@@ -774,5 +746,6 @@ export {
     initializeSearch,
     schoolLocationStorageKey,
     setupMapPorts,
-    loadMapAPI
+    loadMapAPI,
+    cleanMap
 }
