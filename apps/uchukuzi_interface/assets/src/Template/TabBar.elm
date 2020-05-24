@@ -95,7 +95,7 @@ viewTabItem item =
             (case item of
                 Button button ->
                     [ button.icon [ alignTop, Colors.fillDarkness, alpha 0.69 ]
-                    , el [] (text button.title)
+                    , text button.title
                     ]
 
                 ErrorButton button ->
@@ -105,7 +105,7 @@ viewTabItem item =
 
                 LoadingButton loading ->
                     [ Icons.loading [ width (px 24), height (px 24) ]
-                    , el [] (text loading.title)
+                    , text loading.title
                     ]
             )
         )

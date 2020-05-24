@@ -6,6 +6,7 @@ import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Errors
@@ -330,25 +331,41 @@ viewBody { groupedStudents, selectedGroupedStudents } =
 
 viewRoutes groups selectedGroupedStudents =
     let
-        title group =
-            StyledElement.plainButton []
-                { label =
-                    el
-                        ((if Just group == selectedGroupedStudents then
-                            [ Background.color Colors.darkGreen, Font.color Colors.white, Border.width 1, Border.color (Colors.withAlpha Colors.black 0.1) ]
+        viewRouteCell group =
+            el
+                ([ paddingXY 56 4
+                 , width shrink
+                 , Border.rounded 5
+                 , Border.width 1
+                 , centerY
+                 , centerX
+                 , Font.letterSpacing 0.5
+                 , Border.color Colors.simpleGrey
+                 , Font.color (Colors.withAlpha (rgb255 4 30 37) 0.69)
+                 , Events.onMouseUp (SelectedRoute group)
+                 , mouseDown [ Background.color Colors.simpleGrey ]
+                 , mouseOver [ Border.color Colors.simpleGrey ]
+                 ]
+                    ++ (if Just group == selectedGroupedStudents then
+                            [ Background.color Colors.simpleGrey ]
 
-                          else
-                            [ Background.color Colors.white, Border.width 2, Border.color Colors.sassyGrey ]
-                         )
-                            ++ [ paddingXY 12 6
-                               , Border.rounded 5
-                               ]
-                        )
-                        (text (Tuple.first group))
-                , onPress = Just (SelectedRoute group)
-                }
+                        else
+                            []
+                       )
+                    ++ [ paddingXY 20 4
+                       , Border.rounded 5
+                       , Font.size 16
+                       , Font.medium
+                       , centerY
+                       , centerX
+                       , spacing 4
+                       , Font.size 13
+                       , Font.semiBold
+                       ]
+                )
+                (text (Tuple.first group))
     in
-    wrappedRow [] (List.map title (Tuple.first groups))
+    wrappedRow [ spacing 8 ] (List.map viewRouteCell (Tuple.first groups))
 
 
 viewHouseholdsTable : GroupedStudents -> Element Msg
