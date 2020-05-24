@@ -4,6 +4,7 @@ module Pages.Buses.CreateBusPage exposing
     , init
     , initEdit
     , subscriptions
+    , tabItems
     , update
     , view
     )
@@ -33,6 +34,7 @@ import StyledElement exposing (toDropDownView)
 import StyledElement.DropDown as Dropdown
 import StyledElement.FloatInput as FloatInput exposing (FloatInput)
 import Task
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator as Validator
 
 
@@ -162,11 +164,15 @@ type Msg
     | RouteDropdownMsg (Dropdown.Msg SimpleRoute)
     | FuelDropdownMsg (Dropdown.Msg FuelType)
     | ConsumptionDropdownMsg (Dropdown.Msg ConsumptionType)
+    | ReturnToBusList
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ReturnToBusList ->
+            ( model, Navigation.rerouteTo model Navigation.Buses )
+
         Changed field ->
             updateField field model
 
@@ -373,9 +379,9 @@ updateField field model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
-    row [ width fill, height fill ]
+view : Model -> Int -> Element Msg
+view model viewHeight =
+    row [ width fill, height (fill |> maximum viewHeight), scrollbarY ]
         [ viewBody model
         ]
 
@@ -383,7 +389,7 @@ view model =
 viewBody : Model -> Element Msg
 viewBody model =
     Element.column
-        [ width fill, spacing 40, paddingXY 80 40, alignTop ]
+        [ width fill, spacing 40, padding 30, alignTop ]
         [ viewHeading
             (if isEditing model then
                 "Edit Vehicle"
@@ -576,20 +582,23 @@ viewVerticalDivider =
 
 viewButton : WebData a -> Element Msg
 viewButton requestState =
-    let
-        buttonView =
-            case requestState of
-                Loading ->
-                    Icons.loading [ alignRight, width (px 46), height (px 46) ]
+    none
 
-                _ ->
-                    StyledElement.button [ alignRight ]
-                        { onPress = Just SubmitButtonMsg
-                        , label = text "Save"
-                        }
-    in
-    el (Style.labelStyle ++ [ width fill, paddingEach { edges | right = 24 } ])
-        buttonView
+
+
+-- let
+--     buttonView =
+--         case requestState of
+--             Loading ->
+--                 Icons.loading [ alignRight, width (px 46), height (px 46) ]
+--             _ ->
+--                 StyledElement.button [ alignRight ]
+--                     { onPress = Just SubmitButtonMsg
+--                     , label = text "Save"
+--                     }
+-- in
+-- el (Style.labelStyle ++ [ width fill, paddingEach { edges | right = 24 } ])
+--     buttonView
 
 
 consumptionDropDown : Model -> ( Element Msg, Dropdown.Config ConsumptionType Msg, List ConsumptionType )
@@ -863,3 +872,38 @@ busToForm bus =
 
 isEditing model =
     model.editRequestState /= NotAsked
+
+
+tabItems { requestState } =
+    case requestState of
+        Loading ->
+            [ TabBar.LoadingButton
+                { title = ""
+                }
+            ]
+
+        Failure _ ->
+            [ TabBar.Button
+                { title = "Cancel"
+                , icon = Icons.close
+                , onPress = ReturnToBusList
+                }
+            , TabBar.ErrorButton
+                { title = "Try Again"
+                , icon = Icons.save
+                , onPress = SubmitButtonMsg
+                }
+            ]
+
+        _ ->
+            [ TabBar.Button
+                { title = "Cancel"
+                , icon = Icons.close
+                , onPress = ReturnToBusList
+                }
+            , TabBar.Button
+                { title = "Save"
+                , icon = Icons.save
+                , onPress = SubmitButtonMsg
+                }
+            ]

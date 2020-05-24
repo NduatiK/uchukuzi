@@ -1,4 +1,4 @@
-module Pages.Households.HouseholdsPage exposing (Model, Msg, init, update, view)
+module Pages.Households.HouseholdsPage exposing (Model, Msg, init, tabItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -21,6 +21,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 
@@ -156,7 +157,7 @@ view model viewHeight =
         [ width fill
         , height (px viewHeight)
         , spacing 40
-        , paddingXY 90 70
+        , padding 30
         , inFront (viewOverlay model)
         ]
         [ viewHeading model
@@ -282,12 +283,13 @@ viewOverlay { selectedStudent, session } =
 viewHeading : Model -> Element Msg
 viewHeading model =
     row [ spacing 16, width fill ]
-        [ el Style.headerStyle (text "Students")
-        , StyledElement.ghostButton [ alignRight ]
-            { title = "Add Household"
-            , icon = Icons.add
-            , onPress = Just RegisterStudent
-            }
+        [ Style.iconHeader Icons.seat "Students"
+
+        -- , StyledElement.ghostButton [ alignRight ]
+        --     { title = "Add Household"
+        --     , icon = Icons.add
+        --     , onPress = Just RegisterStudent
+        --     }
         ]
 
 
@@ -415,3 +417,12 @@ fetchHouseholds : Session -> Cmd Msg
 fetchHouseholds session =
     Api.get session Endpoint.households studentByRouteDecoder
         |> Cmd.map StudentsResponse
+
+
+tabItems =
+    [ TabBar.Button
+        { title = "Add Household"
+        , icon = Icons.add
+        , onPress = RegisterStudent
+        }
+    ]

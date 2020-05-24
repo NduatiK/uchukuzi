@@ -7,6 +7,7 @@ module Style exposing
     , blurredStyle
     , borderedContainer
     , captionStyle
+    , class
     , clipStyle
     , cssResponsive
     , defaultFontFace
@@ -17,11 +18,13 @@ module Style exposing
     , errorStyle
     , header2Style
     , headerStyle
+    , iconHeader
     , ignoreCss
     , inputStyle
     , labelStyle
     , mobileHidden
     , normalScrolling
+    , overline
     , reverseScrolling
     , stickyStyle
     , tableElementStyle
@@ -56,6 +59,13 @@ elevatedTile =
 
 
 -- STYLES
+
+
+iconHeader icon title =
+    row [ spacing 8 ]
+        [ icon [ alpha 1, height (px 31), width (px 31), Colors.fillDarkness, centerY ]
+        , el headerStyle (text title)
+        ]
 
 
 borderedContainer : List (Attribute msg)
@@ -176,27 +186,32 @@ defaultFontFace =
 
 blurredStyle : Attribute msg
 blurredStyle =
-    classAttr "blurred"
+    class "blurred"
 
 
 clipStyle : Attribute msg
 clipStyle =
-    classAttr "safari-clip"
+    class "safari-clip"
+
+
+overline : Attribute msg
+overline =
+    class "overline"
 
 
 stickyStyle : Attribute msg
 stickyStyle =
-    classAttr "sticky"
+    class "sticky"
 
 
 mobileHidden : Attribute msg
 mobileHidden =
-    classAttr "mobileHidden"
+    class "mobileHidden"
 
 
 animatesShadow : Attribute msg
 animatesShadow =
-    classAttr "animatesShadow"
+    class "animatesShadow"
 
 
 reverseScrolling : Attribute msg
@@ -211,41 +226,41 @@ normalScrolling =
 
 animatesAll : Attribute msg
 animatesAll =
-    classAttr "animatesAll"
+    class "animatesAll"
 
 
 animatesNone : Attribute msg
 animatesNone =
-    classAttr "animatesNone"
+    class "animatesNone"
 
 
 ignoreCss : Attribute msg
 ignoreCss =
-    classAttr "ignoreCss"
+    class "ignoreCss"
 
 
 cssResponsive : Attribute msg
 cssResponsive =
-    classAttr "cssResponsive"
+    class "cssResponsive"
 
 
 animatesAll20Seconds : Attribute msg
 animatesAll20Seconds =
-    classAttr "animatesAll20Seconds"
+    class "animatesAll20Seconds"
 
 
 animatesAllDelayed : Attribute msg
 animatesAllDelayed =
-    classAttr "animatesAllDelayed"
+    class "animatesAllDelayed"
 
 
 
 -- HELPERS
 
 
-classAttr : String -> Attribute msg
-classAttr class =
-    Html.Attributes.class class
+class : String -> Attribute msg
+class className =
+    Html.Attributes.class className
         |> htmlAttribute
 
 

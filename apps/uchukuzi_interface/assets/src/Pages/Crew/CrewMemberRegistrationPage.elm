@@ -1,4 +1,4 @@
-module Pages.Crew.CrewMemberRegistrationPage exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.Crew.CrewMemberRegistrationPage exposing (Model, Msg, init, subscriptions, tabItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -20,6 +20,7 @@ import Style exposing (edges)
 import StyledElement
 import StyledElement.DropDown as Dropdown
 import Task
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator as Validator
 
 
@@ -127,11 +128,15 @@ type Msg
     | ServerResponse (WebData ())
     | CrewMemberResponse (WebData CrewMember)
     | RoleDropdownMsg (Dropdown.Msg Role)
+    | ReturnToCrewList
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ReturnToCrewList ->
+            ( model, Navigation.rerouteTo model Navigation.CrewMembers )
+
         Changed field ->
             updateField field model
 
@@ -315,7 +320,6 @@ viewForm model =
                 , viewPhoneInput form.problems form.phoneNumber
                 ]
             ]
-        , viewButton model.requestState
         ]
 
 
@@ -362,33 +366,6 @@ viewPhoneInput problems phone_number =
         , title = "Phone Number"
         , value = phone_number
         }
-
-
-viewButton : WebData a -> Element Msg
-viewButton requestState =
-    -- let
-    --     buttonView =
-    case requestState of
-        Loading ->
-            Icons.loading [ alignRight, width (px 46), height (px 46) ]
-
-        Failure _ ->
-            StyledElement.failureButton [ alignRight ]
-                { title = "Try Again"
-                , onPress = Just SubmitButtonMsg
-                }
-
-        _ ->
-            StyledElement.button [ alignRight ]
-                { onPress = Just SubmitButtonMsg
-                , label = text "Submit"
-                }
-
-
-
--- in
--- el (Style.labelStyle ++ [ width fill ])
---     buttonView
 
 
 routeDropDown : Model -> ( Element Msg, Dropdown.Config Role Msg, List Role )
@@ -499,3 +476,38 @@ decoder =
 fetchCrewMember session id =
     Api.get session (Endpoint.crewMember id) Models.CrewMember.crewDecoder
         |> Cmd.map CrewMemberResponse
+
+
+tabItems { requestState } =
+    case requestState of
+        Failure _ ->
+            [ TabBar.Button
+                { title = "Cancel"
+                , icon = Icons.close
+                , onPress = ReturnToCrewList
+                }
+            , TabBar.ErrorButton
+                { title = "Try Again"
+                , icon = Icons.save
+                , onPress = SubmitButtonMsg
+                }
+            ]
+
+        Loading ->
+            [ TabBar.LoadingButton
+                { title = ""
+                }
+            ]
+
+        _ ->
+            [ TabBar.Button
+                { title = "Cancel"
+                , icon = Icons.close
+                , onPress = ReturnToCrewList
+                }
+            , TabBar.Button
+                { title = "Save"
+                , icon = Icons.save
+                , onPress = SubmitButtonMsg
+                }
+            ]

@@ -124,6 +124,12 @@ fillDarkGreen =
         |> htmlAttribute
 
 
+fillDarkness : Attribute msg
+fillDarkness =
+    Html.Attributes.style "filter" "invert(59%) sepia(40%) saturate(363%) hue-rotate(170deg) brightness(33%) contrast(99%)"
+        |> htmlAttribute
+
+
 fillErrorRed : Attribute msg
 fillErrorRed =
     Html.Attributes.style "filter" "invert(41%) sepia(141%) saturate(396%) hue-rotate(294deg) brightness(74%) contrast(121%)"

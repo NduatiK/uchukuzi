@@ -37,6 +37,8 @@ import Session exposing (Session)
 import Style
 import Task
 import Template.NavBar as NavBar exposing (viewHeader)
+import Template.SideBar as SideBar
+import Template.TabBar as TabBar
 import Time
 import Url
 
@@ -49,7 +51,7 @@ type alias Model =
     { page : PageModel
     , route : Maybe Route
     , navState : NavBar.Model
-    , sideBarOpen : Bool
+    , sideBarState : SideBar.Model
     , windowHeight : Int
     , url : Url.Url
     , locationUpdates : Dict Int LocationUpdate
@@ -163,7 +165,7 @@ init args url navKey =
                 { page = Redirect session
                 , route = Nothing
                 , navState = NavBar.init session
-                , sideBarOpen = True
+                , sideBarState = SideBar.init
                 , windowHeight = height
                 , url = url
                 , locationUpdates = Dict.fromList []
@@ -192,8 +194,8 @@ type Msg
       ------------
       -- | UpdatedSessionCred (Maybe Session.Cred)
       ------------
-    | ToggleSideBar
     | GotNavBarMsg NavBar.Msg
+    | GotSideBarMsg SideBar.Msg
       ------------
     | GotHouseholdListMsg HouseholdList.Msg
     | GotHomeMsg ()
@@ -228,8 +230,30 @@ update msg model =
         WindowResized _ height ->
             ( { model | windowHeight = height }, Cmd.none )
 
-        ToggleSideBar ->
-            ( { model | sideBarOpen = not model.sideBarOpen }, Cmd.none )
+        GotSideBarMsg sideBarMsg ->
+            let
+                ( newSideBarState, newSideBarMsg ) =
+                    SideBar.update sideBarMsg model.sideBarState
+            in
+            ( { model | sideBarState = newSideBarState }
+            , Cmd.map GotSideBarMsg newSideBarMsg
+            )
+
+        GotNavBarMsg navBarMsg ->
+            let
+                ( newNavState, navMsg ) =
+                    NavBar.update navBarMsg model.navState
+            in
+            ( { model | navState = newNavState }
+            , Cmd.batch
+                [ Cmd.map GotNavBarMsg navMsg
+                , if NavBar.isVisible model.navState then
+                    Cmd.map GotNavBarMsg NavBar.hideNavBarMsg
+
+                  else
+                    Cmd.none
+                ]
+            )
 
         UpdatedTimeZone timezone ->
             let
@@ -313,22 +337,6 @@ updatePage page_msg fullModel =
 
                 Nothing ->
                     ( fullModel, Cmd.none )
-
-        ( GotNavBarMsg msg, _ ) ->
-            let
-                ( newNavState, navMsg ) =
-                    NavBar.update msg fullModel.navState
-            in
-            ( { fullModel | navState = newNavState }
-            , Cmd.batch
-                [ Cmd.map GotNavBarMsg navMsg
-                , if NavBar.isVisible fullModel.navState then
-                    Cmd.map GotNavBarMsg NavBar.hideNavBarMsg
-
-                  else
-                    Cmd.none
-                ]
-            )
 
         ( GotHouseholdListMsg msg, HouseholdList model ) ->
             HouseholdList.update msg model
@@ -514,14 +522,14 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
 view : Model -> Browser.Document Msg
 view appModel =
     let
-        { page, route, navState, windowHeight, sideBarOpen } =
+        { page, route, navState, windowHeight, sideBarState } =
             appModel
 
         viewEmptyPage pageContents =
-            viewPage pageContents GotHomeMsg
+            viewPage pageContents GotHomeMsg []
 
-        viewPage pageContents toMsg =
-            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarOpen ToggleSideBar windowHeight
+        viewPage pageContents toMsg tabBarItems =
+            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarState GotSideBarMsg windowHeight tabBarItems
 
         -- viewEmptyPage =
         renderedView =
@@ -534,13 +542,13 @@ view appModel =
                     viewEmptyPage Home.view
 
                 Activate model ->
-                    viewPage (Activate.view model) GotActivateMsg
+                    viewPage (Activate.view model) GotActivateMsg []
 
                 Login model ->
-                    viewPage (Login.view model) GotLoginMsg
+                    viewPage (Login.view model) GotLoginMsg []
 
                 Signup model ->
-                    viewPage (Signup.view model) GotSignupMsg
+                    viewPage (Signup.view model) GotSignupMsg []
 
                 Redirect _ ->
                     viewEmptyPage Pages.Blank.view
@@ -552,42 +560,40 @@ view appModel =
                     viewEmptyPage NotFound.view
 
                 HouseholdList model ->
-                    viewPage (HouseholdList.view model viewHeight) GotHouseholdListMsg
+                    viewPage (HouseholdList.view model (viewHeight - TabBar.maxHeight)) GotHouseholdListMsg HouseholdList.tabItems
 
                 StudentRegistration model ->
-                    viewPage (StudentRegistration.view model viewHeight) GotStudentRegistrationMsg
+                    viewPage (StudentRegistration.view model (viewHeight - TabBar.maxHeight)) GotStudentRegistrationMsg (StudentRegistration.tabItems model)
 
                 BusesList model ->
-                    viewPage (BusesList.view model viewHeight) GotBusesListMsg
+                    viewPage (BusesList.view model (viewHeight - TabBar.maxHeight)) GotBusesListMsg BusesList.tabItems
 
                 BusRegistration model ->
-                    viewPage (BusRegistration.view model) GotBusRegistrationMsg
+                    viewPage (BusRegistration.view model (viewHeight - TabBar.maxHeight)) GotBusRegistrationMsg (BusRegistration.tabItems model)
 
                 BusDetailsPage model ->
-                    viewPage (BusDetailsPage.view model viewHeight) GotBusDetailsPageMsg
+                    viewPage (BusDetailsPage.view model (viewHeight - TabBar.maxHeight)) GotBusDetailsPageMsg (BusDetailsPage.tabItems model)
 
                 CreateBusRepair model ->
-                    viewPage (CreateBusRepair.view model viewHeight) GotCreateBusRepairMsg
+                    viewPage (CreateBusRepair.view model viewHeight) GotCreateBusRepairMsg []
 
                 CreateFuelReport model ->
-                    viewPage (CreateFuelReport.view model viewHeight) GotCreateFuelReportMsg
+                    viewPage (CreateFuelReport.view model viewHeight) GotCreateFuelReportMsg []
 
-                -- DevicesList model ->
-                --     viewPage (DevicesList.view model) GotDevicesListMsg
                 DeviceRegistration model ->
-                    viewPage (DeviceRegistration.view model) GotDeviceRegistrationMsg
+                    viewPage (DeviceRegistration.view model) GotDeviceRegistrationMsg []
 
                 RoutesList model ->
-                    viewPage (RoutesList.view model viewHeight) GotRoutesListMsg
+                    viewPage (RoutesList.view model (viewHeight - TabBar.maxHeight)) GotRoutesListMsg RoutesList.tabItems
 
                 CreateRoute model ->
-                    viewPage (CreateRoute.view model viewHeight) GotCreateRouteMsg
+                    viewPage (CreateRoute.view model viewHeight) GotCreateRouteMsg (CreateRoute.tabItems model)
 
                 CrewMembers model ->
-                    viewPage (CrewMembers.view model viewHeight) GotCrewMembersMsg
+                    viewPage (CrewMembers.view model (viewHeight - TabBar.maxHeight)) GotCrewMembersMsg (CrewMembers.tabItems model)
 
                 CrewMemberRegistration model ->
-                    viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg
+                    viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg (CrewMemberRegistration.tabItems model)
 
         layoutOptions =
             { options =
@@ -714,6 +720,7 @@ subscriptions model_ =
         , Api.onStoreChange (Api.parseCreds >> ReceivedCreds)
         , Browser.Events.onResize WindowResized
         , Ports.onBusMove BusMoved
+        , Sub.map GotSideBarMsg (SideBar.subscriptions model_.sideBarState)
         ]
 
 

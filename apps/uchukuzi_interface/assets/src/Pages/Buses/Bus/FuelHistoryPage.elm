@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.FuelHistoryPage exposing (Model, Msg, init, update, view, viewButtons, viewFooter)
+module Pages.Buses.Bus.FuelHistoryPage exposing (Model, Msg, init, tabItems, update, view, viewButtons, viewFooter)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -22,6 +22,7 @@ import StyledElement
 import StyledElement.Footer as Footer
 import StyledElement.Graph
 import Task
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Time
 import Utils.GroupBy
 
@@ -90,6 +91,7 @@ type Msg
     | RecordsResponse (WebData ( List ( FuelReport, Distance, Float ), List GroupedReports ))
       -- | Show (GroupedReports)
     | Show String
+    | CreateFuelReport
     | NoOp
 
 
@@ -100,6 +102,9 @@ update msg model =
     --         model.chartData
     -- in
     case msg of
+        CreateFuelReport ->
+            ( model, Navigation.rerouteTo model (Navigation.CreateFuelReport model.busID) )
+
         Show month ->
             case model.reports of
                 Success reports ->
@@ -390,15 +395,7 @@ viewGroupedReports model groupedReports =
 viewButtons model =
     el
         [ alignRight, paddingEach { edges | top = 12 } ]
-        (StyledElement.buttonLink [ centerX, Border.width 3, Border.color Colors.purple, Background.color Colors.white ]
-            { label =
-                row []
-                    [ Icons.add [ Colors.fillPurple, centerY ]
-                    , el [ centerY, Font.color Colors.purple ] (text "Add Fuel record")
-                    ]
-            , route = Navigation.CreateFuelReport model.busID
-            }
-        )
+        none
 
 
 viewFooter : Model -> Element Msg
@@ -488,3 +485,12 @@ round100 float =
 
 totalForGroup group =
     List.foldl (\x y -> y + ((\( a, b, c ) -> a) >> .cost) x) 0 group
+
+
+tabItems mapper =
+    [ TabBar.Button
+        { title = "Add Fuel record"
+        , icon = Icons.add
+        , onPress = CreateFuelReport |> mapper
+        }
+    ]

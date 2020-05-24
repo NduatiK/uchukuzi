@@ -5,8 +5,8 @@ import Element.Background as Background
 import Navigation exposing (Route)
 import Session
 import Template.NavBar as NavBar exposing (viewHeader)
-import Template.Sidebar as Sidebar
-import Template.TabBar as TabBar
+import Template.SideBar as SideBar
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 {-| Transforms a (foreign model, foreign msg) into a (local model, msg)
@@ -23,27 +23,37 @@ viewHeight pageHeight =
     pageHeight - NavBar.maxHeight
 
 
-frame : Maybe Route -> Element a -> Session.Session -> (a -> msg) -> NavBar.Model -> (NavBar.Msg -> msg) -> Bool -> msg -> Int -> Element msg
-frame route body session toMsg navState headerToMsg sidebarOpen sidebarToggleMsg pageHeight =
+frame : Maybe Route -> Element a -> Session.Session -> (a -> msg) -> NavBar.Model -> (NavBar.Msg -> msg) -> SideBar.Model -> (SideBar.Msg -> msg) -> Int -> List (TabBarItem a) -> Element msg
+frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pageHeight tabBarItems =
     let
         sideBar =
             if Session.getCredentials session == Nothing || Navigation.isPublicRoute route then
                 none
 
             else
-                Sidebar.view route sidebarOpen sidebarToggleMsg
+                Element.map sideBarToMsg (SideBar.view route sideBarState)
+
+        bottomBar =
+            -- if Session.getCredentials session == Nothing || Navigation.isPublicRoute route || tabBarItems == [] then
+            if Session.getCredentials session == Nothing || Navigation.isPublicRoute route then
+                none
+
+            else
+                TabBar.view tabBarItems toMsg
 
         renderedBody =
             row [ width fill ]
                 [ sideBar
-                , el [ height fill, width (px 1), Background.color (rgba 0 0 0 0.2) ] none
-                , el
+                , column
                     [ width fill
                     , height (px (viewHeight pageHeight))
                     , alignTop
-                    , scrollbarY
+
+                    -- , scrollbarY
                     ]
-                    (Element.map toMsg body)
+                    [ Element.map toMsg body
+                    , bottomBar
+                    ]
                 ]
 
         renderedHeader =

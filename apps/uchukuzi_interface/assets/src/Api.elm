@@ -2,7 +2,7 @@ port module Api exposing (..)
 
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Http exposing (Body)
-import Json.Decode as Decode exposing (Decoder, Value, bool, decodeString, dict, field, float, int, list, nullable, string)
+import Json.Decode as Decode exposing (Decoder, Value, string)
 import Json.Decode.Pipeline exposing (required, requiredAt, resolve)
 import Json.Encode as Encode
 import Models.Location exposing (Location, locationDecoder)

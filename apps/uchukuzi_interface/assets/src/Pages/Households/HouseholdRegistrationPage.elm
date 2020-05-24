@@ -1,4 +1,4 @@
-module Pages.Households.HouseholdRegistrationPage exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.Households.HouseholdRegistrationPage exposing (Model, Msg, init, subscriptions, tabItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -30,6 +30,7 @@ import Style exposing (edges)
 import StyledElement exposing (toDropDownView)
 import StyledElement.DropDown as Dropdown
 import Task
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator exposing (..)
 
 
@@ -177,6 +178,7 @@ type Msg
     | ReceivedMapLocation Location
     | RouteServerResponse (WebData (List Route))
     | HouseholdResponse (WebData Household)
+    | ReturnToRegistrationList
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -188,6 +190,9 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        ReturnToRegistrationList ->
+            ( model, Navigation.rerouteTo model Navigation.HouseholdList )
 
         Changed field ->
             updateField field model
@@ -616,7 +621,8 @@ view : Model -> Int -> Element Msg
 view model viewHeight =
     column
         [ width fill
-        , height fill
+        , height (px viewHeight)
+        , scrollbarY
         , spacing 24
         , padding 24
         ]
@@ -1101,21 +1107,7 @@ routeDropDown model =
 
 viewButton : Model -> Element Msg
 viewButton model =
-    case model.requestState of
-        Loading ->
-            Icons.loading [ alignRight, width (px 46), height (px 46) ]
-
-        Failure _ ->
-            StyledElement.failureButton [ alignRight ]
-                { title = "Try Again"
-                , onPress = Just SubmitButtonPressed
-                }
-
-        _ ->
-            StyledElement.button [ alignRight ]
-                { onPress = Just SubmitButtonPressed
-                , label = text "Submit"
-                }
+    none
 
 
 submitNew : Session -> ValidForm -> Cmd Msg
@@ -1302,3 +1294,38 @@ fetchHousehold : Session -> Int -> Cmd Msg
 fetchHousehold session id =
     Api.get session (Endpoint.household id) Models.Household.householdDecoder
         |> Cmd.map HouseholdResponse
+
+
+tabItems { requestState } =
+    case requestState of
+        Failure _ ->
+            [ TabBar.Button
+                { title = "Cancel"
+                , icon = Icons.close
+                , onPress = ReturnToRegistrationList
+                }
+            , TabBar.ErrorButton
+                { title = "Try Again"
+                , icon = Icons.save
+                , onPress = SubmitButtonPressed
+                }
+            ]
+
+        Loading ->
+            [ TabBar.LoadingButton
+                { title = ""
+                }
+            ]
+
+        _ ->
+            [ TabBar.Button
+                { title = "Cancel"
+                , icon = Icons.close
+                , onPress = ReturnToRegistrationList
+                }
+            , TabBar.Button
+                { title = "Save"
+                , icon = Icons.save
+                , onPress = SubmitButtonPressed
+                }
+            ]

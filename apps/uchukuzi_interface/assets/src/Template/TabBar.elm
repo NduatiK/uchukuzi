@@ -1,14 +1,16 @@
-module Template.TabBar exposing (maxHeight, view)
+module Template.TabBar exposing (TabBarItem(..), maxHeight, view)
 
 import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Region as Region
 import Icons
 import Navigation exposing (Route)
 import Style exposing (edges)
+import Template.SideBar exposing (handleBarSpacing, handleBarWidth)
 
 
 maxHeight : Int
@@ -16,213 +18,94 @@ maxHeight =
     50
 
 
-
--- Section
-
-
-tabSections : List (TabItem msg)
-tabSections =
-    [ TabItem "Fleet" Icons.vehicle Buses
-    , TabItem "Students" Icons.seat HouseholdList
-    , TabItem "Routes" Icons.pin Routes
-    , TabItem "Crew" Icons.people CrewMembers
-    ]
-
-
-type NavigationPage
-    = Buses
-    | HouseholdList
-    | CrewMembers
-    | Routes
+type TabBarItem msgA
+    = Button
+        { title : String
+        , icon : Icons.IconBuilder msgA
+        , onPress : msgA
+        }
+    | ErrorButton
+        { title : String
+        , icon : Icons.IconBuilder msgA
+        , onPress : msgA
+        }
+    | LoadingButton
+        { title : String
+        }
 
 
-
--- _ ->
---     Dashboard
-
-
-type alias TabItem msg =
-    { title : String
-    , icon : Icons.IconBuilder msg
-    , navPage : NavigationPage
-    }
-
-
-view : Maybe Route -> Element msg
-view currentRoute =
-    let
-        viewSidebarSection item =
-            viewTabItem item (colorFor item.navPage currentRoute)
-    in
-    row
-        [ spacing 10
-        , width fill
-        , height (px maxHeight)
-        , Border.shadow { offset = ( 0, 0 ), size = 1, blur = 0, color = rgba 0 0 0 0.24 }
-        ]
-        [ el [] none
-        , row
-            [ spaceEvenly
+view : List (TabBarItem msgA) -> (msgA -> msg) -> Element msg
+view tabBarItems toMsg =
+    Element.map toMsg
+        (row
+            [ spacing 10
             , width fill
-            , alignTop
-            , Region.navigation
-
-            -- , Background.color (rgb 1 1 1)
+            , height (px maxHeight)
+            , Background.color Colors.white
+            , inFront
+                (el [ Background.color (rgba 0 0 0 0.1), width fill, height (px 1), moveLeft (handleBarSpacing + handleBarWidth), moveUp 1 ] none)
+            , inFront
+                (el [ Background.color (rgba 0 0 0 0.1), width (px (handleBarSpacing + handleBarWidth)), height (px 1), alignRight, moveUp 1 ] none)
             ]
-            (List.map viewSidebarSection tabSections)
-        , el [] none
-        ]
+            (List.map viewTabItem tabBarItems)
+        )
 
 
-viewTabItem : TabItem msg -> Color -> Element msg
-viewTabItem item backgroundColor =
-    column
-        [ width fill
-        ]
-        [ el [ Background.color backgroundColor, width fill, height (px 3) ] none
-        , link
-            [ paddingEach { edges | left = 24, top = 4, bottom = 4, right = 16 }
-            , width fill
+viewTabItem : TabBarItem msg -> Element msg
+viewTabItem item =
+    el
+        ([ paddingXY 56 4
+         , width shrink
+         , Border.rounded 5
+         , Border.width 1
+         , centerY
+         , centerX
+         , Style.overline
+         , Border.color Colors.transparent
+         , Font.color (Colors.withAlpha (rgb255 4 30 37) 0.69)
+         ]
+            ++ (case item of
+                    Button button ->
+                        [ Events.onMouseUp button.onPress
+                        , mouseDown [ Background.color Colors.simpleGrey, Border.color Colors.simpleGrey ]
+                        , mouseOver [ Border.color Colors.simpleGrey ]
+                        ]
 
-            -- , Background.color (rgba 0 0 0 0)
-            , below
-                (el
-                    [ Background.color hoverColor
-                    , width fill
-                    , height fill
+                    ErrorButton button ->
+                        [ Events.onMouseUp button.onPress
+                        , Border.color Colors.errorRed
+                        , Font.color Colors.errorRed
+                        , mouseDown [ Border.color Colors.errorRed ]
+                        , mouseOver [ Background.color Colors.errorRed, Border.color Colors.errorRed, Font.color Colors.white ]
+                        ]
+
+                    LoadingButton _ ->
+                        []
+               )
+        )
+        (row
+            (centerY
+                :: centerX
+                :: spacing 4
+                :: Font.size 13
+                :: Style.defaultFontFace
+                ++ [ Font.semiBold
+                   ]
+            )
+            (case item of
+                Button button ->
+                    [ button.icon [ alignTop, Colors.fillDarkness, alpha 0.69 ]
+                    , el [] (text button.title)
                     ]
-                    none
-                )
-            ]
-            { url = Navigation.href (toRoute item.navPage)
-            , label =
-                row (paddingXY 0 4 :: centerX :: spacing 12 :: Font.size 18 :: sideBarSubSectionStyle)
-                    [ el [ height (px 32), width (px 32) ] (item.icon [ centerX, centerY ])
-                    , text item.title
+
+                ErrorButton button ->
+                    [ button.icon [ alignTop, alpha 1 ]
+                    , text button.title
                     ]
-            }
-        ]
 
-
-sideBarSubSectionStyle : List (Attribute msg)
-sideBarSubSectionStyle =
-    Style.labelStyle
-        ++ [ Font.size 17
-
-           --    , Font.color (rgb255 0 0 0)
-           ]
-
-
-colorFor : NavigationPage -> Maybe Route -> Color
-colorFor navPage1 route =
-    case route of
-        Nothing ->
-            rgba 0 0 0 0
-
-        Just aRoute ->
-            if navPage1 == toNavigationPage aRoute then
-                highlightColor
-
-            else
-                rgba 0 0 0 0
-
-
-highlightColor : Color
-highlightColor =
-    Colors.teal
-
-
-hoverColor : Color
-hoverColor =
-    let
-        color =
-            toRgb highlightColor
-    in
-    fromRgb { color | alpha = 0.9 }
-
-
-toRoute : NavigationPage -> Route
-toRoute navPage =
-    case navPage of
-        Buses ->
-            Navigation.Buses
-
-        HouseholdList ->
-            Navigation.HouseholdList
-
-        CrewMembers ->
-            Navigation.CrewMembers
-
-        Routes ->
-            Navigation.Routes
-
-
-toNavigationPage : Route -> NavigationPage
-toNavigationPage route =
-    case route of
-        Navigation.Buses ->
-            Buses
-
-        Navigation.Bus _ _ ->
-            Buses
-
-        Navigation.BusRegistration ->
-            Buses
-
-        Navigation.BusDeviceRegistration _ ->
-            Buses
-
-        Navigation.CreateBusRepair _ ->
-            Buses
-
-        Navigation.EditBusDetails _ ->
-            Buses
-
-        Navigation.CreateFuelReport _ ->
-            Buses
-
-        Navigation.HouseholdList ->
-            HouseholdList
-
-        Navigation.StudentRegistration ->
-            HouseholdList
-
-        Navigation.EditHousehold _ ->
-            HouseholdList
-
-        Navigation.Home ->
-            Buses
-
-        Navigation.Activate _ ->
-            Buses
-
-        Navigation.Login _ ->
-            Buses
-
-        Navigation.Logout ->
-            Buses
-
-        Navigation.Signup ->
-            Buses
-
-        -- Navigation.DeviceRegistration ->
-        --     Buses
-        -- Navigation.DeviceList ->
-        --     Buses
-        Navigation.Routes ->
-            Routes
-
-        Navigation.EditRoute _ ->
-            Routes
-
-        Navigation.CreateRoute ->
-            Routes
-
-        Navigation.CrewMembers ->
-            CrewMembers
-
-        Navigation.CrewMemberRegistration ->
-            CrewMembers
-
-        Navigation.EditCrewMember _ ->
-            CrewMembers
+                LoadingButton loading ->
+                    [ Icons.loading [ width (px 24), height (px 24) ]
+                    , el [] (text loading.title)
+                    ]
+            )
+        )

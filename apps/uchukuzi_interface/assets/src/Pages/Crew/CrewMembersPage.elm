@@ -1,4 +1,4 @@
-module Pages.Crew.CrewMembersPage exposing (Model, Msg, init, update, view)
+module Pages.Crew.CrewMembersPage exposing (Model, Msg, init, tabItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -23,6 +23,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Views.DragAndDrop exposing (draggable, droppable)
 
 
@@ -75,6 +76,9 @@ type Msg
     | DraggedCrewMemberAbove Int
     | DroppedCrewMemberOntoUnassigned
     | DraggedCrewMemberAboveUnassigned
+      ------------
+    | RegisterCrewMembers
+    | NoOp
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -112,6 +116,12 @@ update msg model =
             model.edits
     in
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
+        RegisterCrewMembers ->
+            ( model, Navigation.rerouteTo model Navigation.CrewMemberRegistration )
+
         ServerResponse response ->
             let
                 newModel =
@@ -150,7 +160,7 @@ update msg model =
                 )
 
             else
-                ( model
+                ( { model | data = Loading }
                 , updateAssignments model.session model.edits.changes model.editedData
                 )
 
@@ -267,7 +277,7 @@ view model viewHeight =
         [ width fill
         , height (px viewHeight)
         , spacing 40
-        , paddingXY 90 70
+        , padding 30
         , inFront (viewOverlay model)
         ]
         [ viewHeading model
@@ -337,69 +347,14 @@ viewOverlay { selectedCrewMember } =
 
 viewHeading : Model -> Element Msg
 viewHeading { data, inEditingMode } =
-    row [ width fill, spacing 10 ]
-        (if inEditingMode then
-            column []
-                [ el Style.headerStyle (text "Editing Crew")
-                , el Style.captionStyle (text "Drag and drop crew members to reassign them")
-                ]
-                :: (case data of
-                        Success _ ->
-                            [ StyledElement.button [ Border.width 3, Border.color Colors.purple, Background.color Colors.white, alignRight ]
-                                { label =
-                                    row [ spacing 8 ]
-                                        [ Icons.close [ alpha 1, Colors.fillPurple ]
-                                        , el [ centerY, Font.color Colors.purple ] (text "Cancel")
-                                        ]
-                                , onPress = Just CancelEdits
-                                }
-                            , StyledElement.button
-                                [ alignRight ]
-                                { label =
-                                    row [ spacing 8 ]
-                                        [ Icons.save [ alpha 1, Colors.fillWhite ]
-                                        , el [ centerY ] (text "Save changes")
-                                        ]
-                                , onPress = Just SaveChanges
-                                }
-                            ]
-
-                        Failure _ ->
-                            [ StyledElement.button [ Border.width 3, Border.color Colors.purple, Background.color Colors.white, alignRight ]
-                                { label =
-                                    row [ spacing 8 ]
-                                        [ Icons.close [ alpha 1, Colors.fillPurple ]
-                                        , el [ centerY, Font.color Colors.purple ] (text "Cancel")
-                                        ]
-                                , onPress = Just CancelEdits
-                                }
-                            , StyledElement.failureButton [ alignRight ]
-                                { title = "Try Again"
-                                , onPress = Just SaveChanges
-                                }
-                            ]
-
-                        _ ->
-                            [ Icons.loading [ centerX, alignRight ] ]
-                   )
-
-         else
-            [ el Style.headerStyle (text "Crew")
-            , StyledElement.ghostButton [ alignRight ]
-                { title = "Re-assign"
-                , icon = Icons.edit
-                , onPress = Just StartEditing
-                }
-            , StyledElement.buttonLink [ alignRight ]
-                { label =
-                    row [ spacing 8 ]
-                        [ Icons.add [ Colors.fillWhite ]
-                        , el [ centerY ] (text "Add Crew Member")
-                        ]
-                , route = Navigation.CrewMemberRegistration
-                }
+    if inEditingMode then
+        column []
+            [ Style.iconHeader Icons.people "Editing Crew"
+            , el Style.captionStyle (text "Drag and drop crew members to reassign them")
             ]
-        )
+
+    else
+        row [ width fill, spacing 10 ] [ Style.iconHeader Icons.people "Bus Crew" ]
 
 
 viewBody : Model -> Int -> Element Msg
@@ -678,3 +633,52 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         []
+
+
+tabItems { data, inEditingMode } =
+    if inEditingMode then
+        case data of
+            Loading ->
+                [ TabBar.LoadingButton
+                    { title = ""
+                    }
+                ]
+
+            Failure _ ->
+                [ TabBar.Button
+                    { title = "Cancel"
+                    , icon = Icons.close
+                    , onPress = CancelEdits
+                    }
+                , TabBar.ErrorButton
+                    { title = "Try Again"
+                    , icon = Icons.save
+                    , onPress = SaveChanges
+                    }
+                ]
+
+            _ ->
+                [ TabBar.Button
+                    { title = "Cancel"
+                    , icon = Icons.close
+                    , onPress = CancelEdits
+                    }
+                , TabBar.Button
+                    { title = "Save changes"
+                    , icon = Icons.save
+                    , onPress = SaveChanges
+                    }
+                ]
+
+    else
+        [ TabBar.Button
+            { title = "Add Crew Member"
+            , icon = Icons.add
+            , onPress = RegisterCrewMembers
+            }
+        , TabBar.Button
+            { title = "Re-assign"
+            , icon = Icons.edit
+            , onPress = StartEditing
+            }
+        ]

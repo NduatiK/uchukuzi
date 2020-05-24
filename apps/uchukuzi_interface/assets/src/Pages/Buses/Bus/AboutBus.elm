@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.AboutBus exposing (Model, Msg, init, locationUpdateMsg, update, view, viewButtons, viewFooter)
+module Pages.Buses.Bus.AboutBus exposing (Model, Msg, init, locationUpdateMsg, tabItems, update, view, viewButtons, viewFooter)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -21,6 +21,7 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement exposing (textStack, textStackWithSpacing)
 import StyledElement.Footer as Footer
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 type alias Model =
@@ -337,13 +338,7 @@ viewButtons : Model -> Element Msg
 viewButtons _ =
     el
         [ alignRight, paddingEach { edges | top = 12 } ]
-        (StyledElement.hoverButton
-            [ alignRight ]
-            { title = "Edit details"
-            , icon = Just Icons.edit
-            , onPress = Just EditDetails
-            }
-        )
+        none
 
 
 viewFooter : Model -> Element Msg
@@ -364,6 +359,15 @@ viewFooter model =
                 ( Students Nothing, "", ClickedStudentsPage )
         , ( Crew, "", ClickedCrewPage )
         ]
+
+
+tabItems mapper =
+    [ TabBar.Button
+        { title = "Edit details"
+        , icon = Icons.edit
+        , onPress = EditDetails |> mapper
+        }
+    ]
 
 
 fetchCrewMembers session busID =

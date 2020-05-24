@@ -11,7 +11,7 @@ import Element.Region as Region
 import Icons
 import Navigation exposing (Route)
 import Session
-import Style
+import Style exposing (edges)
 import StyledElement
 import Task
 
@@ -47,28 +47,32 @@ type Msg
 
 viewHeader : Model -> Session.Session -> Maybe Route -> Element Msg
 viewHeader model session route =
-    case Session.getCredentials session of
-        Nothing ->
-            viewGuestHeader route
-
-        Just cred ->
-            viewLoggedInHeader model cred
-
-
-viewGuestHeader : Maybe Route -> Element Msg
-viewGuestHeader route =
     row
         [ Region.navigation
         , width fill
         , Background.color (rgb 1 1 1)
-        , height (px 70)
-        , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.14 }
+        , height (px maxHeight)
+        , Border.widthEach { edges | bottom = 1 }
+        , Border.color (rgba 0 0 0 0.1)
+
+        -- , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.14 }
+        , spacing 8
         , Element.inFront viewFlotillaLogo
-        , height (px 71)
         ]
-        [ viewBusesLogo
-        , viewLoginOptions route
-        ]
+        (case Session.getCredentials session of
+            Nothing ->
+                viewGuestHeader route
+
+            Just cred ->
+                viewLoggedInHeader model cred
+        )
+
+
+viewGuestHeader : Maybe Route -> List (Element Msg)
+viewGuestHeader route =
+    [ viewBusesLogo
+    , viewLoginOptions route
+    ]
 
 
 viewLoginOptions : Maybe Route -> Element Msg
@@ -110,22 +114,13 @@ viewLoginOptions route =
         loginOptions
 
 
-viewLoggedInHeader : Model -> Session.Cred -> Element Msg
+viewLoggedInHeader : Model -> Session.Cred -> List (Element Msg)
 viewLoggedInHeader model creds =
-    row
-        [ Region.navigation
-        , width fill
-        , Background.color (rgb 1 1 1)
-        , height (px maxHeight)
-        , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.14 }
-        , spacing 8
-        , Element.inFront viewFlotillaLogo
-        ]
-        [ viewBusesLogo
-        , el [ width (px 24) ] none
-        , viewHeaderProfileData model creds
-        , el [ width (px 1) ] none
-        ]
+    [ viewBusesLogo
+    , el [ width (px 24) ] none
+    , viewHeaderProfileData model creds
+    , el [ width (px 1) ] none
+    ]
 
 
 viewBusesLogo : Element Msg

@@ -13,6 +13,10 @@ text {
   fill: rgba(115, 115, 115, 1);
 }
 
+.handle {
+  cursor: ew-resize;
+}
+
 gmap,
 google-map-cached {
   width: 100%;
@@ -87,6 +91,15 @@ div.cssResponsive[role='button']:not(.ignoreCss) {
   padding: 0 2rem;
   border-radius: .2rem;
 }
+
+.overline {
+  text-decoration: none;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: .1rem;
+}
+
 
 html {
   --cubic: cubic-bezier(0.455, 0.03, 0.515, 0.955);

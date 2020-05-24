@@ -1,4 +1,4 @@
-module Pages.Buses.BusPage exposing (Model, Msg, Page(..), init, locationUpdateMsg, pageName, subscriptions, update, view)
+module Pages.Buses.BusPage exposing (Model, Msg, Page(..), init, locationUpdateMsg, pageName, subscriptions, tabItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -25,6 +25,7 @@ import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 type alias Model =
@@ -52,36 +53,36 @@ type alias Icon =
 {-| Make sure to extend the updatePage method when you add a page
 -}
 type Page
-    = About About.Model
-    | RouteHistory RouteHistory.Model
-    | FuelHistory FuelHistory.Model
-    | BusDevice BusDevice.Model
-    | BusRepairs BusRepairs.Model
+    = AboutPage About.Model
+    | RouteHistoryPage RouteHistory.Model
+    | FuelHistoryPage FuelHistory.Model
+    | BusDevicePage BusDevice.Model
+    | BusRepairsPage BusRepairs.Model
 
 
 aboutPage : Bus -> Session -> Maybe LocationUpdate -> ( Page, Cmd Msg )
 aboutPage bus session locationUpdate =
-    Page.transformToModelMsg About GotAboutMsg (About.init session bus locationUpdate)
+    Page.transformToModelMsg AboutPage GotAboutMsg (About.init session bus locationUpdate)
 
 
 routePage : Bus -> Session -> ( Page, Cmd Msg )
 routePage bus session =
-    Page.transformToModelMsg RouteHistory GotRouteHistoryMsg (RouteHistory.init bus.id session)
+    Page.transformToModelMsg RouteHistoryPage GotRouteHistoryMsg (RouteHistory.init bus.id session)
 
 
 fuelPage : Bus -> Session -> ( Page, Cmd Msg )
 fuelPage bus session =
-    Page.transformToModelMsg FuelHistory GotFuelHistoryMsg (FuelHistory.init bus.id session)
+    Page.transformToModelMsg FuelHistoryPage GotFuelHistoryMsg (FuelHistory.init bus.id session)
 
 
 devicePage : Bus -> Session -> ( Page, Cmd Msg )
 devicePage bus session =
-    Page.transformToModelMsg BusDevice GotBusDeviceMsg (BusDevice.init bus session)
+    Page.transformToModelMsg BusDevicePage GotBusDeviceMsg (BusDevice.init bus session)
 
 
 repairsPage : Bus -> Session -> ( Page, Cmd Msg )
 repairsPage bus session =
-    Page.transformToModelMsg BusRepairs GotBusRepairsMsg (BusRepairs.init bus.id bus.repairs (Session.timeZone session))
+    Page.transformToModelMsg BusRepairsPage GotBusRepairsMsg (BusRepairs.init session bus.id bus.repairs (Session.timeZone session))
 
 
 init : Int -> Session -> Maybe LocationUpdate -> BusPage -> ( Model, Cmd Msg )
@@ -161,11 +162,11 @@ update msg model =
                             { model | busData = Success { busData | bus = { bus | last_seen = Just locationUpdate } } }
                     in
                     case busData.currentPage of
-                        About pageModel ->
+                        AboutPage pageModel ->
                             let
                                 ( newerModel, childMsg ) =
                                     About.update (About.locationUpdateMsg locationUpdate) pageModel
-                                        |> mapModel newModel About GotAboutMsg
+                                        |> mapModel newModel AboutPage GotAboutMsg
                             in
                             ( newerModel, childMsg )
 
@@ -240,25 +241,25 @@ updatePage msg fullModel =
     case fullModel.busData of
         Success busData ->
             case ( msg, busData.currentPage ) of
-                ( GotAboutMsg msg_, About model ) ->
+                ( GotAboutMsg msg_, AboutPage model ) ->
                     About.update msg_ model
-                        |> mapModel fullModel About GotAboutMsg
+                        |> mapModel fullModel AboutPage GotAboutMsg
 
-                ( GotRouteHistoryMsg msg_, RouteHistory model ) ->
+                ( GotRouteHistoryMsg msg_, RouteHistoryPage model ) ->
                     RouteHistory.update msg_ model
-                        |> mapModel fullModel RouteHistory GotRouteHistoryMsg
+                        |> mapModel fullModel RouteHistoryPage GotRouteHistoryMsg
 
-                ( GotFuelHistoryMsg msg_, FuelHistory model ) ->
+                ( GotFuelHistoryMsg msg_, FuelHistoryPage model ) ->
                     FuelHistory.update msg_ model
-                        |> mapModel fullModel FuelHistory GotFuelHistoryMsg
+                        |> mapModel fullModel FuelHistoryPage GotFuelHistoryMsg
 
-                ( GotBusDeviceMsg msg_, BusDevice model ) ->
+                ( GotBusDeviceMsg msg_, BusDevicePage model ) ->
                     BusDevice.update msg_ model
-                        |> mapModel fullModel BusDevice GotBusDeviceMsg
+                        |> mapModel fullModel BusDevicePage GotBusDeviceMsg
 
-                ( GotBusRepairsMsg msg_, BusRepairs model ) ->
+                ( GotBusRepairsMsg msg_, BusRepairsPage model ) ->
                     BusRepairs.update msg_ model
-                        |> mapModel fullModel BusRepairs GotBusRepairsMsg
+                        |> mapModel fullModel BusRepairsPage GotBusRepairsMsg
 
                 _ ->
                     ( fullModel, Cmd.none )
@@ -293,6 +294,7 @@ changeCurrentPage selectedPageIndex_ model_ =
                             | pageIndex = selectedPageIndex_
                             , currentPage = selectedPage
                         }
+                , currentPage = pageToBusPage selectedPage
               }
             , Cmd.batch
                 [ msg
@@ -337,10 +339,10 @@ viewLoaded busData viewHeight =
         , spacing 8
         , htmlAttribute (id (pageName busData.currentPage))
         , case busData.currentPage of
-            FuelHistory _ ->
+            FuelHistoryPage _ ->
                 paddingEach { edges | left = 36 }
 
-            About _ ->
+            AboutPage _ ->
                 paddingEach { edges | left = 36 }
 
             _ ->
@@ -404,19 +406,19 @@ viewBody height busData =
             Element.map toMsg pageView
     in
     case busData.currentPage of
-        About subPageModel ->
+        AboutPage subPageModel ->
             viewPage (About.view subPageModel height) GotAboutMsg
 
-        RouteHistory subPageModel ->
+        RouteHistoryPage subPageModel ->
             viewPage (RouteHistory.view subPageModel) GotRouteHistoryMsg
 
-        FuelHistory subPageModel ->
+        FuelHistoryPage subPageModel ->
             viewPage (FuelHistory.view subPageModel (height - 300)) GotFuelHistoryMsg
 
-        BusDevice subPageModel ->
+        BusDevicePage subPageModel ->
             viewPage (BusDevice.view subPageModel) GotBusDeviceMsg
 
-        BusRepairs subPageModel ->
+        BusRepairsPage subPageModel ->
             viewPage (BusRepairs.view subPageModel height) GotBusRepairsMsg
 
 
@@ -427,19 +429,19 @@ viewFooter busData =
             Element.map toMsg pageView
     in
     case busData.currentPage of
-        About subPageModel ->
+        AboutPage subPageModel ->
             viewPage (About.viewFooter subPageModel) GotAboutMsg
 
-        RouteHistory subPageModel ->
+        RouteHistoryPage subPageModel ->
             viewPage (RouteHistory.viewFooter subPageModel) GotRouteHistoryMsg
 
-        FuelHistory subPageModel ->
+        FuelHistoryPage subPageModel ->
             viewPage (FuelHistory.viewFooter subPageModel) GotFuelHistoryMsg
 
-        BusDevice subPageModel ->
+        BusDevicePage subPageModel ->
             viewPage (BusDevice.viewFooter subPageModel) GotBusDeviceMsg
 
-        BusRepairs subPageModel ->
+        BusRepairsPage subPageModel ->
             viewPage (BusRepairs.viewFooter subPageModel) GotBusRepairsMsg
 
 
@@ -450,10 +452,10 @@ viewButtons busData =
             Element.map toMsg pageView
     in
     case busData.currentPage of
-        About subPageModel ->
+        AboutPage subPageModel ->
             viewPage (About.viewButtons subPageModel) GotAboutMsg
 
-        FuelHistory subPageModel ->
+        FuelHistoryPage subPageModel ->
             viewPage (FuelHistory.viewButtons subPageModel) GotFuelHistoryMsg
 
         _ ->
@@ -530,19 +532,19 @@ iconForPage page pageIndex currentPageIndex =
 
         icon =
             case page of
-                FuelHistory _ ->
+                FuelHistoryPage _ ->
                     Icons.fuel iconStyle
 
-                About _ ->
+                AboutPage _ ->
                     Icons.info iconStyle
 
-                RouteHistory _ ->
+                RouteHistoryPage _ ->
                     Icons.timeline iconStyle
 
-                BusDevice _ ->
+                BusDevicePage _ ->
                     Icons.hardware iconStyle
 
-                BusRepairs _ ->
+                BusRepairsPage _ ->
                     Icons.repairs iconStyle
 
         iconFillColor =
@@ -592,19 +594,19 @@ subscriptions model =
 pageToBusPage : Page -> BusPage
 pageToBusPage page =
     case page of
-        About _ ->
+        AboutPage _ ->
             Pages.Buses.Bus.Navigation.About
 
-        RouteHistory _ ->
+        RouteHistoryPage _ ->
             Pages.Buses.Bus.Navigation.RouteHistory
 
-        FuelHistory _ ->
+        FuelHistoryPage _ ->
             Pages.Buses.Bus.Navigation.FuelHistory
 
-        BusDevice _ ->
+        BusDevicePage _ ->
             Pages.Buses.Bus.Navigation.BusDevice
 
-        BusRepairs _ ->
+        BusRepairsPage _ ->
             Pages.Buses.Bus.Navigation.BusRepairs
 
 
@@ -640,3 +642,33 @@ allPagesFromSession bus session locationUpdate currentPage =
     , pages = pages
     , pageIndex = List.length pages - pageIndex - 1
     }
+
+
+tabItems : Model -> List (TabBarItem Msg)
+tabItems { currentPage } =
+    let
+        _ =
+            Debug.log "tabItems" currentPage
+    in
+    case currentPage of
+        About ->
+            About.tabItems GotAboutMsg
+
+        RouteHistory ->
+            []
+
+        -- Pages.Buses.Bus.Navigation.RouteHistory
+        FuelHistory ->
+            FuelHistory.tabItems GotFuelHistoryMsg
+
+        -- Pages.Buses.Bus.Navigation.FuelHistory
+        BusDevice ->
+            []
+
+        -- Pages.Buses.Bus.Navigation.BusDevice
+        BusRepairs ->
+            BusRepairs.tabItems GotBusRepairsMsg
+
+
+
+-- Pages.Buses.Bus.Navigation.BusRepairs

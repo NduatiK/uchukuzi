@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.RepairsPage exposing (Model, Msg, init, update, view, viewFooter)
+module Pages.Buses.Bus.RepairsPage exposing (Model, Msg, init, tabItems, update, view, viewFooter)
 
 import Colors
 import Element exposing (..)
@@ -11,15 +11,18 @@ import Icons.Repairs
 import Models.Bus exposing (Part(..), Repair)
 import Navigation
 import RemoteData exposing (..)
+import Session exposing (Session)
 import Style
 import StyledElement
 import StyledElement.Footer as Footer
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Time
 import Utils.GroupBy
 
 
 type alias Model =
     { busID : Int
+    , session : Session
     , repairs : List Repair
     , timezone : Time.Zone
     , groupedRepairs : List GroupedRepairs
@@ -57,11 +60,13 @@ type Msg
     | ClickedPastRepairsPage
       --------------------
     | HoveredOver (Maybe Repair)
+    | CreateRepair
 
 
-init : Int -> List Repair -> Time.Zone -> ( Model, Cmd Msg )
-init busID repairs timezone =
+init : Session -> Int -> List Repair -> Time.Zone -> ( Model, Cmd Msg )
+init session busID repairs timezone =
     ( { busID = busID
+      , session = session
       , repairs = repairs
       , currentPage = PastRepairs
       , timezone = timezone
@@ -79,6 +84,9 @@ init busID repairs timezone =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        CreateRepair ->
+            ( model, Navigation.rerouteTo model (Navigation.CreateBusRepair model.busID) )
+
         ClickedSummaryPage ->
             ( { model | currentPage = Summary }, Cmd.none )
 
@@ -128,15 +136,7 @@ viewPastRepairs model viewHeight =
         [ viewGroupedRepairs model
         , el [ centerX, width (px 2), height (fill |> maximum 500), Background.color Colors.darkness ] none
         , column [ height fill, width (fillPortion 1) ]
-            [ StyledElement.buttonLink [ centerX, Border.width 3, Border.color Colors.purple, Background.color Colors.white ]
-                { label =
-                    row []
-                        [ Icons.add [ Colors.fillPurple, centerY ]
-                        , el [ centerY, Font.color Colors.purple ] (text "Add Repair record")
-                        ]
-                , route = Navigation.CreateBusRepair model.busID
-                }
-            , viewVehicle model
+            [ viewVehicle model
             ]
         ]
 
@@ -265,3 +265,12 @@ viewFooter model =
 groupRepairs : List Repair -> Time.Zone -> List ( String, List Repair )
 groupRepairs trips timezone =
     Utils.GroupBy.date timezone .dateTime trips
+
+
+tabItems mapper =
+    [ TabBar.Button
+        { title = "Add Repair record"
+        , icon = Icons.add
+        , onPress = CreateRepair |> mapper
+        }
+    ]

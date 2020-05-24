@@ -1,4 +1,4 @@
-module Pages.Buses.BusesPage exposing (Model, Msg, init, locationUpdateMsg, subscriptions, update, view)
+module Pages.Buses.BusesPage exposing (Model, Msg, init, locationUpdateMsg, subscriptions, tabItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -19,6 +19,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 
@@ -150,7 +151,7 @@ view model viewHeight =
         [ width fill
         , height (px viewHeight)
         , spacing 40
-        , paddingXY 90 70
+        , padding 30
         ]
         [ googleMap (busesFromModel model.buses) model.selectedBus
         , viewBody model
@@ -215,14 +216,7 @@ viewBuses buses filterText =
         [ width fill
         ]
         (column [ width fill ]
-            [ row [ width fill, spacing 10 ]
-                [ el Style.headerStyle (text "Vehicles")
-                , StyledElement.ghostButton [ centerY, alignRight ]
-                    { icon = Icons.add
-                    , title = "Add a Bus"
-                    , onPress = Just CreateBus
-                    }
-                ]
+            [ Style.iconHeader Icons.vehicle "Fleet"
             , el []
                 (case ( filteredBuses, filterText ) of
                     ( [], "" ) ->
@@ -388,3 +382,12 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         []
+
+
+tabItems =
+    [ TabBar.Button
+        { title = "Add a Bus"
+        , icon = Icons.add
+        , onPress = CreateBus
+        }
+    ]

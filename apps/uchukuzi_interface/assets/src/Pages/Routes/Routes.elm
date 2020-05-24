@@ -1,4 +1,4 @@
-module Pages.Routes.Routes exposing (Model, Msg, init, update, view)
+module Pages.Routes.Routes exposing (Model, Msg, init, update, view, tabItems)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -19,6 +19,7 @@ import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 type alias Model =
@@ -93,7 +94,7 @@ update msg model =
 
 view : Model -> Int -> Element Msg
 view model viewHeight =
-    row [ paddingXY 60 30, width fill, spacing 32, height (fill |> maximum viewHeight) ]
+    row [ paddingXY 30 30, width fill, spacing 32, height (fill |> maximum viewHeight) ]
         [ viewBody model (viewHeight - 60)
         , googleMap
         ]
@@ -108,14 +109,7 @@ viewBody model viewHeight =
 
 viewHeading : Model -> Element Msg
 viewHeading model =
-    wrappedRow [ spacing 16, width fill ]
-        [ el Style.headerStyle (text "All Routes")
-        , StyledElement.ghostButton [ centerY, alignRight ]
-            { icon = Icons.add
-            , title = "Add a route"
-            , onPress = Just CreateRoute
-            }
-        ]
+    Style.iconHeader Icons.pin "Routes"
 
 
 viewRoutes model =
@@ -221,10 +215,13 @@ viewRoute route =
         ]
 
 
-
--- column [ width fill ]
---     [ viewBuses buses model.filterText
---     ]
+tabItems =
+    [ TabBar.Button
+        { title = "Add Route"
+        , icon = Icons.add
+        , onPress = CreateRoute
+        }
+    ]
 
 
 googleMap : Element Msg

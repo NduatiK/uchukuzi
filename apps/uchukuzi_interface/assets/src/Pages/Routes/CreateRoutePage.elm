@@ -1,4 +1,4 @@
-module Pages.Routes.CreateRoutePage exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.Routes.CreateRoutePage exposing (Model, Msg, init, subscriptions, tabItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -25,6 +25,7 @@ import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator exposing (..)
 
 
@@ -65,16 +66,6 @@ type alias ValidForm =
     }
 
 
-type Msg
-    = RouteNameChanged String
-    | DeleteRoute Int
-    | SubmitButtonMsg
-    | MapPathUpdated (List Location)
-    | ServerResponse (WebData ())
-    | RouteResponse (WebData Route)
-    | DeleteResponse (WebData ())
-
-
 init : Session -> Maybe Int -> ( Model, Cmd Msg )
 init session id =
     ( { session = session
@@ -106,6 +97,17 @@ init session id =
 -- UPDATE
 
 
+type Msg
+    = RouteNameChanged String
+    | DeleteRoute Int
+    | SubmitButtonMsg
+    | MapPathUpdated (List Location)
+    | ServerResponse (WebData ())
+    | RouteResponse (WebData Route)
+    | DeleteResponse (WebData ())
+    | ReturnToRouteList
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
@@ -113,6 +115,9 @@ update msg model =
             model.form
     in
     case msg of
+        ReturnToRouteList ->
+            ( model, Navigation.rerouteTo model Navigation.Routes )
+
         RouteNameChanged name ->
             ( { model | form = { form | name = name } }, Cmd.none )
 
@@ -353,22 +358,7 @@ viewRouteNameInput problems name =
 viewButton : WebData a -> Element Msg
 viewButton requestState =
     el (Style.labelStyle ++ [ width fill, paddingEach { edges | right = 24 } ])
-        (case requestState of
-            Loading ->
-                Icons.loading [ alignRight, width (px 46), height (px 46) ]
-
-            Failure _ ->
-                StyledElement.failureButton [ alignRight ]
-                    { title = "Try Again"
-                    , onPress = Just SubmitButtonMsg
-                    }
-
-            _ ->
-                StyledElement.button [ alignRight ]
-                    { onPress = Just SubmitButtonMsg
-                    , label = text "Save"
-                    }
-        )
+        none
 
 
 submit : Session -> ValidForm -> Maybe Int -> Cmd Msg
@@ -449,3 +439,38 @@ deleteRoute : Session -> Int -> Cmd Msg
 deleteRoute session id =
     Api.delete session (Endpoint.route id) (Decode.succeed ())
         |> Cmd.map DeleteResponse
+
+
+tabItems { requestState } =
+    case requestState of
+        Failure _ ->
+            [ TabBar.Button
+                { title = "Cancel"
+                , icon = Icons.close
+                , onPress = ReturnToRouteList
+                }
+            , TabBar.ErrorButton
+                { title = "Try Again"
+                , icon = Icons.save
+                , onPress = SubmitButtonMsg
+                }
+            ]
+
+        Loading ->
+            [ TabBar.LoadingButton
+                { title = ""
+                }
+            ]
+
+        _ ->
+            [ TabBar.Button
+                { title = "Cancel"
+                , icon = Icons.close
+                , onPress = ReturnToRouteList
+                }
+            , TabBar.Button
+                { title = "Save"
+                , icon = Icons.save
+                , onPress = SubmitButtonMsg
+                }
+            ]
