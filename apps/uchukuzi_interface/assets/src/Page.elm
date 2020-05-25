@@ -31,7 +31,7 @@ frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pa
                 none
 
             else
-                Element.map sideBarToMsg (SideBar.view route sideBarState)
+                Element.map sideBarToMsg (SideBar.view route sideBarState (viewHeight pageHeight))
 
         bottomBar =
             -- if Session.getCredentials session == Nothing || Navigation.isPublicRoute route || tabBarItems == [] then

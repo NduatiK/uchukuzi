@@ -4,7 +4,7 @@ module Pages.Buses.CreateBusPage exposing
     , init
     , initEdit
     , subscriptions
-    , tabItems
+    , tabBarItems
     , update
     , view
     )
@@ -874,7 +874,7 @@ isEditing model =
     model.editRequestState /= NotAsked
 
 
-tabItems { requestState } =
+tabBarItems { requestState } =
     case requestState of
         Loading ->
             [ TabBar.LoadingButton

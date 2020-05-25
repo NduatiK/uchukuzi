@@ -1,4 +1,4 @@
-module Pages.Crew.CrewMemberRegistrationPage exposing (Model, Msg, init, subscriptions, tabItems, update, view)
+module Pages.Crew.CrewMemberRegistrationPage exposing (Model, Msg, init, subscriptions, tabBarItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -478,7 +478,7 @@ fetchCrewMember session id =
         |> Cmd.map CrewMemberResponse
 
 
-tabItems { requestState } =
+tabBarItems { requestState } =
     case requestState of
         Failure _ ->
             [ TabBar.Button

@@ -1,4 +1,4 @@
-module Pages.Routes.CreateRoutePage exposing (Model, Msg, init, subscriptions, tabItems, update, view)
+module Pages.Routes.CreateRoutePage exposing (Model, Msg, init, subscriptions, tabBarItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -441,7 +441,7 @@ deleteRoute session id =
         |> Cmd.map DeleteResponse
 
 
-tabItems { requestState } =
+tabBarItems { requestState } =
     case requestState of
         Failure _ ->
             [ TabBar.Button

@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.RepairsPage exposing (Model, Msg, init, tabItems, update, view, viewFooter)
+module Pages.Buses.Bus.RepairsPage exposing (Model, Msg, init, tabBarItems, update, view, viewFooter)
 
 import Colors
 import Element exposing (..)
@@ -267,7 +267,7 @@ groupRepairs trips timezone =
     Utils.GroupBy.date timezone .dateTime trips
 
 
-tabItems mapper =
+tabBarItems mapper =
     [ TabBar.Button
         { title = "Add Repair record"
         , icon = Icons.add

@@ -31,6 +31,7 @@ type Route
     | Activate String
     | Login (Maybe LoginRedirect)
     | Signup
+    | Settings
       -------------
     | Routes
     | CreateRoute
@@ -69,6 +70,7 @@ loggedInParser =
                 , Routes
                 , HouseholdList
                 , CrewMembers
+                , Settings
                 ]
             ++ [ Parser.map CreateFuelReport (s (routeName Buses) </> int </> s (busPageToString FuelHistory) </> s (routeName (CreateFuelReport -1)))
                , Parser.map CreateBusRepair (s (routeName Buses) </> int </> s (busPageToString BusRepairs) </> s (routeName (CreateBusRepair -1)))
@@ -295,6 +297,9 @@ routeToString page =
                 Login redirect ->
                     [ routeName page, loginRedirectToString redirect ]
 
+                Settings ->
+                    [ routeName page ]
+
                 Logout ->
                     [ routeName page ]
 
@@ -357,6 +362,9 @@ routeName page =
     case page of
         Home ->
             ""
+
+        Settings ->
+            "settings"
 
         Activate _ ->
             "activate"

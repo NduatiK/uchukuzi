@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.AboutBus exposing (Model, Msg, init, locationUpdateMsg, tabItems, update, view, viewButtons, viewFooter)
+module Pages.Buses.Bus.AboutBus exposing (Model, Msg, init, locationUpdateMsg, tabBarItems, update, view, viewButtons, viewFooter)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -361,7 +361,7 @@ viewFooter model =
         ]
 
 
-tabItems mapper =
+tabBarItems mapper =
     [ TabBar.Button
         { title = "Edit details"
         , icon = Icons.edit

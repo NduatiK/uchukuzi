@@ -1,4 +1,4 @@
-module Pages.Buses.BusPage exposing (Model, Msg, Page(..), init, locationUpdateMsg, pageName, subscriptions, tabItems, update, view)
+module Pages.Buses.BusPage exposing (Model, Msg, Page(..), init, locationUpdateMsg, pageName, subscriptions, tabBarItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -644,22 +644,22 @@ allPagesFromSession bus session locationUpdate currentPage =
     }
 
 
-tabItems : Model -> List (TabBarItem Msg)
-tabItems { currentPage } =
+tabBarItems : Model -> List (TabBarItem Msg)
+tabBarItems { currentPage } =
     let
         _ =
-            Debug.log "tabItems" currentPage
+            Debug.log "tabBarItems" currentPage
     in
     case currentPage of
         About ->
-            About.tabItems GotAboutMsg
+            About.tabBarItems GotAboutMsg
 
         RouteHistory ->
             []
 
         -- Pages.Buses.Bus.Navigation.RouteHistory
         FuelHistory ->
-            FuelHistory.tabItems GotFuelHistoryMsg
+            FuelHistory.tabBarItems GotFuelHistoryMsg
 
         -- Pages.Buses.Bus.Navigation.FuelHistory
         BusDevice ->
@@ -667,7 +667,7 @@ tabItems { currentPage } =
 
         -- Pages.Buses.Bus.Navigation.BusDevice
         BusRepairs ->
-            BusRepairs.tabItems GotBusRepairsMsg
+            BusRepairs.tabBarItems GotBusRepairsMsg
 
 
 

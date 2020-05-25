@@ -1,4 +1,4 @@
-module Pages.Households.HouseholdsPage exposing (Model, Msg, init, tabItems, update, view)
+module Pages.Households.HouseholdsPage exposing (Model, Msg, init, tabBarItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -337,6 +337,7 @@ viewRoutes groups selectedGroupedStudents =
                  , width shrink
                  , Border.rounded 5
                  , Border.width 1
+                 , pointer
                  , centerY
                  , centerX
                  , Font.letterSpacing 0.5
@@ -436,7 +437,7 @@ fetchHouseholds session =
         |> Cmd.map StudentsResponse
 
 
-tabItems =
+tabBarItems =
     [ TabBar.Button
         { title = "Add Household"
         , icon = Icons.add

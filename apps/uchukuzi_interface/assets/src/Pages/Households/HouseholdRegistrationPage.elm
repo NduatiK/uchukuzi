@@ -1,4 +1,4 @@
-module Pages.Households.HouseholdRegistrationPage exposing (Model, Msg, init, subscriptions, tabItems, update, view)
+module Pages.Households.HouseholdRegistrationPage exposing (Model, Msg, init, subscriptions, tabBarItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -1296,7 +1296,7 @@ fetchHousehold session id =
         |> Cmd.map HouseholdResponse
 
 
-tabItems { requestState } =
+tabBarItems { requestState } =
     case requestState of
         Failure _ ->
             [ TabBar.Button

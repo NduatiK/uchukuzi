@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.FuelHistoryPage exposing (Model, Msg, init, tabItems, update, view, viewButtons, viewFooter)
+module Pages.Buses.Bus.FuelHistoryPage exposing (Model, Msg, init, tabBarItems, update, view, viewButtons, viewFooter)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -487,7 +487,7 @@ totalForGroup group =
     List.foldl (\x y -> y + ((\( a, b, c ) -> a) >> .cost) x) 0 group
 
 
-tabItems mapper =
+tabBarItems mapper =
     [ TabBar.Button
         { title = "Add Fuel record"
         , icon = Icons.add

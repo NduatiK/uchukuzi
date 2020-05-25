@@ -1,4 +1,4 @@
-module Template.SideBar exposing (Model, Msg, init, subscriptions, update, view,handleBarSpacing, handleBarWidth)
+module Template.SideBar exposing (Model, Msg, handleBarSpacing, handleBarWidth, init, subscriptions, update, view)
 
 import Browser.Events
 import Colors
@@ -21,6 +21,7 @@ type NavigationPage
     | HouseholdList
     | CrewMembers
     | Routes
+    | Settings
 
 
 type SideBarOption msg
@@ -69,7 +70,7 @@ sideBarSections =
 
 
 type alias Model =
-    {   isResizing : Bool
+    { isResizing : Bool
     , width : Int
     }
 
@@ -125,15 +126,15 @@ update msg model =
                 ( model, Cmd.none )
 
 
-view : Maybe Route -> Model -> Element Msg
-view currentRoute state =
+view : Maybe Route -> Model -> Int -> Element Msg
+view currentRoute state viewHeight =
     row [ width shrink, height fill, spacing 8 ]
-        [ viewSideBar currentRoute state
+        [ viewSideBar currentRoute state (toFloat viewHeight)
         , viewResizeHandle
         ]
 
 
-viewSideBar currentRoute state =
+viewSideBar currentRoute state viewHeight =
     let
         selectedIndex =
             sideBarSections
@@ -141,7 +142,7 @@ viewSideBar currentRoute state =
                 |> List.filter (\( _, SideBarOption v ) -> Just v.navPage == Maybe.andThen (toNavigationPage >> Just) currentRoute)
                 |> List.head
                 |> Maybe.andThen (Tuple.first >> Just)
-                |> Maybe.withDefault 0
+                |> Maybe.withDefault -1
 
         sideBarWidth =
             state.width - handleBarSpacing - (handleBarWidth // 2)
@@ -162,26 +163,48 @@ viewSideBar currentRoute state =
           else
             Style.animatesAll
         , behindContent
-            (el
-                [ paddingEach { edges | left = 8, top = topPadding, bottom = 4, right = 8 }
-                , alignLeft
-                , width fill
-                , moveDown (toFloat (38 * selectedIndex))
-                , Style.animatesAll
-                ]
-                (el
-                    [ paddingEach { edges | left = 8, top = 8, bottom = 8, right = 24 }
-                    , alignLeft
-                    , width fill
-                    , height (px 34)
-                    , Border.rounded 5
-                    , Background.color highlightColor
-                    ]
-                    none
-                )
-            )
+            (highlightView viewHeight selectedIndex)
         ]
-        (List.map (viewSideBarSection state.width currentRoute) sideBarSections)
+        (List.map (viewSideBarSection state.width currentRoute) sideBarSections
+            ++ [ el
+                    [ alignBottom
+                    , width fill
+                    , paddingXY 0 10
+                    ]
+                    (viewSideBarSection state.width currentRoute (SideBarOption (Section "Settings" Icons.settings Settings)))
+               ]
+        )
+
+
+highlightView viewHeight selectedIndex =
+    el
+        ([ paddingEach
+            { edges
+                | left = 8
+                , top =
+                    topPadding
+                , right = 8
+            }
+         , alignLeft
+         , width fill
+         , Style.animatesAll
+         ]
+            ++ (if selectedIndex >= 0 then
+                    [ moveDown (toFloat (38 * selectedIndex)) ]
+
+                else
+                    [ moveDown (viewHeight - 44 - topPadding) ]
+               )
+        )
+        (el
+            [ alignLeft
+            , width fill
+            , height (px 34)
+            , Border.rounded 5
+            , Background.color highlightColor
+            ]
+            none
+        )
 
 
 viewSideBarSection width_ currentRoute (SideBarOption item) =
@@ -189,103 +212,46 @@ viewSideBarSection width_ currentRoute (SideBarOption item) =
         shouldHighlight =
             case currentRoute of
                 Nothing ->
-                    False
+                    True
 
                 Just aRoute ->
                     item.navPage /= toNavigationPage aRoute
     in
-    -- viewSideBarSection open currentRoute wrappedItem =
-    -- case wrappedItem of
-    -- TopLevel item ->
     el [ width fill, paddingXY 8 0, alignRight ]
-        -- (viewTopLevelLink item open (colorFor item.navPage currentRoute))
-        (viewTopLevelLink item width_ shouldHighlight)
-
-
-
--- Nested title subItems ->
---     viewNestedLink title open subItems currentRoute
--- viewTopLevelLink : Section msg -> Bool -> Color -> Element msg
--- viewTopLevelLink item open backgroundColor =
-
-
-viewTopLevelLink : Section msg -> Int -> Bool -> Element msg
-viewTopLevelLink item width_ shouldHighlight =
-    link
-        [ paddingEach { edges | left = 8, top = 4, bottom = 4, right = 24 }
-        , alignLeft
-        , width fill
-        , Border.rounded 5
-        , clip
-        , Border.width 1
-        , Border.color Colors.transparent
-        , Element.mouseOver
-            (if shouldHighlight then
-                -- [ Background.color (Colors.withAlpha Colors.black 0.1215686275)]
-                -- [ Border.color (Colors.withAlpha Colors.black 0.1215686275)
-                [ Border.color (Colors.withAlpha Colors.black 0.2)
-                ]
-
-             else
-                []
-            )
-        ]
-        { url = Navigation.href (toRoute item.navPage)
-        , label =
-            -- row (paddingXY 0 8 :: spacing 8 :: Font.size 18 :: sideBarSubSectionStyle)
-            row (paddingXY 0 2 :: spacing 8 :: Font.size 18 :: sideBarSubSectionStyle)
-                [ el [ width (px 20), height (px 20) ]
-                    (item.icon
-                        [ centerY
-                        , width (px 20)
-                        , height (px 20)
-                        ]
-                    )
-                , el
-                    [ alpha (percentCollapsed width_ * percentCollapsed width_ * percentCollapsed width_)
+        (link
+            [ paddingEach { edges | left = 8, top = 4, bottom = 4, right = 24 }
+            , alignLeft
+            , width fill
+            , Border.rounded 5
+            , clip
+            , Border.width 1
+            , Border.color Colors.transparent
+            , Element.mouseOver
+                (if shouldHighlight then
+                    [ Border.color (Colors.withAlpha Colors.black 0.2)
                     ]
-                    (text item.title)
 
-                -- (text (String.toUpper item.title))
-                -- , el [ Font.semiBold, Font.variantList [ Font.smallCaps ] ] (text (String.toUpper item.title))
-                ]
-        }
-
-
-viewNestedLink title open subItems currentPage =
-    let
-        subSection subItem =
-            link
-                [ paddingEach { edges | left = 36, right = 16, top = 4, bottom = 4 }
-                , width fill
-                , Background.color (colorFor subItem.navPage currentPage)
-                , Element.mouseOver
-                    [ Background.color hoverColor
-                    ]
-                ]
-                { url = Navigation.href (toRoute subItem.navPage)
-                , label =
-                    row (paddingXY 0 4 :: spacing 15 :: sideBarSubSectionStyle)
-                        [ el [ height (px 24), width (px 24) ] (subItem.icon [ centerX, centerY ])
-                        , text subItem.title
+                 else
+                    []
+                )
+            ]
+            { url = Navigation.href (toRoute item.navPage)
+            , label =
+                row (paddingXY 0 2 :: spacing 8 :: Font.size 18 :: sideBarSubSectionStyle)
+                    [ el [ width (px 20), height (px 20) ]
+                        (item.icon
+                            [ centerY
+                            , width (px 20)
+                            , height (px 20)
+                            ]
+                        )
+                    , el
+                        [ alpha (percentCollapsed width_ * percentCollapsed width_ * percentCollapsed width_)
                         ]
-                }
-    in
-    column [ width fill, spacing 16 ]
-        [ el
-            (paddingEach { edges | left = 36 }
-                :: sideBarHeadingStyle
-                ++ [ Font.regular, Font.size 18 ]
-            )
-            (text title)
-        , column
-            (Style.captionStyle
-                ++ [ alpha 1
-                   , width fill
-                   ]
-            )
-            (List.map subSection subItems)
-        ]
+                        (text item.title)
+                    ]
+            }
+        )
 
 
 viewResizeHandle : Element Msg
@@ -306,15 +272,6 @@ viewResizeHandle =
 
 
 -- STYLE
-
-
-sideBarHeadingStyle : List (Attribute msg)
-sideBarHeadingStyle =
-    Style.labelStyle
-        ++ [ Font.size 14
-           , Font.color (rgb255 0 0 0)
-           , Font.bold
-           ]
 
 
 sideBarSubSectionStyle : List (Attribute msg)
@@ -345,15 +302,6 @@ highlightColor =
     Colors.teal
 
 
-hoverColor : Color
-hoverColor =
-    let
-        color =
-            toRgb highlightColor
-    in
-    fromRgb { color | alpha = 0.9 }
-
-
 toRoute : NavigationPage -> Route
 toRoute navPage =
     case navPage of
@@ -368,6 +316,9 @@ toRoute navPage =
 
         Routes ->
             Navigation.Routes
+
+        Settings ->
+            Navigation.Settings
 
 
 toNavigationPage : Route -> NavigationPage
@@ -415,13 +366,12 @@ toNavigationPage route =
         Navigation.Logout ->
             Buses
 
+        Navigation.Settings ->
+            Settings
+
         Navigation.Signup ->
             Buses
 
-        -- Navigation.DeviceRegistration ->
-        --     Buses
-        -- Navigation.DeviceList ->
-        --     Buses
         Navigation.Routes ->
             Routes
 

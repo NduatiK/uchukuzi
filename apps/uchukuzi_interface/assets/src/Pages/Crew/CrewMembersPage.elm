@@ -1,4 +1,4 @@
-module Pages.Crew.CrewMembersPage exposing (Model, Msg, init, tabItems, update, view)
+module Pages.Crew.CrewMembersPage exposing (Model, Msg, init, tabBarItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -273,80 +273,17 @@ update msg model =
 
 view : Model -> Int -> Element Msg
 view model viewHeight =
-    column
+    el
         [ width fill
         , height (px viewHeight)
-        , spacing 40
         , padding 30
         , inFront (viewOverlay model)
         ]
-        [ viewHeading model
-        , viewBody model viewHeight
-        ]
-
-
-viewOverlay : Model -> Element Msg
-viewOverlay { selectedCrewMember } =
-    el
-        (Style.animatesAll
-            :: (if selectedCrewMember == Nothing then
-                    [ alpha 0 ]
-
-                else
-                    [ alpha 1
-                    , width fill
-                    , height fill
-                    ]
-               )
-        )
-        (case selectedCrewMember of
-            Nothing ->
-                none
-
-            Just crewMember ->
-                el
-                    [ width fill
-                    , height fill
-                    , behindContent
-                        (Input.button
-                            [ width fill
-                            , height fill
-                            , Background.color (Colors.withAlpha Colors.black 0.6)
-                            , Style.blurredStyle
-                            ]
-                            { onPress = Just (SelectedCrewMember Nothing)
-                            , label = none
-                            }
-                        )
-                    , inFront
-                        (el [ Background.color Colors.white, Border.rounded 5, Style.elevated2, centerX, centerY, width (fill |> maximum 600), Style.animatesNone ]
-                            (column [ spacing 8, paddingXY 0 24, width fill ]
-                                [ row [ width fill, paddingXY 8 0 ]
-                                    [ column [ paddingXY 20 0, spacing 8 ]
-                                        [ el (Style.header2Style ++ [ padding 0 ]) (text crewMember.name)
-                                        , el Style.captionStyle (text (roleToString crewMember.role))
-                                        ]
-                                    , StyledElement.hoverButton [ alignRight ]
-                                        { title = "Edit details"
-                                        , icon = Just Icons.edit
-                                        , onPress = Just (EditCrewMember crewMember)
-                                        }
-                                    ]
-                                , el [ width fill, height (px 2), Background.color Colors.darkness ] none
-                                , column [ paddingXY 20 20, spacing 16 ]
-                                    [ el Style.labelStyle (text crewMember.phoneNumber)
-                                    , el Style.labelStyle (text crewMember.email)
-                                    ]
-                                ]
-                            )
-                        )
-                    ]
-                    none
-        )
+        (viewBody model viewHeight)
 
 
 viewHeading : Model -> Element Msg
-viewHeading { data, inEditingMode } =
+viewHeading { inEditingMode } =
     if inEditingMode then
         column []
             [ Style.iconHeader Icons.people "Editing Crew"
@@ -354,7 +291,7 @@ viewHeading { data, inEditingMode } =
             ]
 
     else
-        row [ width fill, spacing 10 ] [ Style.iconHeader Icons.people "Bus Crew" ]
+        Style.iconHeader Icons.people "Bus Crew"
 
 
 viewBody : Model -> Int -> Element Msg
@@ -364,37 +301,48 @@ viewBody model viewHeight =
             let
                 editedData =
                     applyChanges model.edits.changes data
+
+                busList =
+                    case data.buses of
+                        [] ->
+                            column [ centerX, spacing 20, width fill ]
+                                [ paragraph [ centerX, Font.center ] [ text "You have no buses set up" ]
+                                , StyledElement.ghostButtonLink [ centerX ]
+                                    { title = "Add a bus"
+                                    , route = Navigation.BusRegistration
+                                    }
+                                ]
+
+                        _ ->
+                            Lazy.lazy3 viewBuses editedData model.edits model.inEditingMode
             in
             row [ height fill, width fill, spacing 40 ]
-                [ case data.buses of
-                    [] ->
-                        column [ centerX, spacing 20, width fill ]
-                            [ paragraph [ centerX, Font.center ] [ text "You have no buses set up" ]
-                            , StyledElement.ghostButtonLink [ centerX ]
-                                { title = "Add a bus"
-                                , route = Navigation.BusRegistration
-                                }
-                            ]
-
-                    _ ->
-                        Lazy.lazy3 viewBuses editedData model.edits model.inEditingMode
+                [ column [ height fill, width (fillPortion 2), spacing 40 ]
+                    [ viewHeading model
+                    , busList
+                    ]
                 , el [ width (px 60) ] none
                 , el [ width (px 2), height (px (viewHeight // 2)), Background.color Colors.darkness ] none
                 , Lazy.lazy3 viewUnassignedCrewMembers editedData viewHeight model.inEditingMode
                 ]
 
         Failure _ ->
-            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+            column [ height fill, width (fillPortion 2), spacing 40 ]
+                [ viewHeading model
+                , el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+                ]
 
         _ ->
-            el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
+            column [ height fill, width (fillPortion 2), spacing 40 ]
+                [ viewHeading model
+                , el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
+                ]
 
 
 viewBuses : Data -> Edits -> Bool -> Element Msg
 viewBuses editedData edits inEditingMode =
     wrappedRow
         [ alignTop
-        , width (fillPortion 2)
         , spacing 24
         ]
         (List.map (viewBus editedData edits inEditingMode) editedData.buses)
@@ -607,6 +555,66 @@ viewUnassignedCrewMembers data windowHeight inEditingMode =
         ]
 
 
+viewOverlay : Model -> Element Msg
+viewOverlay { selectedCrewMember } =
+    el
+        (Style.animatesAll
+            :: (if selectedCrewMember == Nothing then
+                    [ alpha 0 ]
+
+                else
+                    [ alpha 1
+                    , width fill
+                    , height fill
+                    ]
+               )
+        )
+        (case selectedCrewMember of
+            Nothing ->
+                none
+
+            Just crewMember ->
+                el
+                    [ width fill
+                    , height fill
+                    , behindContent
+                        (Input.button
+                            [ width fill
+                            , height fill
+                            , Background.color (Colors.withAlpha Colors.black 0.6)
+                            , Style.blurredStyle
+                            ]
+                            { onPress = Just (SelectedCrewMember Nothing)
+                            , label = none
+                            }
+                        )
+                    , inFront
+                        (el [ Background.color Colors.white, Border.rounded 5, Style.elevated2, centerX, centerY, width (fill |> maximum 600), Style.animatesNone ]
+                            (column [ spacing 8, paddingXY 0 24, width fill ]
+                                [ row [ width fill, paddingXY 8 0 ]
+                                    [ column [ paddingXY 20 0, spacing 8 ]
+                                        [ el (Style.header2Style ++ [ padding 0 ]) (text crewMember.name)
+                                        , el Style.captionStyle (text (roleToString crewMember.role))
+                                        ]
+                                    , StyledElement.hoverButton [ alignRight ]
+                                        { title = "Edit details"
+                                        , icon = Just Icons.edit
+                                        , onPress = Just (EditCrewMember crewMember)
+                                        }
+                                    ]
+                                , el [ width fill, height (px 2), Background.color Colors.darkness ] none
+                                , column [ paddingXY 20 20, spacing 16 ]
+                                    [ el Style.labelStyle (text crewMember.phoneNumber)
+                                    , el Style.labelStyle (text crewMember.email)
+                                    ]
+                                ]
+                            )
+                        )
+                    ]
+                    none
+        )
+
+
 fetchCrewMembersAndBuses : Session -> Cmd Msg
 fetchCrewMembersAndBuses session =
     Api.get session Endpoint.crewMembersAndBuses dataDecoder
@@ -635,7 +643,7 @@ subscriptions model =
         []
 
 
-tabItems { data, inEditingMode } =
+tabBarItems { data, inEditingMode } =
     if inEditingMode then
         case data of
             Loading ->

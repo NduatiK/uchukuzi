@@ -31,6 +31,7 @@ import Pages.Logout as Logout
 import Pages.NotFound as NotFound
 import Pages.Routes.CreateRoutePage as CreateRoute
 import Pages.Routes.Routes as RoutesList
+import Pages.Settings as Settings
 import Pages.Signup as Signup
 import Ports
 import Session exposing (Session)
@@ -69,6 +70,7 @@ type PageModel
     | Home Home.Model
       -- | Dashboard Dashboard.Model
       ------------
+    | Settings Settings.Model
     | Login Login.Model
     | Activate Activate.Model
     | Logout Logout.Model
@@ -200,6 +202,7 @@ type Msg
     | GotHouseholdListMsg HouseholdList.Msg
     | GotHomeMsg ()
     | GotLoginMsg Login.Msg
+    | GotSettingsMsg Settings.Msg
     | GotActivateMsg Activate.Msg
     | GotLogoutMsg ()
     | GotSignupMsg Signup.Msg
@@ -377,6 +380,10 @@ updatePage page_msg fullModel =
             Login.update msg model
                 |> mapModelAndMsg Login GotLoginMsg
 
+        ( GotSettingsMsg msg, Settings model ) ->
+            Settings.update msg model
+                |> mapModelAndMsg Settings GotSettingsMsg
+
         ( GotSignupMsg msg, Signup model ) ->
             Signup.update msg model
                 |> mapModelAndMsg Signup GotSignupMsg
@@ -484,6 +491,10 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     Logout.init session
                         |> updateWith Logout GotLogoutMsg
 
+                Just Navigation.Settings ->
+                    Settings.init session
+                        |> updateWith Settings GotSettingsMsg
+
                 Just Navigation.Signup ->
                     Signup.init session
                         |> updateWith Signup GotSignupMsg
@@ -547,6 +558,9 @@ view appModel =
                 Login model ->
                     viewPage (Login.view model) GotLoginMsg []
 
+                Settings model ->
+                    viewPage (Settings.view model) GotSettingsMsg (Settings.tabBarItems model)
+
                 Signup model ->
                     viewPage (Signup.view model) GotSignupMsg []
 
@@ -560,19 +574,19 @@ view appModel =
                     viewEmptyPage NotFound.view
 
                 HouseholdList model ->
-                    viewPage (HouseholdList.view model (viewHeight - TabBar.maxHeight)) GotHouseholdListMsg HouseholdList.tabItems
+                    viewPage (HouseholdList.view model (viewHeight - TabBar.maxHeight)) GotHouseholdListMsg HouseholdList.tabBarItems
 
                 StudentRegistration model ->
-                    viewPage (StudentRegistration.view model (viewHeight - TabBar.maxHeight)) GotStudentRegistrationMsg (StudentRegistration.tabItems model)
+                    viewPage (StudentRegistration.view model (viewHeight - TabBar.maxHeight)) GotStudentRegistrationMsg (StudentRegistration.tabBarItems model)
 
                 BusesList model ->
-                    viewPage (BusesList.view model (viewHeight - TabBar.maxHeight)) GotBusesListMsg BusesList.tabItems
+                    viewPage (BusesList.view model (viewHeight - TabBar.maxHeight)) GotBusesListMsg BusesList.tabBarItems
 
                 BusRegistration model ->
-                    viewPage (BusRegistration.view model (viewHeight - TabBar.maxHeight)) GotBusRegistrationMsg (BusRegistration.tabItems model)
+                    viewPage (BusRegistration.view model (viewHeight - TabBar.maxHeight)) GotBusRegistrationMsg (BusRegistration.tabBarItems model)
 
                 BusDetailsPage model ->
-                    viewPage (BusDetailsPage.view model (viewHeight - TabBar.maxHeight)) GotBusDetailsPageMsg (BusDetailsPage.tabItems model)
+                    viewPage (BusDetailsPage.view model (viewHeight - TabBar.maxHeight)) GotBusDetailsPageMsg (BusDetailsPage.tabBarItems model)
 
                 CreateBusRepair model ->
                     viewPage (CreateBusRepair.view model viewHeight) GotCreateBusRepairMsg []
@@ -584,16 +598,16 @@ view appModel =
                     viewPage (DeviceRegistration.view model) GotDeviceRegistrationMsg []
 
                 RoutesList model ->
-                    viewPage (RoutesList.view model (viewHeight - TabBar.maxHeight)) GotRoutesListMsg RoutesList.tabItems
+                    viewPage (RoutesList.view model (viewHeight - TabBar.maxHeight)) GotRoutesListMsg RoutesList.tabBarItems
 
                 CreateRoute model ->
-                    viewPage (CreateRoute.view model viewHeight) GotCreateRouteMsg (CreateRoute.tabItems model)
+                    viewPage (CreateRoute.view model viewHeight) GotCreateRouteMsg (CreateRoute.tabBarItems model)
 
                 CrewMembers model ->
-                    viewPage (CrewMembers.view model (viewHeight - TabBar.maxHeight)) GotCrewMembersMsg (CrewMembers.tabItems model)
+                    viewPage (CrewMembers.view model (viewHeight - TabBar.maxHeight)) GotCrewMembersMsg (CrewMembers.tabBarItems model)
 
                 CrewMemberRegistration model ->
-                    viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg (CrewMemberRegistration.tabItems model)
+                    viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg (CrewMemberRegistration.tabBarItems model)
 
         layoutOptions =
             { options =
@@ -625,8 +639,11 @@ view appModel =
 toSession : PageModel -> Session
 toSession pageModel =
     case pageModel of
-        Home home ->
-            home.session
+        Home model ->
+            model.session
+
+        Settings model ->
+            model.session
 
         Logout model ->
             model.session

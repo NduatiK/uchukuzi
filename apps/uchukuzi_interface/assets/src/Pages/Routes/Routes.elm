@@ -1,4 +1,4 @@
-module Pages.Routes.Routes exposing (Model, Msg, init, update, view, tabItems)
+module Pages.Routes.Routes exposing (Model, Msg, init, tabBarItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -215,7 +215,7 @@ viewRoute route =
         ]
 
 
-tabItems =
+tabBarItems =
     [ TabBar.Button
         { title = "Add Route"
         , icon = Icons.add

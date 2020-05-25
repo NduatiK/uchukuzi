@@ -1,4 +1,4 @@
-module Pages.Buses.BusesPage exposing (Model, Msg, init, locationUpdateMsg, subscriptions, tabItems, update, view)
+module Pages.Buses.BusesPage exposing (Model, Msg, init, locationUpdateMsg, subscriptions, tabBarItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -384,7 +384,7 @@ subscriptions model =
         []
 
 
-tabItems =
+tabBarItems =
     [ TabBar.Button
         { title = "Add a Bus"
         , icon = Icons.add

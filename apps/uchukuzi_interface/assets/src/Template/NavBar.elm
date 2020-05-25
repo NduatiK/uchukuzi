@@ -39,10 +39,36 @@ internals model =
             i
 
 
+
+-- UPDATE
+
+
 type Msg
     = Logout
     | ToggleDropDown
     | HideDropDown
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    let
+        internalData =
+            internals model
+    in
+    case msg of
+        ToggleDropDown ->
+            ( Model { internalData | dropdownVisible = not internalData.dropdownVisible }, Cmd.none )
+
+        HideDropDown ->
+            ( Model { internalData | dropdownVisible = False }, Cmd.none )
+
+        Logout ->
+            ( model
+            , Cmd.batch
+                [ -- sendLogout
+                  Api.logout
+                ]
+            )
 
 
 viewHeader : Model -> Session.Session -> Maybe Route -> Element Msg
@@ -154,11 +180,7 @@ viewHeaderProfileData model cred =
                     , moveUp 8
                     , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 5, color = rgba 0 0 0 0.14 }
                     ]
-                    [ --     dropdownOption "Go to Dashboard" (Just Dashboard)
-                      -- ,
-                      -- dropdownOption "Settings" (Just Logout)
-                      -- ,
-                      dropdownOption "Logout" (Just Logout)
+                    [ dropdownOption "Logout" (Just Logout)
                     ]
 
             else
@@ -210,28 +232,6 @@ dropdownOption optionText action =
                 )
                 (text optionText)
         }
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    let
-        internalData =
-            internals model
-    in
-    case msg of
-        ToggleDropDown ->
-            ( Model { internalData | dropdownVisible = not internalData.dropdownVisible }, Cmd.none )
-
-        HideDropDown ->
-            ( Model { internalData | dropdownVisible = False }, Cmd.none )
-
-        Logout ->
-            ( model
-            , Cmd.batch
-                [ -- sendLogout
-                  Api.logout
-                ]
-            )
 
 
 isVisible (Model model) =

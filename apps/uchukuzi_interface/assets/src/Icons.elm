@@ -231,3 +231,13 @@ box =
 save : List (Attribute msg) -> Element msg
 save =
     iconNamed "images/save.svg"
+
+
+settings : List (Attribute msg) -> Element msg
+settings =
+    iconNamed "images/settings.svg"
+
+
+exit : List (Attribute msg) -> Element msg
+exit =
+    iconNamed "images/exit.svg"
