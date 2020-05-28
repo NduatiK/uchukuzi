@@ -63,7 +63,7 @@ type alias Data =
 
 
 type Msg
-    = ServerResponse (WebData Data)
+    = ReceivedCewMembersResponse  (WebData Data)
     | StartEditing
     | CancelEdits
     | SaveChanges
@@ -123,7 +123,7 @@ update msg model =
         RegisterCrewMembers ->
             ( model, Navigation.rerouteTo model Navigation.CrewMemberRegistration )
 
-        ServerResponse response ->
+        ReceivedCewMembersResponse  response ->
             let
                 newModel =
                     { model | data = response }

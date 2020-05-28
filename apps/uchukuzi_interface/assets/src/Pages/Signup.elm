@@ -147,7 +147,7 @@ type Msg
     | ToSchoolForm
     | NoOp
     | SubmittedForm
-    | SignupResponse (WebData SuccessfulLogin)
+    | ReceivedSignupResponse (WebData SuccessfulLogin)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -241,7 +241,7 @@ update msg model =
                 Err problems ->
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
-        SignupResponse requestStatus ->
+        ReceivedSignupResponse requestStatus ->
             let
                 updatedModel =
                     { model | status = requestStatus }
@@ -712,7 +712,7 @@ signup session form =
                 ]
     in
     Api.post session Endpoint.signup params loginDecoder
-        |> Cmd.map SignupResponse
+        |> Cmd.map ReceivedSignupResponse
 
 
 subscriptions : Model -> Sub Msg

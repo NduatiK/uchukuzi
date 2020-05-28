@@ -125,8 +125,8 @@ init session id =
 type Msg
     = Changed Field
     | SubmitButtonMsg
-    | ServerResponse (WebData ())
-    | CrewMemberResponse (WebData CrewMember)
+    | ReceivedCreateResponse (WebData ())
+    | ReceivedExistingCrewMemberResponse (WebData CrewMember)
     | RoleDropdownMsg (Dropdown.Msg Role)
     | ReturnToCrewList
 
@@ -167,7 +167,7 @@ update msg model =
                 Err problems ->
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
-        ServerResponse response ->
+        ReceivedCreateResponse response ->
             let
                 newModel =
                     { model | requestState = response }
@@ -196,7 +196,7 @@ update msg model =
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
 
-        CrewMemberResponse response ->
+        ReceivedExistingCrewMemberResponse response ->
             let
                 editState =
                     model.editState
@@ -469,7 +469,7 @@ decoder =
 
 fetchCrewMember session id =
     Api.get session (Endpoint.crewMember id) Models.CrewMember.crewDecoder
-        |> Cmd.map CrewMemberResponse
+        |> Cmd.map ReceivedExistingCrewMemberResponse
 
 
 tabBarItems { requestState } =

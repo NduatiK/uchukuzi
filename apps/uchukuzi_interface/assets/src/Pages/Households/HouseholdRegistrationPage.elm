@@ -173,12 +173,12 @@ type Msg
     | DeletedStudent Student
     | SubmitButtonPressed
     | SearchTextChanged String
-    | ServerResponse (WebData ())
     | AutocompleteError
     | ReceivedMapLocation Location
-    | RouteServerResponse (WebData (List Route))
-    | HouseholdResponse (WebData Household)
     | ReturnToRegistrationList
+    | ReceivedCreateResponse (WebData ())
+    | ReceivedRoutesResponse (WebData (List Route))
+    | ReceivedExistingHouseholdResponse (WebData Household)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -325,13 +325,13 @@ update msg model =
             in
             ( { model | form = updatedForm }, Cmd.none )
 
-        ServerResponse response ->
+        ReceivedCreateResponse response ->
             updateStatus { model | requestState = response } response
 
         ReceivedMapLocation location ->
             ( { model | form = { form | homeLocation = Just location } }, Cmd.none )
 
-        RouteServerResponse response ->
+        ReceivedRoutesResponse response ->
             let
                 newModel =
                     { model | routeRequestState = response }
@@ -371,7 +371,7 @@ update msg model =
                 _ ->
                     ( newModel, Cmd.none )
 
-        HouseholdResponse response ->
+        ReceivedExistingHouseholdResponse response ->
             let
                 editState =
                     model.editState
@@ -1275,13 +1275,13 @@ subscriptions model =
 fetchRoutes : Session -> Cmd Msg
 fetchRoutes session =
     Api.get session Endpoint.routes (list routeDecoder)
-        |> Cmd.map RouteServerResponse
+        |> Cmd.map ReceivedRoutesResponse
 
 
 fetchHousehold : Session -> Int -> Cmd Msg
 fetchHousehold session id =
     Api.get session (Endpoint.household id) Models.Household.householdDecoder
-        |> Cmd.map HouseholdResponse
+        |> Cmd.map ReceivedExistingHouseholdResponse
 
 
 tabBarItems { requestState } =

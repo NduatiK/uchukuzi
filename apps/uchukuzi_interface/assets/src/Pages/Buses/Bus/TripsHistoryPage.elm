@@ -56,8 +56,8 @@ type Msg
     = AdjustedValue Int
     | ToggledShowGeofence Bool
     | ToggledShowStops Bool
-    | TripsResponse (WebData (List Models.Trip.LightWeightTrip))
-    | TripDetailsResponse (WebData Models.Trip.Trip)
+    | ReceivedTripsResponse (WebData (List Models.Trip.LightWeightTrip))
+    | ReceivedTripDetailsResponse (WebData Models.Trip.Trip)
     | ClickedOn Int
     | SelectedGroup GroupedTrips
 
@@ -139,7 +139,7 @@ update msg model =
         ToggledShowStops show ->
             ( { model | showStops = show }, Cmd.none )
 
-        TripsResponse response ->
+        ReceivedTripsResponse response ->
             let
                 groupedTrips =
                     case response of
@@ -164,7 +164,7 @@ update msg model =
             , command
             )
 
-        TripDetailsResponse response ->
+        ReceivedTripDetailsResponse response ->
             case response of
                 Success trip ->
                     ( { model
@@ -671,13 +671,13 @@ fetchTripsForBus session bus_id =
             { bus_id = bus_id }
     in
     Api.get session (Endpoint.trips params) (list tripDecoder)
-        |> Cmd.map TripsResponse
+        |> Cmd.map ReceivedTripsResponse
 
 
 fetchReportsForTrip : Session -> Int -> Cmd Msg
 fetchReportsForTrip session tripID =
     Api.get session (Endpoint.reportsForTrip tripID) tripDetailsDecoder
-        |> Cmd.map TripDetailsResponse
+        |> Cmd.map ReceivedTripDetailsResponse
 
 
 groupTrips : List LightWeightTrip -> Time.Zone -> List GroupedTrips

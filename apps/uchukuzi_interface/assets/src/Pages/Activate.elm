@@ -3,7 +3,6 @@ module Pages.Activate exposing (Model, Msg, init, update, view)
 import Api exposing (SuccessfulLogin)
 import Api.Endpoint
 import Element exposing (..)
-
 import Icons
 import Json.Encode as Encode
 import Models.Location
@@ -25,7 +24,7 @@ init session token =
 
 
 type Msg
-    = ServerResponse (WebData SuccessfulLogin)
+    = ReceivedActivationResponse (WebData SuccessfulLogin)
     | RequestActivate
 
 
@@ -37,7 +36,7 @@ view model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ServerResponse response ->
+        ReceivedActivationResponse response ->
             let
                 newModel =
                     { model | requestState = response }
@@ -67,4 +66,4 @@ activateAccount session token =
                 ]
     in
     Api.post session Api.Endpoint.activate params Api.loginDecoder
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedActivationResponse

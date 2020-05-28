@@ -53,7 +53,7 @@ type alias ValidRepair =
 
 type Msg
     = Submit
-    | ServerResponse (WebData ())
+    | ReceivedCreateResponse  (WebData ())
     | NoOp
       --------
     | StartedDragging Draggable
@@ -193,7 +193,7 @@ update msg model =
             in
             ( { model | repairs = repairs }, Cmd.none )
 
-        ServerResponse response ->
+        ReceivedCreateResponse  response ->
             let
                 newModel =
                     { model | requestState = response }

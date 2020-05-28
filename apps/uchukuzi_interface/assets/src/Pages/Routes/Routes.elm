@@ -33,7 +33,7 @@ type Msg
     = CreateRoute
     | EditRoute Route
     | UpdatedSearchText String
-    | ServerResponse (WebData (List Route))
+    | ReceivedRoutesResponse  (WebData (List Route))
     | HoverOver Route
     | HoverLeft Route
 
@@ -66,7 +66,7 @@ update msg model =
         HoverLeft route ->
             ( model, Ports.highlightPath { routeID = route.id, highlighted = False } )
 
-        ServerResponse response ->
+        ReceivedRoutesResponse  response ->
             let
                 newModel =
                     { model | routes = response }

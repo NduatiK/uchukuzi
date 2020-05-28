@@ -101,9 +101,9 @@ type Msg
     | DeleteRoute Int
     | SubmitButtonMsg
     | MapPathUpdated (List Location)
-    | ServerResponse (WebData ())
-    | RouteResponse (WebData Route)
-    | DeleteResponse (WebData ())
+    | ReceivedCreateResponse (WebData ())
+    | ReceivedExistingRouteResponse (WebData Route)
+    | ReceivedDeleteResponse (WebData ())
     | ReturnToRouteList
 
 
@@ -130,7 +130,7 @@ update msg model =
                 Err problems ->
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
-        ServerResponse response ->
+        ReceivedCreateResponse response ->
             updateStatus model response
 
         DeleteRoute routeID ->
@@ -138,7 +138,7 @@ update msg model =
             , deleteRoute model.session routeID
             )
 
-        DeleteResponse response ->
+        ReceivedDeleteResponse response ->
             let
                 model_ =
                     { model | deleteRequestState = response }
@@ -155,7 +155,7 @@ update msg model =
         MapPathUpdated newPath ->
             ( { model | form = { form | path = newPath } }, Cmd.none )
 
-        RouteResponse response ->
+        ReceivedExistingRouteResponse response ->
             let
                 editState =
                     model.editState
@@ -430,13 +430,13 @@ subscriptions _ =
 fetchRoute : Session -> Int -> Cmd Msg
 fetchRoute session id =
     Api.get session (Endpoint.route id) routeDecoder
-        |> Cmd.map RouteResponse
+        |> Cmd.map ReceivedExistingRouteResponse
 
 
 deleteRoute : Session -> Int -> Cmd Msg
 deleteRoute session id =
     Api.delete session (Endpoint.route id) (Decode.succeed ())
-        |> Cmd.map DeleteResponse
+        |> Cmd.map ReceivedDeleteResponse
 
 
 tabBarItems { requestState } =

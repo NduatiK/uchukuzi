@@ -33,7 +33,7 @@ type alias Bus =
 
 
 type Msg
-    = ServerResponse (WebData (List Device))
+    = ReceivedDevicesResponse  (WebData (List Device))
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -44,7 +44,7 @@ init session =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ServerResponse devices ->
+        ReceivedDevicesResponse  devices ->
             ( { model | devices = devices }
             , Cmd.none
             )

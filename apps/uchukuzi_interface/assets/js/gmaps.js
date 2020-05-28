@@ -180,8 +180,11 @@ function cleanMap() {
     }
     // Reset location
     if (MapLibraryInstance) {
-        MapLibraryInstance.panTo(new google.maps.LatLng(defaultLocation.center))
-        MapLibraryInstance.setZoom(defaultLocation.zoom)
+        const map = MapLibraryInstance
+        map.panTo(new google.maps.LatLng(defaultLocation.center))
+        map.setZoom(defaultLocation.zoom)
+
+        pushSchool(map)
     }
 
 }
@@ -279,6 +282,7 @@ function insertCircle(pos, app, map, radius = 50) {
             sendSchoolCircle(schoolCircle)
         })
         google.maps.event.addListener(schoolCircle, 'center_changed', function () {
+            schoolMarker.setPosition(schoolCircle.center)
             sendSchoolCircle(schoolCircle)
         })
     }

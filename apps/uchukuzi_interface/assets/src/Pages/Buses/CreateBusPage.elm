@@ -158,9 +158,9 @@ initEdit busID session =
 type Msg
     = Changed Field
     | SubmitButtonMsg
-    | ServerResponse (WebData Int)
-    | RouteServerResponse (WebData (List SimpleRoute))
-    | EditServerResponse (WebData ( Form, Cmd Msg ))
+    | ReceivedCreateResponse (WebData Int)
+    | ReceivedRouteResponse (WebData (List SimpleRoute))
+    | ReceivedEditResponse (WebData ( Form, Cmd Msg ))
     | RouteDropdownMsg (Dropdown.Msg SimpleRoute)
     | FuelDropdownMsg (Dropdown.Msg FuelType)
     | ConsumptionDropdownMsg (Dropdown.Msg ConsumptionType)
@@ -223,7 +223,7 @@ update msg model =
                 Err problems ->
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
-        EditServerResponse response_ ->
+        ReceivedEditResponse response_ ->
             let
                 ( response, cmd ) =
                     case response_ of
@@ -249,7 +249,7 @@ update msg model =
                 _ ->
                     ( newModel, Cmd.none )
 
-        ServerResponse response ->
+        ReceivedCreateResponse response ->
             let
                 newModel =
                     { model | requestState = response }
@@ -278,7 +278,7 @@ update msg model =
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
 
-        RouteServerResponse response ->
+        ReceivedRouteResponse response ->
             case response of
                 Success routes ->
                     let

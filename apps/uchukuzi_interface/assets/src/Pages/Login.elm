@@ -68,8 +68,8 @@ init session redirect =
 type Msg
     = UpdatedEmail String
     | UpdatedPassword String
-    | SubmittedForm
-    | LoginResponse (WebData SuccessfulLogin)
+    | SubmitForm
+    | ReceivedLoginResponse (WebData SuccessfulLogin)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -85,10 +85,10 @@ update msg model =
         UpdatedEmail email ->
             ( { model | form = { form | email = email } }, Cmd.none )
 
-        SubmittedForm ->
+        SubmitForm ->
             ( { model | error = Nothing, status = Loading }, login model.session form )
 
-        LoginResponse requestStatus ->
+        ReceivedLoginResponse requestStatus ->
             let
                 updatedModel =
                     { model | status = requestStatus }
@@ -240,7 +240,7 @@ login session form =
                 ]
     in
     Api.post session Endpoint.login params Api.loginDecoder
-        |> Cmd.map LoginResponse
+        |> Cmd.map ReceivedLoginResponse
 
 
 viewButton : Model -> Element Msg
@@ -250,4 +250,4 @@ viewButton { status } =
             Icons.loading [ alignRight, width (px 46), height (px 46) ]
 
         _ ->
-            StyledElement.button [ alignRight ] { label = text "Done", onPress = Just SubmittedForm }
+            StyledElement.button [ alignRight ] { label = text "Done", onPress = Just SubmitForm }

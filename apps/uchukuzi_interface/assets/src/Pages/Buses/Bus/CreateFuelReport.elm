@@ -82,7 +82,7 @@ init bus session =
 
 type Msg
     = Submit
-    | ServerResponse (WebData ())
+    | ReceivedCreateResponse  (WebData ())
     | DatePickerUpdated DatePicker.Msg
     | ChangedCost String
     | ChangedVolume String
@@ -187,7 +187,7 @@ update msg model =
                 Err problems ->
                     ( { model | problems = Errors.toClientSideErrors problems }, Cmd.none )
 
-        ServerResponse response ->
+        ReceivedCreateResponse  response ->
             let
                 newModel =
                     { model | requestState = response }

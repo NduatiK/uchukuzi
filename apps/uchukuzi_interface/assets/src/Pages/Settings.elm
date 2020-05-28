@@ -112,12 +112,12 @@ type Msg
     | ReceivedSchoolDetails (WebData School)
       --------
     | SubmitNewPassword
-    | UpdatePasswordResponse (WebData ())
+    | ReceivedUpdatePasswordResponse (WebData ())
     | UpdatedOldPassword String
     | UpdatedNewPassword String
       --------
     | UpdateSchool
-    | UpdateSchoolResponse (WebData School)
+    | ReceivedUpdateSchoolResponse (WebData School)
     | UpdatedSchoolName String
     | UpdatedSchoolLocation { location : Location, radius : Float }
 
@@ -155,6 +155,7 @@ update msg model =
                         [ Ports.cleanMap ()
                         , Ports.initializeCustomMap { drawable = False, clickable = False }
                         , Ports.insertCircle { location = school.location, radius = school.radius }
+                        , Models.Location.storeSchoolLocation school.location
                         ]
                     )
 
@@ -213,7 +214,7 @@ update msg model =
                 Err problems ->
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
-        UpdatePasswordResponse response ->
+        ReceivedUpdatePasswordResponse response ->
             let
                 newModel =
                     { model | requests = { requests | editPasswordRequest = response } }
@@ -252,7 +253,7 @@ update msg model =
                 Err problems ->
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
-        UpdateSchoolResponse response ->
+        ReceivedUpdateSchoolResponse response ->
             ( { model
                 | schoolDetailsRequest =
                     case response of
@@ -584,7 +585,7 @@ submitUpdatePassword session form =
                 ]
     in
     Api.patch session Endpoint.updatePassword params decoder
-        |> Cmd.map UpdatePasswordResponse
+        |> Cmd.map ReceivedUpdatePasswordResponse
 
 
 validateSchoolForm : Form -> Result (List ( Problem, String )) UpdateSchoolForm
@@ -623,7 +624,7 @@ submitUpdateSchool session form =
                 ]
     in
     Api.patch session Endpoint.schoolDetails params decoder
-        |> Cmd.map UpdatePasswordResponse
+        |> Cmd.map ReceivedUpdatePasswordResponse
 
 
 fetchSchoolDetails : Session -> Cmd Msg

@@ -113,7 +113,7 @@ type Msg
     | GotBusRepairsMsg BusRepairs.Msg
       ----------------
     | SelectedPage Int
-    | ServerResponse (WebData BusData)
+    | ReceivedBusResponse (WebData BusData)
       ----------------
     | LocationUpdate LocationUpdate
 
@@ -177,7 +177,7 @@ update msg model =
                 Nothing ->
                     ( model, Ports.updateBusMap locationUpdate )
 
-        ServerResponse response ->
+        ReceivedBusResponse response ->
             let
                 next_msg =
                     case response of
@@ -573,7 +573,7 @@ iconForPage page pageIndex currentPageIndex =
 fetchBus : Int -> Session -> BusPage -> Maybe LocationUpdate -> Cmd Msg
 fetchBus busID session currentPage locationUpdate =
     Api.get session (Endpoint.bus busID) (busDecoder session currentPage locationUpdate)
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedBusResponse
 
 
 busDecoder : Session -> BusPage -> Maybe LocationUpdate -> Decoder BusData

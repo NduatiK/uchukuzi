@@ -58,13 +58,13 @@ type Msg
       --------------------
     | ClickedStudentsPage
     | FetchStudentsOnboard
-    | StudentsOnboardServerResponse (WebData (List Student))
+    | ReceivedStudentsOnboardResponse (WebData (List Student))
     | SelectedStudent Int
       --------------------
     | ClickedCrewPage
-    | CrewMemberServerResponse (WebData (List CrewMember))
+    | ReceivedCrewMembersResponse (WebData (List CrewMember))
       --------------------
-    | RouteServerResponse (WebData (Maybe Route))
+    | ReceivedRouteResponse (WebData (Maybe Route))
       --------------------
     | LocationUpdate LocationUpdate
     | EditDetails
@@ -119,10 +119,10 @@ update msg model =
         SelectedStudent index ->
             ( { model | currentPage = Students (Just index) }, Ports.initializeMaps )
 
-        StudentsOnboardServerResponse response ->
+        ReceivedStudentsOnboardResponse response ->
             ( { model | studentsOnboard = response }, Cmd.none )
 
-        RouteServerResponse response ->
+        ReceivedRouteResponse response ->
             ( { model | route = response }
             , case response of
                 Success (Just route) ->
@@ -135,7 +135,7 @@ update msg model =
         FetchStudentsOnboard ->
             ( model, fetchStudentsOnboard model.session model.bus.id )
 
-        CrewMemberServerResponse response ->
+        ReceivedCrewMembersResponse response ->
             ( { model | crew = response }, Cmd.none )
 
         ClickedCrewPage ->
@@ -372,14 +372,14 @@ tabBarItems mapper =
 
 fetchCrewMembers session busID =
     Api.get session (Endpoint.crewMembersForBus busID) (list crewDecoder)
-        |> Cmd.map CrewMemberServerResponse
+        |> Cmd.map ReceivedCrewMembersResponse
 
 
 fetchStudentsOnboard session busID =
     Api.get session (Endpoint.studentsOnboard busID) (list studentDecoder)
-        |> Cmd.map StudentsOnboardServerResponse
+        |> Cmd.map ReceivedStudentsOnboardResponse
 
 
 fetchRoute session busID =
     Api.get session (Endpoint.routeForBus busID) (Json.Decode.nullable Models.Route.routeDecoder)
-        |> Cmd.map RouteServerResponse
+        |> Cmd.map ReceivedRouteResponse

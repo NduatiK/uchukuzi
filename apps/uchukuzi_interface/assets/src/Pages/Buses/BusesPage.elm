@@ -39,7 +39,7 @@ type Msg
     = SelectedBus Bus
     | CreateBus
     | ChangedFilterText String
-    | ServerResponse (WebData (List Bus))
+    | ReceivedBusesResponse (WebData (List Bus))
     | LocationUpdate (Dict Int LocationUpdate)
     | PreviewBus (Maybe Bus)
 
@@ -73,7 +73,7 @@ init session locationUpdates =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ServerResponse response ->
+        ReceivedBusesResponse response ->
             let
                 newModel =
                     { model | buses = response }
@@ -365,7 +365,7 @@ viewMapDetails maybeBus =
 fetchBuses : Session -> Cmd Msg
 fetchBuses session =
     Api.get session Endpoint.buses (list busDecoder)
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedBusesResponse
 
 
 busesFromModel : WebData (List Bus) -> Maybe (List Bus)

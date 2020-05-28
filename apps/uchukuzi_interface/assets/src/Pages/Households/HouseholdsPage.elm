@@ -64,7 +64,7 @@ type Msg
     = SelectedHousehold
     | SelectedStudent (Maybe Student)
     | GenerateCard
-    | StudentsResponse (WebData ( List GroupedStudents, List Household ))
+    | ReceivedStudentsResponse (WebData ( List GroupedStudents, List Household ))
     | RegisterStudent
     | SelectedRoute GroupedStudents
     | EditHousehold Household
@@ -81,7 +81,7 @@ update msg model =
         RegisterStudent ->
             ( model, Navigation.rerouteTo model Navigation.StudentRegistration )
 
-        StudentsResponse response ->
+        ReceivedStudentsResponse response ->
             case response of
                 Failure error ->
                     let
@@ -432,7 +432,7 @@ viewHouseholdsTable students =
 fetchHouseholds : Session -> Cmd Msg
 fetchHouseholds session =
     Api.get session Endpoint.households studentByRouteDecoder
-        |> Cmd.map StudentsResponse
+        |> Cmd.map ReceivedStudentsResponse
 
 
 tabBarItems =
