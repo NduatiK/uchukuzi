@@ -21,14 +21,17 @@ get session url decoder =
     Endpoint.get url session decoder
 
 
-post : Session -> Endpoint -> Body -> Decoder a -> Cmd (WebData a)
+post : Session -> Endpoint -> Encode.Value -> Decoder a -> Cmd (WebData a)
 post session url body decoder =
-    Endpoint.post url session body decoder
+    Endpoint.post url session (body |> Http.jsonBody) decoder
 
 
-patch : Session -> Endpoint -> Body -> Decoder a -> Cmd (WebData a)
+patch : Session -> Endpoint -> Encode.Value -> Decoder a -> Cmd (WebData a)
 patch session url body decoder =
-    Endpoint.patch url session body decoder
+    Endpoint.patch url
+        session
+        (body |> Http.jsonBody)
+        decoder
 
 
 credStorageKey : String

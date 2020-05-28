@@ -177,8 +177,16 @@ viewHeaderProfileData model cred =
             if dropdownVisible then
                 column
                     [ width fill
-                    , moveUp 8
                     , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 5, color = rgba 0 0 0 0.14 }
+                    , Border.rounded 5
+                    , Border.width 1
+                    , Border.color (Colors.withAlpha Colors.darkness 0.3)
+                    , Background.color Colors.white
+                    , clip
+                    , mouseOver
+                        [ Border.color (Colors.withAlpha Colors.darkness 1)
+                        ]
+                    , Style.nonClickThrough
                     ]
                     [ dropdownOption "Logout" (Just Logout)
                     ]
@@ -188,7 +196,12 @@ viewHeaderProfileData model cred =
     in
     row
         [ alignRight
-        , below elementBelow
+        , inFront
+            (column [ width fill, paddingXY 10 0, Style.clickThrough ]
+                [ el [ height (px 36), Style.clickThrough ] none
+                , elementBelow
+                ]
+            )
         ]
         [ el (Style.labelStyle ++ [ Font.color (rgb255 104 104 104) ]) (text cred.name)
 
@@ -196,6 +209,7 @@ viewHeaderProfileData model cred =
         , Input.button
             [ height (px 48)
             , width (px 48)
+            , alignTop
             ]
             { onPress = Just ToggleDropDown
             , label =
@@ -221,14 +235,20 @@ dropdownOption optionText action =
         , paddingXY 10 10
         , width fill
         , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.24 }
-        , Style.animatesAll
+
+        -- , Style.animatesAll
         , alpha alphaValue
+        , mouseOver
+            [ Background.color (Colors.withAlpha Colors.darkness 0.3)
+            , Border.color (Colors.withAlpha Colors.darkness 1)
+            ]
         ]
         { onPress = action
         , label =
             el
                 ([]
                     ++ Style.captionStyle
+                    ++ [ Font.size 15 ]
                 )
                 (text optionText)
         }

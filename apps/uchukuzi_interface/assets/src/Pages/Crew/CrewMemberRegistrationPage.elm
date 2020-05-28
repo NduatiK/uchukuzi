@@ -8,7 +8,6 @@ import Element.Background as Background
 import Element.Font as Font
 import Errors exposing (Errors)
 import Html.Events exposing (..)
-import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Encode as Encode
@@ -19,6 +18,7 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.DropDown as Dropdown
+import StyledElement.WebDataView as WebDataView
 import Task
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator as Validator
@@ -269,15 +269,10 @@ view model =
             [ viewHeading model
             , case model.editState of
                 Just state ->
-                    case state.requestState of
-                        Success _ ->
+                    WebDataView.view state.requestState
+                        (\_ ->
                             viewForm model
-
-                        Loading ->
-                            el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
-
-                        _ ->
-                            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+                        )
 
                 Nothing ->
                     viewForm model
@@ -456,7 +451,6 @@ submit session form editingID =
                 , ( "email", Encode.string form.email )
                 , ( "role", Encode.string form.role )
                 ]
-                |> Http.jsonBody
     in
     case editingID of
         Just id ->

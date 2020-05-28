@@ -46,6 +46,11 @@ transparent =
     Element.rgba 0 0 0 0
 
 
+backgroundGray : Color
+backgroundGray =
+    rgb255 245 246 248
+
+
 black : Color
 black =
     Element.rgb 0 0 0
@@ -59,6 +64,11 @@ white =
 purple : Color
 purple =
     Element.rgb255 89 79 238
+
+
+lightGrey : Color
+lightGrey =
+    Element.rgb255 244 244 244
 
 
 simpleGrey : Color
@@ -108,29 +118,38 @@ errorRed =
 
 fillPurple : Attribute msg
 fillPurple =
-    Html.Attributes.style "filter" "brightness(0) saturate(100%) invert(24%) sepia(97%) saturate(1937%) hue-rotate(235deg) brightness(97%) contrast(93%)"
-        |> htmlAttribute
+    class "fillPurple"
 
 
 fillWhite : Attribute msg
 fillWhite =
-    Html.Attributes.style "filter" "brightness(100%) saturate(0) invert(1)"
-        |> htmlAttribute
+    class "fillWhite"
 
 
 fillDarkGreen : Attribute msg
 fillDarkGreen =
-    Html.Attributes.style "filter" "invert(59%) sepia(40%) saturate(342%) hue-rotate(114deg) brightness(93%) contrast(88%)"
-        |> htmlAttribute
+    class "fillDarkGreen"
 
 
 fillDarkness : Attribute msg
 fillDarkness =
-    Html.Attributes.style "filter" "invert(59%) sepia(40%) saturate(363%) hue-rotate(170deg) brightness(33%) contrast(99%)"
-        |> htmlAttribute
+    class "fillDarkness"
 
 
 fillErrorRed : Attribute msg
 fillErrorRed =
-    Html.Attributes.style "filter" "invert(41%) sepia(141%) saturate(396%) hue-rotate(294deg) brightness(74%) contrast(121%)"
-        |> htmlAttribute
+    class "fillErrorRed"
+
+
+fillErrorRedHover : Attribute msg
+fillErrorRedHover =
+    class "fillErrorRedOnHover"
+
+
+fillWhiteOnHover : Attribute msg
+fillWhiteOnHover =
+    class "fillWhiteOnHover"
+
+
+class string =
+    htmlAttribute (Html.Attributes.class string)

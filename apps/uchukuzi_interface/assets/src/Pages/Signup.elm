@@ -10,7 +10,6 @@ import Element.Border as Border
 import Element.Font as Font
 import Errors exposing (Errors, InputError)
 import Html.Attributes exposing (id)
-import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, float, int, list, string)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required, resolve)
@@ -711,7 +710,6 @@ signup session form =
                 [ ( "manager", managerParams )
                 , ( "school", schoolParams )
                 ]
-                |> Http.jsonBody
     in
     Api.post session Endpoint.signup params loginDecoder
         |> Cmd.map SignupResponse

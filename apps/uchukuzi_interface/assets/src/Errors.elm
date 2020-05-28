@@ -172,8 +172,10 @@ decodeFormErrors error =
             Decode.at [ "errors", "detail" ] (dict (list string))
 
         decodeField response =
-            response.body
-                |> decodeString fieldDecoder
+            Debug.log ""
+                (response.body
+                    |> decodeString fieldDecoder
+                )
     in
     case error of
         Http.BadStatus response ->

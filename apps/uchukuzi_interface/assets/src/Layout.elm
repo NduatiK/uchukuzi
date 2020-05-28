@@ -1,9 +1,10 @@
-module Page exposing (frame, transformToModelMsg, viewHeight)
+module Layout exposing (frame, transformToModelMsg, viewHeight)
 
 import Element exposing (..)
-import Element.Background as Background
+import Html.Attributes exposing (id)
 import Navigation exposing (Route)
 import Session
+import Style exposing (edges)
 import Template.NavBar as NavBar exposing (viewHeader)
 import Template.SideBar as SideBar
 import Template.TabBar as TabBar exposing (TabBarItem(..))
@@ -42,14 +43,19 @@ frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pa
                 TabBar.view tabBarItems toMsg
 
         renderedBody =
-            row [ width fill ]
+            row [ width fill, spacing -(2 * (SideBar.handleBarSpacing + SideBar.handleBarWidth)) ]
                 [ sideBar
                 , column
                     [ width fill
+                    , paddingEach { edges | left = SideBar.handleBarSpacing + SideBar.handleBarWidth }
                     , height (px (viewHeight pageHeight))
                     , alignTop
 
-                    -- , scrollbarY
+                    -- , route
+                    --     |> Maybe.andThen (Navigation.href >> Just)
+                    --     |> Maybe.withDefault ""
+                    --     |> id
+                    --     |> htmlAttribute
                     ]
                     [ Element.map toMsg body
                     , bottomBar

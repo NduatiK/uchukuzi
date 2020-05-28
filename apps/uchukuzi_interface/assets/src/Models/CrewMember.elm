@@ -1,6 +1,6 @@
 module Models.CrewMember exposing (Change(..), CrewMember, Role(..), applyChanges, crewDecoder, encodeChanges, roleToString, trimChanges)
 
-import Http
+
 import Json.Decode as Decode exposing (Decoder, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode exposing (encode)
@@ -148,7 +148,7 @@ trimChanges dataOld dataNew =
     changes
 
 
-encodeChanges : List Change -> Http.Body
+encodeChanges : List Change -> Encode.Value
 encodeChanges changes =
     let
         objectEncoder change =
@@ -159,7 +159,6 @@ encodeChanges changes =
                 ]
     in
     Encode.list objectEncoder changes
-        |> Http.jsonBody
 
 
 changeToString : Change -> String

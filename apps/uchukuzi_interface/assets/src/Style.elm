@@ -8,6 +8,7 @@ module Style exposing
     , borderedContainer
     , captionStyle
     , class
+    , clickThrough
     , clipStyle
     , cssResponsive
     , defaultFontFace
@@ -20,9 +21,9 @@ module Style exposing
     , headerStyle
     , iconHeader
     , ignoreCss
-    , inputStyle
     , labelStyle
     , mobileHidden
+    , nonClickThrough
     , normalScrolling
     , overline
     , reverseScrolling
@@ -123,26 +124,6 @@ labelStyle : List (Attribute msg)
 labelStyle =
     [ Font.size 16
     , Font.color (rgb255 51 63 78)
-    ]
-        ++ defaultFontFace
-
-
-inputStyle : List (Attribute msg)
-inputStyle =
-    [ Background.color (rgb255 245 245 245)
-    , Border.color darkGreen
-    , Border.widthEach
-        { bottom = 2
-        , left = 0
-        , right = 0
-        , top = 0
-        }
-    , Border.solid
-    , Font.size 16
-    , height
-        (fill
-            |> minimum 46
-        )
     ]
         ++ defaultFontFace
 
@@ -278,3 +259,13 @@ edges =
     , bottom = 0
     , left = 0
     }
+
+
+clickThrough =
+    class "clickThrough"
+
+
+nonClickThrough =
+    class "nonClickThrough"
+
+

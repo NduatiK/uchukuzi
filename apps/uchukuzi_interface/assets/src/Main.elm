@@ -8,9 +8,9 @@ import Dict exposing (Dict)
 import Element exposing (..)
 import Html.Attributes
 import Json.Decode exposing (Value)
+import Layout exposing (..)
 import Models.Bus exposing (LocationUpdate)
 import Navigation exposing (Route)
-import Page exposing (..)
 import Pages.Activate as Activate
 import Pages.Blank
 import Pages.Buses.Bus.CreateBusRepairPage as CreateBusRepair
@@ -325,7 +325,7 @@ updatePage page_msg fullModel =
             { fullModel | page = pageModel }
 
         mapModelAndMsg pageModelMapper pageMsgMapper ( subModel, subCmd ) =
-            Page.transformToModelMsg (pageModelMapper >> modelMapper) pageMsgMapper ( subModel, subCmd )
+            Layout.transformToModelMsg (pageModelMapper >> modelMapper) pageMsgMapper ( subModel, subCmd )
     in
     case ( page_msg, fullModel.page ) of
         ( BusMoved _, BusesList model ) ->
@@ -540,13 +540,13 @@ view appModel =
             viewPage pageContents GotHomeMsg []
 
         viewPage pageContents toMsg tabBarItems =
-            Page.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarState GotSideBarMsg windowHeight tabBarItems
+            Layout.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarState GotSideBarMsg windowHeight tabBarItems
 
         -- viewEmptyPage =
         renderedView =
             let
                 viewHeight =
-                    Page.viewHeight windowHeight
+                    Layout.viewHeight windowHeight
             in
             case page of
                 Home _ ->
@@ -559,7 +559,7 @@ view appModel =
                     viewPage (Login.view model) GotLoginMsg []
 
                 Settings model ->
-                    viewPage (Settings.view model) GotSettingsMsg (Settings.tabBarItems model)
+                    viewPage (Settings.view model (viewHeight - TabBar.maxHeight)) GotSettingsMsg (Settings.tabBarItems model)
 
                 Signup model ->
                     viewPage (Signup.view model) GotSignupMsg []

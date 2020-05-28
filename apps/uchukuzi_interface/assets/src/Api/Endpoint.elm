@@ -24,9 +24,11 @@ module Api.Endpoint exposing
     , routeForBus
     , routes
     , routesAvailableForBus
+    , schoolDetails
     , signup
     , studentsOnboard
     , trips
+    , updatePassword
     )
 
 import Http exposing (Body)
@@ -105,9 +107,19 @@ login =
     url [ "auth", "manager", "login" ] []
 
 
+updatePassword : Endpoint
+updatePassword =
+    url [ "auth", "manager", "update_password" ] []
+
+
 activate : Endpoint
 activate =
     url [ "auth", "manager", "exchange_token" ] []
+
+
+schoolDetails : Endpoint
+schoolDetails =
+    url [ "school", "details" ] []
 
 
 signup : Endpoint

@@ -35,10 +35,13 @@ if (schoolLocation) {
     defaultLocation = { center: schoolLocation, zoom: 16 }
 }
 
+var editable = true
+
 /**
  * Completely sets up the map for a page
  */
 function initializeMaps(app, clickable = false, drawable = false, sleepTime = 800) {
+    editable = clickable || drawable
     if (schoolLocation) {
         const credentialsStorageKey = 'credentials'
         const storedCredentials = parse(localStorage.getItem(credentialsStorageKey));
@@ -241,10 +244,7 @@ function getCardinalDirection(angle) {
     return directions[Math.round(angle / 45) % 8]
 }
 
-function insertCircle(pos, app, map) {
-
-
-    let radius = 50
+function insertCircle(pos, app, map, radius = 50) {
 
     if (schoolCircle) {
         radius = schoolCircle.getRadius()
@@ -259,9 +259,9 @@ function insertCircle(pos, app, map) {
         fillColor: darkGreen,
         fillOpacity: 0.35,
         map: map,
-        draggable: true,
+        draggable: editable,
         geodesic: true,
-        editable: true,
+        editable: editable,
         center: pos,
         radius: radius // metres
     })
@@ -772,7 +772,7 @@ function setupMapPorts(app) {
     app.ports.drawEditablePath.subscribe((path) => {
         initializeMaps(app)
             .then((map) => {
-                sleep(100).then(() => {
+                sleep(200).then(() => {
                     drawPath(map, true)(path)
                 })
             })
@@ -791,6 +791,20 @@ function setupMapPorts(app) {
                     pushSchool(map)
                     paths.forEach(drawPath(map))
                 }
+            })
+    })
+    app.ports.insertCircle.subscribe(({ location, radius }) => {
+        console.log("insertCircle")
+
+        initializeMaps(app)
+            .then((map) => {
+                console.log("insertCircle")
+
+                sleep(100).then(() => {
+                    console.log("insertCircle")
+
+                    insertCircle(location, app, map, radius)
+                })
             })
     })
 

@@ -191,14 +191,16 @@ basic dropdownMsg onSelectMsg itemToPrompt itemToElement =
 
 
 {-| -}
-dropDownConfig : (Msg item -> msg) -> (Maybe item -> msg) -> (item -> String) -> Maybe (List (Attribute msg) -> Element msg) -> Bool -> String -> Config item msg
-dropDownConfig dropDownMsgWrapper onPickMsg toString icon isLoading prompt =
+dropDownConfig : (Msg item -> msg) -> (Maybe item -> msg) -> (item -> String) -> Maybe (List (Attribute msg) -> Element msg) -> Bool -> String -> List (Attribute msg) -> Config item msg
+dropDownConfig dropDownMsgWrapper onPickMsg toString icon isLoading prompt inputStyle =
     let
         containerAttrs =
             [ width fill
             , Background.color (rgb 1 1 1)
             , Font.size 16
             ]
+                ++ inputStyle
+                ++ [ Border.width 0 ]
 
         selectAttrs =
             [ paddingXY 16 8
@@ -206,8 +208,6 @@ dropDownConfig dropDownMsgWrapper onPickMsg toString icon isLoading prompt =
             , height (px 46)
             , width fill
             ]
-                ++ Style.inputStyle
-                ++ [ Border.width 0 ]
 
         searchAttrs =
             [ Border.width 0

@@ -19,7 +19,6 @@ import Element.Font as Font
 import Element.Input as Input
 import Errors
 import Html.Events exposing (..)
-import Http
 import Icons
 import Json.Decode exposing (Decoder, field, float, int, list, string)
 import Json.Encode as Encode
@@ -33,6 +32,7 @@ import Style exposing (edges)
 import StyledElement exposing (toDropDownView)
 import StyledElement.DropDown as Dropdown
 import StyledElement.FloatInput as FloatInput exposing (FloatInput)
+import StyledElement.WebDataView as WebDataView
 import Task
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator as Validator
@@ -389,7 +389,7 @@ view model viewHeight =
 viewBody : Model -> Element Msg
 viewBody model =
     Element.column
-        [ width fill, spacing 40, padding 30, alignTop ]
+        [ width fill, spacing 40, paddingEach { edges | left = 50, right = 30, top = 30, bottom = 30 }, alignTop ]
         [ viewHeading
             (if isEditing model then
                 "Edit Vehicle"
@@ -415,9 +415,10 @@ viewForm model =
         form =
             model.form
     in
-    case model.routeRequestState of
-        Success routes ->
-            column [ spacing 50, paddingEach { edges | bottom = 100 }, centerX ]
+    WebDataView.view model.routeRequestState
+        (\routes ->
+            column
+                [ spacing 50, paddingEach { edges | bottom = 100 }, centerX ]
                 [ viewTypePicker form.vehicleClass
                 , viewDivider
                 , wrappedRow [ spaceEvenly, width fill ]
@@ -441,12 +442,7 @@ viewForm model =
                         ]
                     ]
                 ]
-
-        Failure _ ->
-            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
-
-        _ ->
-            Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
+        )
 
 
 viewTypePicker : VehicleClass -> Element Msg
@@ -822,7 +818,6 @@ submit model session form =
                     ++ Maybe.withDefault []
                         (Maybe.andThen (\routeId -> Just [ ( "route_id", Encode.int routeId ) ]) form.routeId)
                 )
-                |> Http.jsonBody
     in
     case ( isEditing model, model.busID ) of
         ( True, Just busID ) ->

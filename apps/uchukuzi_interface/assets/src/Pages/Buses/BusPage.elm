@@ -12,9 +12,9 @@ import Errors
 import Html.Attributes exposing (id)
 import Icons
 import Json.Decode exposing (Decoder)
+import Layout
 import Models.Bus exposing (Bus, LocationUpdate, busDecoderWithCallback)
 import Navigation
-import Page
 import Pages.Buses.Bus.AboutBus as About
 import Pages.Buses.Bus.DevicePage as BusDevice
 import Pages.Buses.Bus.FuelHistoryPage as FuelHistory
@@ -25,6 +25,7 @@ import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
+import StyledElement.WebDataView as WebDataView
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
@@ -62,27 +63,27 @@ type Page
 
 aboutPage : Bus -> Session -> Maybe LocationUpdate -> ( Page, Cmd Msg )
 aboutPage bus session locationUpdate =
-    Page.transformToModelMsg AboutPage GotAboutMsg (About.init session bus locationUpdate)
+    Layout.transformToModelMsg AboutPage GotAboutMsg (About.init session bus locationUpdate)
 
 
 routePage : Bus -> Session -> ( Page, Cmd Msg )
 routePage bus session =
-    Page.transformToModelMsg RouteHistoryPage GotRouteHistoryMsg (RouteHistory.init bus.id session)
+    Layout.transformToModelMsg RouteHistoryPage GotRouteHistoryMsg (RouteHistory.init bus.id session)
 
 
 fuelPage : Bus -> Session -> ( Page, Cmd Msg )
 fuelPage bus session =
-    Page.transformToModelMsg FuelHistoryPage GotFuelHistoryMsg (FuelHistory.init bus.id session)
+    Layout.transformToModelMsg FuelHistoryPage GotFuelHistoryMsg (FuelHistory.init bus.id session)
 
 
 devicePage : Bus -> Session -> ( Page, Cmd Msg )
 devicePage bus session =
-    Page.transformToModelMsg BusDevicePage GotBusDeviceMsg (BusDevice.init bus session)
+    Layout.transformToModelMsg BusDevicePage GotBusDeviceMsg (BusDevice.init bus session)
 
 
 repairsPage : Bus -> Session -> ( Page, Cmd Msg )
 repairsPage bus session =
-    Page.transformToModelMsg BusRepairsPage GotBusRepairsMsg (BusRepairs.init session bus.id bus.repairs (Session.timeZone session))
+    Layout.transformToModelMsg BusRepairsPage GotBusRepairsMsg (BusRepairs.init session bus.id bus.repairs (Session.timeZone session))
 
 
 init : Int -> Session -> Maybe LocationUpdate -> BusPage -> ( Model, Cmd Msg )
@@ -233,7 +234,7 @@ mapModel model pageModelMapper pageMsgMapper ( subModel, subCmd ) =
                 _ ->
                     model
     in
-    Page.transformToModelMsg (pageModelMapper >> modelMapper) pageMsgMapper ( subModel, subCmd )
+    Layout.transformToModelMsg (pageModelMapper >> modelMapper) pageMsgMapper ( subModel, subCmd )
 
 
 updatePage : Msg -> Model -> ( Model, Cmd Msg )
@@ -313,15 +314,10 @@ changeCurrentPage selectedPageIndex_ model_ =
 
 view : Model -> Int -> Element Msg
 view model viewHeight =
-    case model.busData of
-        Success busData ->
+    WebDataView.view model.busData
+        (\busData ->
             viewLoaded busData viewHeight
-
-        Failure _ ->
-            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
-
-        _ ->
-            Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
+        )
 
 
 viewLoaded : BusData -> Int -> Element Msg

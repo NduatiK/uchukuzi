@@ -23,6 +23,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import StyledElement.WebDataView as WebDataView
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Views.DragAndDrop exposing (draggable, droppable)
 
@@ -273,13 +274,16 @@ update msg model =
 
 view : Model -> Int -> Element Msg
 view model viewHeight =
-    el
+    column
         [ width fill
         , height (px viewHeight)
-        , padding 30
+        , paddingEach { edges | left = 50, right = 30, top = 30, bottom = 30 }
+        , spacing 40
         , inFront (viewOverlay model)
         ]
-        (viewBody model viewHeight)
+        [ viewHeading model
+        , viewBody model viewHeight
+        ]
 
 
 viewHeading : Model -> Element Msg
@@ -296,8 +300,8 @@ viewHeading { inEditingMode } =
 
 viewBody : Model -> Int -> Element Msg
 viewBody model viewHeight =
-    case model.data of
-        Success data ->
+    WebDataView.view model.data
+        (\data ->
             let
                 editedData =
                     applyChanges model.edits.changes data
@@ -317,26 +321,12 @@ viewBody model viewHeight =
                             Lazy.lazy3 viewBuses editedData model.edits model.inEditingMode
             in
             row [ height fill, width fill, spacing 40 ]
-                [ column [ height fill, width (fillPortion 2), spacing 40 ]
-                    [ viewHeading model
-                    , busList
-                    ]
+                [ busList
                 , el [ width (px 60) ] none
                 , el [ width (px 2), height (px (viewHeight // 2)), Background.color Colors.darkness ] none
                 , Lazy.lazy3 viewUnassignedCrewMembers editedData viewHeight model.inEditingMode
                 ]
-
-        Failure _ ->
-            column [ height fill, width (fillPortion 2), spacing 40 ]
-                [ viewHeading model
-                , el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
-                ]
-
-        _ ->
-            column [ height fill, width (fillPortion 2), spacing 40 ]
-                [ viewHeading model
-                , el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
-                ]
+        )
 
 
 viewBuses : Data -> Edits -> Bool -> Element Msg
@@ -559,13 +549,31 @@ viewOverlay : Model -> Element Msg
 viewOverlay { selectedCrewMember } =
     el
         (Style.animatesAll
+            :: width fill
+            :: height fill
+            :: behindContent
+                (Input.button
+                    [ width fill
+                    , height fill
+                    , Background.color (Colors.withAlpha Colors.black 0.6)
+                    , Style.blurredStyle
+                    , if selectedCrewMember == Nothing then
+                        Style.clickThrough
+
+                      else
+                        Style.nonClickThrough
+                    ]
+                    { onPress = Just (SelectedCrewMember Nothing)
+                    , label = none
+                    }
+                )
             :: (if selectedCrewMember == Nothing then
-                    [ alpha 0 ]
+                    [ alpha 0
+                    , Style.clickThrough
+                    ]
 
                 else
                     [ alpha 1
-                    , width fill
-                    , height fill
                     ]
                )
         )
@@ -574,44 +582,26 @@ viewOverlay { selectedCrewMember } =
                 none
 
             Just crewMember ->
-                el
-                    [ width fill
-                    , height fill
-                    , behindContent
-                        (Input.button
-                            [ width fill
-                            , height fill
-                            , Background.color (Colors.withAlpha Colors.black 0.6)
-                            , Style.blurredStyle
-                            ]
-                            { onPress = Just (SelectedCrewMember Nothing)
-                            , label = none
-                            }
-                        )
-                    , inFront
-                        (el [ Background.color Colors.white, Border.rounded 5, Style.elevated2, centerX, centerY, width (fill |> maximum 600), Style.animatesNone ]
-                            (column [ spacing 8, paddingXY 0 24, width fill ]
-                                [ row [ width fill, paddingXY 8 0 ]
-                                    [ column [ paddingXY 20 0, spacing 8 ]
-                                        [ el (Style.header2Style ++ [ padding 0 ]) (text crewMember.name)
-                                        , el Style.captionStyle (text (roleToString crewMember.role))
-                                        ]
-                                    , StyledElement.hoverButton [ alignRight ]
-                                        { title = "Edit details"
-                                        , icon = Just Icons.edit
-                                        , onPress = Just (EditCrewMember crewMember)
-                                        }
-                                    ]
-                                , el [ width fill, height (px 2), Background.color Colors.darkness ] none
-                                , column [ paddingXY 20 20, spacing 16 ]
-                                    [ el Style.labelStyle (text crewMember.phoneNumber)
-                                    , el Style.labelStyle (text crewMember.email)
-                                    ]
+                el [ Background.color Colors.white, Border.rounded 5, Style.elevated2, centerX, centerY, width (fill |> maximum 600), Style.animatesNone ]
+                    (column [ spacing 8, paddingXY 0 24, width fill ]
+                        [ row [ width fill, paddingXY 8 0 ]
+                            [ column [ paddingXY 20 0, spacing 8 ]
+                                [ el (Style.header2Style ++ [ padding 0 ]) (text crewMember.name)
+                                , el Style.captionStyle (text (roleToString crewMember.role))
                                 ]
-                            )
-                        )
-                    ]
-                    none
+                            , StyledElement.hoverButton [ alignRight ]
+                                { title = "Edit details"
+                                , icon = Just Icons.edit
+                                , onPress = Just (EditCrewMember crewMember)
+                                }
+                            ]
+                        , el [ width fill, height (px 2), Background.color Colors.darkness ] none
+                        , column [ paddingXY 20 20, spacing 16 ]
+                            [ el Style.labelStyle (text crewMember.phoneNumber)
+                            , el Style.labelStyle (text crewMember.email)
+                            ]
+                        ]
+                    )
         )
 
 

@@ -11,7 +11,6 @@ import Errors exposing (InputError)
 import Html exposing (Html)
 import Html.Attributes exposing (id)
 import Html.Events exposing (..)
-import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (required, resolve)
@@ -472,7 +471,6 @@ submit session form =
                 [ ( "bus_id", Encode.int form.bus_id )
                 , ( "imei", Encode.string form.serial )
                 ]
-                |> Http.jsonBody
     in
     Api.post session Endpoint.devices params (Decode.succeed form)
         |> Cmd.map RegisterResponse

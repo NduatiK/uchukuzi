@@ -65,8 +65,16 @@ defmodule UchukuziInterfaceWeb.Router do
     post "/household/exchange_token", AuthController, :exchange_household_token
   end
 
+  scope "/api/auth/manager", UchukuziInterfaceWeb do
+    pipe_through [:manager_api, :authenticate_manager]
+
+    patch "/update_password", AuthController, :update_password
+  end
+
   scope "/api/school", UchukuziInterfaceWeb do
     pipe_through [:manager_api, :authenticate_manager]
+    get "/details", SchoolController, :school_details
+    patch "/details", SchoolController, :edit_school_details
     post "/edit_location", SchoolController, :edit_school_location
 
     get "/buses", SchoolController, :list_buses

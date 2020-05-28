@@ -27,6 +27,50 @@ google-map-cached {
   backdrop-filter: blur(4px);
 }
 
+div div.clickThrough .nonClickThrough {
+  pointer-events: all;
+}
+
+div .clickThrough:not(.nonClickThrough) {
+  pointer-events: none;
+}
+
+.fillErrorRedOnHover:hover img {
+  filter: invert(41%) sepia(100%) saturate(379%) hue-rotate(317deg) brightness(71%) contrast(164%);
+}
+
+.fillWhiteOnHover:hover img {
+  filter: brightness(100%) saturate(0) invert(1);
+}
+
+
+
+.fillPurple img {
+  filter: brightness(0) saturate(100%) invert(24%) sepia(97%) saturate(1937%) hue-rotate(235deg) brightness(97%) contrast(93%);
+}
+
+
+.fillWhite img {
+  filter: brightness(100%) saturate(0) invert(1);
+}
+
+
+.fillDarkGreen img {
+  filter: invert(59%) sepia(40%) saturate(342%) hue-rotate(114deg) brightness(93%) contrast(88%);
+}
+
+
+.fillDarkness img {
+  filter: invert(59%) sepia(40%) saturate(363%) hue-rotate(170deg) brightness(33%) contrast(99%);
+}
+
+
+.fillErrorRed img {
+  filter: invert(41%) sepia(100%) saturate(379%) hue-rotate(317deg) brightness(71%) contrast(164%);
+}
+
+
+
 .animatesShadow:not(.animatesNone) {
   transition: box-shadow, transform, border 250ms 50ms;
   transition-timing-function: var(--cubic)

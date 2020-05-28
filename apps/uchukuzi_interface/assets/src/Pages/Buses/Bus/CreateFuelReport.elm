@@ -13,7 +13,6 @@ import Element.Font as Font
 import Errors
 import Html
 import Html.Attributes exposing (id)
-import Http
 import Icons
 import Icons.Repairs
 import Json.Decode as Decode exposing (Decoder, int, list, string)
@@ -369,7 +368,6 @@ submit session busID record =
                 , ( "cost", Encode.int record.cost )
                 , ( "volume", Encode.float record.volume )
                 ]
-                |> Http.jsonBody
     in
     Api.post session (Endpoint.fuelReports busID) params decoder
         |> Cmd.map ServerResponse

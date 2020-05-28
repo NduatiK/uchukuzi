@@ -58,10 +58,13 @@ function init() {
     })
 
     app.ports.initializeCustomMap.subscribe(({ clickable, drawable }) => {
-        if (drawable) {
-            cleanMap()
-        }
-        initializeMaps(app, clickable, drawable)
+        sleep(100).then(() =>{
+            console.log("initializeCustomMap")
+            if (drawable) {
+                cleanMap()
+            }
+            initializeMaps(app, clickable, drawable)
+        })
     })
 
 

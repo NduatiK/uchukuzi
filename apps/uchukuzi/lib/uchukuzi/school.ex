@@ -23,6 +23,20 @@ defmodule Uchukuzi.School do
     |> Repo.transaction()
   end
 
+  def update_details(school_id, name, location, radius) do
+    school =
+      School
+      |> where(id: ^school_id)
+      |> Repo.one()
+
+    perimeter = %{school.perimeter | center: location, radius: radius}
+
+    school
+    |> change(perimeter: perimeter)
+    |> change(name: name)
+    |> Repo.update()
+  end
+
   def update_location(school_id, location, radius \\ 50) do
     school =
       School

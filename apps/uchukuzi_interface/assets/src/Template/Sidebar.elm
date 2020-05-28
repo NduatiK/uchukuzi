@@ -8,6 +8,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Region as Region
+import Html.Attributes exposing (style)
 import Html.Events exposing (on)
 import Icons
 import Json.Decode as Json
@@ -128,7 +129,7 @@ update msg model =
 
 view : Maybe Route -> Model -> Int -> Element Msg
 view currentRoute state viewHeight =
-    row [ width shrink, height fill, spacing 8 ]
+    row [ width shrink, height fill, spacing 8, htmlAttribute (style "z-index" "10") ]
         [ viewSideBar currentRoute state (toFloat viewHeight)
         , viewResizeHandle
         ]
@@ -148,7 +149,7 @@ viewSideBar currentRoute state viewHeight =
             state.width - handleBarSpacing - (handleBarWidth // 2)
     in
     column
-        [ Background.color (rgb255 245 246 248)
+        [ Background.color Colors.backgroundGray
         , Border.widthEach { edges | right = 1 }
         , Border.color (rgba 0 0 0 0.1)
         , spacing 4

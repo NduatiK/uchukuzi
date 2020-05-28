@@ -13,7 +13,6 @@ import Element.Input as Input
 import Errors exposing (Errors, InputError)
 import Html.Attributes exposing (id)
 import Html.Events exposing (..)
-import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, field, float, int, list, string)
 import Json.Decode.Pipeline exposing (hardcoded)
@@ -29,6 +28,7 @@ import Set
 import Style exposing (edges)
 import StyledElement exposing (toDropDownView)
 import StyledElement.DropDown as Dropdown
+import StyledElement.WebDataView as WebDataView
 import Task
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator exposing (..)
@@ -629,15 +629,10 @@ view model viewHeight =
         [ viewHeading model
         , case model.editState of
             Just state ->
-                case state.requestState of
-                    Success _ ->
+                WebDataView.view state.requestState
+                    (\_ ->
                         viewFormWrapper model
-
-                    Loading ->
-                        el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
-
-                    _ ->
-                        el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+                    )
 
             Nothing ->
                 viewFormWrapper model
@@ -645,18 +640,13 @@ view model viewHeight =
 
 
 viewFormWrapper model =
-    case model.routeRequestState of
-        Success _ ->
+    WebDataView.view model.routeRequestState
+        (\_ ->
             column [ width fill, height fill, spacing 24 ]
                 [ googleMap model
                 , viewBody model
                 ]
-
-        Failure _ ->
-            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
-
-        _ ->
-            Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
+        )
 
 
 viewHeading : Model -> Element Msg
@@ -1127,7 +1117,6 @@ submitNew session household =
                 , ( "route", Encode.int household.route )
                 , ( "home_location", encodeLocation household.homeLocation )
                 ]
-                |> Http.jsonBody
     in
     Api.post session Endpoint.households params aDecoder
         |> Cmd.map ServerResponse
@@ -1159,7 +1148,6 @@ submitEdit model household =
                 , ( "route", Encode.int household.route )
                 , ( "home_location", encodeLocation household.homeLocation )
                 ]
-                |> Http.jsonBody
     in
     Api.patch model.session (Endpoint.household model.form.guardian.id) params aDecoder
         |> Cmd.map ServerResponse

@@ -11,6 +11,7 @@ module StyledElement exposing
     , googleMap
     , hoverButton
     , iconButton
+    , inputStyle
     , multilineInput
     , navigationLink
     , numberInput
@@ -35,7 +36,6 @@ import Element.Input as Input
 import Errors exposing (InputError)
 import Html exposing (node)
 import Html.Attributes exposing (id)
-import Http
 import Icons exposing (IconBuilder)
 import Json.Encode as Encode
 import Navigation
@@ -404,7 +404,7 @@ dropDown attributes { title, caption, dropdownState, dropDownMsg, onSelect, erro
     let
         config : Dropdown.Config item msg
         config =
-            Dropdown.dropDownConfig dropDownMsg onSelect toString icon isLoading (Maybe.withDefault "Pick one" prompt)
+            Dropdown.dropDownConfig dropDownMsg onSelect toString icon isLoading (Maybe.withDefault "Pick one" prompt) inputStyle
 
         input =
             Dropdown.view config dropdownState options
@@ -612,22 +612,24 @@ wrappedInput input title caption errorCaption icon attributes trailingElements =
 
                 Nothing ->
                     none
-    in
-    Element.column
-        ([ spacing 6
-         , width fill
-         , height
-            shrink
-         ]
-            ++ attributes
-        )
-        [ if title /= "" then
-            el Style.labelStyle (text title)
 
-          else
-            none
+        viewTitle =
+            if title /= "" then
+                el Style.labelStyle (text title)
+
+            else
+                none
+    in
+    column
+        (spacing 6 :: width fill :: height shrink :: attributes)
+        [ viewTitle
         , row
-            (spacing 12 :: width fill :: centerY :: Style.inputStyle ++ errorBorder (errorCaption == Nothing))
+            (spacing 12
+                :: width fill
+                :: centerY
+                :: inputStyle
+                ++ errorBorder (errorCaption == Nothing)
+            )
             ([ textBoxIcon
              , input
              ]
@@ -636,3 +638,44 @@ wrappedInput input title caption errorCaption icon attributes trailingElements =
         , captionLabel
         , errorCaptionLabel
         ]
+
+
+inputStyle : List (Attribute msg)
+inputStyle =
+    -- underlinedTextFieldStyle
+    borderTextFieldStyle
+
+
+borderTextFieldStyle : List (Attribute msg)
+borderTextFieldStyle =
+    [ Background.color Colors.lightGrey
+    , Border.color (Colors.withAlpha Colors.darkness 0.3)
+    , Border.width 1
+    , Border.rounded 5
+    , Font.size 16
+    , height
+        (fill
+            |> minimum 46
+        )
+    ]
+        ++ defaultFontFace
+
+
+underlinedTextFieldStyle : List (Attribute msg)
+underlinedTextFieldStyle =
+    [ Background.color (rgb255 245 245 245)
+    , Border.color Colors.darkGreen
+    , Border.widthEach
+        { bottom = 2
+        , left = 0
+        , right = 0
+        , top = 0
+        }
+    , Border.solid
+    , Font.size 16
+    , height
+        (fill
+            |> minimum 46
+        )
+    ]
+        ++ defaultFontFace

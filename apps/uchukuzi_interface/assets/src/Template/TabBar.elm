@@ -7,6 +7,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Region as Region
+import Html.Attributes
 import Icons
 import Navigation exposing (Route)
 import Style exposing (edges)
@@ -77,6 +78,7 @@ viewTabItem item =
                         , Font.color Colors.errorRed
                         , mouseDown [ Border.color Colors.errorRed ]
                         , mouseOver [ Background.color Colors.errorRed, Border.color Colors.errorRed, Font.color Colors.white ]
+                        , Colors.fillWhiteOnHover
                         ]
 
                     LoadingButton _ ->
@@ -99,7 +101,7 @@ viewTabItem item =
                     ]
 
                 ErrorButton button ->
-                    [ button.icon [ alignTop, alpha 1 ]
+                    [ button.icon [ alignTop, alpha 1, Colors.fillErrorRed ]
                     , text button.title
                     ]
 

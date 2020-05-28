@@ -7,7 +7,9 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       "location" => %{
         "lat" => school.perimeter.center.lat,
         "lng" => school.perimeter.center.lng
-      }
+      },
+      "radius" => school.perimeter.radius,
+      "name" => school.name
     }
   end
 
@@ -128,8 +130,6 @@ defmodule UchukuziInterfaceWeb.SchoolView do
   def render_bus_route(route) do
     %{id: route.id, name: route.name}
   end
-
-
 
   def render_location(location) do
     %{

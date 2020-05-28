@@ -11,7 +11,6 @@ import Element.Input as Input
 import Errors exposing (Errors, InputError)
 import Html.Attributes exposing (id)
 import Html.Events exposing (..)
-import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (hardcoded)
@@ -369,7 +368,6 @@ submit session form editingID =
                 [ ( "name", Encode.string form.name )
                 , ( "path", Encode.list encodeLocation form.path )
                 ]
-                |> Http.jsonBody
     in
     case editingID of
         Just id ->

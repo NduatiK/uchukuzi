@@ -8,7 +8,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Errors
-import Http
 import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (required)
@@ -239,7 +238,6 @@ login session form =
                 [ ( "email", Encode.string form.email )
                 , ( "password", Encode.string form.password )
                 ]
-                |> Http.jsonBody
     in
     Api.post session Endpoint.login params Api.loginDecoder
         |> Cmd.map LoginResponse

@@ -3,7 +3,7 @@ module Pages.Activate exposing (Model, Msg, init, update, view)
 import Api exposing (SuccessfulLogin)
 import Api.Endpoint
 import Element exposing (..)
-import Http
+
 import Icons
 import Json.Encode as Encode
 import Models.Location
@@ -65,7 +65,6 @@ activateAccount session token =
             Encode.object
                 [ ( "token", Encode.string token )
                 ]
-                |> Http.jsonBody
     in
     Api.post session Api.Endpoint.activate params Api.loginDecoder
         |> Cmd.map ServerResponse

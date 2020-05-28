@@ -6,6 +6,19 @@ defmodule UchukuziInterfaceWeb.AuthController do
   alias Uchukuzi.Roles
   alias UchukuziInterfaceWeb.Email.{Email, Mailer}
 
+  def action(conn, _) do
+    arg_list =
+      with :no_manager <- Map.get(conn.assigns, :manager, :no_manager) do
+             [conn, conn.params]
+      else
+        manager ->
+          [conn, conn.params, manager]
+      end
+
+    apply(__MODULE__, action_name(conn), arg_list)
+  end
+
+
   def login_manager(conn, %{"email" => email, "password" => password}) do
     with {:ok, manager} <- Roles.login_manager(email, password),
          true <- manager.email_verified do
@@ -209,30 +222,64 @@ defmodule UchukuziInterfaceWeb.AuthController do
 
   def invite_student(conn, %{"student_id" => student_id, "email" => email}) do
     # with :no_household <- Map.get(conn.assigns, :household, :no_household) do
-    with %Guardian{} = guardian <- conn.assigns.household do
-      guardian = Repo.preload(guardian, :students)
+      with %Guardian{} = guardian <- conn.assigns.household do
+        guardian = Repo.preload(guardian, :students)
 
-      with matching_student when not is_nil(matching_student) <-
-             guardian.students |> Enum.find(&(&1.id == student_id)),
-           {:ok, _student} <- Roles.update_student_email(matching_student, email) do
-        # if email != nil do
-        # Email.send_student_invite_to(email)
-        # |> Mailer.deliver_now()
-        # end
+        with matching_student when not is_nil(matching_student) <-
+          guardian.students |> Enum.find(&(&1.id == student_id)),
+          {:ok, _student} <- Roles.update_student_email(matching_student, email) do
+            # if email != nil do
+              # Email.send_student_invite_to(email)
+              # |> Mailer.deliver_now()
+              # end
 
+              conn
+              |> resp(200, "{}")
+            else
+              _ ->
+                conn
+                |> resp(:not_found, "Unauthorized")
+                |> send_resp()
+              end
+            else
+              _ ->
+                conn
+                |> resp(:not_found, "Unauthorized")
+                |> send_resp()
+              end
+            end
+    def update_password(conn, %{"old_password" => old_password, "new_password" => new_password},manager) do
+      with {:ok, manager} <- Roles.login_manager(manager.email, old_password),
+      true <- manager.email_verified,
+      {:ok, manager} <- Roles.update_manager_password(manager, new_password)do
         conn
         |> resp(200, "{}")
       else
-        _ ->
+        false ->
           conn
-          |> resp(:not_found, "Unauthorized")
+          |> resp(:bad_request,
+          """
+          {"errors": {"detail": {"old_password":["Please verify your email account before logging in"]}} }
+          """
+          )
+
+        {:error, :unauthorized} ->
+          conn
+          |> resp(
+            :bad_request,
+            """
+            {"errors": {"detail": {"old_password":["is incorrect"]}} }
+            """
+          )
           |> send_resp()
+          {:error, _} = error ->
+            conn
+            |> UchukuziInterfaceWeb.FallbackController.call(error)
+
+            _ ->
+              conn
+          |> resp(
+            :bad_request, "{}")
       end
-    else
-      _ ->
-        conn
-        |> resp(:not_found, "Unauthorized")
-        |> send_resp()
     end
-  end
 end

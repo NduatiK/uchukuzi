@@ -21,6 +21,7 @@ import Style exposing (edges)
 import StyledElement
 import StyledElement.Footer as Footer
 import StyledElement.Graph
+import StyledElement.WebDataView as WebDataView
 import Task
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Time
@@ -236,8 +237,8 @@ view model viewHeight =
         , Style.animatesAll
         ]
         [ viewGraph model
-        , case model.reports of
-            Success reports ->
+        , WebDataView.view model.reports
+            (\reports ->
                 column []
                     [ --     row (Style.header2Style ++ [ alignLeft, width fill, Font.color Colors.black, spacing 30 ])
                       --     [ text "Total Paid"
@@ -246,14 +247,7 @@ view model viewHeight =
                       -- ,
                       viewGroupedReports model reports
                     ]
-
-            Failure reports ->
-                el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
-
-            _ ->
-                Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]
-
-        -- , wrappedRow [] []
+            )
         ]
 
 

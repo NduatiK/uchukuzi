@@ -10,7 +10,6 @@ import Element.Border as Border
 import Element.Font as Font
 import Errors
 import Html.Attributes exposing (id)
-import Http
 import Icons
 import Icons.Repairs
 import Json.Decode as Decode exposing (Decoder, int, list, string)
@@ -506,7 +505,6 @@ submit session busID repairs =
 
         params =
             Encode.list paramsFor repairs
-                |> Http.jsonBody
     in
     Api.post session (Endpoint.performedBusRepairs busID) params decoder
         |> Cmd.map ServerResponse

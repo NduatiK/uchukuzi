@@ -92,6 +92,9 @@ port highlightPath : { routeID : Int, highlighted : Bool } -> Cmd msg
 port cleanMap : () -> Cmd msg
 
 
+port insertCircle : { location : Location, radius : Float } -> Cmd msg
+
+
 
 -- INCOMING
 
