@@ -61,11 +61,6 @@ type alias Section msg =
 
 sideBarSections : List (SideBarOption msg)
 sideBarSections =
-    -- [ TopLevel (Section "Fleet" Icons.vehicle Buses)
-    -- , TopLevel (Section "Students" Icons.seat HouseholdList)
-    -- , TopLevel (Section "Routes" Icons.pin Routes)
-    -- , TopLevel (Section "Crew" Icons.people CrewMembers)
-    -- ]
     [ SideBarOption (Section "Fleet" Icons.vehicle Buses)
     , SideBarOption (Section "Students" Icons.seat HouseholdList)
     , SideBarOption (Section "Routes" Icons.pin Routes)
@@ -75,12 +70,14 @@ sideBarSections =
 
 type alias Model =
     { isResizing : Bool
+    , hasDraggedHandle : Bool
     , width : Int
     }
 
 
 init isOpen =
     { isResizing = False
+    , hasDraggedHandle = False
     , width =
         if isOpen then
             maxSideBarWidth
@@ -91,34 +88,47 @@ init isOpen =
 
 
 type Msg
-    = --ToggleOpen
-      --|
-      StartResize
+    = StartResize
     | StopResize
     | MovedSidebar Int
 
 
 update msg model =
     case msg of
-        -- ToggleOpen ->
-        --     ( model, Cmd.none )
         StartResize ->
-            ( { model | isResizing = True }, Cmd.none )
+            ( { model | isResizing = True, hasDraggedHandle = False }, Cmd.none )
 
         StopResize ->
-            let
-                newWidth =
-                    minSideBarWidth + round (percentCollapsed model.width) * (maxSideBarWidth - minSideBarWidth)
+            if model.hasDraggedHandle then
+                let
+                    newWidth =
+                        minSideBarWidth + round (percentCollapsed model.width) * (maxSideBarWidth - minSideBarWidth)
 
-                isOpen =
-                    newWidth == maxSideBarWidth
-            in
-            ( { model
-                | isResizing = False
-                , width = newWidth
-              }
-            , setOpenState isOpen
-            )
+                    isOpen =
+                        newWidth == maxSideBarWidth
+                in
+                ( { model
+                    | isResizing = False
+                    , hasDraggedHandle = False
+                    , width = newWidth
+                  }
+                , setOpenState isOpen
+                )
+
+            else
+                let
+                    toggledWidth =
+                        minSideBarWidth + round (1 - percentCollapsed model.width) * (maxSideBarWidth - minSideBarWidth)
+
+                    isOpen =
+                        toggledWidth == maxSideBarWidth
+                in
+                ( { model
+                    | isResizing = False
+                    , width = toggledWidth
+                  }
+                , setOpenState isOpen
+                )
 
         MovedSidebar x ->
             let
@@ -135,7 +145,7 @@ update msg model =
                     Basics.clamp minSideBarWidth ceiling x
             in
             if model.isResizing then
-                ( { model | width = finalWidth }, Cmd.none )
+                ( { model | width = finalWidth, hasDraggedHandle = True }, Cmd.none )
 
             else
                 ( model, Cmd.none )
