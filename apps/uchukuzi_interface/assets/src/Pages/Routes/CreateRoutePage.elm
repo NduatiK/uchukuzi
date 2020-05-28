@@ -224,7 +224,7 @@ view model _ =
         [ width fill
         , height fill
         , spacing 24
-        , padding 24
+        , padding 30
         ]
         [ viewHeading model.editState model.deleteRequestState
         , googleMap model
@@ -372,11 +372,11 @@ submit session form editingID =
     case editingID of
         Just id ->
             Api.patch session (Endpoint.route id) params aDecoder
-                |> Cmd.map ServerResponse
+                |> Cmd.map ReceivedCreateResponse
 
         Nothing ->
             Api.post session Endpoint.routes params aDecoder
-                |> Cmd.map ServerResponse
+                |> Cmd.map ReceivedCreateResponse
 
 
 aDecoder : Decoder ()

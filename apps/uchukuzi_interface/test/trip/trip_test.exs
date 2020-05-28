@@ -1,26 +1,38 @@
+ExUnit.start()
+
 defmodule UchukuziInterfaceWeb.TripTest do
   use ExUnit.Case
-  use UchukuziInterfaceWeb.ConnCase
+  use Phoenix.ConnTest
+  alias UchukuziInterfaceWeb.Router.Helpers, as: Routes
+
+  # The default endpoint for testing
+  @endpoint UchukuziInterfaceWeb.Endpoint
 
   import Jason
+  alias Plug.Conn
   import File
 
-  setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Uchukuzi.Repo)
-  end
 
   test "emulate trip", %{conn: conn} do
-    {ok, contents} = File.read("test/trip/test_trip.json")
+    path =
+      "/Users/deepwork/Documents/Implementation/server2/uchukuzi_backend/apps/uchukuzi_interface/test/trip/test_trip.json"
 
-    {ok, jsonArray} = Jason.decode(contents)
+    {:ok, contents} = File.read(path)
 
+    {:ok, jsonArray} = Jason.decode(contents)
+
+    conn = Conn.put_req_header(conn, "content-type", "application/json")
 
     Enum.reduce(jsonArray, 0, fn x, waited ->
       {time, ""} = Integer.parse(x["time"])
 
-      :timer.sleep((time - waited)*1000)
-      IO.inspect(x,label: "Posting")
-      conn = post(conn, "/api/school/buses/1/performed_repairs", x)
+      :timer.sleep((time - waited) * 100)
+
+
+      device_id = 4901_5420_3237_500
+
+      {:ok, body} = Jason.encode([x])
+      conn = post(conn, "/api/tracking/devices/#{device_id}/reports", body)
 
       time
     end)

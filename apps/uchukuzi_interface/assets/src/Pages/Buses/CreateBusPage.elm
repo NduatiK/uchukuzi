@@ -389,7 +389,7 @@ view model viewHeight =
 viewBody : Model -> Element Msg
 viewBody model =
     Element.column
-        [ width fill, spacing 40, paddingEach { edges | left = 50, right = 30, top = 30, bottom = 30 }, alignTop ]
+        [ width fill, spacing 40, padding 30, alignTop ]
         [ viewHeading
             (if isEditing model then
                 "Edit Vehicle"
@@ -822,11 +822,11 @@ submit model session form =
     case ( isEditing model, model.busID ) of
         ( True, Just busID ) ->
             Api.patch session (Endpoint.bus busID) params busDecoder
-                |> Cmd.map ServerResponse
+                |> Cmd.map ReceivedCreateResponse
 
         _ ->
             Api.post session Endpoint.buses params busDecoder
-                |> Cmd.map ServerResponse
+                |> Cmd.map ReceivedCreateResponse
 
 
 busDecoder : Decoder Int
@@ -837,13 +837,13 @@ busDecoder =
 fetchRoutes : Maybe Int -> Session -> Cmd Msg
 fetchRoutes busID session =
     Api.get session (Endpoint.routesAvailableForBus busID) (list simpleRouteDecoder)
-        |> Cmd.map RouteServerResponse
+        |> Cmd.map ReceivedRouteResponse
 
 
 fetchBus : Int -> Session -> Cmd Msg
 fetchBus busID session =
     Api.get session (Endpoint.bus busID) (busDecoderWithCallback busToForm)
-        |> Cmd.map EditServerResponse
+        |> Cmd.map ReceivedEditResponse
 
 
 busToForm : Bus -> ( Form, Cmd Msg )

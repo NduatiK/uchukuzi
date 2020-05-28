@@ -33,7 +33,7 @@ type Msg
     = CreateRoute
     | EditRoute Route
     | UpdatedSearchText String
-    | ReceivedRoutesResponse  (WebData (List Route))
+    | ReceivedRoutesResponse (WebData (List Route))
     | HoverOver Route
     | HoverLeft Route
 
@@ -66,7 +66,7 @@ update msg model =
         HoverLeft route ->
             ( model, Ports.highlightPath { routeID = route.id, highlighted = False } )
 
-        ReceivedRoutesResponse  response ->
+        ReceivedRoutesResponse response ->
             let
                 newModel =
                     { model | routes = response }
@@ -94,7 +94,12 @@ update msg model =
 
 view : Model -> Int -> Element Msg
 view model viewHeight =
-    row [ paddingXY 30 30, width fill, spacing 32, height (fill |> maximum viewHeight) ]
+    row
+        [ padding 30
+        , width fill
+        , spacing 32
+        , height (fill |> maximum viewHeight)
+        ]
         [ viewBody model (viewHeight - 60)
         , googleMap
         ]
@@ -237,4 +242,4 @@ googleMap =
 fetchRoutes : Session -> Cmd Msg
 fetchRoutes session =
     Api.get session Endpoint.routes (list routeDecoder)
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedRoutesResponse

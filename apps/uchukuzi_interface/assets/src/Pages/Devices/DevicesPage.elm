@@ -33,7 +33,7 @@ type alias Bus =
 
 
 type Msg
-    = ReceivedDevicesResponse  (WebData (List Device))
+    = ReceivedDevicesResponse (WebData (List Device))
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -44,7 +44,7 @@ init session =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ReceivedDevicesResponse  devices ->
+        ReceivedDevicesResponse devices ->
             ( { model | devices = devices }
             , Cmd.none
             )
@@ -147,7 +147,7 @@ viewDevicesTable devices =
 fetchDevices : Session -> Cmd Msg
 fetchDevices session =
     Api.get session Endpoint.devices (list deviceDecoder)
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedCreateResponse
 
 
 deviceDecoder : Decoder Device

@@ -455,11 +455,11 @@ submit session form editingID =
     case editingID of
         Just id ->
             Api.patch session (Endpoint.crewMember id) params decoder
-                |> Cmd.map ServerResponse
+                |> Cmd.map ReceivedCreateResponse
 
         Nothing ->
             Api.post session Endpoint.crewMembers params decoder
-                |> Cmd.map ServerResponse
+                |> Cmd.map ReceivedCreateResponse
 
 
 decoder : Decoder ()

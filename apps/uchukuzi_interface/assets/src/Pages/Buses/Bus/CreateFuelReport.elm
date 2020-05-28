@@ -82,7 +82,7 @@ init bus session =
 
 type Msg
     = Submit
-    | ReceivedCreateResponse  (WebData ())
+    | ReceivedCreateResponse (WebData ())
     | DatePickerUpdated DatePicker.Msg
     | ChangedCost String
     | ChangedVolume String
@@ -187,7 +187,7 @@ update msg model =
                 Err problems ->
                     ( { model | problems = Errors.toClientSideErrors problems }, Cmd.none )
 
-        ReceivedCreateResponse  response ->
+        ReceivedCreateResponse response ->
             let
                 newModel =
                     { model | requestState = response }
@@ -370,7 +370,7 @@ submit session busID record =
                 ]
     in
     Api.post session (Endpoint.fuelReports busID) params decoder
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedCreateResponse
 
 
 decoder : Decoder ()

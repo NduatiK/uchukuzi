@@ -151,7 +151,7 @@ view model viewHeight =
         [ width fill
         , height (px viewHeight)
         , spacing 40
-        , paddingEach { edges | left = 50, right = 30, top = 30, bottom = 30 }
+        , padding 30
         ]
         [ googleMap (busesFromModel model.buses) model.selectedBus
         , viewBody model

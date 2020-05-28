@@ -62,26 +62,6 @@ type alias Data =
     }
 
 
-type Msg
-    = ReceivedCewMembersResponse  (WebData Data)
-    | StartEditing
-    | CancelEdits
-    | SaveChanges
-      ------------
-    | SelectedCrewMember (Maybe CrewMember)
-    | EditCrewMember CrewMember
-      ------------
-    | StartedDragging CrewMember
-    | StoppedDragging CrewMember
-    | DroppedCrewMemberOnto Bus
-    | DraggedCrewMemberAbove Int
-    | DroppedCrewMemberOntoUnassigned
-    | DraggedCrewMemberAboveUnassigned
-      ------------
-    | RegisterCrewMembers
-    | NoOp
-
-
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
@@ -100,6 +80,26 @@ init session =
 
 
 -- UPDATE
+
+
+type Msg
+    = ReceivedCrewMembersResponse (WebData Data)
+    | StartEditing
+    | CancelEdits
+    | SaveChanges
+      ------------
+    | SelectedCrewMember (Maybe CrewMember)
+    | EditCrewMember CrewMember
+      ------------
+    | StartedDragging CrewMember
+    | StoppedDragging CrewMember
+    | DroppedCrewMemberOnto Bus
+    | DraggedCrewMemberAbove Int
+    | DroppedCrewMemberOntoUnassigned
+    | DraggedCrewMemberAboveUnassigned
+      ------------
+    | RegisterCrewMembers
+    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -123,7 +123,7 @@ update msg model =
         RegisterCrewMembers ->
             ( model, Navigation.rerouteTo model Navigation.CrewMemberRegistration )
 
-        ReceivedCewMembersResponse  response ->
+        ReceivedCrewMembersResponse response ->
             let
                 newModel =
                     { model | data = response }
@@ -277,7 +277,7 @@ view model viewHeight =
     column
         [ width fill
         , height (px viewHeight)
-        , paddingEach { edges | left = 50, right = 30, top = 30, bottom = 30 }
+        , padding 30
         , spacing 40
         , inFront (viewOverlay model)
         ]
@@ -608,7 +608,7 @@ viewOverlay { selectedCrewMember } =
 fetchCrewMembersAndBuses : Session -> Cmd Msg
 fetchCrewMembersAndBuses session =
     Api.get session Endpoint.crewMembersAndBuses dataDecoder
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedCrewMembersResponse
 
 
 updateAssignments : Session -> List Change -> Data -> Cmd Msg
@@ -618,7 +618,7 @@ updateAssignments session changes editedData =
             Models.CrewMember.encodeChanges changes
     in
     Api.patch session Endpoint.crewAssignmentChanges updates (Decode.succeed editedData)
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedCrewMembersResponse
 
 
 dataDecoder =

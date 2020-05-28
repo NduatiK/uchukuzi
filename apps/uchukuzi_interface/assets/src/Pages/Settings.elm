@@ -299,7 +299,7 @@ view model viewHeight =
     Element.column
         [ width fill
         , spacing 40
-        , paddingEach { edges | left = 50, right = 30, top = 30, bottom = 30 }
+        , padding 30
         , height fill
         , inFront (viewOverlay model viewHeight)
         ]

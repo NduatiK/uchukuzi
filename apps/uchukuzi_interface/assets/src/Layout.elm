@@ -57,7 +57,7 @@ frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pa
                     --     |> id
                     --     |> htmlAttribute
                     ]
-                    [ Element.map toMsg body
+                    [ Element.map toMsg (el [ paddingEach { edges | left = 20 }, width fill, height fill ] body)
                     , bottomBar
                     ]
                 ]

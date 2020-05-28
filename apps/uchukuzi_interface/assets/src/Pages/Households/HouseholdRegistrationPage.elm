@@ -624,7 +624,7 @@ view model viewHeight =
         , height (px viewHeight)
         , scrollbarY
         , spacing 24
-        , padding 24
+        , padding 30
         ]
         [ viewHeading model
         , case model.editState of
@@ -1119,7 +1119,7 @@ submitNew session household =
                 ]
     in
     Api.post session Endpoint.households params aDecoder
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedCreateResponse
 
 
 submitEdit : Model -> ValidForm -> Cmd Msg
@@ -1150,7 +1150,7 @@ submitEdit model household =
                 ]
     in
     Api.patch model.session (Endpoint.household model.form.guardian.id) params aDecoder
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedCreateResponse
 
 
 aDecoder : Decoder ()

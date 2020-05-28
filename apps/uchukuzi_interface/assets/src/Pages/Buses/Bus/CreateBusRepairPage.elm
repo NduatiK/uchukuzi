@@ -53,7 +53,7 @@ type alias ValidRepair =
 
 type Msg
     = Submit
-    | ReceivedCreateResponse  (WebData ())
+    | ReceivedCreateResponse (WebData ())
     | NoOp
       --------
     | StartedDragging Draggable
@@ -193,7 +193,7 @@ update msg model =
             in
             ( { model | repairs = repairs }, Cmd.none )
 
-        ReceivedCreateResponse  response ->
+        ReceivedCreateResponse response ->
             let
                 newModel =
                     { model | requestState = response }
@@ -507,7 +507,7 @@ submit session busID repairs =
             Encode.list paramsFor repairs
     in
     Api.post session (Endpoint.performedBusRepairs busID) params decoder
-        |> Cmd.map ServerResponse
+        |> Cmd.map ReceivedCreateResponse
 
 
 decoder : Decoder ()
