@@ -254,11 +254,13 @@ viewTable buses =
               , width = shrink
               , view =
                     \bus ->
-                        StyledElement.iconButton [ padding 0, Background.color Colors.transparent ]
-                            { icon = Icons.pin
-                            , iconAttrs = []
-                            , onPress = Just (PreviewBus (Just bus))
-                            }
+                        none
+
+              -- StyledElement.iconButton [ padding 0, Background.color Colors.transparent ]
+              --     { icon = Icons.pin
+              --     , iconAttrs = []
+              --     , onPress = Just (PreviewBus (Just bus))
+              --     }
               }
             , { header = tableHeader "ROUTE"
               , width = shrink

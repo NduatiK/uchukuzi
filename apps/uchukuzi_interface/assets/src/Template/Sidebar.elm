@@ -1,4 +1,4 @@
-module Template.SideBar exposing (Model, Msg, handleBarSpacing, handleBarWidth, init, subscriptions, update, view)
+port module Template.SideBar exposing (Model, Msg, handleBarSpacing, handleBarWidth, init, subscriptions, update, view)
 
 import Browser.Events
 import Colors
@@ -15,6 +15,9 @@ import Json.Decode as Json
 import Navigation exposing (Route)
 import Style exposing (edges)
 import StyledElement
+
+
+port setOpenState : Bool -> Cmd msg
 
 
 type NavigationPage
@@ -76,24 +79,29 @@ type alias Model =
     }
 
 
-init =
+init isOpen =
     { isResizing = False
-    , width = maxSideBarWidth
+    , width =
+        if isOpen then
+            maxSideBarWidth
+
+        else
+            minSideBarWidth
     }
 
 
 type Msg
-    = ToggleOpen
-    | StartResize
+    = --ToggleOpen
+      --|
+      StartResize
     | StopResize
     | MovedSidebar Int
 
 
 update msg model =
     case msg of
-        ToggleOpen ->
-            ( model, Cmd.none )
-
+        -- ToggleOpen ->
+        --     ( model, Cmd.none )
         StartResize ->
             ( { model | isResizing = True }, Cmd.none )
 
@@ -101,12 +109,15 @@ update msg model =
             let
                 newWidth =
                     minSideBarWidth + round (percentCollapsed model.width) * (maxSideBarWidth - minSideBarWidth)
+
+                isOpen =
+                    newWidth == maxSideBarWidth
             in
             ( { model
                 | isResizing = False
                 , width = newWidth
               }
-            , Cmd.none
+            , setOpenState isOpen
             )
 
         MovedSidebar x ->
@@ -114,14 +125,17 @@ update msg model =
                 ceiling =
                     maxSideBarWidth
                         + ((x - maxSideBarWidth)
-                            |> clamp 0 100
+                            |> clamp 0 10000
                             |> toFloat
                             |> sqrt
                             |> round
                           )
+
+                finalWidth =
+                    Basics.clamp minSideBarWidth ceiling x
             in
             if model.isResizing then
-                ( { model | width = Basics.clamp minSideBarWidth ceiling x }, Cmd.none )
+                ( { model | width = finalWidth }, Cmd.none )
 
             else
                 ( model, Cmd.none )

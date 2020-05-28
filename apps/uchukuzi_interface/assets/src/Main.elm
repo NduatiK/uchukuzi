@@ -149,6 +149,19 @@ init args url navKey =
                     args
                 )
 
+        sideBarIsOpen =
+            Maybe.withDefault False
+                (Maybe.andThen
+                    (\x ->
+                        Result.toMaybe
+                            (Json.Decode.decodeValue
+                                (Json.Decode.at [ "sideBarIsOpen" ] Json.Decode.bool)
+                                x
+                            )
+                    )
+                    args
+                )
+
         error =
             Maybe.withDefault False
                 (Maybe.andThen
@@ -167,7 +180,7 @@ init args url navKey =
                 { page = Redirect session
                 , route = Nothing
                 , navState = NavBar.init session
-                , sideBarState = SideBar.init
+                , sideBarState = SideBar.init sideBarIsOpen
                 , windowHeight = height
                 , url = url
                 , locationUpdates = Dict.fromList []

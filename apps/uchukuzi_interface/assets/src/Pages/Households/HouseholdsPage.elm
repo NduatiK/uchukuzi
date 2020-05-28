@@ -161,7 +161,7 @@ view model viewHeight =
         , padding 30
         , inFront (viewOverlay model)
         ]
-        [ viewHeading model
+        [ viewHeading
         , viewBody model
         ]
 
@@ -279,8 +279,8 @@ viewOverlay { selectedStudent, session } =
         )
 
 
-viewHeading : Model -> Element Msg
-viewHeading model =
+viewHeading : Element Msg
+viewHeading =
     row [ spacing 16, width fill ]
         [ Style.iconHeader Icons.seat "Students"
 
@@ -292,6 +292,7 @@ viewHeading model =
         ]
 
 
+viewBody : Model -> Element Msg
 viewBody { groupedStudents, selectedGroupedStudents } =
     case groupedStudents of
         NotAsked ->

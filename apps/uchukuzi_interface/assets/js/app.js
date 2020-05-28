@@ -32,6 +32,10 @@ function init() {
 
     const credentialsStorageKey = 'credentials'
     const storedCredentials = parse(localStorage.getItem(credentialsStorageKey));
+    
+    
+    const sideBarStateKey = "sideBarState"
+    const sideBarIsOpen = parse(localStorage.getItem(sideBarStateKey));
 
     const windowSize = {
         width: window.innerWidth,
@@ -44,12 +48,15 @@ function init() {
     }
 
     var app = Elm.Main.init({
-        flags: { credentials: storedCredentials, window: windowSize },
+        flags: { credentials: storedCredentials, window: windowSize, sideBarIsOpen: sideBarIsOpen },
         node: document.getElementById("elm")
     })
 
     setupMapPorts(app)
-
+    app.ports.setOpenState.subscribe((state) => {
+        console.log(state)
+        localStorage.setItem(sideBarStateKey, state)
+    })
     app.ports.printCardPort.subscribe(() => {
         printCard("")
     })
