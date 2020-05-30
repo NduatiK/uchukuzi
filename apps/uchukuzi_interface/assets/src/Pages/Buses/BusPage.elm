@@ -325,7 +325,7 @@ viewLoaded busData viewHeight viewWidth =
     let
         ( body, footer, buttons ) =
             ( viewBody viewHeight busData
-            , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData (viewWidth - 30))
+            , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData (viewWidth - 55))
             , viewButtons busData
             )
     in

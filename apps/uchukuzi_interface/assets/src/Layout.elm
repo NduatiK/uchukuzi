@@ -1,4 +1,9 @@
-module Layout exposing (frame, transformToModelMsg, viewHeight)
+module Layout exposing
+    ( frame
+    , sideBarOffset
+    , transformToModelMsg
+    , viewHeight
+    )
 
 import Element exposing (..)
 import Html.Attributes exposing (id)
@@ -24,6 +29,10 @@ viewHeight pageHeight =
     pageHeight - NavBar.maxHeight
 
 
+sideBarOffset =
+    SideBar.handleBarSpacing + SideBar.handleBarWidth
+
+
 frame : Maybe Route -> Element a -> Session.Session -> (a -> msg) -> NavBar.Model -> (NavBar.Msg -> msg) -> SideBar.Model -> (SideBar.Msg -> msg) -> Int -> List (TabBarItem a) -> Element msg
 frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pageHeight tabBarItems =
     let
@@ -43,15 +52,16 @@ frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pa
                 TabBar.view tabBarItems toMsg
 
         renderedBody =
-            row [ width fill, spacing -(2 * (SideBar.handleBarSpacing + SideBar.handleBarWidth)) ]
+            row [ width fill, spacing -sideBarOffset ]
                 [ sideBar
                 , column
                     [ width fill
-                    , paddingEach { edges | left = SideBar.handleBarSpacing + SideBar.handleBarWidth }
+                    , paddingEach { edges | left = sideBarOffset }
                     , height (px (viewHeight pageHeight))
                     , alignTop
                     ]
-                    [ Element.map toMsg (el [ paddingEach { edges | left = 20 }, width fill, height fill ] body)
+                    -- [ Element.map toMsg (el [ paddingEach { edges | left = sideBarOffset }, width fill, height fill ] body)
+                    [ Element.map toMsg (el [ width fill, height fill ] body)
                     , bottomBar
                     ]
                 ]

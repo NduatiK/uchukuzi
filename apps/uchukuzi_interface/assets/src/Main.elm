@@ -560,7 +560,7 @@ view appModel =
                     Layout.viewHeight windowHeight
 
                 viewWidth =
-                    windowWidth - SideBar.unwrapWidth appModel.sideBarState
+                    windowWidth - SideBar.unwrapWidth appModel.sideBarState - Layout.sideBarOffset
             in
             case page of
                 Home _ ->
