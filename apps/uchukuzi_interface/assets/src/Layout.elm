@@ -50,12 +50,6 @@ frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pa
                     , paddingEach { edges | left = SideBar.handleBarSpacing + SideBar.handleBarWidth }
                     , height (px (viewHeight pageHeight))
                     , alignTop
-
-                    -- , route
-                    --     |> Maybe.andThen (Navigation.href >> Just)
-                    --     |> Maybe.withDefault ""
-                    --     |> id
-                    --     |> htmlAttribute
                     ]
                     [ Element.map toMsg (el [ paddingEach { edges | left = 20 }, width fill, height fill ] body)
                     , bottomBar

@@ -15,11 +15,12 @@ function parse(string) {
 let schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey));
 
 window.addEventListener("storage", (event) => {
-    if (event.storageArea === schoolLocation && event.key === schoolLocationStorageKey) {
-        schoolLocation = parse(event.value)
-        if (MapLibraryInstance) {
-            pushSchool(MapLibraryInstance)
-        }
+
+    const location = parse(window.localStorage.getItem(schoolLocationStorageKey))
+
+    if (MapLibraryInstance && schoolLocation !== location) {
+        schoolLocation = location
+        pushSchoolOnto(MapLibraryInstance)
     }
 }, false);
 
@@ -50,10 +51,6 @@ function initializeMaps(app, clickable = false, drawable = false, sleepTime = 80
         }
     }
 
-
-    if (isDevelopment) {
-        console.log("initializeMaps")
-    }
     initializingMapsChain = createMapDom()
         .then(insertMap(sleepTime))
         .then(setupMapCallbacks(app, clickable))
@@ -114,16 +111,12 @@ function createMapDom() {
     MapLibraryInstance = new google.maps.Map(newElement, mapOptions)
     MapDomElement = newElement
 
-
-
     return Promise.resolve({ dom: MapDomElement, map: MapLibraryInstance })
 }
 
 let markers = []
 let drawingManager = null
 let schoolCircle = null
-
-
 
 /**
  * Places the map within a google-map dom element
@@ -138,7 +131,7 @@ const insertMap = (sleepTime) => (data) => {
             dom.parentNode.removeChild(dom)
         }
         mapDiv.prepend(dom)
-        pushSchool(map)
+        pushSchoolOnto(map)
         return Promise.resolve(map)
     })
 }
@@ -171,7 +164,6 @@ function cleanMap() {
         schoolCircle.setMap(null)
     }
 
-
     if (polylineCompleteListener) {
         google.maps.event.removeListener(polylineCompleteListener)
     }
@@ -184,16 +176,14 @@ function cleanMap() {
         map.panTo(new google.maps.LatLng(defaultLocation.center))
         map.setZoom(defaultLocation.zoom)
 
-        pushSchool(map)
+        pushSchoolOnto(map)
     }
-
-}
-var schoolMarker = null
+} var schoolMarker = null
 
 /**
  * Displaces the location of the school on the map
  */
-function pushSchool(map) {
+function pushSchoolOnto(map) {
     if (!schoolLocation) {
         if (schoolMarker) {
             schoolMarker.setMap(null)
@@ -217,7 +207,6 @@ function pushSchool(map) {
         })
     }
     schoolMarker.setPosition(schoolLocation)
-
 }
 
 let circleClickListener = null
@@ -254,7 +243,6 @@ function insertCircle(pos, app, map, radius = 50) {
         schoolCircle.setMap(null)
     }
 
-
     schoolCircle = new google.maps.Circle({
         strokeColor: darkGreen,
         strokeOpacity: 0.8,
@@ -268,7 +256,6 @@ function insertCircle(pos, app, map, radius = 50) {
         center: pos,
         radius: radius // metres
     })
-
 
     function sendSchoolCircle(schoolCircle) {
         app.ports.receivedMapClickLocation.send({
@@ -313,7 +300,6 @@ function rerenderPolylines() {
 function updatePolyline(app) {
     rerenderPolylines()
 
-
     const locations = polylineMarkers
         .filter((_1, idx, _2) => {
             const isMarker = idx % 2 == 0
@@ -324,7 +310,6 @@ function updatePolyline(app) {
                 lng: v.position.lng()
             }
         })
-
 
     app.ports.updatedPath.send(locations)
 }
@@ -382,9 +367,7 @@ const addDrawTools = (app, drawable) => (data) => {
             })
 
             updatePolyline(app)
-
         })
-
     } else {
         google.maps.event.removeListener(clickListener);
         clickListener = null;
@@ -441,13 +424,11 @@ let homeMarker
 let subscribedToShowHomeLocation
 let homeMarkerDragListener
 function initializeSearch(app) {
-    console.log("entered initializeSearch")
     sleep(100).then(() => {
 
         const setup = initializeMaps(app)
             .then((map) => {
                 setupHomeMarker(app, map)
-
 
                 if (!google.maps.event.hasListeners(map, 'click')) {
                     clickListener = google.maps.event.addListener(map, 'click', function (args) {
@@ -459,10 +440,8 @@ function initializeSearch(app) {
                     })
                 }
 
-
                 var input = document.getElementById('search-input')
 
-                console.log("initializeSearch")
                 var autocomplete = new google.maps.places.Autocomplete(input)
 
                 autocomplete.bindTo('bounds', map)
@@ -503,15 +482,11 @@ function initializeSearch(app) {
                         ].join(' ')
                     }
                 })
-
-
             })
             .catch((e) => {
                 console.log(e)
                 app.ports.autocompleteError.send(true)
             })
-
-
     })
 }
 
@@ -538,9 +513,7 @@ function setupHomeMarker(app, map) {
     })
 }
 
-
 function setupMapPorts(app) {
-
 
     app.ports.cleanMap.subscribe((location) => {
         cleanMap()
@@ -572,12 +545,9 @@ function setupMapPorts(app) {
                     marker.setIcon(image)
                 }
 
-
                 marker.setPosition(location)
 
-                console.log(marker)
                 map.panTo(location)
-
 
                 document.querySelectorAll('img[src="/images/buses/N.svg"]').forEach((node) => {
                     node.style['transform'] = `rotate(${bearing}deg)`
@@ -587,9 +557,7 @@ function setupMapPorts(app) {
                     node.style['OTransform'] = `rotate(${bearing}deg)`
                 })
             })
-
     }
-
 
     app.ports.updateBusMap.subscribe((update) => {
         initializeMaps(app)
@@ -602,9 +570,8 @@ function setupMapPorts(app) {
         initializeMaps(app)
             .then((map) => {
                 updates.forEach((update) => {
-                    console.log(update)
-                    updateMarker(update)
 
+                    updateMarker(update)
                 })
             })
     })
@@ -617,11 +584,10 @@ function setupMapPorts(app) {
         })
         markers = []
     })
-    console.log("Registered selectPoint")
+
     app.ports.selectPoint.subscribe(({ location, bearing }) => {
         const markerID = 'trip'
         updateMarker({ location: location, bearing: bearing, markerID: markerID })
-
     })
 
     app.ports.showHomeLocation.subscribe((location) => {
@@ -630,7 +596,6 @@ function setupMapPorts(app) {
                 setupHomeMarker(app, map)
 
                 homeMarker.setPosition(location)
-
             })
     })
 
@@ -640,7 +605,6 @@ function setupMapPorts(app) {
                 setupHomeMarker(app, map)
                 homeMarker.setPosition(location)
             })
-
     })
 
     app.ports.highlightPath.subscribe(({ routeID, highlighted }) => {
@@ -651,13 +615,10 @@ function setupMapPorts(app) {
             if (polyline) {
                 if (highlighted) {
                     polyline.set('strokeColor', purple);
-
                 } else {
                     polyline.set('strokeColor', darkGreen);
-
                 }
             }
-
         }
         if (MapLibraryInstance) {
             performHighlighting()
@@ -665,14 +626,10 @@ function setupMapPorts(app) {
             initializeMaps(app)
                 .then(performHighlighting)
         }
-
     })
 
     const drawPath = (map, editable = false) => ({ routeID, path, highlighted }) => {
 
-        if (isDevelopment) {
-            console.log("drawPath")
-        }
         if (editable) {
             addDrawTools(app, true)(map).then((_map) => {
                 path.forEach((position, _idx, _array) => {
@@ -705,7 +662,6 @@ function setupMapPorts(app) {
                         polylineMarkers.push(marker)
                     }
 
-
                     google.maps.event.addListener(marker, 'click', function (args) {
                         polylineMarkers = polylineMarkers.filter((val, _, _2) => {
                             return val.id !== marker.id
@@ -727,9 +683,7 @@ function setupMapPorts(app) {
                     })
 
                     updatePolyline(app)
-
                 })
-
             })
         } else {
             let polyline = polylines.find((value, _indx, _list) => {
@@ -749,19 +703,13 @@ function setupMapPorts(app) {
             }
             if (highlighted) {
                 polyline.set('strokeColor', purple);
-
             } else {
                 polyline.set('strokeColor', darkGreen);
-
             }
 
             polyline.setPath(path);
             polyline.setMap(map);
-
         }
-
-
-
     }
 
     app.ports.drawPath.subscribe((path) => {
@@ -788,33 +736,24 @@ function setupMapPorts(app) {
                 if (initializingMapsChain) {
                     initializingMapsChain.then((map) => {
 
-                        pushSchool(map)
+                        pushSchoolOnto(map)
                         paths.forEach(drawPath(map))
                     })
                 } else {
-                    pushSchool(map)
+                    pushSchoolOnto(map)
                     paths.forEach(drawPath(map))
                 }
             })
     })
     app.ports.insertCircle.subscribe(({ location, radius }) => {
-        console.log("insertCircle")
-
         initializeMaps(app)
             .then((map) => {
-                console.log("insertCircle")
-
                 sleep(100).then(() => {
-                    console.log("insertCircle")
-
                     insertCircle(location, app, map, radius)
                 })
             })
     })
-
-
 }
-
 
 function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time))

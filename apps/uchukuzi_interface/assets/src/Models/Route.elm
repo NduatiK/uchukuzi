@@ -16,6 +16,8 @@ type alias Route =
 type alias SimpleBus =
     { id : Int
     , numberPlate : String
+    , seats : Int
+    , occupied : Int
     }
 
 
@@ -33,3 +35,5 @@ busDecoder =
     Decode.succeed SimpleBus
         |> required "id" int
         |> required "number_plate" string
+        |> required "seats" int
+        |> required "occupied" int

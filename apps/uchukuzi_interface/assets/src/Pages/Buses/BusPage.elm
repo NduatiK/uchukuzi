@@ -312,20 +312,20 @@ changeCurrentPage selectedPageIndex_ model_ =
 -- VIEW
 
 
-view : Model -> Int -> Element Msg
-view model viewHeight =
+view : Model -> Int -> Int -> Element Msg
+view model viewHeight viewWidth =
     WebDataView.view model.busData
         (\busData ->
-            viewLoaded busData viewHeight
+            viewLoaded busData viewHeight viewWidth
         )
 
 
-viewLoaded : BusData -> Int -> Element Msg
-viewLoaded busData viewHeight =
+viewLoaded : BusData -> Int -> Int -> Element Msg
+viewLoaded busData viewHeight viewWidth =
     let
         ( body, footer, buttons ) =
             ( viewBody viewHeight busData
-            , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData)
+            , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData (viewWidth - 30))
             , viewButtons busData
             )
     in
@@ -418,27 +418,29 @@ viewBody height busData =
             viewPage (BusRepairs.view subPageModel height) GotBusRepairsMsg
 
 
-viewFooter : BusData -> Element Msg
-viewFooter busData =
+viewFooter : BusData -> Int -> Element Msg
+viewFooter busData viewWidth =
     let
         viewPage pageView toMsg =
             Element.map toMsg pageView
     in
-    case busData.currentPage of
-        AboutPage subPageModel ->
-            viewPage (About.viewFooter subPageModel) GotAboutMsg
+    el [ width (fill |> maximum viewWidth), height fill ]
+        (case busData.currentPage of
+            AboutPage subPageModel ->
+                viewPage (About.viewFooter subPageModel) GotAboutMsg
 
-        RouteHistoryPage subPageModel ->
-            viewPage (RouteHistory.viewFooter subPageModel) GotRouteHistoryMsg
+            RouteHistoryPage subPageModel ->
+                viewPage (RouteHistory.viewFooter subPageModel) GotRouteHistoryMsg
 
-        FuelHistoryPage subPageModel ->
-            viewPage (FuelHistory.viewFooter subPageModel) GotFuelHistoryMsg
+            FuelHistoryPage subPageModel ->
+                viewPage (FuelHistory.viewFooter subPageModel) GotFuelHistoryMsg
 
-        BusDevicePage subPageModel ->
-            viewPage (BusDevice.viewFooter subPageModel) GotBusDeviceMsg
+            BusDevicePage subPageModel ->
+                viewPage (BusDevice.viewFooter subPageModel) GotBusDeviceMsg
 
-        BusRepairsPage subPageModel ->
-            viewPage (BusRepairs.viewFooter subPageModel) GotBusRepairsMsg
+            BusRepairsPage subPageModel ->
+                viewPage (BusRepairs.viewFooter subPageModel) GotBusRepairsMsg
+        )
 
 
 viewButtons : BusData -> Element Msg
@@ -641,29 +643,30 @@ allPagesFromSession bus session locationUpdate currentPage =
 
 
 tabBarItems : Model -> List (TabBarItem Msg)
-tabBarItems { currentPage } =
-    let
-        _ =
-            Debug.log "tabBarItems" currentPage
-    in
-    case currentPage of
-        About ->
-            About.tabBarItems GotAboutMsg
+tabBarItems { busData } =
+    case busData of
+        Success busData_ ->
+            case busData_.currentPage of
+                AboutPage _ ->
+                    About.tabBarItems GotAboutMsg
 
-        RouteHistory ->
+                RouteHistoryPage model ->
+                    RouteHistory.tabBarItems model GotRouteHistoryMsg
+
+                -- Pages.Buses.Bus.Navigation.RouteHistory
+                FuelHistoryPage _ ->
+                    FuelHistory.tabBarItems GotFuelHistoryMsg
+
+                -- Pages.Buses.Bus.Navigation.FuelHistory
+                BusDevicePage _ ->
+                    []
+
+                -- Pages.Buses.Bus.Navigation.BusDevice
+                BusRepairsPage _ ->
+                    BusRepairs.tabBarItems GotBusRepairsMsg
+
+        _ ->
             []
-
-        -- Pages.Buses.Bus.Navigation.RouteHistory
-        FuelHistory ->
-            FuelHistory.tabBarItems GotFuelHistoryMsg
-
-        -- Pages.Buses.Bus.Navigation.FuelHistory
-        BusDevice ->
-            []
-
-        -- Pages.Buses.Bus.Navigation.BusDevice
-        BusRepairs ->
-            BusRepairs.tabBarItems GotBusRepairsMsg
 
 
 

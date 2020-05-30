@@ -17,7 +17,6 @@ iconNamed name attrs =
 bus : List (Attribute msg) -> Element msg
 bus attrs =
     image
-        -- ([ width <| px 437, height <| px 137 ]
         ([ width <| px 218, height <| px 68 ]
             ++ attrs
         )
@@ -27,7 +26,6 @@ bus attrs =
 van : List (Attribute msg) -> Element msg
 van attrs =
     image
-        -- ([ width <| px 246, height <| px 113 ]
         ([ width <| px 123, height <| px 56 ]
             ++ attrs
         )
@@ -37,7 +35,6 @@ van attrs =
 shuttle : List (Attribute msg) -> Element msg
 shuttle attrs =
     image
-        -- ([ width <| px 332, height <| px 126 ]
         ([ width <| px 176, height <| px 73 ]
             ++ attrs
         )

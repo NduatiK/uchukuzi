@@ -1,4 +1,14 @@
-port module Template.SideBar exposing (Model, Msg, handleBarSpacing, handleBarWidth, init, subscriptions, update, view)
+port module Template.SideBar exposing
+    ( Model
+    , Msg
+    , handleBarSpacing
+    , handleBarWidth
+    , init
+    , subscriptions
+    , unwrapWidth
+    , update
+    , view
+    )
 
 import Browser.Events
 import Colors
@@ -432,3 +442,7 @@ subscriptions model =
 
 percentCollapsed width =
     toFloat (width - minSideBarWidth) / toFloat (maxSideBarWidth - minSideBarWidth)
+
+
+unwrapWidth { width } =
+    width

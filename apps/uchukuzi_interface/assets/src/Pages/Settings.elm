@@ -1,4 +1,12 @@
-module Pages.Settings exposing (Model, Msg, init, tabBarItems, update, view)
+module Pages.Settings exposing
+    ( Model
+    , Msg
+    , init
+    , subscriptions
+    , tabBarItems
+    , update
+    , view
+    )
 
 import Api
 import Api.Endpoint as Endpoint
@@ -254,17 +262,37 @@ update msg model =
                     ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
 
         ReceivedUpdateSchoolResponse response ->
-            ( { model
-                | schoolDetailsRequest =
-                    case response of
-                        Success _ ->
-                            response
+            let
+                newModel =
+                    { model | requests = { requests | editSchoolRequest = response } }
+            in
+            case response of
+                Success school ->
+                    ( { newModel | overlayType = Nothing, schoolDetailsRequest = response, requests = emptyRequests, form = emptyForm }
+                    , Cmd.batch
+                        [ Ports.cleanMap ()
+                        , Ports.initializeCustomMap { drawable = False, clickable = False }
+                        , Ports.insertCircle { location = school.location, radius = school.radius }
+                        , Models.Location.storeSchoolLocation school.location
+                        ]
+                    )
 
-                        _ ->
-                            model.schoolDetailsRequest
-              }
-            , Cmd.none
-            )
+                Failure error ->
+                    let
+                        ( _, error_msg ) =
+                            Errors.decodeErrors error
+
+                        apiFormError =
+                            Errors.toServerSideErrors
+                                error
+
+                        updatedForm =
+                            { form | problems = form.problems ++ apiFormError }
+                    in
+                    ( { newModel | form = updatedForm }, error_msg )
+
+                _ ->
+                    ( { newModel | form = { form | problems = [] } }, Cmd.none )
 
         UpdatedSchoolName schoolName ->
             ( { model | form = { form | schoolName = schoolName } }, Cmd.none )
@@ -623,8 +651,8 @@ submitUpdateSchool session form =
                 , ( "radius", Encode.float form.radius )
                 ]
     in
-    Api.patch session Endpoint.schoolDetails params decoder
-        |> Cmd.map ReceivedUpdatePasswordResponse
+    Api.patch session Endpoint.schoolDetails params Models.School.schoolDecoder
+        |> Cmd.map ReceivedUpdateSchoolResponse
 
 
 fetchSchoolDetails : Session -> Cmd Msg
@@ -636,3 +664,19 @@ fetchSchoolDetails session =
 decoder : Decoder ()
 decoder =
     Decode.succeed ()
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Ports.receivedMapClickLocation
+        (\x ->
+            x
+                |> Maybe.andThen
+                    (\s ->
+                        Just
+                            (UpdatedSchoolLocation
+                                { location = Location s.lng s.lat, radius = s.radius }
+                            )
+                    )
+                |> Maybe.withDefault NoOp
+        )

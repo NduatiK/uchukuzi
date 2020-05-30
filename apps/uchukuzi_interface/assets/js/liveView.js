@@ -39,6 +39,7 @@ function on_join(channel, app) {
             console.log("Returned Greeting:", response)
             app.ports.onBusMove.send(response);
         })
+
     }
 }
 

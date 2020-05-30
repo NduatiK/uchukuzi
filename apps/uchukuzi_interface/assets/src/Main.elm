@@ -54,6 +54,7 @@ type alias Model =
     , navState : NavBar.Model
     , sideBarState : SideBar.Model
     , windowHeight : Int
+    , windowWidth : Int
     , url : Url.Url
     , locationUpdates : Dict Int LocationUpdate
     , allowReroute : Bool
@@ -102,33 +103,33 @@ init args url navKey =
         creds =
             Maybe.andThen
                 (\x ->
-                    case
-                        Json.Decode.decodeValue
+                    x
+                        |> Json.Decode.decodeValue
                             (Json.Decode.at [ "credentials" ] Api.credDecoder)
-                            x
-                    of
-                        Ok a ->
-                            Just a
-
-                        _ ->
-                            Nothing
+                        |> Result.toMaybe
                 )
                 args
+
+        width =
+            Maybe.withDefault 100
+                (Maybe.andThen
+                    (\x ->
+                        x
+                            |> Json.Decode.decodeValue
+                                (Json.Decode.at [ "window", "width" ] Json.Decode.int)
+                            |> Result.toMaybe
+                    )
+                    args
+                )
 
         height =
             Maybe.withDefault 100
                 (Maybe.andThen
                     (\x ->
-                        case
-                            Json.Decode.decodeValue
+                        x
+                            |> Json.Decode.decodeValue
                                 (Json.Decode.at [ "window", "height" ] Json.Decode.int)
-                                x
-                        of
-                            Ok a ->
-                                Just a
-
-                            _ ->
-                                Nothing
+                            |> Result.toMaybe
                     )
                     args
                 )
@@ -140,11 +141,10 @@ init args url navKey =
             Maybe.withDefault False
                 (Maybe.andThen
                     (\x ->
-                        Result.toMaybe
-                            (Json.Decode.decodeValue
+                        x
+                            |> Json.Decode.decodeValue
                                 (Json.Decode.at [ "loading" ] Json.Decode.bool)
-                                x
-                            )
+                            |> Result.toMaybe
                     )
                     args
                 )
@@ -153,27 +153,24 @@ init args url navKey =
             Maybe.withDefault False
                 (Maybe.andThen
                     (\x ->
-                        Result.toMaybe
-                            (Json.Decode.decodeValue
+                        x
+                            |> Json.Decode.decodeValue
                                 (Json.Decode.at [ "sideBarIsOpen" ] Json.Decode.bool)
-                                x
-                            )
+                            |> Result.toMaybe
                     )
                     args
                 )
 
         error =
-            Maybe.withDefault False
-                (Maybe.andThen
+            args
+                |> Maybe.andThen
                     (\x ->
-                        Result.toMaybe
-                            (Json.Decode.decodeValue
+                        x
+                            |> Json.Decode.decodeValue
                                 (Json.Decode.at [ "error" ] Json.Decode.bool)
-                                x
-                            )
+                            |> Result.toMaybe
                     )
-                    args
-                )
+                |> Maybe.withDefault False
 
         ( model, cmds ) =
             changeRouteTo (Navigation.fromUrl url session)
@@ -182,6 +179,7 @@ init args url navKey =
                 , navState = NavBar.init session
                 , sideBarState = SideBar.init sideBarIsOpen
                 , windowHeight = height
+                , windowWidth = width
                 , url = url
                 , locationUpdates = Dict.fromList []
                 , allowReroute = True
@@ -243,8 +241,8 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        WindowResized _ height ->
-            ( { model | windowHeight = height }, Cmd.none )
+        WindowResized width height ->
+            ( { model | windowHeight = height, windowWidth = width }, Cmd.none )
 
         GotSideBarMsg sideBarMsg ->
             let
@@ -546,7 +544,7 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
 view : Model -> Browser.Document Msg
 view appModel =
     let
-        { page, route, navState, windowHeight, sideBarState } =
+        { page, route, navState, windowHeight, sideBarState, windowWidth } =
             appModel
 
         viewEmptyPage pageContents =
@@ -560,6 +558,9 @@ view appModel =
             let
                 viewHeight =
                     Layout.viewHeight windowHeight
+
+                viewWidth =
+                    windowWidth - SideBar.unwrapWidth appModel.sideBarState
             in
             case page of
                 Home _ ->
@@ -599,7 +600,7 @@ view appModel =
                     viewPage (BusRegistration.view model (viewHeight - TabBar.maxHeight)) GotBusRegistrationMsg (BusRegistration.tabBarItems model)
 
                 BusDetailsPage model ->
-                    viewPage (BusDetailsPage.view model (viewHeight - TabBar.maxHeight)) GotBusDetailsPageMsg (BusDetailsPage.tabBarItems model)
+                    viewPage (BusDetailsPage.view model (viewHeight - TabBar.maxHeight) viewWidth) GotBusDetailsPageMsg (BusDetailsPage.tabBarItems model)
 
                 CreateBusRepair model ->
                     viewPage (CreateBusRepair.view model viewHeight) GotCreateBusRepairMsg []
@@ -741,6 +742,9 @@ subscriptions model_ =
 
                 CreateRoute model ->
                     Sub.map GotCreateRouteMsg (CreateRoute.subscriptions model)
+
+                Settings model ->
+                    Sub.map GotSettingsMsg (Settings.subscriptions model)
 
                 _ ->
                     Sub.none

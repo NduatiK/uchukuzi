@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.TripsHistoryPage exposing (Model, Msg, init, update, view, viewFooter)
+module Pages.Buses.Bus.TripsHistoryPage exposing (Model, Msg, init, tabBarItems, update, view, viewFooter)
 
 import Api exposing (get)
 import Api.Endpoint as Endpoint exposing (trips)
@@ -21,6 +21,7 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import Task
+import Template.TabBar as TabBar
 import Time
 import Utils.DateFormatter
 import Utils.GroupBy
@@ -29,6 +30,7 @@ import Utils.GroupBy
 type alias Model =
     { sliderValue : Int
     , showGeofence : Bool
+    , showingOngoingTrip : Bool
     , showStops : Bool
     , trips : WebData (List Models.Trip.LightWeightTrip)
     , groupedTrips : List GroupedTrips
@@ -52,22 +54,13 @@ type alias Location =
     }
 
 
-type Msg
-    = AdjustedValue Int
-    | ToggledShowGeofence Bool
-    | ToggledShowStops Bool
-    | ReceivedTripsResponse (WebData (List Models.Trip.LightWeightTrip))
-    | ReceivedTripDetailsResponse (WebData Models.Trip.Trip)
-    | ClickedOn Int
-    | SelectedGroup GroupedTrips
-
-
 init : Int -> Session -> ( Model, Cmd Msg )
 init busID session =
     ( { sliderValue = 0
       , showGeofence = True
       , showStops = True
       , trips = RemoteData.Loading
+      , showingOngoingTrip = True
       , groupedTrips = []
       , selectedGroup = Nothing
       , selectedTrip = Nothing
@@ -80,6 +73,19 @@ init busID session =
         [ fetchTripsForBus session busID
         ]
     )
+
+
+type Msg
+    = AdjustedValue Int
+    | ToggledShowGeofence Bool
+    | ToggledShowStops Bool
+    | ReceivedTripsResponse (WebData (List Models.Trip.LightWeightTrip))
+    | ReceivedTripDetailsResponse (WebData Models.Trip.Trip)
+    | ClickedOn Int
+    | SelectedGroup GroupedTrips
+      ------
+    | ShowHistoricalTrips
+    | ShowCurrentTrip
 
 
 
@@ -211,6 +217,7 @@ update msg model =
                                         { location = report.location
                                         , bearing = report.bearing
                                         }
+                            , drawPath loadedTrip 0
                             , Ports.cleanMap ()
                             ]
                         )
@@ -230,6 +237,12 @@ update msg model =
               }
             , Ports.deselectPoint ()
             )
+
+        ShowHistoricalTrips ->
+            ( { model | showingOngoingTrip = False }, Ports.cleanMap () )
+
+        ShowCurrentTrip ->
+            ( { model | showingOngoingTrip = True }, Ports.cleanMap () )
 
 
 
@@ -253,7 +266,12 @@ view model =
             column [ width fill, spacing 16 ]
                 [ viewMap model
                 , viewMapOptions model
-                , viewTrips model
+                , if not model.showingOngoingTrip then
+                    viewTrips model
+                    -- viewFooter has the rest
+
+                  else
+                    none
                 ]
 
         -- ]
@@ -272,6 +290,7 @@ mapHeight =
 
 viewMap : Model -> Element Msg
 viewMap model =
+    -- el [ paddingEach { edges | right = 20 }, width fill, height shrink ]
     column
         [ height (px mapHeight)
         , width fill
@@ -536,7 +555,7 @@ viewTrips { selectedGroup, selectedTrip, session, groupedTrips } =
                 el [ centerX, centerY ] (text "Select a date from below")
 
         Just selectedGroup_ ->
-            wrappedRow [ spacing 12 ] (List.map (viewTrip selectedTrip (Session.timeZone session)) (List.reverse (Tuple.second selectedGroup_)))
+            wrappedRow [ spacing 12, width fill ] (List.map (viewTrip selectedTrip (Session.timeZone session)) (List.reverse (Tuple.second selectedGroup_)))
 
 
 
@@ -641,23 +660,26 @@ viewFooter model =
                 , onPress = Just (SelectedGroup group)
                 }
     in
-    column
-        [ height fill
-        , width fill
-        , inFront
-            (el
-                [ Colors.withGradient (pi / 2) Colors.white
-                , width (fill |> maximum 40)
-                , height fill
-                ]
-                none
-            )
-        ]
-        [ el [ width fill, height (px 2), Background.color Colors.semiDarkText ]
-            none
-        , row ([ width fill, scrollbarX, Style.reverseScrolling ] ++ Style.header2Style ++ [ paddingEach { edges | bottom = 16 } ])
-            (List.map viewScrollTrip model.groupedTrips)
-        ]
+    if not model.showingOngoingTrip then
+        column
+            [ height fill
+            , width fill
+            , inFront
+                (el
+                    [ Colors.withGradient (pi / 2) Colors.white
+                    , width (fill |> maximum 40)
+                    , height fill
+                    ]
+                    none
+                )
+            ]
+            [ el [ width fill, height (px 2), Background.color Colors.semiDarkText ] none
+            , row ([ width fill, scrollbarX, Style.reverseScrolling ] ++ Style.header2Style ++ [ paddingEach { edges | bottom = 16 } ])
+                (List.map viewScrollTrip model.groupedTrips)
+            ]
+
+    else
+        none
 
 
 
@@ -715,4 +737,22 @@ drawPath trip sliderValue =
               , highlighted = False
               }
             ]
+        ]
+
+
+tabBarItems model mapper =
+    if model.showingOngoingTrip then
+        [ TabBar.Button
+            { title = "Show Trip History"
+            , icon = Icons.timeline
+            , onPress = ShowHistoricalTrips |> mapper
+            }
+        ]
+
+    else
+        [ TabBar.Button
+            { title = "Show Ongoing Trip"
+            , icon = Icons.timeline
+            , onPress = ShowCurrentTrip |> mapper
+            }
         ]

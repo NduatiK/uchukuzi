@@ -25,17 +25,17 @@ function init() {
         try {
             return string ? JSON.parse(string) : null
         } catch (e) {
-            localStorage.setItem(credentialsStorageKey, null);
+            localStorage.setItem(credentialsStorageKey, null)
             return null
         }
     }
 
     const credentialsStorageKey = 'credentials'
-    const storedCredentials = parse(localStorage.getItem(credentialsStorageKey));
-    
-    
+    const storedCredentials = parse(localStorage.getItem(credentialsStorageKey))
+
+
     const sideBarStateKey = "sideBarState"
-    const sideBarIsOpen = parse(localStorage.getItem(sideBarStateKey));
+    const sideBarIsOpen = parse(localStorage.getItem(sideBarStateKey))
 
     const windowSize = {
         width: window.innerWidth,
@@ -54,7 +54,6 @@ function init() {
 
     setupMapPorts(app)
     app.ports.setOpenState.subscribe((state) => {
-        console.log(state)
         localStorage.setItem(sideBarStateKey, state)
     })
     app.ports.printCardPort.subscribe(() => {
@@ -65,7 +64,7 @@ function init() {
     })
 
     app.ports.initializeCustomMap.subscribe(({ clickable, drawable }) => {
-        sleep(100).then(() =>{
+        sleep(100).then(() => {
             console.log("initializeCustomMap")
             if (drawable) {
                 cleanMap()
@@ -79,10 +78,7 @@ function init() {
         requestGeoLocation(app)
     })
 
-    app.ports.setSchoolLocation.subscribe((schoolLocation) => {
-        localStorage.setItem(schoolLocationStorageKey,
-            JSON.stringify(schoolLocation));
-    })
+
 
     app.ports.initializeCamera.subscribe(() => {
         // Give the canvas time to render
@@ -98,25 +94,31 @@ function init() {
         }
     })
 
+    app.ports.setSchoolLocation.subscribe((schoolLocation) => {
+        localStorage.setItem(schoolLocationStorageKey,
+            JSON.stringify(schoolLocation))
+
+        window.dispatchEvent(new Event('storage'))
+    })
 
     app.ports.storeCache.subscribe(function (credentials) {
         localStorage.setItem(credentialsStorageKey,
-            JSON.stringify(credentials));
+            JSON.stringify(credentials))
         if (credentials == null) {
-            localStorage.setItem(schoolLocationStorageKey, null);
+            localStorage.setItem(schoolLocationStorageKey, null)
         }
         credentialsUpdated(credentials)
-    });
+    })
 
     window.addEventListener("storage", (event) => {
         if (event.storageArea === storedCredentials && event.key === credentialsStorageKey) {
             const state = parse(event.value)
             credentialsUpdated(state)
         }
-    }, false);
+    }, false)
 
     function credentialsUpdated(credentials) {
-        app.ports.onStoreChange.send(credentials);
+        app.ports.onStoreChange.send(credentials)
         if (credentials === null) {
             killLiveView(app)
         } else {
