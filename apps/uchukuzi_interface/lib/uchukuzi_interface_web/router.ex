@@ -122,7 +122,7 @@ defmodule UchukuziInterfaceWeb.Router do
     patch "/routes/:route_id", SchoolController, :update_route
     delete "/routes/:route_id", SchoolController, :delete_route
 
-    get "/routes_available/", SchoolController, :list_routes_available
+    get "/routes_available/", SchoolController, :list_routes_available_for_bus
   end
 
   scope "/api/school/assistant", UchukuziInterfaceWeb do

@@ -1090,7 +1090,16 @@ routeDropDown model =
         , onSelect = Maybe.andThen (.id >> Just) >> Route >> Changed
         , options = routes
         , title = "Route"
-        , toString = .name
+        , toString =
+            \r ->
+                r.name
+                    ++ (case r.bus of
+                            Just bus ->
+                                " (" ++ String.fromInt (bus.seats - bus.occupied) ++ " seats available)"
+
+                            Nothing ->
+                                " (No bus assigned)"
+                       )
         , isLoading = False
         }
 

@@ -14,6 +14,9 @@ defmodule Uchukuzi.School.Route do
 
     belongs_to(:school, School)
     has_one(:bus, Bus)
+
+    has_many(:students, Uchukuzi.Roles.Student)
+
   end
 
 

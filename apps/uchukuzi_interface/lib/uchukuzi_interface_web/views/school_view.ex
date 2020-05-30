@@ -102,7 +102,16 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       path: route.path |> Enum.map(&render_location/1),
       bus:
         with bus = %Bus{} <- Map.get(route, :bus) do
-          %{id: bus.id, number_plate: bus.number_plate}
+          %{
+            id: bus.id,
+            number_plate: bus.number_plate,
+            seats: bus.seats_available,
+            occupied:
+              route
+              |> Repo.preload(:students)
+              |> Map.get(:students)
+              |> Enum.count()
+          }
         else
           _ -> nil
         end

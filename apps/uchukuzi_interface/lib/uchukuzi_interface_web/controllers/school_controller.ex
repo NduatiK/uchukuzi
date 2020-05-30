@@ -420,7 +420,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     |> render("routes.json", routes: routes)
   end
 
-  def list_routes_available(conn, _, school_id) do
+  def list_routes_available_for_bus(conn, _, school_id) do
     routes = School.routes_available_for(school_id, Map.get(conn.query_params, "bus_id"))
 
     conn

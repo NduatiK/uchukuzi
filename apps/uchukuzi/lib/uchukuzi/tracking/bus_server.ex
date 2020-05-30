@@ -23,7 +23,7 @@ defmodule Uchukuzi.Tracking.BusServer do
         t = DateTime.diff(report.time, prev_report.time) / 3600
         s = if(t == 0, do: 0, else: d / t)
 
-        bearing = Location.bearing(prev_report.location, report.location)
+        bearing = Location.bearing(report.location, prev_report.location)
 
         bearing =
           if bearing < 0 do
