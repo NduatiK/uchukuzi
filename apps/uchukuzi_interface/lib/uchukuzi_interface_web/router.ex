@@ -91,6 +91,12 @@ defmodule UchukuziInterfaceWeb.Router do
     post "/buses/:bus_id/fuel_reports", SchoolController, :create_fuel_report
 
     get "/buses/:bus_id/route", SchoolController, :get_bus_route
+
+
+    get "/buses/:bus_id/trips", SchoolController, :list_trips
+    get "/buses/:bus_id/trips/ongoing", SchoolController, :ongoing_trip_details
+
+    get "/trips/:trip_id", SchoolController, :trip_details
   end
 
   scope "/api/school", UchukuziInterfaceWeb do
@@ -132,13 +138,6 @@ defmodule UchukuziInterfaceWeb.Router do
     post "/trip/student_boarded/:student_id/", SchoolController, :student_boarded
     post "/trip/student_exited/:student_id/", SchoolController, :student_exited
     get "/trip/end", SchoolController, :route_for_assistant
-  end
-
-  scope "/api/school", UchukuziInterfaceWeb do
-    pipe_through [:manager_api, :authenticate_manager]
-
-    get "/trips", SchoolController, :list_trips
-    get "/trips/:trip_id", SchoolController, :trip_details
   end
 
   scope "/api/tracking", UchukuziInterfaceWeb do

@@ -6,6 +6,9 @@ defmodule UchukuziInterfaceWeb.TrackingView do
     |> render_many(__MODULE__, "trip.json", as: :trip)
   end
 
+  def render("trip.json", %{trip: nil}) do
+    nil
+  end
   def render("trip.json", %{trip: trip}) do
     %{
       id: trip.id,

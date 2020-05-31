@@ -38,27 +38,27 @@ defmodule Uchukuzi.Tracking.TripTracker do
       |> via_tuple()
       |> GenServer.whereis()
 
-    result = with nil <- pid do
-      BusesSupervisor.start_bus(bus)
+    result =
+      with nil <- pid do
+        BusesSupervisor.start_bus(bus)
 
-      bus
-      |> via_tuple()
-      |> GenServer.whereis()
-    end
+        bus
+        |> via_tuple()
+        |> GenServer.whereis()
+      end
 
     if result == nil do
       if retries > 1 do
         nil
       else
         retries = retries + 1
-        :timer.sleep(100 * (retries))
+        :timer.sleep(100 * retries)
 
         pid_from(bus, retries)
       end
     else
       result
     end
-
   end
 
   def init(bus) do
@@ -107,6 +107,14 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def handle_call(:students_onboard, _from, data) do
     students = Trip.students_onboard(data.trip)
     {:reply, students, data, @message_timeout}
+  end
+
+  def handle_call(:ongoing_trip, _from, %{state: @ongoing} = data) do
+    {:reply, data.trip, data, @message_timeout}
+  end
+
+  def handle_call(:ongoing_trip, _from, data) do
+    {:reply, nil, data, @message_timeout}
   end
 
   def handle_cast({:student_boarded, activity}, data) do
@@ -273,6 +281,9 @@ defmodule Uchukuzi.Tracking.TripTracker do
 
   def students_onboard(bus),
     do: call_tracker(bus, :students_onboard)
+
+  def ongoing_trip(bus),
+    do: call_tracker(bus, :ongoing_trip)
 
   # Expects tiles sorted first crossed to last crossed
   def crossed_tiles(bus, tiles),

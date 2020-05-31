@@ -16,6 +16,7 @@ module Api.Endpoint exposing
     , household
     , households
     , login
+    , ongoingTrip
     , patch
     , performedBusRepairs
     , post
@@ -167,10 +168,16 @@ households =
     url [ "school", "households" ] []
 
 
-trips : { bus | bus_id : Int } -> Endpoint
-trips { bus_id } =
-    url [ "school", "trips" ]
-        [ int "bus_id" bus_id ]
+trips : Int -> Endpoint
+trips bus_id =
+    url [ "school", "buses", String.fromInt bus_id, "trips" ]
+        []
+
+
+ongoingTrip : Int -> Endpoint
+ongoingTrip bus_id =
+    url [ "school", "buses", String.fromInt bus_id, "trips", "ongoing" ]
+        []
 
 
 reportsForTrip : Int -> Endpoint

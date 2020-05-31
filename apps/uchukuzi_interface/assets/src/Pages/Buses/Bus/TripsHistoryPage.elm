@@ -14,12 +14,13 @@ import Errors
 import Icons
 import Json.Decode exposing (list)
 import Models.Location exposing (Report)
-import Models.Trip exposing (LightWeightTrip, StudentActivity, Trip, tripDecoder, tripDetailsDecoder)
+import Models.Trip exposing (LightWeightTrip, OngoingTrip, StudentActivity, Trip, ongoingToTrip, ongoingTripDecoder, tripDecoder, tripDetailsDecoder)
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import StyledElement.WebDataView as WebDataView
 import Task
 import Template.TabBar as TabBar
 import Time
@@ -28,7 +29,8 @@ import Utils.GroupBy
 
 
 type alias Model =
-    { sliderValue : Int
+    { busID : Int
+    , sliderValue : Int
     , showGeofence : Bool
     , showingOngoingTrip : Bool
     , showStops : Bool
@@ -39,7 +41,7 @@ type alias Model =
     , session : Session
     , loadedTrips : Dict Int Trip
     , loadingTrip : WebData Trip
-    , ongoingTrip : Maybe Trip
+    , ongoingTrip : WebData (Maybe OngoingTrip)
     , requestedTrip : Maybe Int
     }
 
@@ -57,10 +59,11 @@ type alias Location =
 
 init : Int -> Session -> ( Model, Cmd Msg )
 init busID session =
-    ( { sliderValue = 0
+    ( { busID = busID
+      , sliderValue = 0
       , showGeofence = True
       , showStops = True
-      , trips = RemoteData.Loading
+      , trips = RemoteData.NotAsked
       , showingOngoingTrip = True
       , groupedTrips = []
       , selectedGroup = Nothing
@@ -69,10 +72,10 @@ init busID session =
       , loadedTrips = Dict.fromList []
       , loadingTrip = NotAsked
       , requestedTrip = Nothing
-      , ongoingTrip = Nothing
+      , ongoingTrip = RemoteData.Loading
       }
     , Cmd.batch
-        [ fetchTripsForBus session busID
+        [ fetchOngoingTripForBus session busID
         ]
     )
 
@@ -81,8 +84,9 @@ type Msg
     = AdjustedValue Int
     | ToggledShowGeofence Bool
     | ToggledShowStops Bool
-    | ReceivedTripsResponse (WebData (List Models.Trip.LightWeightTrip))
-    | ReceivedTripDetailsResponse (WebData Models.Trip.Trip)
+    | ReceivedTripsResponse (WebData (List LightWeightTrip))
+    | ReceivedOngoingTripResponse (WebData (Maybe OngoingTrip))
+    | ReceivedTripDetailsResponse (WebData Trip)
     | ClickedOn Int
     | SelectedGroup GroupedTrips
       ------
@@ -236,15 +240,84 @@ update msg model =
             ( { model
                 | selectedGroup = Just selection
                 , sliderValue = 0
+                , selectedTrip =
+                    case model.ongoingTrip of
+                        Success (Just trip) ->
+                            Just (ongoingToTrip trip)
+
+                        _ ->
+                            Nothing
               }
             , Ports.deselectPoint ()
             )
 
         ShowHistoricalTrips ->
-            ( { model | showingOngoingTrip = False }, Ports.cleanMap () )
+            ( { model
+                | showingOngoingTrip = False
+                , trips =
+                    if model.trips == NotAsked then
+                        Loading
+
+                    else
+                        model.trips
+              }
+            , Cmd.batch
+                [ Ports.cleanMap ()
+                , if model.trips == NotAsked then
+                    fetchHistoricalTripsForBus model.session model.busID
+
+                  else
+                    Cmd.none
+                ]
+            )
 
         ShowCurrentTrip ->
-            ( { model | showingOngoingTrip = True }, Ports.cleanMap () )
+            selectOngoingTrip { model | showingOngoingTrip = True }
+
+        ReceivedOngoingTripResponse ongoingTrip ->
+            selectOngoingTrip { model | ongoingTrip = ongoingTrip }
+
+
+selectOngoingTrip model =
+    case model.ongoingTrip of
+        Success (Just trip) ->
+            let
+                sliderValue =
+                    List.length trip.reports - 1
+
+                bearing =
+                    trip.reports
+                        |> List.drop 1
+                        |> List.head
+                        |> Maybe.andThen (.bearing >> Just)
+                        |> Maybe.withDefault 0
+
+                lastReport =
+                    trip.reports
+                        |> List.head
+            in
+            ( { model
+                | selectedTrip = Just (ongoingToTrip trip)
+                , sliderValue = (List.length <| trip.reports) - 1
+              }
+            , Cmd.batch
+                [ Ports.initializeMaps
+                , case lastReport of
+                    Nothing ->
+                        Cmd.none
+
+                    Just report ->
+                        Ports.selectPoint
+                            { location = report.location
+                            , bearing = bearing
+                            }
+                , drawPath trip sliderValue
+                , Ports.cleanMap ()
+                ]
+            )
+
+        _ ->
+            ( { model | selectedTrip = Nothing }, Cmd.none )
 
 
 
@@ -253,36 +326,27 @@ update msg model =
 
 view : Model -> Element Msg
 view model =
-    case model.trips of
-        NotAsked ->
-            text "Not fetching"
+    let
+        viewContents =
+            always
+                (column
+                    [ width fill, spacing 16 ]
+                    [ viewMap model
+                    , viewMapOptions model
+                    , if not model.showingOngoingTrip then
+                        viewTrips model
+                        -- viewFooter has the rest
 
-        Loading ->
-            el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
+                      else
+                        none
+                    ]
+                )
+    in
+    if model.showingOngoingTrip then
+        WebDataView.view model.ongoingTrip viewContents
 
-        --         text "Loading..."
-        Success _ ->
-            -- Element.column
-            --     [ width fill, spacing 26, paddingEach { edges | bottom = 40 } ]
-            --     [
-            column [ width fill, spacing 16 ]
-                [ viewMap model
-                , viewMapOptions model
-                , if not model.showingOngoingTrip then
-                    viewTrips model
-                    -- viewFooter has the rest
-
-                  else
-                    none
-                ]
-
-        -- ]
-        Failure error ->
-            let
-                ( apiError, _ ) =
-                    Errors.decodeErrors error
-            in
-            text (Errors.errorToString apiError)
+    else
+        WebDataView.view model.trips viewContents
 
 
 mapHeight : Int
@@ -688,14 +752,16 @@ viewFooter model =
 -- HTTP
 
 
-fetchTripsForBus : Session -> Int -> Cmd Msg
-fetchTripsForBus session bus_id =
-    let
-        params =
-            { bus_id = bus_id }
-    in
-    Api.get session (Endpoint.trips params) (list tripDecoder)
+fetchHistoricalTripsForBus : Session -> Int -> Cmd Msg
+fetchHistoricalTripsForBus session busID =
+    Api.get session (Endpoint.trips busID) (list tripDecoder)
         |> Cmd.map ReceivedTripsResponse
+
+
+fetchOngoingTripForBus : Session -> Int -> Cmd Msg
+fetchOngoingTripForBus session busID =
+    Api.get session (Endpoint.ongoingTrip busID) (Json.Decode.nullable ongoingTripDecoder)
+        |> Cmd.map ReceivedOngoingTripResponse
 
 
 fetchReportsForTrip : Session -> Int -> Cmd Msg

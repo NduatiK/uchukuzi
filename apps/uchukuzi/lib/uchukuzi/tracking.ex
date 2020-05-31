@@ -82,4 +82,9 @@ defmodule Uchukuzi.Tracking do
       )
     )
   end
+
+  def ongoing_trip_for(%Bus{} = bus) do
+    bus
+    |> TripTracker.ongoing_trip()
+  end
 end

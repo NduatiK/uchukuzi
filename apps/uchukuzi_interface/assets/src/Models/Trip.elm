@@ -1,9 +1,10 @@
 module Models.Trip exposing
-    (  LightWeightTrip
-       -- , busDecoderWithCallback
-
+    ( LightWeightTrip
+    , OngoingTrip
     , StudentActivity
     , Trip
+    , ongoingToTrip
+    , ongoingTripDecoder
     , tripDecoder
     , tripDetailsDecoder
     )
@@ -22,6 +23,28 @@ type alias LightWeightTrip =
     , travelTime : String
     , studentActivities : List StudentActivity
     , distanceCovered : Float
+    }
+
+
+type alias OngoingTrip =
+    { startTime : Time.Posix
+    , reports : List Report
+    , studentActivities : List StudentActivity
+    }
+
+
+ongoingToTrip ongoing =
+    { id = 1
+    , startTime = ongoing.startTime
+    , endTime =
+        ongoing.reports
+            |> List.head
+            |> Maybe.andThen (.time >> Just)
+            |> Maybe.withDefault ongoing.startTime
+    , travelTime = ""
+    , reports = List.reverse <| ongoing.reports
+    , studentActivities = ongoing.studentActivities
+    , distanceCovered = 0
     }
 
 
@@ -109,6 +132,37 @@ tripDetailsDecoder =
         |> required "distance_covered" float
         |> required "student_activities" (list activityDecoder)
         |> resolve
+
+
+ongoingTripDecoder : Decoder OngoingTrip
+ongoingTripDecoder =
+    let
+        toDecoder : String -> List Report -> List StudentActivity -> Decoder OngoingTrip
+        toDecoder startDateString reports studentActivities =
+            case Iso8601.toTime startDateString of
+                Result.Ok startDate ->
+                    Decode.succeed
+                        { startTime = startDate
+                        , reports = reports
+                        , studentActivities = studentActivities
+                        }
+
+                Result.Err _ ->
+                    Decode.fail (startDateString ++ " cannot be decoded to a date")
+    in
+    Decode.succeed toDecoder
+        |> required "start_time" string
+        |> required "reports" (list reportDecoder)
+        |> required "student_activities" (list activityDecoder)
+        |> resolve
+
+
+
+-- { id : Int
+--         , reports : List Report
+--         , startTime : Time.Posix
+--         , studentActivities : List StudentActivity
+--         }
 
 
 activityDecoder : Decoder StudentActivity

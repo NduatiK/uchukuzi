@@ -367,7 +367,7 @@ viewHeading busData button =
         ]
         [ Element.column
             [ width fill ]
-            [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold, paddingXY 8 12 ])
+            [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold, paddingXY 0 12 ])
                 [ el [] (text (pageName busData.currentPage))
                 , text " for "
                 , el

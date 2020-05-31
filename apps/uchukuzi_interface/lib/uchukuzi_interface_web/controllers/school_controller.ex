@@ -491,7 +491,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
-  def list_trips(%{query_params: %{"bus_id" => bus_id}} = conn, _, school_id) do
+  def list_trips(conn, %{"bus_id" => bus_id}, school_id) do
     IO.inspect(school_id)
 
     with {bus_id, ""} <- Integer.parse(bus_id),
@@ -509,6 +509,15 @@ defmodule UchukuziInterfaceWeb.SchoolController do
          trip <- Uchukuzi.Tracking.trip_for(school_id, trip_id) do
       trip = Repo.preload(trip, :report_collection)
 
+      conn
+      |> put_view(UchukuziInterfaceWeb.TrackingView)
+      |> render("trip.json", trip: trip)
+    end
+  end
+
+  def ongoing_trip_details(conn, %{"bus_id" => bus_id}, school_id) do
+    with {:ok, bus} <- School.bus_for(school_id, bus_id) do
+      trip = Uchukuzi.Tracking.ongoing_trip_for(bus)
       conn
       |> put_view(UchukuziInterfaceWeb.TrackingView)
       |> render("trip.json", trip: trip)
