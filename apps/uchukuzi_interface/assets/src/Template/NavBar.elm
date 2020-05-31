@@ -1,4 +1,4 @@
-module Template.NavBar exposing (Model, Msg, hideNavBarMsg, init, isVisible, maxHeight, update, viewHeader)
+module Template.NavBar exposing (Model, Msg, hideNavBarMsg, init, isVisible, maxHeight, update, view)
 
 import Api
 import Colors
@@ -71,17 +71,15 @@ update msg model =
             )
 
 
-viewHeader : Model -> Session.Session -> Maybe Route -> Element Msg
-viewHeader model session route =
+view : Model -> Session.Session -> Maybe Route -> Element Msg
+view model session route =
     row
         [ Region.navigation
         , width fill
         , Background.color (rgb 1 1 1)
         , height (px maxHeight)
         , Border.widthEach { edges | bottom = 1 }
-        , Border.color (rgba 0 0 0 0.1)
-
-        -- , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.14 }
+        , Border.color (Colors.withAlpha Colors.black 0.2)
         , spacing 8
         , Element.inFront viewFlotillaLogo
         ]

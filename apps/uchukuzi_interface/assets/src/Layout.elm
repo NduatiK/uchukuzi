@@ -10,7 +10,7 @@ import Html.Attributes exposing (id)
 import Navigation exposing (Route)
 import Session
 import Style exposing (edges)
-import Template.NavBar as NavBar exposing (viewHeader)
+import Template.NavBar as NavBar exposing (view)
 import Template.SideBar as SideBar
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 
@@ -56,18 +56,17 @@ frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pa
                 [ sideBar
                 , column
                     [ width fill
-                    , paddingEach { edges | left = sideBarOffset }
                     , height (px (viewHeight pageHeight))
                     , alignTop
                     ]
-                    -- [ Element.map toMsg (el [ paddingEach { edges | left = sideBarOffset }, width fill, height fill ] body)
-                    [ Element.map toMsg (el [ width fill, height fill ] body)
+                    [ Element.map toMsg
+                        (el [ width fill, height fill, paddingEach { edges | left = sideBarOffset } ] body)
                     , bottomBar
                     ]
                 ]
 
         renderedHeader =
-            Element.map headerToMsg (viewHeader navState session route)
+            Element.map headerToMsg (view navState session route)
     in
     column [ width fill, height fill ]
         [ renderedHeader

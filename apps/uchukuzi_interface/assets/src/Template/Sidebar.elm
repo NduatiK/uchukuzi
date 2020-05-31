@@ -184,8 +184,8 @@ viewSideBar currentRoute state viewHeight =
     in
     column
         [ Background.color Colors.backgroundGray
-        , Border.widthEach { edges | right = 1 }
-        , Border.color (rgba 0 0 0 0.1)
+        , Border.widthEach { edges | right = 2 }
+        , Border.color (rgb 0.8 0.8 0.8)
         , spacing 4
         , alignTop
         , paddingEach { edges | top = topPadding }

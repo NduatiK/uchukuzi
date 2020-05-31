@@ -38,7 +38,8 @@ type alias Model =
     , selectedTrip : Maybe Trip
     , session : Session
     , loadedTrips : Dict Int Trip
-    , loadingTrip : WebData Models.Trip.Trip
+    , loadingTrip : WebData Trip
+    , ongoingTrip : Maybe Trip
     , requestedTrip : Maybe Int
     }
 
@@ -68,6 +69,7 @@ init busID session =
       , loadedTrips = Dict.fromList []
       , loadingTrip = NotAsked
       , requestedTrip = Nothing
+      , ongoingTrip = Nothing
       }
     , Cmd.batch
         [ fetchTripsForBus session busID

@@ -43,10 +43,8 @@ view tabBarItems toMsg =
             , width fill
             , height (px maxHeight)
             , Background.color Colors.white
-            , inFront
-                (el [ Background.color (rgba 0 0 0 0.1), width fill, height (px 1), moveLeft (handleBarSpacing + handleBarWidth), moveUp 1 ] none)
-            , inFront
-                (el [ Background.color (rgba 0 0 0 0.1), width (px (handleBarSpacing + handleBarWidth)), height (px 1), alignRight, moveUp 1 ] none)
+            , Border.widthEach { edges | top = 2 }
+            , Border.color (Colors.withAlpha Colors.black 0.2)
             ]
             (List.map viewTabItem tabBarItems)
         )
@@ -58,7 +56,7 @@ viewTabItem item =
         ([ paddingXY 56 4
          , width shrink
          , Border.rounded 5
-         , Border.width 1
+         , Border.width 2
          , centerY
          , centerX
          , Style.overline
@@ -68,8 +66,8 @@ viewTabItem item =
             ++ (case item of
                     Button button ->
                         [ Events.onMouseUp button.onPress
-                        , mouseDown [ Background.color Colors.simpleGrey, Border.color Colors.simpleGrey ]
-                        , mouseOver [ Border.color Colors.simpleGrey ]
+                        , mouseDown [ Background.color Colors.simpleGrey, Border.color (Colors.withAlpha (rgb255 4 30 37) 0.69) ]
+                        , mouseOver [ Border.color (Colors.withAlpha (rgb255 4 30 37) 0.39) ]
                         ]
 
                     ErrorButton button ->

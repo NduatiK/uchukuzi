@@ -37,7 +37,7 @@ import Ports
 import Session exposing (Session)
 import Style
 import Task
-import Template.NavBar as NavBar exposing (viewHeader)
+import Template.NavBar as NavBar exposing (view)
 import Template.SideBar as SideBar
 import Template.TabBar as TabBar
 import Time
