@@ -12,10 +12,13 @@ defmodule Uchukuzi.Tracking.BusesSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
-  def start_bus(%Bus{} = bus) do
+  def start_bus(%Bus{} = bus),
+   do: start_bus(bus.id)
+
+  def start_bus(bus_id) do
     DynamicSupervisor.start_child(
       __MODULE__,
-      {BusSupervisor, bus}
+      {BusSupervisor, bus_id}
     )
   end
 end

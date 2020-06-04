@@ -27,6 +27,7 @@ module Api.Endpoint exposing
     , routes
     , routesAvailableForBus
     , schoolDetails
+    , schoolDeviationRadius
     , signup
     , studentsOnboard
     , trips
@@ -123,6 +124,11 @@ activate =
 schoolDetails : Endpoint
 schoolDetails =
     url [ "school", "details" ] []
+
+
+schoolDeviationRadius : Endpoint
+schoolDeviationRadius =
+    url [ "school", "details", "deviationRadius" ] []
 
 
 signup : Endpoint

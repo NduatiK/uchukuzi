@@ -228,15 +228,14 @@ defmodule Uchukuzi.World.Tile do
   """
   def name(%Tile{} = tile), do: tile.coordinate
 
-  def nearby?(tile1, tile2, radius \\ @default_tile_size)
+  def nearby?(tile1, tile2, radius \\ 1)
 
   def nearby?(%Tile{} = tile1, %Tile{} = tile2, radius) do
-    round(abs(tile1.coordinate.lat - tile2.coordinate.lat) / radius) <= 1 &&
-      round(abs(tile1.coordinate.lng - tile2.coordinate.lng) / radius) <= 1
+    nearby?(tile1.coordinate, tile2.coordinate, radius)
   end
 
   def nearby?(%Location{} = tile1, %Location{} = tile2, radius) do
-    round(abs(tile1.lat - tile2.lat) / radius) == 1 &&
-      round(abs(tile1.lng - tile2.lng) / radius) == 1
+    round(abs(tile1.lat - tile2.lat) / (radius * @default_tile_size)) <= 1 &&
+      round(abs(tile1.lng - tile2.lng) / (radius * @default_tile_size)) <= 1
   end
 end

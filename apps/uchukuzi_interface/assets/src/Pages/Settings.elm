@@ -41,6 +41,10 @@ type alias Model =
     , requests :
         { editPasswordRequest : WebData ()
         , editSchoolRequest : WebData School
+        , updateDeviation :
+            { request : WebData Int
+            , sliderValue : Int
+            }
         }
     }
 
@@ -89,9 +93,19 @@ emptyForm =
     }
 
 
-emptyRequests =
+emptyRequests schoolRequest =
     { editPasswordRequest = NotAsked
     , editSchoolRequest = NotAsked
+    , updateDeviation =
+        { request = NotAsked
+        , sliderValue =
+            case schoolRequest of
+                Success school ->
+                    school.deviationRadius
+
+                _ ->
+                    0
+        }
     }
 
 
@@ -102,7 +116,7 @@ init session =
       , form = emptyForm
       , schoolDetailsRequest = Loading
       , requests =
-            emptyRequests
+            emptyRequests Loading
       }
     , Cmd.batch
         [ fetchSchoolDetails session ]
@@ -123,6 +137,9 @@ type Msg
     | ReceivedUpdatePasswordResponse (WebData ())
     | UpdatedOldPassword String
     | UpdatedNewPassword String
+      --------
+    | UpdatedDeviationRadius Int
+    | ReceivedUpdateDeviationRadiusResponse (WebData Int)
       --------
     | UpdateSchool
     | ReceivedUpdateSchoolResponse (WebData School)
@@ -175,7 +192,7 @@ update msg model =
                 updatedModel =
                     { model
                         | overlayType = overlay
-                        , requests = emptyRequests
+                        , requests = emptyRequests model.schoolDetailsRequest
                     }
             in
             case model.schoolDetailsRequest of
@@ -229,7 +246,7 @@ update msg model =
             in
             case response of
                 Success _ ->
-                    ( { newModel | overlayType = Nothing, requests = emptyRequests, form = emptyForm }, Cmd.none )
+                    ( { newModel | overlayType = Nothing, requests = emptyRequests model.schoolDetailsRequest, form = emptyForm }, Cmd.none )
 
                 Failure error ->
                     let
@@ -268,7 +285,12 @@ update msg model =
             in
             case response of
                 Success school ->
-                    ( { newModel | overlayType = Nothing, schoolDetailsRequest = response, requests = emptyRequests, form = emptyForm }
+                    ( { newModel
+                        | overlayType = Nothing
+                        , schoolDetailsRequest = response
+                        , requests = emptyRequests model.schoolDetailsRequest
+                        , form = emptyForm
+                      }
                     , Cmd.batch
                         [ Ports.cleanMap ()
                         , Ports.initializeCustomMap { drawable = False, clickable = False }
@@ -300,6 +322,56 @@ update msg model =
         UpdatedSchoolLocation mapData ->
             ( { model | form = { form | location = mapData.location, radius = mapData.radius } }, Cmd.none )
 
+        UpdatedDeviationRadius newDeviationRadius ->
+            let
+                updateDeviation =
+                    requests.updateDeviation
+            in
+            ( { model
+                | requests =
+                    { requests
+                        | updateDeviation =
+                            { updateDeviation
+                                | request = Loading
+                                , sliderValue = newDeviationRadius
+                            }
+                    }
+              }
+            , updateDeviationRadius model.session newDeviationRadius
+            )
+
+        ReceivedUpdateDeviationRadiusResponse updateResponse ->
+            let
+                updateDeviation =
+                    requests.updateDeviation
+
+                updatedSchoolDetails value =
+                    case model.schoolDetailsRequest of
+                        Success school ->
+                            Success { school | deviationRadius = value }
+
+                        _ ->
+                            model.schoolDetailsRequest
+            in
+            case updateResponse of
+                Success value ->
+                    ( { model
+                        | requests =
+                            { requests
+                                | updateDeviation =
+                                    { updateDeviation
+                                        | request = updateResponse
+                                        , sliderValue = value
+                                    }
+                            }
+                        , schoolDetailsRequest = updatedSchoolDetails value
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( { model | requests = { requests | updateDeviation = { updateDeviation | request = updateResponse } } }, Cmd.none )
+
 
 
 -- VIEW
@@ -328,7 +400,8 @@ view model viewHeight =
         [ width fill
         , spacing 40
         , padding 30
-        , height fill
+        , height (px viewHeight)
+        , scrollbarY
         , inFront (viewOverlay model viewHeight)
         ]
         [ Style.iconHeader Icons.settings "Settings"
@@ -377,6 +450,141 @@ view model viewHeight =
                         { iconAttrs = [ Colors.fillPurple ], onPress = Just (SetOverlay (Just Password)), icon = Icons.edit }
                     ]
                 ]
+            ]
+        , WebDataView.view model.schoolDetailsRequest
+            (\school ->
+                column [ spacing 16, width fill ]
+                    [ sectionDivider "Deviation DeviationRadius"
+                    , viewSlider model school.deviationRadius
+                    ]
+            )
+        , el [ height (px 100), width (px 100) ] none
+        ]
+
+
+viewSlider : Model -> Int -> Element Msg
+viewSlider model deviationRadius =
+    let
+        max : Int
+        max =
+            3
+
+        ticks : Element msg
+        ticks =
+            let
+                createTick position =
+                    el
+                        [ width (px 2)
+                        , height (px 8)
+                        , centerY
+                        , if position == deviationRadius then
+                            Background.color (rgba 1 1 1 0)
+
+                          else
+                            Background.color Colors.purple
+                        ]
+                        none
+            in
+            row [ spaceEvenly, width fill, centerY ] (List.map createTick (List.range 0 max))
+    in
+    column
+        [ paddingXY 10 0
+        , alignBottom
+        , height (px 93)
+        , Background.color Colors.white
+        , width (fill |> maximum 400)
+        , spacing 10
+        ]
+        [ column [ spacing 4 ]
+            [ el [ width fill ] (text "How far off route should the bus be allowed to travel")
+            , el [ width fill ] (text "before it is flagged?")
+            ]
+        , el [ width (fillPortion 1), width (fillPortion 1) ] none
+        , column [ width (fillPortion 40), spacing 8 ]
+            [ row
+                [ spacing 10
+                , width (fill |> maximum 360)
+                ]
+                [ Input.slider
+                    [ -- height (px 40),
+                      -- "Track styling"
+                      Element.behindContent
+                        (row [ height fill, width fill, centerY, Element.behindContent ticks ]
+                            [ Element.el
+                                -- "Filled track"
+                                [ width (fillPortion deviationRadius)
+                                , height (px 3)
+                                , Background.color Colors.purple
+                                , Border.rounded 2
+                                ]
+                                Element.none
+                            , Element.el
+                                -- "Default track"
+                                [ width (fillPortion (max - deviationRadius))
+                                , height (px 3)
+                                , alpha 0.38
+                                , Background.color Colors.purple
+                                , Border.rounded 2
+                                ]
+                                Element.none
+                            ]
+                        )
+                    ]
+                    { onChange = round >> UpdatedDeviationRadius
+                    , label =
+                        Input.labelHidden "Timeline Slider"
+                    , min = 0
+                    , max = Basics.toFloat max
+                    , step = Just 1
+                    , value = Basics.toFloat deviationRadius
+                    , thumb =
+                        Input.thumb
+                            [ Background.color Colors.purple
+                            , width (px 16)
+                            , height (px 16)
+                            , Border.rounded 8
+                            , Border.solid
+                            , Border.color (rgb 1 1 1)
+                            , Border.width 2
+                            ]
+                    }
+                , el [ centerY ]
+                    (case model.requests.updateDeviation.request of
+                        Success _ ->
+                            Icons.done [ width (px 24), height (px 24), Colors.fillDarkGreen, alpha 1 ]
+
+                        Loading ->
+                            Icons.loading [ width (px 36), height (px 36) ]
+
+                        Failure _ ->
+                            Icons.close
+                                [ width (px 36)
+                                , height (px 36)
+                                , Colors.fillErrorRed
+                                , alpha 1
+                                , onRight
+                                    (el (Style.captionStyle ++ [ centerY, Font.color Colors.errorRed, alpha 1 ])
+                                        (text "Are you offline?")
+                                    )
+                                ]
+
+                        _ ->
+                            none
+                    )
+                ]
+            , row
+                [ spaceEvenly
+                , width fill
+                , centerY
+                , moveRight 64
+                , width (fill |> maximum 320)
+                ]
+                (List.map
+                    (\value ->
+                        el ([ width fill, Font.center ] ++ Style.captionStyle) (text value)
+                    )
+                    [ "500 m", "1 km", "1.5 km" ]
+                )
             ]
         ]
 
@@ -659,6 +867,17 @@ fetchSchoolDetails : Session -> Cmd Msg
 fetchSchoolDetails session =
     Api.get session Endpoint.schoolDetails Models.School.schoolDecoder
         |> Cmd.map ReceivedSchoolDetails
+
+
+updateDeviationRadius session newDeviationRadius =
+    let
+        params =
+            Encode.object
+                [ ( "deviation_radius", Encode.int newDeviationRadius )
+                ]
+    in
+    Api.patch session Endpoint.schoolDetails params (Models.School.schoolDecoder |> Decode.map .deviationRadius)
+        |> Cmd.map ReceivedUpdateDeviationRadiusResponse
 
 
 decoder : Decoder ()

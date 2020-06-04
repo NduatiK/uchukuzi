@@ -88,14 +88,17 @@ defmodule Uchukuzi.World do
   #
   # This allows us to learn even when some tiles
   # are skipped
-  defp crossed_tiles(previous_report, current_report) do
-    start_tile = Tile.new(previous_report.location)
-    end_tile = Tile.new(current_report.location)
+  def crossed_tiles(%Report{} = previous_report, %Report{} = current_report) do
+    crossed_tiles(previous_report.location, current_report.location)
+  end
+  def crossed_tiles(previous_location, current_location) do
+    start_tile = Tile.new(previous_location)
+    end_tile = Tile.new(current_location)
 
     path = %Geo.LineString{
       coordinates: [
-        Report.to_coord(previous_report),
-        Report.to_coord(current_report)
+        Location.to_coord(previous_location),
+        Location.to_coord(current_location)
       ]
     }
 
@@ -111,7 +114,7 @@ defmodule Uchukuzi.World do
         _ -> []
       end
     end)
-    # Sort nearest to farthest
+    # Sort first to last
     |> Enum.sort_by(fn {_, distance} -> distance end)
     # Map to tile
     |> Enum.map(fn {tile, _} -> tile end)

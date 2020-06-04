@@ -63,20 +63,20 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
-  def edit_school_details(
-        conn,
-        %{
-          "lng" => lng,
-          "lat" => lat,
-          "name" => name,
-          "radius" => radius
-        },
-        school_id
-      )
-      when is_number(lng) and is_number(lat) do
-    with {:ok, location} <- Location.new(lng, lat),
-         {:ok, school} <-
-           School.update_details(school_id, name, location, radius) do
+  def edit_school_details(        conn,        params,        school_id      ) do
+
+
+    location = with lat when is_number(lat) <- Map.get(params, "lat"),
+                    lng when is_number(lat) <- Map.get(params, "lng") ,
+                    {:ok, location} <- Location.new(lng, lat) do
+                      location
+                    else _-> nil
+     end
+
+    with {:ok, school} <-
+           School.update_school_details(school_id,
+           Map.put(params, "location", location)
+            ) do
       conn
       |> put_status(200)
       |> render("school.json", school: school)

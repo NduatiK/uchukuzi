@@ -9,7 +9,8 @@ defmodule UchukuziInterfaceWeb.SchoolView do
         "lng" => school.perimeter.center.lng
       },
       "radius" => school.perimeter.radius,
-      "name" => school.name
+      "name" => school.name,
+      "deviation_radius" => school.deviation_radius
     }
   end
 

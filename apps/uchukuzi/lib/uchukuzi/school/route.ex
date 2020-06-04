@@ -26,22 +26,46 @@ defmodule Uchukuzi.School.Route do
     |> validate_required([:name, :school_id])
     |> cast_embed(:path, with: &Location.changeset/2)
     |> cast_embed(:expected_tiles, with: &Location.changeset/2)
+    |> calculate_expected_tiles()
   end
 
-  def calculate_expected_tiles(%Route{} = route) do
-    route.path
-    |> Enum.reduce([], fn location, tiles ->
-      new_tile = Uchukuzi.World.Tile.name(location)
+  def calculate_expected_tiles(%Ecto.Changeset{valid?: false} = changeset) do
+    changeset
+  end
 
-      case tiles do
-        [] -> [new_tile]
-        [h | _] when h != new_tile -> [new_tile | tiles]
-        _ -> tiles
+  def calculate_expected_tiles(%Ecto.Changeset{changes: %{path: path}} = changeset) do
+    expected_tiles =
+      path
+      |> Enum.map(& &1.data)
+      |> Enum.filter(&(&1 != %Uchukuzi.Common.Location{lat: nil, lng: nil}))
+      |> calculate_expected_tiles()
+      |> Enum.map(& &1.coordinate)
+
+    put_change(changeset, :expected_tiles, expected_tiles)
+  end
+
+  def calculate_expected_tiles(path) do
+    path
+    |> Enum.reduce({nil, []}, fn location, {last_location, tiles} ->
+      if last_location == nil do
+        {location, [Uchukuzi.World.Tile.new(location)]}
+      else
+        new_tile = Uchukuzi.World.Tile.new(location)
+
+        # Between tiles other than start and end_tiles
+        # Order from location to last location
+        crossed =
+          Uchukuzi.World.crossed_tiles(last_location, location)
+          |> Enum.reverse()
+
+        # tiles is now
+        # the current_tile
+        # ++ the tiles crossed between the current and previous tile
+        # ++ all tiles from the previous tile to the first tile
+        {location, [new_tile | crossed] ++ tiles}
       end
-
-      tiles
     end)
+    |> (fn {_, tiles} -> tiles end).()
     |> Enum.reverse()
-    |> (fn tiles -> %{route | expected_tiles: tiles} end).()
   end
 end

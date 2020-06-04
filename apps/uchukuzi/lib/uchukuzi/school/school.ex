@@ -11,6 +11,8 @@ defmodule Uchukuzi.School.School do
     has_one(:manager, Uchukuzi.Roles.Manager)
     has_many(:buses, Bus)
     has_many(:routes, Route)
+
+    field(:deviation_radius, :integer, default: 1)
   end
 
   def new(name, perimeter) do

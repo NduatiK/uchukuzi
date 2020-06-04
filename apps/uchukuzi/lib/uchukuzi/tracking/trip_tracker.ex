@@ -30,19 +30,25 @@ defmodule Uchukuzi.Tracking.TripTracker do
   @spec via_tuple(Uchukuzi.School.Bus.t()) :: {:via, Registry, {Uchukuzi.Registry, any}}
   defp via_tuple(%Bus{} = bus),
     do: Uchukuzi.service_name({__MODULE__, bus.id})
+  defp via_tuple(bus_id),
+    do: Uchukuzi.service_name({__MODULE__, bus_id})
 
   @spec pid_from(Uchukuzi.School.Bus.t()) :: nil | pid | {atom, atom}
-  def pid_from(%Bus{} = bus, retries \\ 0) do
+  def pid_from(_, retries \\ 0)
+  def pid_from(%Bus{} = bus, retries) do
+    pid_from(bus.id, retries)
+  end
+  def pid_from(bus_id, retries) do
     pid =
-      bus
+      bus_id
       |> via_tuple()
       |> GenServer.whereis()
 
     result =
       with nil <- pid do
-        BusesSupervisor.start_bus(bus)
+        BusesSupervisor.start_bus(bus_id)
 
-        bus
+        bus_id
         |> via_tuple()
         |> GenServer.whereis()
       end
@@ -54,7 +60,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
         retries = retries + 1
         :timer.sleep(100 * retries)
 
-        pid_from(bus, retries)
+        pid_from(bus_id, retries)
       end
     else
       result
@@ -162,9 +168,17 @@ defmodule Uchukuzi.Tracking.TripTracker do
     PubSub.publish(
       :eta_prediction_update,
       {:eta_prediction_update, self(), data.route_id, trip_path.eta}
-    )
+      )
 
     data = %{data | trip_path: trip_path}
+
+    {:noreply, data, @message_timeout}
+  end
+
+  def handle_cast(:update_school, data) do
+
+    school = Uchukuzi.Repo.get(Uchukuzi.School.School, data.school.id)
+    data = %{ data | school: school}
 
     {:noreply, data, @message_timeout}
   end
@@ -189,6 +203,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def insert_trip_path(data, report \\ nil)
 
   def insert_trip_path(%{trip_path: nil} = data, report) do
+    deviation_radius = data.school.deviation_radius
     expected_tiles =
       Uchukuzi.School.Route
       |> where([r], r.id == ^data.route_id)
@@ -200,10 +215,10 @@ defmodule Uchukuzi.Tracking.TripTracker do
     trip_path =
       if not is_nil(expected_tiles) do
         expected_tiles
-        |> TripPath.new()
+        |> TripPath.new(deviation_radius)
         |> TripPath.update_predictions(report)
       else
-        TripPath.new(nil)
+        TripPath.new(nil, deviation_radius)
       end
 
     %{data | trip_path: trip_path}
@@ -277,6 +292,17 @@ defmodule Uchukuzi.Tracking.TripTracker do
   # Expects tiles sorted first crossed to last crossed
   def crossed_tiles(bus, tiles),
     do: cast_tracker(bus, {:crossed_tiles, tiles})
+
+  def update_school(bus)    do
+    # We use this cast to avoid creating buses
+    bus
+    |> via_tuple()
+    |> GenServer.whereis()
+    |> (fn nil -> nil
+    server ->
+      server |> GenServer.cast(:update_school)
+    end).()
+end
 
   defp cast_tracker(bus, arguments) do
     bus

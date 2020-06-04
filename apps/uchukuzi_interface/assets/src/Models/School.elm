@@ -12,6 +12,7 @@ type alias School =
     { location : Location.Location
     , radius : Float
     , name : String
+    , deviationRadius : Int
     }
 
 
@@ -21,3 +22,4 @@ schoolDecoder =
         |> required "location" Location.locationDecoder
         |> required "radius" Decode.float
         |> required "name" string
+        |> required "deviation_radius" Decode.int

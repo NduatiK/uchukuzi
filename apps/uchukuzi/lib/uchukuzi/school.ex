@@ -23,19 +23,64 @@ defmodule Uchukuzi.School do
     |> Repo.transaction()
   end
 
-  def update_details(school_id, name, location, radius) do
+  def update_school_details(school_id, params) do
     school =
       School
       |> where(id: ^school_id)
       |> Repo.one()
 
-    perimeter = %{school.perimeter | center: location, radius: radius}
+    map_if_present = (fn
+      p, params, paramName, internalName   ->
+        cond do
+          value = Map.get(params, paramName)  ->
+            Map.put(p, internalName, value)
+          true ->
+            p
+        end
+    end)
+
+
+
+    perimeter =
+      school.perimeter
+      |>map_if_present.(params, "location", :center)
+      |>map_if_present.(params, "radius", :radius)
+
+      change_if_present = (fn
+                 p, params, paramName, internalName   ->
+            cond do
+              value = Map.get(params, paramName)  ->
+                change(p, [{internalName, value}])
+              true ->
+                p
+            end
+      end)
 
     school
     |> change(perimeter: perimeter)
-    |> change(name: name)
+    |> change_if_present.(params, "name", :name)
+    |> change_if_present.(params, "deviation_radius", :deviation_radius)
     |> Repo.update()
+    |> inform_buses_of_school_update()
   end
+
+  def inform_buses_of_school_update({:ok, school}), do:
+    {:ok, inform_buses_of_school_update(school)}
+
+  def inform_buses_of_school_update(%School{} = school) do
+    Repo.all(
+      from(b in Bus,
+        where: b.school_id == ^school.id,
+      )
+    )
+    |> Enum.map(& &1.id)
+    |> Enum.map(&Uchukuzi.Tracking.TripTracker.update_school/1)
+
+    school
+  end
+
+  def inform_buses_of_school_update(pass), do: pass
+
 
   def update_location(school_id, location, radius \\ 50) do
     school =
@@ -289,7 +334,6 @@ defmodule Uchukuzi.School do
       path: path
     }
     |> Route.changeset()
-    |> Route.calculate_expected_tiles()
     |> Repo.insert()
   end
 
@@ -349,6 +393,9 @@ defmodule Uchukuzi.School do
     |> Repo.one()
     |> Repo.delete()
   end
+
+
+
 
   # ********* HOUSEHOLDS *********
   def create_household(
