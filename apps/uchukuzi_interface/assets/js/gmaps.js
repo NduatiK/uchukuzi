@@ -1,6 +1,6 @@
-import mapStyles from './mapStyles'
-import env from './env'
-const schoolLocationStorageKey = 'schoolLocation'
+import mapStyles from "./mapStyles"
+import env from "./env"
+const schoolLocationStorageKey = "schoolLocation"
 
 const isDevelopment = env.isDevelopment
 
@@ -8,11 +8,11 @@ function parse(string) {
     try {
         return string ? JSON.parse(string) : null
     } catch (e) {
-        localStorage.setItem(schoolLocationStorageKey, null);
+        localStorage.setItem(schoolLocationStorageKey, null)
         return null
     }
 }
-let schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey));
+let schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey))
 
 window.addEventListener("storage", (event) => {
 
@@ -22,10 +22,11 @@ window.addEventListener("storage", (event) => {
         schoolLocation = location
         pushSchoolOnto(MapLibraryInstance)
     }
-}, false);
+}, false)
 
 let darkGreen = "#61A591"
 let purple = "#594fee"
+let errorRed = "#ff0000"
 // Prevent duplicate loads
 let runningRequest = null
 let initializingMapsChain = null
@@ -44,8 +45,8 @@ var editable = true
 function initializeMaps(app, clickable = false, drawable = false, sleepTime = 800) {
     editable = clickable || drawable
     if (schoolLocation) {
-        const credentialsStorageKey = 'credentials'
-        const storedCredentials = parse(localStorage.getItem(credentialsStorageKey));
+        const credentialsStorageKey = "credentials"
+        const storedCredentials = parse(localStorage.getItem(credentialsStorageKey))
         if (storedCredentials) {
             defaultLocation = { center: schoolLocation, zoom: 16 }
         }
@@ -69,11 +70,11 @@ function loadMapAPI() {
     }
 
     runningRequest = new Promise((resolve, reject) => {
-        const script = document.createElement('script')
-        script.type = 'text/javascript'
+        const script = document.createElement("script")
+        script.type = "text/javascript"
         script.onload = () => { resolve(google) }
         script.onerror = reject
-        document.getElementsByTagName('head')[0].appendChild(script)
+        document.getElementsByTagName("head")[0].appendChild(script)
         script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyB6wUhsk2tL7ihoORGBfeqc8UCRA3XRVsw&libraries=drawing,places"
     })
     return runningRequest
@@ -104,10 +105,10 @@ function createMapDom() {
         overviewMapControl: false,
         ...defaultLocation,
         styles: mapStyles,
-        // gestureHandling: 'cooperative'
+        // gestureHandling: "cooperative"
     }
 
-    const newElement = document.createElement('google-map-cached')
+    const newElement = document.createElement("google-map-cached")
     MapLibraryInstance = new google.maps.Map(newElement, mapOptions)
     MapDomElement = newElement
 
@@ -115,6 +116,7 @@ function createMapDom() {
 }
 
 let markers = []
+let tiles = []
 let drawingManager = null
 let schoolCircle = null
 
@@ -125,7 +127,7 @@ const insertMap = (sleepTime) => (data) => {
     return sleep(sleepTime).then(() => {
         const { dom, map } = data
 
-        var mapDiv = document.getElementById('google-map')
+        var mapDiv = document.getElementById("google-map")
 
         if (dom.parentNode) {
             dom.parentNode.removeChild(dom)
@@ -160,16 +162,17 @@ function cleanMap() {
     })
     markers = []
 
+    tiles.forEach((x) => {
+        x.setMap(null)
+    })
+    tiles = []
+
     if (schoolCircle) {
         schoolCircle.setMap(null)
     }
 
-    if (polylineCompleteListener) {
-        google.maps.event.removeListener(polylineCompleteListener)
-    }
-    if (polylineClickListener) {
-        google.maps.event.removeListener(polylineClickListener)
-    }
+    disableClickListeners(0)
+
     // Reset location
     if (MapLibraryInstance) {
         const map = MapLibraryInstance
@@ -178,7 +181,30 @@ function cleanMap() {
 
         pushSchoolOnto(map)
     }
-} var schoolMarker = null
+}
+
+
+function cleanGrid() {
+    tiles.forEach((x) => {
+        x.setMap(null)
+    })
+    tiles = []
+}
+
+function disableClickListeners(time = 300) {
+    console.log(time)
+    sleep(time).then(() => {
+        console.log(time)
+        if (MapLibraryInstance) {
+            google.maps.event.clearInstanceListeners(MapLibraryInstance, "click")
+            homeMarkerMapClickListener = null
+            circleClickListener = null
+            mapClickListener = null
+        }
+    })
+}
+
+var schoolMarker = null
 
 /**
  * Displaces the location of the school on the map
@@ -213,8 +239,8 @@ let circleClickListener = null
 const setupMapCallbacks = (app, clickable) => (data) => {
     const map = data
     if (clickable) {
-        if (!google.maps.event.hasListeners(map, 'click')) {
-            circleClickListener = google.maps.event.addListener(map, 'click', function (args) {
+        if (!google.maps.event.hasListeners(map, "click")) {
+            circleClickListener = google.maps.event.addListener(map, "click", function (args) {
                 const pos = {
                     lat: args.latLng.lat(),
                     lng: args.latLng.lng()
@@ -231,10 +257,6 @@ const setupMapCallbacks = (app, clickable) => (data) => {
     return Promise.resolve(data)
 }
 
-function getCardinalDirection(angle) {
-    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
-    return directions[Math.round(angle / 45) % 8]
-}
 
 function insertCircle(pos, app, map, radius = 50) {
 
@@ -264,11 +286,11 @@ function insertCircle(pos, app, map, radius = 50) {
             radius: schoolCircle.getRadius()
         })
     }
-    if (!google.maps.event.hasListeners(schoolCircle, 'radius_changed')) {
-        google.maps.event.addListener(schoolCircle, 'radius_changed', function () {
+    if (!google.maps.event.hasListeners(schoolCircle, "radius_changed")) {
+        google.maps.event.addListener(schoolCircle, "radius_changed", function () {
             sendSchoolCircle(schoolCircle)
         })
-        google.maps.event.addListener(schoolCircle, 'center_changed', function () {
+        google.maps.event.addListener(schoolCircle, "center_changed", function () {
             schoolMarker.setPosition(schoolCircle.center)
             sendSchoolCircle(schoolCircle)
         })
@@ -279,8 +301,7 @@ function insertCircle(pos, app, map, radius = 50) {
     sendSchoolCircle(schoolCircle)
 }
 
-let polylineCompleteListener = null
-let polylineClickListener = null
+
 let polylines = []
 let polylineMarkers = []
 let markerIdx = 0
@@ -293,7 +314,7 @@ function rerenderPolylines() {
                 polylineMarkers[_idx - 1].position,
                 polylineMarkers[_idx + 1].position
 
-            ]);
+            ])
         }
     })
 }
@@ -314,63 +335,20 @@ function updatePolyline(app) {
     app.ports.updatedPath.send(locations)
 }
 
-let clickListener = null
+let mapClickListener = null
 const addDrawTools = (app, drawable) => (data) => {
     const map = data
 
     if (drawable) {
-        clickListener = google.maps.event.addListener(map, 'click', function (args) {
-            markerIdx += 1
-            var marker = new google.maps.Marker({
-                id: markerIdx.toString(),
-                position: args.latLng,
-                icon: {
-                    url: "https://maps.gstatic.com/intl/en_us/mapfiles/markers2/measle.png",
-                    size: new google.maps.Size(7, 7),
-                    anchor: new google.maps.Point(3.5, 3.5)
-                },
-                draggable: true,
-                map: map,
+        if (!mapClickListener) {
+            mapClickListener = google.maps.event.addListener(map, "click", function (args) {
+                markerIdx += 1
+                renderPathPoint(args.latLng, map, app, markerIdx)
             })
-
-            if (polylineMarkers.length === 0) {
-                polylineMarkers.push(marker)
-            } else {
-                const lastMarker = polylineMarkers[polylineMarkers.length - 1]
-                let polyline = new google.maps.Polyline({
-                    path: [lastMarker.position, marker.position],
-                    map: map,
-                    id: markerIdx.toString()
-                })
-                polyline.set('strokeColor', darkGreen);
-
-                polylineMarkers.push(polyline)
-                polylineMarkers.push(marker)
-            }
-
-            google.maps.event.addListener(marker, 'click', function (args) {
-                polylineMarkers = polylineMarkers.filter((val, _, _2) => {
-                    return val.id !== marker.id
-                })
-
-                polyline.setMap(null)
-                polyline = null
-
-                marker.setMap(null)
-                marker = null
-
-                updatePolyline(app)
-            })
-
-            google.maps.event.addListener(marker, 'dragend', function (args) {
-                updatePolyline(app)
-            })
-
-            updatePolyline(app)
-        })
+        }
     } else {
-        google.maps.event.removeListener(clickListener);
-        clickListener = null;
+        google.maps.event.removeListener(mapClickListener)
+        mapClickListener = null
     }
 
     return Promise.resolve(data)
@@ -421,8 +399,7 @@ function requestGeoLocation(app) {
 }
 
 let homeMarker
-let subscribedToShowHomeLocation
-let homeMarkerDragListener
+let homeMarkerMapClickListener
 function initializeSearch(app) {
     sleep(100).then(() => {
 
@@ -430,8 +407,8 @@ function initializeSearch(app) {
             .then((map) => {
                 setupHomeMarker(app, map)
 
-                if (!google.maps.event.hasListeners(map, 'click')) {
-                    clickListener = google.maps.event.addListener(map, 'click', function (args) {
+                if (!google.maps.event.hasListeners(map, "click")) {
+                    homeMarkerMapClickListener = google.maps.event.addListener(map, "click", function (args) {
                         homeMarker.setPosition(args.latLng)
                         app.ports.receivedMapLocation.send({
                             lat: args.latLng.lat(),
@@ -440,21 +417,21 @@ function initializeSearch(app) {
                     })
                 }
 
-                var input = document.getElementById('search-input')
+                var input = document.getElementById("search-input")
 
                 var autocomplete = new google.maps.places.Autocomplete(input)
 
-                autocomplete.bindTo('bounds', map)
+                autocomplete.bindTo("bounds", map)
 
                 // Set the data fields to return when the user selects a place.
                 autocomplete.setFields(
-                    ['address_components', 'geometry', 'name'])
-                autocomplete.addListener('place_changed', function () {
+                    ["address_components", "geometry", "name"])
+                autocomplete.addListener("place_changed", function () {
 
                     homeMarker.setVisible(false)
                     var place = autocomplete.getPlace()
                     if (!place.geometry) {
-                        window.alert("No details available for input: '" + place.name + "'")
+                        window.alert("No details available for input: " + place.name)
                         return
                     }
 
@@ -473,13 +450,13 @@ function initializeSearch(app) {
                         lng: place.geometry.location.lng()
                     })
 
-                    var address = ''
+                    var address = ""
                     if (place.address_components) {
                         address = [
-                            (place.address_components[0] && place.address_components[0].short_name || ''),
-                            (place.address_components[1] && place.address_components[1].short_name || ''),
-                            (place.address_components[2] && place.address_components[2].short_name || '')
-                        ].join(' ')
+                            (place.address_components[0] && place.address_components[0].short_name || ""),
+                            (place.address_components[1] && place.address_components[1].short_name || ""),
+                            (place.address_components[2] && place.address_components[2].short_name || "")
+                        ].join(" ")
                     }
                 })
             })
@@ -505,7 +482,7 @@ function setupHomeMarker(app, map) {
         icon: image
     })
 
-    homeMarkerDragListener = google.maps.event.addListener(homeMarker, 'dragend', function () {
+    homeMarkerDragListener = google.maps.event.addListener(homeMarker, "dragend", function () {
         app.ports.receivedMapLocation.send({
             lat: homeMarker.getPosition().lat(),
             lng: homeMarker.getPosition().lng()
@@ -513,10 +490,38 @@ function setupHomeMarker(app, map) {
     })
 }
 
+function fitBoundsMap(map) {
+    var bounds = new google.maps.LatLngBounds()
+
+    const extendBounds = (mapObject) => {
+        if (mapObject.getPath) {
+            mapObject.getPath().getArray().forEach(extendBounds)
+        } else if (mapObject.position) {
+            bounds.extend(mapObject.position)
+        } else if (mapObject.bounds && mapObject.bounds.getNorthEast) {
+            bounds.extend(mapObject.bounds.getNorthEast())
+            bounds.extend(mapObject.bounds.getSouthWest())
+        } else {
+            bounds.extend(mapObject)
+        }
+    }
+
+    polylines.forEach(extendBounds)
+    markers.forEach(extendBounds)
+    tiles.forEach(extendBounds)
+    polylineMarkers.forEach(extendBounds)
+    extendBounds(schoolMarker)
+
+    map.fitBounds(bounds)
+}
+
 function setupMapPorts(app) {
 
-    app.ports.cleanMap.subscribe((location) => {
+    app.ports.cleanMap.subscribe((_) => {
         cleanMap()
+    })
+    app.ports.disableClickListeners.subscribe((_) => {
+        disableClickListeners(2000)
     })
 
     // One time actions, we don't want too many subscriptions
@@ -550,11 +555,11 @@ function setupMapPorts(app) {
                 map.panTo(location)
 
                 document.querySelectorAll('img[src="/images/buses/N.svg"]').forEach((node) => {
-                    node.style['transform'] = `rotate(${bearing}deg)`
-                    node.style['webkitTransform'] = `rotate(${bearing}deg)`
-                    node.style['MozTransform'] = `rotate(${bearing}deg)`
-                    node.style['msTransform'] = `rotate(${bearing}deg)`
-                    node.style['OTransform'] = `rotate(${bearing}deg)`
+                    node.style["transform"] = `rotate(${bearing}deg)`
+                    node.style["webkitTransform"] = `rotate(${bearing}deg)`
+                    node.style["MozTransform"] = `rotate(${bearing}deg)`
+                    node.style["msTransform"] = `rotate(${bearing}deg)`
+                    node.style["OTransform"] = `rotate(${bearing}deg)`
                 })
             })
     }
@@ -586,7 +591,7 @@ function setupMapPorts(app) {
     })
 
     app.ports.selectPoint.subscribe(({ location, bearing }) => {
-        const markerID = 'trip'
+        const markerID = "trip"
         updateMarker({ location: location, bearing: bearing, markerID: markerID })
     })
 
@@ -614,9 +619,9 @@ function setupMapPorts(app) {
             })
             if (polyline) {
                 if (highlighted) {
-                    polyline.set('strokeColor', purple);
+                    polyline.set("strokeColor", purple)
                 } else {
-                    polyline.set('strokeColor', darkGreen);
+                    polyline.set("strokeColor", darkGreen)
                 }
             }
         }
@@ -632,57 +637,8 @@ function setupMapPorts(app) {
 
         if (editable) {
             addDrawTools(app, true)(map).then((_map) => {
-                path.forEach((position, _idx, _array) => {
-
-                    var marker = new google.maps.Marker({
-
-                        id: markerIdx.toString(),
-                        position: position,
-                        icon: {
-                            url: "https://maps.gstatic.com/intl/en_us/mapfiles/markers2/measle.png",
-                            size: new google.maps.Size(7, 7),
-                            anchor: new google.maps.Point(3.5, 3.5)
-                        },
-                        draggable: true,
-                        map: map,
-                    })
-
-                    if (polylineMarkers.length === 0) {
-                        polylineMarkers.push(marker)
-                    } else {
-                        const lastMarker = polylineMarkers[polylineMarkers.length - 1]
-                        let polyline = new google.maps.Polyline({
-                            path: [lastMarker.position, marker.position],
-                            map: map,
-                            id: markerIdx.toString()
-                        })
-                        polyline.set('strokeColor', darkGreen);
-
-                        polylineMarkers.push(polyline)
-                        polylineMarkers.push(marker)
-                    }
-
-                    google.maps.event.addListener(marker, 'click', function (args) {
-                        polylineMarkers = polylineMarkers.filter((val, _, _2) => {
-                            return val.id !== marker.id
-                        })
-
-                        if (polyline) {
-                            polyline.setMap(null)
-                            polyline = null
-                        }
-
-                        marker.setMap(null)
-                        marker = null
-
-                        updatePolyline(app)
-                    })
-
-                    google.maps.event.addListener(marker, 'dragend', function (args) {
-                        updatePolyline(app)
-                    })
-
-                    updatePolyline(app)
+                path.forEach((position, idx, _array) => {
+                    renderPathPoint(position, map, app, idx)
                 })
             })
         } else {
@@ -696,19 +652,19 @@ function setupMapPorts(app) {
                     strokeColor: highlighted ? purple : darkGreen,
                     editable: editable,
                     id: routeID
-                });
+                })
                 polylines.push(polyline)
             } else {
                 polyline.setMap(null)
             }
             if (highlighted) {
-                polyline.set('strokeColor', purple);
+                polyline.set("strokeColor", purple)
             } else {
-                polyline.set('strokeColor', darkGreen);
+                polyline.set("strokeColor", darkGreen)
             }
 
-            polyline.setPath(path);
-            polyline.setMap(map);
+            polyline.setPath(path)
+            polyline.setMap(map)
         }
     }
 
@@ -726,6 +682,9 @@ function setupMapPorts(app) {
             .then((map) => {
                 sleep(200).then(() => {
                     drawPath(map, true)(path)
+                    sleep(100).then(() => {
+                        fitBoundsMap(map)
+                    })
                 })
             })
     })
@@ -753,6 +712,112 @@ function setupMapPorts(app) {
                 })
             })
     })
+
+    app.ports.fitBoundsMap.subscribe(() => {
+        initializeMaps(app)
+            .then((map) => {
+                sleep(400).then(() => {
+                    fitBoundsMap(map)
+                })
+            })
+    })
+
+    function setTilesVisibility(map, visible) {
+        const setMap = (mapValue) => (tile) => {
+            tile.setMap(mapValue)
+        }
+        if (visible) {
+            tiles.forEach(setMap(map))
+        } else {
+            tiles.forEach(setMap(null))
+        }
+    }
+
+    app.ports.drawDeviationTiles.subscribe(({ correct, deviation, visible }) => {
+        initializeMaps(app)
+            .then((map) => {
+
+                cleanGrid()
+
+                const drawTile = (color, strokeWeight) => (tile) => {
+                    var rectangle = new google.maps.Rectangle({
+                        strokeColor: color,
+                        strokeOpacity: 0.8,
+                        strokeWeight: strokeWeight,
+                        fillColor: color,
+                        fillOpacity: 0.35,
+                        map: map,
+                        bounds: {
+                            north: tile.topRight.lat,
+                            south: tile.bottomLeft.lat,
+                            east: tile.topRight.lng,
+                            west: tile.bottomLeft.lng
+                        }
+                    })
+
+                    tiles.push(rectangle)
+                }
+
+                correct.forEach(drawTile(darkGreen, 3))
+                deviation.forEach(drawTile(errorRed, 2))
+
+                setTilesVisibility(map, visible)
+            })
+    })
+
+    app.ports.setDeviationTileVisible.subscribe((visible) => {
+        initializeMaps(app)
+            .then((map) => {
+                setTilesVisibility(map, visible)
+            })
+    })
+}
+
+function renderPathPoint(position, map, app, markerIdx) {
+    var marker = new google.maps.Marker({
+        id: markerIdx.toString(),
+        position: position,
+        icon: {
+            url: "https://maps.gstatic.com/intl/en_us/mapfiles/markers2/measle.png",
+            size: new google.maps.Size(7, 7),
+            anchor: new google.maps.Point(3.5, 3.5)
+        },
+        draggable: true,
+        map: map,
+    })
+
+    let polyline
+
+    if (polylineMarkers.length === 0) {
+        polylineMarkers.push(marker)
+    }
+    else {
+        const lastMarker = polylineMarkers[polylineMarkers.length - 1]
+        polyline = new google.maps.Polyline({
+            path: [lastMarker.position, marker.position],
+            map: map,
+            id: markerIdx.toString()
+        })
+        polyline.set("strokeColor", darkGreen)
+        polylineMarkers.push(polyline)
+        polylineMarkers.push(marker)
+    }
+    google.maps.event.addListener(marker, "click", function (args) {
+        polylineMarkers = polylineMarkers.filter((val, _, _2) => {
+            return val.id !== marker.id
+        })
+        if (polyline) {
+            polyline.setMap(null)
+            polyline = null
+        }
+        marker.setMap(null)
+        marker = null
+        updatePolyline(app)
+    })
+    google.maps.event.addListener(marker, "dragend", function (args) {
+        updatePolyline(app)
+    })
+    updatePolyline(app)
 }
 
 function sleep(time) {

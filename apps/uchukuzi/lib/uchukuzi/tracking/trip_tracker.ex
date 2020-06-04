@@ -96,8 +96,6 @@ defmodule Uchukuzi.Tracking.TripTracker do
       |> insert_report(report)
 
     if School.School.contains_point?(data.school, report.location) do
-      IO.inspect(report.location)
-      IO.inspect("School.contains_point")
       {:stop, :normal, :ok, data |> set_state(@complete)}
     else
       {:reply, :ok, data, @message_timeout}
@@ -110,7 +108,11 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   def handle_call(:ongoing_trip, _from, %{state: @ongoing} = data) do
-    {:reply, data.trip, data, @message_timeout}
+    trip_with_deviation =
+      data.trip
+      |> Trip.set_deviation_positions(data.trip_path.deviation_positions)
+
+    {:reply, trip_with_deviation, data, @message_timeout}
   end
 
   def handle_call(:ongoing_trip, _from, data) do
@@ -140,20 +142,18 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   def handle_cast({:crossed_tiles, tiles}, data) do
-    is_in_student_trip = Enum.member?(Trip.travel_times(), data.trip.travel_time)
+    # is_in_student_trip = Enum.member?(Trip.travel_times(), data.trip.travel_time)
 
     data =
       data
       |> insert_trip_path()
 
-    # if true do
-    # if is_in_student_trip do
     # with path when not is_nil(path) <- data.trip_path do
     # Match crossed tiles to historical tiles
     # • Find out what tiles need to be crossed
     # • Predict
     # • Report to tile members
-    # path =
+
     trip_path =
       data.trip_path
       |> TripPath.crossed_tiles(tiles)
@@ -163,17 +163,6 @@ defmodule Uchukuzi.Tracking.TripTracker do
       :eta_prediction_update,
       {:eta_prediction_update, self(), data.route_id, trip_path.eta}
     )
-
-    # path
-    # IO.inspect("as", label: "Received")
-
-    #   path
-    # end
-
-    # UchukuziInterfaceWeb.Endpoint.broadcast("school:#{school_id}", "bus_moved", output)
-    # else
-    #   data.trip_path
-    # end
 
     data = %{data | trip_path: trip_path}
 
@@ -200,23 +189,21 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def insert_trip_path(data, report \\ nil)
 
   def insert_trip_path(%{trip_path: nil} = data, report) do
-    similarTrip =
-      Trip
-      # |> where([t], t.bus_id == ^data.bus_id and t.travel_time == ^startedTrip.travel_time)
-      |> where([t], t.bus_id == ^data.bus_id)
-      |> Ecto.Query.first(desc_nulls_last: :start_time)
+    expected_tiles =
+      Uchukuzi.School.Route
+      |> where([r], r.id == ^data.route_id)
       |> Uchukuzi.Repo.one()
+      |> (& &1.expected_tiles).()
 
     IO.puts("TripPath.new")
 
     trip_path =
-      with trip when not is_nil(trip) <- similarTrip do
-        trip.crossed_tiles
+      if not is_nil(expected_tiles) do
+        expected_tiles
         |> TripPath.new()
         |> TripPath.update_predictions(report)
       else
-        _ ->
-          TripPath.new(nil)
+        TripPath.new(nil)
       end
 
     %{data | trip_path: trip_path}
@@ -225,6 +212,20 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def insert_trip_path(data, _report), do: data
 
   def insert_report(data, report) do
+    trip = data.trip |> Trip.insert_report(report)
+
+    if Enum.count(trip.report_collection.reports) == 1 do
+      PubSub.publish(
+        :trip_update,
+        {:trip_update, self(), data.bus_id, trip}
+      )
+    else
+      PubSub.publish(
+        :trip_update,
+        {:trip_update, self(), data.bus_id, report}
+      )
+    end
+
     %{data | trip: data.trip |> Trip.insert_report(report)}
   end
 
@@ -239,32 +240,20 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def set_state(data, _), do: data
 
   def insert_activity(data, activity) do
+    PubSub.publish(
+      :trip_update,
+      {:trip_update, self(), data.bus_id, activity}
+    )
+
     %{data | trip: data.trip |> Trip.insert_student_activity(activity)}
   end
 
   def store_trip(%Trip{} = trip, trip_path) do
-    {reports, trip} =
-      %Trip{trip | crossed_tiles: trip_path.consumed_tile_locs}
-      |> Trip.clean_up_trip()
-      |> Map.pop(:reports, [])
-
-    Ecto.Multi.new()
-    |> Ecto.Multi.insert(:trip, trip)
-    |> Ecto.Multi.merge(fn %{trip: trip} ->
-      Ecto.Multi.new()
-      |> Ecto.Multi.insert(
-        :reports,
-        Ecto.build_assoc(trip, :report_collection)
-        |> (fn collection ->
-              %ReportCollection{
-                collection
-                | reports: reports,
-                  deviation_positions: trip_path.deviation_positions
-              }
-            end).()
-      )
-    end)
-    |> Repo.transaction()
+    trip
+    |> Trip.add_crossed_tiles(trip_path.consumed_tile_locs)
+    |> Trip.clean_up_trip()
+    |> Trip.set_deviation_positions(trip_path.deviation_positions)
+    |> Repo.insert()
   end
 
   # *************************** CLIENT ***************************#

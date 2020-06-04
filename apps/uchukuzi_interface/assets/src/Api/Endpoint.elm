@@ -16,6 +16,7 @@ module Api.Endpoint exposing
     , household
     , households
     , login
+    , newRouteFromTrip
     , ongoingTrip
     , patch
     , performedBusRepairs
@@ -30,6 +31,7 @@ module Api.Endpoint exposing
     , studentsOnboard
     , trips
     , updatePassword
+    , updateRouteFromTrip
     )
 
 import Http exposing (Body)
@@ -141,6 +143,16 @@ crewMember id =
 route : Int -> Endpoint
 route id =
     url [ "school", "routes", String.fromInt id ] []
+
+
+updateRouteFromTrip : Int -> Endpoint
+updateRouteFromTrip id =
+    url [ "school", "routes", String.fromInt id, "from_trip" ] []
+
+
+newRouteFromTrip : Endpoint
+newRouteFromTrip =
+    url [ "school", "routes", "from_trip" ] []
 
 
 crewMembers : Endpoint

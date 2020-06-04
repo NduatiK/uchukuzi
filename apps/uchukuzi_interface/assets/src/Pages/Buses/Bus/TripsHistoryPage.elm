@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.TripsHistoryPage exposing (Model, Msg, init, tabBarItems, update, view, viewFooter)
+module Pages.Buses.Bus.TripsHistoryPage exposing (Model, Msg, init, ongoingTripUpdated, tabBarItems, update, view, viewFooter, viewOverlay)
 
 import Api exposing (get)
 import Api.Endpoint as Endpoint exposing (trips)
@@ -10,16 +10,21 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
-import Errors
+import Errors exposing (Errors)
 import Icons
-import Json.Decode exposing (list)
-import Models.Location exposing (Report)
+import Json.Decode exposing (Decoder, list)
+import Json.Encode as Encode
+import Models.Location exposing (Location, Report)
+import Models.Route exposing (Route)
+import Models.Tile exposing (Tile, tileAt)
 import Models.Trip exposing (LightWeightTrip, OngoingTrip, StudentActivity, Trip, ongoingToTrip, ongoingTripDecoder, tripDecoder, tripDetailsDecoder)
+import Navigation
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import StyledElement.DropDown as Dropdown
 import StyledElement.WebDataView as WebDataView
 import Task
 import Template.TabBar as TabBar
@@ -31,10 +36,13 @@ import Utils.GroupBy
 type alias Model =
     { busID : Int
     , sliderValue : Int
-    , showGeofence : Bool
+    , mapVisuals :
+        { showDeviations : Bool
+        , showGeofence : Bool
+        , showStops : Bool
+        }
     , showingOngoingTrip : Bool
-    , showStops : Bool
-    , trips : WebData (List Models.Trip.LightWeightTrip)
+    , historicalTrips : WebData (List Models.Trip.LightWeightTrip)
     , groupedTrips : List GroupedTrips
     , selectedGroup : Maybe GroupedTrips
     , selectedTrip : Maybe Trip
@@ -43,6 +51,7 @@ type alias Model =
     , loadingTrip : WebData Trip
     , ongoingTrip : WebData (Maybe OngoingTrip)
     , requestedTrip : Maybe Int
+    , createRouteForm : Maybe CreateRouteForm
     }
 
 
@@ -50,10 +59,41 @@ type alias GroupedTrips =
     ( String, List LightWeightTrip )
 
 
-type alias Location =
-    { longitude : Float
-    , latitude : Float
-    , time : Time.Posix
+type alias CreateRouteForm =
+    { path : List Location
+    , tripID : Int
+    , routes : WebData (List Route)
+    , selectedRoute : UpdateRoute
+    , routeDropdownState : Dropdown.State Route
+    , problems : List (Errors.Errors Problem)
+    , update : WebData ()
+    }
+
+
+type Problem
+    = EmptyRoute
+    | EmptyRouteName
+
+
+type UpdateRoute
+    = NewRoute String
+    | ExistingRoute (Maybe Route)
+
+
+type ValidForm
+    = ValidNewRoute { tripID : Int, routeName : String }
+    | ValidExistingRoute { tripID : Int, routeID : Int }
+
+
+newCreateRouteForm : Trip -> CreateRouteForm
+newCreateRouteForm trip =
+    { path = trip.reports |> List.map .location
+    , tripID = trip.id
+    , routes = Loading
+    , selectedRoute = NewRoute ""
+    , routeDropdownState = Dropdown.init "routeDropdown"
+    , problems = []
+    , update = NotAsked
     }
 
 
@@ -61,9 +101,12 @@ init : Int -> Session -> ( Model, Cmd Msg )
 init busID session =
     ( { busID = busID
       , sliderValue = 0
-      , showGeofence = True
-      , showStops = True
-      , trips = RemoteData.NotAsked
+      , mapVisuals =
+            { showDeviations = True
+            , showGeofence = False
+            , showStops = False
+            }
+      , historicalTrips = RemoteData.NotAsked
       , showingOngoingTrip = True
       , groupedTrips = []
       , selectedGroup = Nothing
@@ -73,6 +116,7 @@ init busID session =
       , loadingTrip = NotAsked
       , requestedTrip = Nothing
       , ongoingTrip = RemoteData.Loading
+      , createRouteForm = Nothing
       }
     , Cmd.batch
         [ fetchOngoingTripForBus session busID
@@ -80,10 +124,15 @@ init busID session =
     )
 
 
+
+-- UPDATE
+
+
 type Msg
     = AdjustedValue Int
     | ToggledShowGeofence Bool
     | ToggledShowStops Bool
+    | ToggledShowDeviation Bool
     | ReceivedTripsResponse (WebData (List LightWeightTrip))
     | ReceivedOngoingTripResponse (WebData (Maybe OngoingTrip))
     | ReceivedTripDetailsResponse (WebData Trip)
@@ -92,14 +141,36 @@ type Msg
       ------
     | ShowHistoricalTrips
     | ShowCurrentTrip
+      ------
+    | CreateRouteFromTrip
+    | CancelRouteCreation
+    | OngoingTripUpdated Json.Decode.Value
+      ------
+    | UpdatedRouteName String
+    | SetSaveToRoute UpdateRoute
+    | ReceivedRoutesResponse (WebData (List Route))
+    | RouteDropdownMsg (Dropdown.Msg Route)
+    | SubmitUpdate
+    | ReceivedUpdateResponse (WebData ())
 
 
+type UpdateMsg
+    = NoOngoingTrip
+    | NewTrip OngoingTrip
+    | NewReport Report
+    | NewStudentActivity StudentActivity
 
--- UPDATE
+
+ongoingTripUpdated =
+    OngoingTripUpdated
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        mapVisuals =
+            model.mapVisuals
+    in
     case msg of
         AdjustedValue sliderValue ->
             let
@@ -113,11 +184,6 @@ update msg model =
 
                 scrollToStudentActivity =
                     Cmd.none
-
-                -- Browser.Dom.getViewportOf viewRecordsID
-                --     |> Task.andThen (.scene >> .height >> Browser.Dom.setViewportOf viewRecordsID 0)
-                --     |> Task.onError (\_ -> Task.succeed ())
-                --     |> Task.perform (\_ -> NoOp)
             in
             case currentPoint of
                 Nothing ->
@@ -133,23 +199,42 @@ update msg model =
                     , Cmd.batch
                         [ Ports.selectPoint
                             { location = report.location
-                            , bearing = report.bearing
+                            , bearing =
+                                (if model.showingOngoingTrip then
+                                    report.bearing
+                                    -- |> round
+                                    -- |> (\x -> x - 180)
+                                    -- |> modBy 360
+                                    -- |> toFloat
+
+                                 else
+                                    report.bearing
+                                 -- |> round
+                                 -- |> (\x -> x - 180)
+                                 -- |> modBy 360
+                                 -- |> toFloat
+                                )
                             }
                         , case model.selectedTrip of
                             Nothing ->
                                 Cmd.none
 
                             Just trip ->
-                                drawPath trip sliderValue
+                                drawPath trip sliderValue model.mapVisuals.showDeviations
                         , scrollToStudentActivity
                         ]
                     )
 
         ToggledShowGeofence show ->
-            ( { model | showGeofence = show }, Cmd.none )
+            ( { model | mapVisuals = { mapVisuals | showGeofence = show } }, Cmd.none )
 
         ToggledShowStops show ->
-            ( { model | showStops = show }, Cmd.none )
+            ( { model | mapVisuals = { mapVisuals | showStops = show } }, Cmd.none )
+
+        ToggledShowDeviation show ->
+            ( { model | mapVisuals = { mapVisuals | showDeviations = show } }
+            , Ports.setDeviationTileVisible show
+            )
 
         ReceivedTripsResponse response ->
             let
@@ -172,7 +257,7 @@ update msg model =
                         _ ->
                             Cmd.none
             in
-            ( { model | trips = response, groupedTrips = groupedTrips }
+            ( { model | historicalTrips = response, groupedTrips = groupedTrips }
             , command
             )
 
@@ -196,7 +281,7 @@ update msg model =
                     )
 
         ClickedOn tripID ->
-            if Just tripID == Maybe.andThen (.id >> Just) model.selectedTrip then
+            if Just tripID == (model.selectedTrip |> Maybe.map .id) then
                 -- clicked on currently selected trip
                 ( { model | selectedTrip = Nothing, sliderValue = 0 }
                 , Cmd.batch
@@ -223,8 +308,9 @@ update msg model =
                                         { location = report.location
                                         , bearing = report.bearing
                                         }
-                            , drawPath loadedTrip 0
+                            , drawPath loadedTrip 0 model.mapVisuals.showDeviations
                             , Ports.cleanMap ()
+                            , Ports.fitBounds
                             ]
                         )
 
@@ -254,16 +340,16 @@ update msg model =
         ShowHistoricalTrips ->
             ( { model
                 | showingOngoingTrip = False
-                , trips =
-                    if model.trips == NotAsked then
+                , historicalTrips =
+                    if model.historicalTrips == NotAsked then
                         Loading
 
                     else
-                        model.trips
+                        model.historicalTrips
               }
             , Cmd.batch
                 [ Ports.cleanMap ()
-                , if model.trips == NotAsked then
+                , if model.historicalTrips == NotAsked then
                     fetchHistoricalTripsForBus model.session model.busID
 
                   else
@@ -272,12 +358,191 @@ update msg model =
             )
 
         ShowCurrentTrip ->
-            selectOngoingTrip { model | showingOngoingTrip = True }
+            selectOngoingTrip { model | showingOngoingTrip = True, createRouteForm = Nothing }
+
+        CreateRouteFromTrip ->
+            case model.selectedTrip of
+                Just trip ->
+                    let
+                        form =
+                            newCreateRouteForm trip
+                    in
+                    ( { model | createRouteForm = Just form }
+                    , Cmd.batch
+                        [ fetchRoutes model.session
+                        , Ports.cleanMap ()
+                        , Ports.disableClickListeners ()
+                        , Ports.drawEditableRoute
+                            { id = 0
+                            , name = ""
+                            , path = form.path
+                            , bus = Nothing
+                            }
+                        ]
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        UpdatedRouteName name ->
+            ( { model
+                | createRouteForm =
+                    model.createRouteForm
+                        |> Maybe.map
+                            (\x ->
+                                case x.selectedRoute of
+                                    NewRoute _ ->
+                                        { x | selectedRoute = NewRoute name }
+
+                                    _ ->
+                                        x
+                            )
+              }
+            , Cmd.none
+            )
+
+        CancelRouteCreation ->
+            ( { model | createRouteForm = Nothing }, Cmd.none )
+
+        SetSaveToRoute selectedRoute ->
+            ( { model
+                | createRouteForm =
+                    model.createRouteForm
+                        |> Maybe.map
+                            (\x ->
+                                { x | selectedRoute = selectedRoute }
+                            )
+              }
+            , Cmd.none
+            )
+
+        SubmitUpdate ->
+            case model.createRouteForm of
+                Just form ->
+                    case validateForm form of
+                        Ok validForm ->
+                            ( { model
+                                | createRouteForm =
+                                    Just
+                                        { form
+                                            | problems = []
+                                            , update = Loading
+                                        }
+                              }
+                            , submitRouteUpdate model.session validForm
+                            )
+
+                        Err problems ->
+                            ( { model | createRouteForm = Just { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        ReceivedUpdateResponse updateResponse ->
+            case model.createRouteForm of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just form ->
+                    if RemoteData.isSuccess updateResponse then
+                        ( { model | createRouteForm = Nothing }
+                        , Cmd.none
+                        )
+
+                    else
+                        ( { model | createRouteForm = Just { form | update = updateResponse } }
+                        , Cmd.none
+                        )
+
+        RouteDropdownMsg subMsg ->
+            case model.createRouteForm of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just createRouteForm ->
+                    let
+                        ( _, config, options ) =
+                            routeDropDown createRouteForm
+
+                        ( state, cmd ) =
+                            Dropdown.update config subMsg createRouteForm.routeDropdownState options
+                    in
+                    ( { model | createRouteForm = Just { createRouteForm | routeDropdownState = state } }
+                    , cmd
+                    )
+
+        ReceivedRoutesResponse routes ->
+            case model.createRouteForm of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just form ->
+                    ( { model | createRouteForm = Just { form | routes = routes } }
+                    , Cmd.none
+                    )
 
         ReceivedOngoingTripResponse ongoingTrip ->
             selectOngoingTrip { model | ongoingTrip = ongoingTrip }
 
+        OngoingTripUpdated updateValue ->
+            let
+                change =
+                    updateValue
+                        |> Json.Decode.decodeValue
+                            (Json.Decode.oneOf
+                                [ Json.Decode.map NewTrip ongoingTripDecoder
+                                , Json.Decode.map NewReport Models.Location.reportDecoder
+                                , Json.Decode.map NewStudentActivity Models.Trip.studentActivityDecoder
+                                , Json.Decode.null NoOngoingTrip
+                                ]
+                            )
+                        |> Result.toMaybe
 
+                newModel =
+                    change
+                        |> Maybe.map
+                            (\tripUpdate ->
+                                case model.ongoingTrip of
+                                    Success (Just trip) ->
+                                        case tripUpdate of
+                                            NewTrip newTrip ->
+                                                { model | ongoingTrip = Success (Just newTrip) }
+
+                                            NewReport report ->
+                                                { model | ongoingTrip = Success (Just { trip | reports = report :: trip.reports }) }
+
+                                            NewStudentActivity report ->
+                                                { model | ongoingTrip = Success (Just { trip | studentActivities = report :: trip.studentActivities }) }
+
+                                            NoOngoingTrip ->
+                                                { model | ongoingTrip = Success Nothing }
+
+                                    _ ->
+                                        case tripUpdate of
+                                            NewTrip trip ->
+                                                { model | ongoingTrip = Success (Just trip) }
+
+                                            _ ->
+                                                model
+                            )
+                        |> Maybe.withDefault model
+            in
+            ( if model.showingOngoingTrip then
+                { newModel
+                    | selectedTrip =
+                        model.ongoingTrip
+                            |> RemoteData.toMaybe
+                            |> Maybe.withDefault Nothing
+                            |> Maybe.map ongoingToTrip
+                }
+
+              else
+                newModel
+            , Cmd.none
+            )
+
+
+selectOngoingTrip : Model -> ( Model, Cmd Msg )
 selectOngoingTrip model =
     case model.ongoingTrip of
         Success (Just trip) ->
@@ -289,7 +554,7 @@ selectOngoingTrip model =
                     trip.reports
                         |> List.drop 1
                         |> List.head
-                        |> Maybe.andThen (.bearing >> Just)
+                        |> Maybe.map .bearing
                         |> Maybe.withDefault 0
 
                 lastReport =
@@ -311,7 +576,7 @@ selectOngoingTrip model =
                             { location = report.location
                             , bearing = bearing
                             }
-                , drawPath trip sliderValue
+                , drawPath (ongoingToTrip trip) sliderValue model.mapVisuals.showDeviations
                 , Ports.cleanMap ()
                 ]
             )
@@ -330,15 +595,28 @@ view model =
         viewContents =
             always
                 (column
-                    [ width fill, spacing 16 ]
+                    [ width fill
+                    , spacing 16
+                    ]
                     [ viewMap model
-                    , viewMapOptions model
+                    , viewMapOptions model.mapVisuals
                     , if not model.showingOngoingTrip then
                         viewTrips model
                         -- viewFooter has the rest
 
                       else
-                        none
+                        WebDataView.view model.ongoingTrip
+                            (\trip ->
+                                case trip of
+                                    Just _ ->
+                                        none
+
+                                    Nothing ->
+                                        column [ centerX ]
+                                            [ el [ centerX ] (text "No trip in progress")
+                                            , el [ centerX ] (text "Click below to see past trips")
+                                            ]
+                            )
                     ]
                 )
     in
@@ -346,7 +624,7 @@ view model =
         WebDataView.view model.ongoingTrip viewContents
 
     else
-        WebDataView.view model.trips viewContents
+        WebDataView.view model.historicalTrips viewContents
 
 
 mapHeight : Int
@@ -356,7 +634,6 @@ mapHeight =
 
 viewMap : Model -> Element Msg
 viewMap model =
-    -- el [ paddingEach { edges | right = 20 }, width fill, height shrink ]
     column
         [ height (px mapHeight)
         , width fill
@@ -365,56 +642,61 @@ viewMap model =
         , Border.color Colors.darkness
         , Border.width 1
         , clip
-        , Background.color (rgba 0 0 0 0.05)
+        , Background.color Colors.semiDarkness
         ]
-        [ row [ width fill, height fill ]
-            [ StyledElement.googleMap
-                [ inFront
-                    (case model.selectedTrip of
-                        Nothing ->
-                            none
+        (if model.createRouteForm == Nothing then
+            [ row [ width fill, height fill ]
+                [ StyledElement.googleMap
+                    [ inFront
+                        (case model.selectedTrip of
+                            Nothing ->
+                                none
 
-                        Just trip ->
-                            case pointAt model.sliderValue trip of
-                                Nothing ->
-                                    none
+                            Just trip ->
+                                case pointAt model.sliderValue trip of
+                                    Nothing ->
+                                        none
 
-                                Just point ->
-                                    el
-                                        [ paddingXY 16 8
-                                        , centerX
-                                        , moveDown 20
-                                        , Background.color (Colors.withAlpha Colors.white 0.5)
-                                        , Style.blurredStyle
-                                        , Border.rounded 4
-                                        , Border.color Colors.sassyGrey
-                                        , Border.width 1
-                                        , Style.elevated2
-                                        ]
-                                        (el (moveDown 1 :: centerX :: Style.labelStyle ++ [ Font.size 15, Font.semiBold, Font.color Colors.purple ]) (text (String.fromFloat point.speed ++ " km/h")))
-                    )
+                                    Just point ->
+                                        el
+                                            [ paddingXY 16 8
+                                            , centerX
+                                            , moveDown 20
+                                            , Background.color (Colors.withAlpha Colors.white 0.5)
+                                            , Style.blurredStyle
+                                            , Border.rounded 4
+                                            , Border.color Colors.sassyGrey
+                                            , Border.width 1
+                                            , Style.elevated2
+                                            ]
+                                            (el (moveDown 1 :: centerX :: Style.labelStyle ++ [ Font.size 15, Font.semiBold, Font.color Colors.purple ]) (text (String.fromFloat point.speed ++ " km/h")))
+                        )
+                    ]
+                , case model.selectedTrip of
+                    Just trip ->
+                        el
+                            [ width (px 250)
+                            , height fill
+                            , Background.color Colors.white
+                            , Border.color (Colors.withAlpha Colors.darkness 0.5)
+                            , Border.widthEach { edges | left = 1 }
+                            ]
+                            (viewStudentActivities trip.studentActivities (Session.timeZone model.session))
+
+                    Nothing ->
+                        none
                 ]
             , case model.selectedTrip of
                 Just trip ->
-                    el
-                        [ width (px 250)
-                        , height fill
-                        , Background.color Colors.white
-                        , Border.color (Colors.withAlpha Colors.darkness 0.5)
-                        , Border.widthEach { edges | left = 1 }
-                        ]
-                        (viewStudentActivities trip.studentActivities (Session.timeZone model.session))
+                    viewSlider model (Session.timeZone model.session) trip
 
                 Nothing ->
                     none
             ]
-        , case model.selectedTrip of
-            Just trip ->
-                viewSlider model (Session.timeZone model.session) trip
 
-            Nothing ->
-                none
-        ]
+         else
+            []
+        )
 
 
 sliderHeight : Int
@@ -588,25 +870,38 @@ viewStudentActivities activities timezone =
 -- )
 
 
-viewMapOptions : Model -> Element Msg
-viewMapOptions model =
+viewMapOptions :
+    { showDeviations : Bool
+    , showGeofence : Bool
+    , showStops : Bool
+    }
+    -> Element Msg
+viewMapOptions mapVisuals =
     row [ paddingXY 10 0, spacing 110 ]
-        [--     Input.checkbox []
-         --     { onChange = ToggledShowGeofence
-         --     , icon = StyledElement.checkboxIcon
-         --     , checked = model.showGeofence
-         --     , label =
-         --         Input.labelRight Style.labelStyle
-         --             (text "Show Geofence")
-         --     }
-         -- , Input.checkbox []
-         --     { onChange = ToggledShowStops
-         --     , icon = StyledElement.checkboxIcon
-         --     , checked = model.showStops
-         --     , label =
-         --         Input.labelRight Style.labelStyle
-         --             (text "Show Stops")
-         --     }
+        [ Input.checkbox []
+            { onChange = ToggledShowStops
+            , icon = StyledElement.checkboxIcon
+            , checked = mapVisuals.showStops
+            , label =
+                Input.labelRight Style.labelStyle
+                    (text "Show Stops")
+            }
+        , Input.checkbox []
+            { onChange = ToggledShowGeofence
+            , icon = StyledElement.checkboxIcon
+            , checked = mapVisuals.showGeofence
+            , label =
+                Input.labelRight Style.labelStyle
+                    (text "Show Geofence")
+            }
+        , Input.checkbox []
+            { onChange = ToggledShowDeviation
+            , icon = StyledElement.checkboxIcon
+            , checked = mapVisuals.showDeviations
+            , label =
+                Input.labelRight Style.labelStyle
+                    (text "Show Deviations")
+            }
         ]
 
 
@@ -622,15 +917,6 @@ viewTrips { selectedGroup, selectedTrip, session, groupedTrips } =
 
         Just selectedGroup_ ->
             wrappedRow [ spacing 12, width fill ] (List.map (viewTrip selectedTrip (Session.timeZone session)) (List.reverse (Tuple.second selectedGroup_)))
-
-
-
--- viewGroupedTrips : Maybe Trip -> Time.Zone -> GroupedTrips -> Element Msg
--- viewGroupedTrips selectedTrip timezone ( month, trips ) =
---     column [ spacing 8 ]
---         [ el (Font.size 20 :: Font.bold :: Style.defaultFontFace) (text month)
---         , wrappedRow [ spacing 12 ] (List.map (viewTrip selectedTrip timezone) trips)
---         ]
 
 
 viewTrip : Maybe Trip -> Time.Zone -> LightWeightTrip -> Element Msg
@@ -651,7 +937,7 @@ viewTrip selectedTrip timezone trip =
                    ]
 
         selectionStyles =
-            if Just trip.id == Maybe.andThen (.id >> Just) selectedTrip then
+            if Just trip.id == (selectedTrip |> Maybe.map .id) then
                 [ Border.color (rgb255 97 165 145)
                 , moveUp 2
                 , Border.shadow { offset = ( 0, 12 ), blur = 20, size = 0, color = rgba255 97 165 145 0.3 }
@@ -659,8 +945,6 @@ viewTrip selectedTrip timezone trip =
 
             else
                 [ Border.color (rgba255 197 197 197 0.5)
-
-                -- , Border.shadow { offset = ( 0, 2 ), size = 0, blur = 12, color = rgba 0 0 0 0.14 }
                 ]
     in
     row
@@ -673,6 +957,7 @@ viewTrip selectedTrip timezone trip =
          , Border.width 1
          , Events.onClick (ClickedOn trip.id)
          , Style.animatesShadow
+         , pointer
          ]
             ++ selectionStyles
         )
@@ -748,8 +1033,178 @@ viewFooter model =
         none
 
 
+viewOverlay : Model -> Int -> Element Msg
+viewOverlay model viewHeight =
+    let
+        showOverlay =
+            model.createRouteForm /= Nothing
+
+        isCreateRoute a =
+            case a of
+                NewRoute _ ->
+                    True
+
+                _ ->
+                    False
+
+        editing =
+            model.createRouteForm
+                |> Maybe.map (\form -> not (isCreateRoute form.selectedRoute))
+                |> Maybe.withDefault False
+
+        ( editBackground, createBackground ) =
+            if editing then
+                ( Colors.backgroundPurple, Colors.white )
+
+            else
+                ( Colors.white, Colors.backgroundPurple )
+    in
+    el
+        (Style.animatesAll
+            :: width fill
+            :: height fill
+            :: paddingXY 40 30
+            :: behindContent
+                (Input.button
+                    [ width fill
+                    , height fill
+                    , Background.color (Colors.withAlpha Colors.black 0.6)
+                    , Style.blurredStyle
+                    , Style.clickThrough
+                    ]
+                    { onPress = Maybe.Nothing
+                    , label = none
+                    }
+                )
+            :: (if showOverlay then
+                    [ alpha 1, Style.nonClickThrough ]
+
+                else
+                    [ alpha 0, Style.clickThrough ]
+               )
+        )
+        (if showOverlay then
+            el [ Style.nonClickThrough, scrollbarY, centerX, centerY, Background.color Colors.white, Style.elevated2, Border.rounded 5 ]
+                (column [ spacing 20, padding 40 ]
+                    ([ el Style.header2Style (text "Save trip to route")
+                     , el [ width (px 500), height (px 400) ] (StyledElement.googleMap [])
+                     , el [ width fill, Border.color Colors.purple, Border.width 2, Border.rounded 5 ]
+                        (row [ width fill ]
+                            [ StyledElement.hoverButton [ Background.color createBackground, Border.rounded 0, width fill ]
+                                { icon = Just Icons.add
+                                , onPress = Just (SetSaveToRoute (NewRoute ""))
+                                , title = "Create Route"
+                                }
+                            , el [ Background.color Colors.purple, width (px 2), height fill ] none
+                            , StyledElement.hoverButton [ Background.color editBackground, Border.rounded 0, width fill ]
+                                { icon = Just Icons.edit
+                                , onPress = Just (SetSaveToRoute (ExistingRoute Nothing))
+                                , title = "Update Route"
+                                }
+                            ]
+                        )
+                     ]
+                        ++ (case model.createRouteForm of
+                                Nothing ->
+                                    []
+
+                                Just form ->
+                                    case form.selectedRoute of
+                                        NewRoute name ->
+                                            [ column [ spacing 20, width fill ]
+                                                [ StyledElement.textInput [ width (fill |> minimum 300) ]
+                                                    { title = "Route Name"
+                                                    , caption = Nothing
+                                                    , errorCaption = Errors.inputErrorsFor form.problems "name" [ EmptyRouteName ]
+                                                    , value = name
+                                                    , onChange = UpdatedRouteName
+                                                    , placeholder = Nothing
+                                                    , ariaLabel = "Password input"
+                                                    , icon = Nothing
+                                                    }
+                                                ]
+                                            ]
+
+                                        _ ->
+                                            [ WebDataView.view form.routes
+                                                (\routes ->
+                                                    Dropdown.viewFromModel form routeDropDown
+                                                )
+                                            ]
+                           )
+                    )
+                )
+
+         else
+            none
+        )
+
+
+routeDropDown : CreateRouteForm -> ( Element Msg, Dropdown.Config Route Msg, List Route )
+routeDropDown form =
+    let
+        routes =
+            case form.routes of
+                Success routes_ ->
+                    routes_
+
+                _ ->
+                    []
+
+        problems =
+            form.problems
+    in
+    StyledElement.dropDown
+        [ width
+            (fill
+                |> maximum 300
+            )
+        , alignTop
+        ]
+        { ariaLabel = "Select bus dropdown"
+        , caption = Just "Which route do you want to update?"
+        , prompt = Nothing
+        , dropDownMsg = RouteDropdownMsg
+        , dropdownState = form.routeDropdownState
+        , errorCaption = Errors.inputErrorsFor problems "id" [ EmptyRoute ]
+        , icon = Just Icons.pin
+        , onSelect = ExistingRoute >> SetSaveToRoute
+        , options = routes
+        , title = "Route"
+        , toString = .name
+        , isLoading = False
+        }
+
+
 
 -- HTTP
+
+
+validateForm : CreateRouteForm -> Result (List ( Problem, String )) ValidForm
+validateForm form =
+    case form.selectedRoute of
+        NewRoute routeName ->
+            if String.isEmpty (String.trim routeName) then
+                Err [ ( EmptyRouteName, "Required" ) ]
+
+            else
+                Ok
+                    (ValidNewRoute
+                        { tripID = form.tripID
+                        , routeName = routeName
+                        }
+                    )
+
+        ExistingRoute Nothing ->
+            Err [ ( EmptyRoute, "Required" ) ]
+
+        ExistingRoute (Just route) ->
+            Ok
+                (ValidExistingRoute
+                    { tripID = form.tripID
+                    , routeID = route.id
+                    }
+                )
 
 
 fetchHistoricalTripsForBus : Session -> Int -> Cmd Msg
@@ -770,16 +1225,44 @@ fetchReportsForTrip session tripID =
         |> Cmd.map ReceivedTripDetailsResponse
 
 
+fetchRoutes : Session -> Cmd Msg
+fetchRoutes session =
+    Api.get session Endpoint.routes (list Models.Route.routeDecoder)
+        |> Cmd.map ReceivedRoutesResponse
+
+
+submitRouteUpdate session form =
+    case form of
+        ValidExistingRoute { tripID, routeID } ->
+            let
+                params =
+                    Encode.object
+                        [ ( "trip_id", Encode.int tripID )
+                        ]
+            in
+            Api.patch session (Endpoint.updateRouteFromTrip routeID) params aDecoder
+                |> Cmd.map ReceivedUpdateResponse
+
+        ValidNewRoute { tripID, routeName } ->
+            let
+                params =
+                    Encode.object
+                        [ ( "trip_id", Encode.int tripID )
+                        , ( "name", Encode.string routeName )
+                        ]
+            in
+            Api.post session Endpoint.newRouteFromTrip params aDecoder
+                |> Cmd.map ReceivedUpdateResponse
+
+
+aDecoder : Decoder ()
+aDecoder =
+    Json.Decode.succeed ()
+
+
 groupTrips : List LightWeightTrip -> Time.Zone -> List GroupedTrips
 groupTrips trips timezone =
     Utils.GroupBy.date timezone .startTime trips
-
-
-toGPS : Location -> { lat : Float, lng : Float }
-toGPS location =
-    { lat = location.latitude
-    , lng = location.longitude
-    }
 
 
 pointAt : Int -> Trip -> Maybe Report
@@ -787,7 +1270,16 @@ pointAt index trip =
     List.head (List.drop index trip.reports)
 
 
-drawPath trip sliderValue =
+drawPath :
+    Trip
+    -> Int
+    -> Bool
+    -> Cmd Msg
+drawPath trip sliderValue deviationsVisible =
+    let
+        tiles =
+            tilesForDeviation trip
+    in
     Cmd.batch
         [ Ports.bulkDrawPath
             [ { routeID = 0
@@ -805,7 +1297,25 @@ drawPath trip sliderValue =
               , highlighted = False
               }
             ]
+        , Ports.drawDeviationTiles { tiles | visible = deviationsVisible }
         ]
+
+
+tilesForDeviation :
+    Trip
+    -> { correct : List Tile, deviation : List Tile, visible : Bool }
+tilesForDeviation trip =
+    trip.crossedTiles
+        |> List.indexedMap Tuple.pair
+        |> List.foldl
+            (\( index, location ) acc ->
+                if List.member index trip.deviations then
+                    { acc | deviation = acc.deviation ++ [ tileAt location ] }
+
+                else
+                    { acc | correct = acc.correct ++ [ tileAt location ] }
+            )
+            { correct = [], deviation = [], visible = True }
 
 
 tabBarItems model mapper =
@@ -818,9 +1328,60 @@ tabBarItems model mapper =
         ]
 
     else
-        [ TabBar.Button
-            { title = "Show Ongoing Trip"
-            , icon = Icons.timeline
-            , onPress = ShowCurrentTrip |> mapper
-            }
-        ]
+        case model.selectedTrip of
+            Just trip ->
+                case model.createRouteForm of
+                    Nothing ->
+                        [ TabBar.Button
+                            { title = "Show Ongoing Trip"
+                            , icon = Icons.timeline
+                            , onPress = ShowCurrentTrip |> mapper
+                            }
+                        , TabBar.Button
+                            { title = "Save trip to route"
+                            , icon = Icons.save
+                            , onPress = CreateRouteFromTrip |> mapper
+                            }
+                        ]
+
+                    Just form ->
+                        case form.update of
+                            Failure _ ->
+                                [ TabBar.Button
+                                    { title = "Cancel"
+                                    , icon = Icons.close
+                                    , onPress = CancelRouteCreation |> mapper
+                                    }
+                                , TabBar.ErrorButton
+                                    { title = "Try Again"
+                                    , icon = Icons.save
+                                    , onPress = SubmitUpdate |> mapper
+                                    }
+                                ]
+
+                            Loading ->
+                                [ TabBar.LoadingButton
+                                    { title = ""
+                                    }
+                                ]
+
+                            _ ->
+                                [ TabBar.Button
+                                    { title = "Cancel"
+                                    , icon = Icons.close
+                                    , onPress = CancelRouteCreation |> mapper
+                                    }
+                                , TabBar.Button
+                                    { title = "Save"
+                                    , icon = Icons.save
+                                    , onPress = SubmitUpdate |> mapper
+                                    }
+                                ]
+
+            Nothing ->
+                [ TabBar.Button
+                    { title = "Show Ongoing Trip"
+                    , icon = Icons.timeline
+                    , onPress = ShowCurrentTrip |> mapper
+                    }
+                ]

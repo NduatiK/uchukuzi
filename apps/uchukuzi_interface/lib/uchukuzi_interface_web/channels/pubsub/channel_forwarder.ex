@@ -1,4 +1,4 @@
-defmodule UchukuziInterfaceWeb.PredictionForwarder do
+defmodule UchukuziInterfaceWeb.ChannelForwarder do
   @moduledoc """
   The `#{__MODULE__}` subscribes to messages  from the `Uchukuzi` module
    concerning updates in the predicted arrival time of a vehicle to
@@ -13,17 +13,14 @@ defmodule UchukuziInterfaceWeb.PredictionForwarder do
 
   def init(state) do
     PubSub.subscribe(self(), :eta_prediction_update)
+    PubSub.subscribe(self(), :trip_update)
 
     {:ok, state}
   end
 
-  # GenServer.whereis UchukuziInterfaceWeb.PredictionForwarder
-  # send(GenServer.whereis UchukuziInterfaceWeb.PredictionForwarder, {:eta_prediction_update, 0, 2, [{"CDUAGGDOARXDTACFIRPVCZBHKC5S5BKY", 8}]})
-  # CDUAGGDOARXDTACFIRPVCZBHKC5S5BKY
   def handle_info({:eta_prediction_update, _tracker_pid, nil, _eta_sequence} = _event, state) do
     {:noreply, state}
   end
-
 
   def handle_info({:eta_prediction_update, _tracker_pid, route_id, eta_sequence} = _event, state) do
     eta_sequence
@@ -42,6 +39,11 @@ defmodule UchukuziInterfaceWeb.PredictionForwarder do
       )
     end)
 
+    {:noreply, state}
+  end
+
+  def handle_info({:trip_update, _tracker_pid, bus_id, update} = _event, state) do
+    UchukuziInterfaceWeb.TripChannel.send_trip_update(bus_id, update)
     {:noreply, state}
   end
 end

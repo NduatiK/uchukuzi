@@ -1,7 +1,9 @@
 defmodule Uchukuzi.World.Tile do
   # ~ 555m
+  # @default_tile_size_metres 111_111 / 100 / 2
+  # @default_tile_size @default_tile_size_metres / 111_111
   @default_tile_size_metres 111_111 / 100 / 2
-  @default_tile_size @default_tile_size_metres / 111_111
+  @default_tile_size 0.005
 
   @moduledoc """
   A square on the world's geographical
@@ -93,7 +95,7 @@ defmodule Uchukuzi.World.Tile do
       end
 
     {:ok, location} = Location.new(lng, lat)
-    location
+    location |> rounded()
   end
 
   @doc """
@@ -110,7 +112,11 @@ defmodule Uchukuzi.World.Tile do
         :math.floor(point.lat / size) * size
       )
 
-    location
+    location |> rounded()
+  end
+
+  def rounded(%Location{lat: lat, lng: lng}) do
+    %Location{lat: Float.round(lat, 3), lng: Float.round(lng, 3)}
   end
 
   @doc """
@@ -225,8 +231,8 @@ defmodule Uchukuzi.World.Tile do
   def nearby?(tile1, tile2, radius \\ @default_tile_size)
 
   def nearby?(%Tile{} = tile1, %Tile{} = tile2, radius) do
-    round(abs(tile1.coordinate.lat - tile2.coordinate.lat) / radius) == 1 &&
-      round(abs(tile1.coordinate.lng - tile2.coordinate.lng) / radius) == 1
+    round(abs(tile1.coordinate.lat - tile2.coordinate.lat) / radius) <= 1 &&
+      round(abs(tile1.coordinate.lng - tile2.coordinate.lng) / radius) <= 1
   end
 
   def nearby?(%Location{} = tile1, %Location{} = tile2, radius) do

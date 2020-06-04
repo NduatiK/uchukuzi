@@ -16,7 +16,7 @@ import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (hardcoded)
 import Json.Encode as Encode
 import Models.Household exposing (TravelTime(..))
-import Models.Location exposing (Location)
+import Models.Location exposing (Location, encodeLocation)
 import Models.Route exposing (Route, routeDecoder)
 import Navigation
 import Ports
@@ -74,7 +74,7 @@ init session id =
             , problems = []
             }
       , editState =
-            Maybe.andThen (EditState Loading >> Just) id
+            id |> Maybe.map (EditState Loading)
       , requestState = NotAsked
       , deleteRequestState = NotAsked
       }
@@ -87,7 +87,8 @@ init session id =
                 ]
 
             Nothing ->
-                [ Ports.initializeCustomMap { clickable = False, drawable = True } ]
+                [ Ports.initializeCustomMap { clickable = False, drawable = True }
+                ]
         )
     )
 
@@ -124,7 +125,7 @@ update msg model =
             case validateForm form of
                 Ok validForm ->
                     ( { model | form = { form | problems = [] } }
-                    , submit model.session validForm (Maybe.andThen (.routeID >> Just) model.editState)
+                    , submit model.session validForm (model.editState |> Maybe.map .routeID)
                     )
 
                 Err problems ->
@@ -161,7 +162,7 @@ update msg model =
                     model.editState
 
                 newModel =
-                    { model | editState = Maybe.andThen (\x -> Just { x | requestState = response }) editState }
+                    { model | editState = editState |> Maybe.map (\x -> { x | requestState = response }) }
             in
             case response of
                 Success route ->
@@ -384,12 +385,6 @@ aDecoder =
     Decode.succeed ()
 
 
-encodeLocation : Location -> Encode.Value
-encodeLocation location =
-    Encode.object
-        [ ( "lat", Encode.float location.lat )
-        , ( "lng", Encode.float location.lng )
-        ]
 
 
 validateForm : Form -> Result (List ( Problem, String )) ValidForm

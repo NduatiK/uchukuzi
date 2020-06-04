@@ -4,7 +4,7 @@ module StyledElement.DropDown exposing
     , Config, basic, filterable
     , withContainerAttributes, withPromptElement, withSelectAttributes, withSearchAttributes, withOpenCloseButtons, withListAttributes
     , update, view
-    , dropDownConfig, filterText, selectOption
+    , dropDownConfig, filterText, selectOption, viewFromModel
     )
 
 {-| Elm UI Dropdown.
@@ -730,3 +730,9 @@ onBlurAttribute config state =
     in
     Html.Events.on "blur" blur
         |> htmlAttribute
+
+
+viewFromModel someModel dropdownBuilder =
+    case dropdownBuilder someModel of
+        ( dropDown, _, _ ) ->
+            dropDown

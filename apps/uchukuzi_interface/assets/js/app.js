@@ -1,6 +1,7 @@
 import { Elm } from '../src/Main.elm'
 import { initializeCamera } from './camera'
-import { initializeLiveView, killLiveView } from './liveView'
+import { Socket } from "phoenix"
+import { ElmPhoenixChannels } from './ElmPhoenixChannels';
 import { printCard } from './card'
 import env from './env'
 import {
@@ -46,11 +47,12 @@ function init() {
     function sleep(time) {
         return new Promise((resolve) => setTimeout(resolve, time))
     }
-
+    app = null
     var app = Elm.Main.init({
         flags: { credentials: storedCredentials, window: windowSize, sideBarIsOpen: sideBarIsOpen },
         node: document.getElementById("elm")
     })
+    new ElmPhoenixChannels(Socket, app.ports);
 
     setupMapPorts(app)
     app.ports.setOpenState.subscribe((state) => {
@@ -87,13 +89,6 @@ function init() {
         })
     })
 
-    app.ports.initializeLiveView.subscribe(() => {
-        const { token } = parse(localStorage.getItem(credentialsStorageKey))
-        if (token) {
-            initializeLiveView(app, token)
-        }
-    })
-
     app.ports.setSchoolLocation.subscribe((schoolLocation) => {
         localStorage.setItem(schoolLocationStorageKey,
             JSON.stringify(schoolLocation))
@@ -116,22 +111,12 @@ function init() {
             credentialsUpdated(state)
         }
     }, false)
-
-    function credentialsUpdated(credentials) {
-        app.ports.onStoreChange.send(credentials)
-        if (credentials === null) {
-            killLiveView(app)
-        } else {
-            initializeLiveView(app)
-        }
-    }
-
 }
 
-var app = Elm.Main.init({
-    flags: { window: windowSize, loading: true },
-    node: document.getElementById("elm-loading")
-})
+// var app = Elm.Main.init({
+//     flags: { window: windowSize, loading: true },
+//     node: document.getElementById("elm-loading")
+// })
 
 
 
@@ -142,7 +127,6 @@ loadMapAPI()
             flags: { window: windowSize, error: true },
             node: document.getElementById("elm")
         })
-
         if (env.isDevelopment) {
             console.log("inite")
             init()

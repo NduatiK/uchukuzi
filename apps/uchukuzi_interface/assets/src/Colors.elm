@@ -66,6 +66,11 @@ purple =
     Element.rgb255 89 79 238
 
 
+backgroundPurple : Color
+backgroundPurple =
+    Element.rgb255 222 220 252
+
+
 lightGrey : Color
 lightGrey =
     Element.rgb255 244 244 244
@@ -109,6 +114,11 @@ darkText =
 darkness : Color
 darkness =
     Element.rgb255 51 63 78
+
+semiDarkness : Color
+semiDarkness =
+    (rgb255 115 115 115)
+         
 
 
 errorRed : Color

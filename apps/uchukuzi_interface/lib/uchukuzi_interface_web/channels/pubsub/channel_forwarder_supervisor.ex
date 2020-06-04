@@ -1,6 +1,6 @@
-defmodule UchukuziInterfaceWeb.PredictionForwarderSupervisor do
+defmodule UchukuziInterfaceWeb.ChannelForwarderSupervisor do
   @moduledoc """
-  
+
   """
   use Supervisor
 
@@ -13,7 +13,7 @@ defmodule UchukuziInterfaceWeb.PredictionForwarderSupervisor do
 
   def init(_) do
     children = [
-      worker(UchukuziInterfaceWeb.PredictionForwarder, [[]])
+      worker(UchukuziInterfaceWeb.ChannelForwarder, [[]])
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

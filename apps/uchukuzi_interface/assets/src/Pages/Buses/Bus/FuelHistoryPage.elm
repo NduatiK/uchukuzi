@@ -1,4 +1,14 @@
-module Pages.Buses.Bus.FuelHistoryPage exposing (Model, Msg, init, tabBarItems, update, view, viewButtons, viewFooter)
+module Pages.Buses.Bus.FuelHistoryPage exposing
+    ( Model
+    , Msg
+    , init
+    
+    , tabBarItems
+    , update
+    , view
+    , viewButtons
+    , viewFooter
+    )
 
 import Api
 import Api.Endpoint as Endpoint
@@ -94,7 +104,7 @@ type Msg
     | Show String
     | CreateFuelReport
     | NoOp
-
+    
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -287,7 +297,7 @@ viewGroupedReports : Model -> List GroupedReports -> Element Msg
 viewGroupedReports model groupedReports =
     let
         selectedMonth =
-            Maybe.andThen (.month >> Just) model.chartData
+            model.chartData |> Maybe.map .month
 
         timezone =
             Session.timeZone model.session

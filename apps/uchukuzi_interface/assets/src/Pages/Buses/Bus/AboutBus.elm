@@ -81,6 +81,7 @@ init session bus locationUpdate_ =
       }
     , Cmd.batch
         [ Ports.initializeMaps
+        , Ports.fitBounds
         , fetchStudentsOnboard session bus.id
         , fetchRoute session bus.id
         , case locationUpdate_ of
@@ -88,7 +89,12 @@ init session bus locationUpdate_ =
                 Ports.updateBusMap locationUpdate
 
             Nothing ->
-                Cmd.none
+                case bus.lastSeen of
+                    Just lastSeen ->
+                        Ports.updateBusMap lastSeen
+
+                    Nothing ->
+                        Cmd.none
         ]
     )
 
@@ -149,7 +155,7 @@ update msg model =
                 currentBus =
                     model.bus
             in
-            ( { model | bus = { currentBus | last_seen = Just locationUpdate } }, Cmd.none )
+            ( { model | bus = { currentBus | lastSeen = Just locationUpdate } }, Cmd.none )
 
 
 locationUpdateMsg : LocationUpdate -> Msg
@@ -183,16 +189,17 @@ viewStatisticsPage : Model -> Element Msg
 viewStatisticsPage model =
     let
         sidebarViews =
-            case model.bus.last_seen of
+            case model.bus.lastSeen of
                 Nothing ->
                     el [] none
 
-                Just last_seen ->
+                Just lastSeen ->
                     --  textStack "Distance Travelled" "2,313 km"
                     -- , textStack "Fuel Consumed" "3,200 l"
-                    column [ height fill, spaceEvenly, width (px 300) ]
+                    -- column [ height fill, spaceEvenly, width (px 300) ]
+                    column [ height fill, spaceEvenly, width shrink ]
                         [ el [] none
-                        , textStack "Current Speed" (String.fromFloat last_seen.speed ++ " km/h")
+                        , textStack "Current Speed" (String.fromFloat lastSeen.speed ++ " km/h")
                         , textStack "Repairs Made" (String.fromInt (List.length model.bus.repairs))
                         , el [] none
                         ]

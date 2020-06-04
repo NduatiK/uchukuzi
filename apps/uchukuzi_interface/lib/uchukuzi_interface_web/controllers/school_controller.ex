@@ -66,10 +66,10 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def edit_school_details(
         conn,
         %{
-            "lng" => lng,
-            "lat" => lat,
-            "name" => name,
-            "radius" => radius
+          "lng" => lng,
+          "lat" => lat,
+          "name" => name,
+          "radius" => radius
         },
         school_id
       )
@@ -82,6 +82,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
       |> render("school.json", school: school)
     end
   end
+
   def edit_school_location(
         conn,
         %{
@@ -229,7 +230,11 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def list_buses(conn, _, school_id) do
     buses =
       for bus <- School.buses_for(school_id) do
-        {Repo.preload(bus, [:device, :performed_repairs]), Uchukuzi.Tracking.status_of(bus)}
+        last_seen =
+          bus
+          |> Uchukuzi.Tracking.status_of()
+
+        {Repo.preload(bus, [:device, :performed_repairs]), last_seen}
       end
 
     conn
@@ -239,7 +244,10 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def get_bus(conn, %{"bus_id" => bus_id}, school_id) do
     with {:ok, bus} <- School.bus_for(school_id, bus_id) do
       bus = Repo.preload(bus, :device)
-      last_seen = Uchukuzi.Tracking.status_of(bus)
+
+      last_seen =
+        bus
+        |> Uchukuzi.Tracking.status_of()
 
       conn
       |> render("bus.json", bus: bus, last_seen: last_seen)
@@ -385,6 +393,14 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
+  def create_route_from_trip(conn, %{"trip_id" => trip_id, "name" => name}, school_id) do
+    with {:ok, _route} <-
+           School.create_route_from_trip(school_id, trip_id, name) do
+      conn
+      |> resp(200, "{}")
+    end
+  end
+
   def get_route(conn, %{"route_id" => route_id}, school_id) do
     with route when not is_nil(route) <-
            School.get_route(school_id, route_id) do
@@ -406,7 +422,15 @@ defmodule UchukuziInterfaceWeb.SchoolController do
 
   def delete_route(conn, %{"route_id" => route_id} = params, school_id) do
     with {:ok, _route} <-
-           School.delete_route(school_id, route_id, params) do
+           School.delete_route(school_id, route_id) do
+      conn
+      |> resp(200, "{}")
+    end
+  end
+
+  def copy_trip(conn, %{"route_id" => route_id, "trip_id" => trip_id} = params, school_id) do
+    with {:ok, _route} <-
+           School.update_route_from_trip(school_id, route_id, trip_id) do
       conn
       |> resp(200, "{}")
     end
@@ -492,8 +516,6 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   end
 
   def list_trips(conn, %{"bus_id" => bus_id}, school_id) do
-    IO.inspect(school_id)
-
     with {bus_id, ""} <- Integer.parse(bus_id),
          {:ok, bus} <- School.bus_for(school_id, bus_id) do
       trips = Repo.preload(bus, :trips).trips
@@ -518,6 +540,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def ongoing_trip_details(conn, %{"bus_id" => bus_id}, school_id) do
     with {:ok, bus} <- School.bus_for(school_id, bus_id) do
       trip = Uchukuzi.Tracking.ongoing_trip_for(bus)
+
       conn
       |> put_view(UchukuziInterfaceWeb.TrackingView)
       |> render("trip.json", trip: trip)

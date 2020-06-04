@@ -1,4 +1,6 @@
-module Main exposing (..)
+port module Main exposing (..)
+
+-- import Json.Encode exposing (Value)
 
 import Api
 import Browser
@@ -7,7 +9,9 @@ import Browser.Navigation as Nav
 import Dict exposing (Dict)
 import Element exposing (..)
 import Html.Attributes
-import Json.Decode exposing (Value)
+import Json.Decode as Json exposing (Value)
+import Json.Decode.Pipeline exposing (optional, requiredAt)
+import Json.Encode as Encode
 import Layout exposing (..)
 import Models.Bus exposing (LocationUpdate)
 import Navigation exposing (Route)
@@ -33,6 +37,10 @@ import Pages.Routes.CreateRoutePage as CreateRoute
 import Pages.Routes.Routes as RoutesList
 import Pages.Settings as Settings
 import Pages.Signup as Signup
+import Phoenix
+import Phoenix.Channel as Channel exposing (Channel)
+import Phoenix.Message as PhxMsg exposing (Data, Event(..), Message(..), PhoenixCommand(..))
+import Phoenix.Socket as Socket exposing (Socket)
 import Ports
 import Session exposing (Session)
 import Style
@@ -53,13 +61,16 @@ type alias Model =
     , route : Maybe Route
     , navState : NavBar.Model
     , sideBarState : SideBar.Model
-    , windowHeight : Int
-    , windowWidth : Int
+    , windowSize :
+        { height : Int
+        , width : Int
+        }
     , url : Url.Url
     , locationUpdates : Dict Int LocationUpdate
     , allowReroute : Bool
     , loading : Bool
     , error : Bool
+    , phoenix : Maybe (Phoenix.Model Msg)
     }
 
 
@@ -89,107 +100,92 @@ type PageModel
     | CreateBusRepair CreateBusRepair.Model
     | CreateFuelReport CreateFuelReport.Model
       ------------
-      -- | DevicesList DevicesList.Model
-      ------------
     | DeviceRegistration DeviceRegistration.Model
       ------------
     | CrewMembers CrewMembers.Model
     | CrewMemberRegistration CrewMemberRegistration.Model
 
 
+type alias LocalStorageData =
+    { creds : Maybe Session.Cred
+    , width : Int
+    , height : Int
+    , isLoading : Bool
+    , sideBarIsOpen : Bool
+    , loadError : Bool
+    }
+
+
+localStorageDataDecoder : Json.Decoder LocalStorageData
+localStorageDataDecoder =
+    Json.succeed LocalStorageData
+        |> Json.Decode.Pipeline.requiredAt [ "credentials" ] (Json.nullable Api.credDecoder)
+        |> Json.Decode.Pipeline.optionalAt [ "window", "width" ] Json.int 100
+        |> Json.Decode.Pipeline.optionalAt [ "window", "height" ] Json.int 100
+        |> Json.Decode.Pipeline.optionalAt [ "loading" ] Json.bool False
+        |> Json.Decode.Pipeline.optionalAt [ "sideBarIsOpen" ] Json.bool True
+        |> Json.Decode.Pipeline.optionalAt [ "error" ] Json.bool False
+
+
 init : Maybe Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init args url navKey =
     let
-        creds =
-            Maybe.andThen
-                (\x ->
-                    x
-                        |> Json.Decode.decodeValue
-                            (Json.Decode.at [ "credentials" ] Api.credDecoder)
-                        |> Result.toMaybe
-                )
-                args
-
-        width =
-            Maybe.withDefault 100
-                (Maybe.andThen
-                    (\x ->
-                        x
-                            |> Json.Decode.decodeValue
-                                (Json.Decode.at [ "window", "width" ] Json.Decode.int)
-                            |> Result.toMaybe
-                    )
-                    args
-                )
-
-        height =
-            Maybe.withDefault 100
-                (Maybe.andThen
-                    (\x ->
-                        x
-                            |> Json.Decode.decodeValue
-                                (Json.Decode.at [ "window", "height" ] Json.Decode.int)
-                            |> Result.toMaybe
-                    )
-                    args
-                )
+        localStorageData =
+            args
+                |> Maybe.withDefault (Encode.object [])
+                |> Json.decodeValue localStorageDataDecoder
+                |> Result.toMaybe
+                |> Maybe.withDefault (LocalStorageData Nothing 100 100 False True False)
 
         session =
-            Session.fromCredentials navKey Time.utc creds
+            Session.fromCredentials navKey Time.utc localStorageData.creds
 
-        loading =
-            Maybe.withDefault False
-                (Maybe.andThen
-                    (\x ->
-                        x
-                            |> Json.Decode.decodeValue
-                                (Json.Decode.at [ "loading" ] Json.Decode.bool)
-                            |> Result.toMaybe
-                    )
-                    args
-                )
+        ( phxModel, phxMsg ) =
+            if localStorageData.isLoading then
+                ( Nothing, Cmd.none )
 
-        sideBarIsOpen =
-            Maybe.withDefault False
-                (Maybe.andThen
-                    (\x ->
-                        x
-                            |> Json.Decode.decodeValue
-                                (Json.Decode.at [ "sideBarIsOpen" ] Json.Decode.bool)
-                            |> Result.toMaybe
-                    )
-                    args
-                )
-
-        error =
-            args
-                |> Maybe.andThen
-                    (\x ->
-                        x
-                            |> Json.Decode.decodeValue
-                                (Json.Decode.at [ "error" ] Json.Decode.bool)
-                            |> Result.toMaybe
-                    )
-                |> Maybe.withDefault False
+            else
+                localStorageData.creds
+                    |> Maybe.map
+                        (\credentials ->
+                            let
+                                phxModel_ =
+                                    Phoenix.initialize
+                                        (Socket.init "/socket/manager"
+                                            |> Socket.withParams (Encode.object [ ( "token", Encode.string credentials.token ) ])
+                                            |> Socket.onOpen (SocketOpened credentials.school_id)
+                                            |> Socket.withDebug
+                                        )
+                                        toPhoenix
+                            in
+                            phxModel_
+                                |> Phoenix.update (PhxMsg.createSocket phxModel_.socket)
+                                |> Tuple.mapFirst Just
+                        )
+                    |> Maybe.withDefault ( Nothing, Cmd.none )
 
         ( model, cmds ) =
             changeRouteTo (Navigation.fromUrl url session)
                 { page = Redirect session
                 , route = Nothing
                 , navState = NavBar.init session
-                , sideBarState = SideBar.init sideBarIsOpen
-                , windowHeight = height
-                , windowWidth = width
+                , sideBarState = SideBar.init localStorageData.sideBarIsOpen
+                , windowSize =
+                    { height = localStorageData.height
+                    , width = localStorageData.width
+                    }
                 , url = url
                 , locationUpdates = Dict.fromList []
                 , allowReroute = True
-                , loading = loading
-                , error = error
+                , loading = localStorageData.isLoading
+                , error = localStorageData.loadError
+                , phoenix = phxModel
                 }
     in
     ( model
     , Cmd.batch
         [ Task.perform UpdatedTimeZone Time.here
+        , phxMsg
         ]
     )
 
@@ -204,8 +200,6 @@ type Msg
     | ReceivedCreds (Maybe Session.Cred)
     | UpdatedTimeZone Time.Zone
     | WindowResized Int Int
-      ------------
-      -- | UpdatedSessionCred (Maybe Session.Cred)
       ------------
     | GotNavBarMsg NavBar.Msg
     | GotSideBarMsg SideBar.Msg
@@ -228,21 +222,64 @@ type Msg
     | GotCreateFuelReportMsg CreateFuelReport.Msg
       ------------
     | GotStudentRegistrationMsg StudentRegistration.Msg
-      -- | GotDashboardMsg Dashboard.Msg
-      -- | GotDevicesListMsg DevicesList.Msg
     | GotDeviceRegistrationMsg DeviceRegistration.Msg
       ------------
     | GotCrewMembersMsg CrewMembers.Msg
     | GotCrewMemberRegistrationMsg CrewMemberRegistration.Msg
       ------------
-    | BusMoved LocationUpdate
+    | PhoenixMessage Event
+    | SocketOpened Int
+    | OutsideError String
+      ------------
+    | BusMoved Json.Value
+    | OngoingTripUpdated Json.Value
+
+
+
+-- | JoinedChannel Json.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        PhoenixMessage incoming ->
+            let
+                ( phoenixModel, phxCmd ) =
+                    case model.phoenix of
+                        Just phxModel ->
+                            Phoenix.update (Incoming incoming) phxModel
+                                |> Tuple.mapFirst Just
+
+                        Nothing ->
+                            ( model.phoenix, Cmd.none )
+            in
+            ( { model | phoenix = phoenixModel }, phxCmd )
+
+        SocketOpened schoolID ->
+            let
+                channel =
+                    Channel.init ("school:" ++ String.fromInt schoolID)
+                        |> Channel.on "bus_moved" BusMoved
+
+                phxMsg =
+                    PhxMsg.createChannel channel
+
+                ( phoenixModel, phxCmd ) =
+                    case model.phoenix of
+                        Just phxModel ->
+                            Phoenix.update phxMsg phxModel
+                                |> Tuple.mapFirst Just
+
+                        Nothing ->
+                            ( model.phoenix, Cmd.none )
+            in
+            ( { model | phoenix = phoenixModel }, phxCmd )
+
+        OutsideError _ ->
+            ( model, Cmd.none )
+
         WindowResized width height ->
-            ( { model | windowHeight = height, windowWidth = width }, Cmd.none )
+            ( { model | windowSize = { height = height, width = width } }, Cmd.none )
 
         GotSideBarMsg sideBarMsg ->
             let
@@ -317,10 +354,20 @@ update msg model =
             else
                 changeRouteWithUpdatedSessionTo (Navigation.fromUrl model.url session) model session
 
-        BusMoved locUpdate ->
+        BusMoved locUpdateValue ->
             let
+                locUpdate_ =
+                    locUpdateValue
+                        |> Json.decodeValue Models.Bus.locationUpdateDecoder
+                        |> Result.toMaybe
+
                 newModel =
-                    { model | locationUpdates = Dict.insert locUpdate.bus locUpdate model.locationUpdates }
+                    case locUpdate_ of
+                        Just locUpdate ->
+                            { model | locationUpdates = Dict.insert locUpdate.bus locUpdate model.locationUpdates }
+
+                        Nothing ->
+                            model
             in
             updatePage msg newModel
 
@@ -351,6 +398,13 @@ updatePage page_msg fullModel =
 
                 Nothing ->
                     ( fullModel, Cmd.none )
+
+        ( OngoingTripUpdated tripUpdateValue, BusDetailsPage model ) ->
+            BusDetailsPage.update (BusDetailsPage.ongoingTripUpdated tripUpdateValue) model
+                |> mapModelAndMsg BusDetailsPage GotBusDetailsPageMsg
+
+        ( OngoingTripUpdated tripUpdateValue, _ ) ->
+            ( fullModel, Cmd.none )
 
         ( GotHouseholdListMsg msg, HouseholdList model ) ->
             HouseholdList.update msg model
@@ -533,8 +587,57 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                 Just (Navigation.EditCrewMember id) ->
                     CrewMemberRegistration.init session (Just id)
                         |> updateWith CrewMemberRegistration GotCrewMemberRegistrationMsg
+
+        channel busID =
+            Channel.init ("trip:" ++ String.fromInt busID)
+                |> Channel.onJoin OngoingTripUpdated
+                |> Channel.on "update" OngoingTripUpdated
+
+        ( phoenixModel, phxCmd ) =
+            case maybeRoute of
+                Just (Navigation.Bus busID _) ->
+                    case model.phoenix of
+                        Just phxModel ->
+                            Phoenix.update (PhxMsg.createChannel (channel busID)) phxModel
+                                |> Tuple.mapFirst Just
+
+                        Nothing ->
+                            ( model.phoenix, Cmd.none )
+
+                _ ->
+                    case model.phoenix of
+                        Just phxModel ->
+                            let
+                                tripChannels =
+                                    phxModel.channels
+                                        |> Dict.filter (\k v -> String.startsWith "trip:" k)
+                                        |> Dict.values
+                            in
+                            List.foldl
+                                (\tripChannel ( phxModel_, phxMsg_ ) ->
+                                    let
+                                        ( newPhxModel, newPhxMsg ) =
+                                            phxModel_
+                                                |> Phoenix.update (PhxMsg.leaveChannel tripChannel)
+                                    in
+                                    ( newPhxModel, Cmd.batch [ phxMsg_, newPhxMsg ] )
+                                )
+                                ( phxModel, Cmd.none )
+                                tripChannels
+                                |> Tuple.mapFirst Just
+
+                        Nothing ->
+                            ( model.phoenix, Cmd.none )
+
+        -- ( model.phoenix, Cmd.none )
     in
-    ( { model | page = updatedPage, route = maybeRoute }, Cmd.batch [ msg, Ports.cleanMap () ] )
+    ( { model | page = updatedPage, route = maybeRoute, phoenix = phoenixModel }
+    , Cmd.batch
+        [ msg
+        , Ports.cleanMap ()
+        , phxCmd
+        ]
+    )
 
 
 
@@ -544,23 +647,23 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
 view : Model -> Browser.Document Msg
 view appModel =
     let
-        { page, route, navState, windowHeight, sideBarState, windowWidth } =
+        { page, route, navState, windowSize, sideBarState } =
             appModel
 
         viewEmptyPage pageContents =
             viewPage pageContents GotHomeMsg []
 
         viewPage pageContents toMsg tabBarItems =
-            Layout.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarState GotSideBarMsg windowHeight tabBarItems
+            Layout.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarState GotSideBarMsg windowSize.height tabBarItems
 
         -- viewEmptyPage =
         renderedView =
             let
                 viewHeight =
-                    Layout.viewHeight windowHeight
+                    Layout.viewHeight windowSize.height
 
                 viewWidth =
-                    windowWidth - SideBar.unwrapWidth appModel.sideBarState - Layout.sideBarOffset
+                    windowSize.width - SideBar.unwrapWidth appModel.sideBarState - Layout.sideBarOffset
             in
             case page of
                 Home _ ->
@@ -753,9 +856,15 @@ subscriptions model_ =
         [ matching
         , Api.onStoreChange (Api.parseCreds >> ReceivedCreds)
         , Browser.Events.onResize WindowResized
-        , Ports.onBusMove BusMoved
         , Sub.map GotSideBarMsg (SideBar.subscriptions model_.sideBarState)
+        , PhxMsg.subscribe fromPhoenix PhoenixMessage OutsideError
         ]
+
+
+port toPhoenix : Data -> Cmd msg
+
+
+port fromPhoenix : (Data -> msg) -> Sub msg
 
 
 main : Program (Maybe Value) Model Msg

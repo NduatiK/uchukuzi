@@ -123,10 +123,13 @@ defmodule UchukuziInterfaceWeb.Router do
 
     get "/routes", SchoolController, :list_routes
 
-    post "/routes", SchoolController, :create_route
     get "/routes/:route_id", SchoolController, :get_route
+    post "/routes", SchoolController, :create_route
     patch "/routes/:route_id", SchoolController, :update_route
     delete "/routes/:route_id", SchoolController, :delete_route
+
+    post "/routes/from_trip", SchoolController, :create_route_from_trip
+    patch "/routes/:route_id/from_trip", SchoolController, :copy_trip
 
     get "/routes_available/", SchoolController, :list_routes_available_for_bus
   end

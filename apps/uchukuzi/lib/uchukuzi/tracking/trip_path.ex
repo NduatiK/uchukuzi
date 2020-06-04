@@ -122,11 +122,11 @@ defmodule Uchukuzi.Tracking.TripPath do
               {:error, :major_deviation, tile}
 
             _ ->
-              # Else anticipate the cells after the match
+              # Else anticipate the match and the cells after the match
               {:ok,
                path.anticipated_tile_locs
                |> Enum.drop_while(fn x -> x != match end)
-               |> Enum.drop(1)}
+              }
           end
       end
     else

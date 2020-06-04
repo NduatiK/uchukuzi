@@ -173,9 +173,8 @@ decodeFormErrors error =
 
         decodeField response =
             Debug.log ""
-                (response.body
-                    |> decodeString fieldDecoder
-                )
+                response.body
+                |> decodeString fieldDecoder
     in
     case error of
         Http.BadStatus response ->

@@ -5,6 +5,7 @@ module Models.Trip exposing
     , Trip
     , ongoingToTrip
     , ongoingTripDecoder
+    , studentActivityDecoder
     , tripDecoder
     , tripDetailsDecoder
     )
@@ -30,6 +31,8 @@ type alias OngoingTrip =
     { startTime : Time.Posix
     , reports : List Report
     , studentActivities : List StudentActivity
+    , crossedTiles : List Location
+    , deviations : List Int
     }
 
 
@@ -39,12 +42,14 @@ ongoingToTrip ongoing =
     , endTime =
         ongoing.reports
             |> List.head
-            |> Maybe.andThen (.time >> Just)
+            |> Maybe.map .time
             |> Maybe.withDefault ongoing.startTime
     , travelTime = ""
     , reports = List.reverse <| ongoing.reports
     , studentActivities = ongoing.studentActivities
     , distanceCovered = 0
+    , crossedTiles = ongoing.crossedTiles
+    , deviations = ongoing.deviations
     }
 
 
@@ -56,6 +61,8 @@ type alias Trip =
     , reports : List Report
     , studentActivities : List StudentActivity
     , distanceCovered : Float
+    , crossedTiles : List Location
+    , deviations : List Int
     }
 
 
@@ -96,15 +103,15 @@ tripDecoder =
         |> required "end_time" string
         |> required "travel_time" string
         |> required "distance_covered" float
-        |> required "student_activities" (list activityDecoder)
+        |> required "student_activities" (list studentActivityDecoder)
         |> resolve
 
 
 tripDetailsDecoder : Decoder Trip
 tripDetailsDecoder =
     let
-        toDecoder : Int -> String -> String -> String -> List Report -> Float -> List StudentActivity -> Decoder Trip
-        toDecoder id startDateString endDateString travelTime reports distanceCovered studentActivities =
+        toDecoder : Int -> String -> String -> String -> List Report -> Float -> List StudentActivity -> List Location -> List Int -> Decoder Trip
+        toDecoder id startDateString endDateString travelTime reports distanceCovered studentActivities crossedTiles deviations =
             case ( Iso8601.toTime startDateString, Iso8601.toTime endDateString ) of
                 ( Result.Ok startDate, Result.Ok endDate ) ->
                     Decode.succeed
@@ -112,9 +119,11 @@ tripDetailsDecoder =
                         , startTime = startDate
                         , endTime = endDate
                         , travelTime = travelTime
-                        , reports = reports
+                        , reports = List.reverse <| reports
                         , distanceCovered = distanceCovered
                         , studentActivities = studentActivities
+                        , crossedTiles = crossedTiles
+                        , deviations = deviations
                         }
 
                 ( Result.Err _, _ ) ->
@@ -130,21 +139,25 @@ tripDetailsDecoder =
         |> required "travel_time" string
         |> required "reports" (list reportDecoder)
         |> required "distance_covered" float
-        |> required "student_activities" (list activityDecoder)
+        |> required "student_activities" (list studentActivityDecoder)
+        |> required "crossed_tiles" (list locationDecoder)
+        |> required "deviations" (list int)
         |> resolve
 
 
 ongoingTripDecoder : Decoder OngoingTrip
 ongoingTripDecoder =
     let
-        toDecoder : String -> List Report -> List StudentActivity -> Decoder OngoingTrip
-        toDecoder startDateString reports studentActivities =
+        toDecoder : String -> List Report -> List StudentActivity -> List Location -> List Int -> Decoder OngoingTrip
+        toDecoder startDateString reports studentActivities crossedTiles deviations =
             case Iso8601.toTime startDateString of
                 Result.Ok startDate ->
                     Decode.succeed
                         { startTime = startDate
                         , reports = reports
                         , studentActivities = studentActivities
+                        , crossedTiles = crossedTiles
+                        , deviations = deviations
                         }
 
                 Result.Err _ ->
@@ -153,20 +166,14 @@ ongoingTripDecoder =
     Decode.succeed toDecoder
         |> required "start_time" string
         |> required "reports" (list reportDecoder)
-        |> required "student_activities" (list activityDecoder)
+        |> required "student_activities" (list studentActivityDecoder)
+        |> required "crossed_tiles" (list locationDecoder)
+        |> required "deviations" (list int)
         |> resolve
 
 
-
--- { id : Int
---         , reports : List Report
---         , startTime : Time.Posix
---         , studentActivities : List StudentActivity
---         }
-
-
-activityDecoder : Decoder StudentActivity
-activityDecoder =
+studentActivityDecoder : Decoder StudentActivity
+studentActivityDecoder =
     let
         toDecoder : Location -> String -> String -> Int -> String -> Decoder StudentActivity
         toDecoder location dateString activity student studentName =

@@ -29,7 +29,7 @@ import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
-import StyledElement exposing (toDropDownView)
+import StyledElement
 import StyledElement.DropDown as Dropdown
 import StyledElement.FloatInput as FloatInput exposing (FloatInput)
 import StyledElement.WebDataView as WebDataView
@@ -426,7 +426,7 @@ viewForm model =
                         [ spacing 32, width (fill |> minimum 300 |> maximum 300), alignTop ]
                         [ viewNumberPlateInput form.numberPlate form.problems
                         , viewAvailableSeatingInput form.seatsAvailable form.problems
-                        , viewRouteDropDown model
+                        , Dropdown.viewFromModel model routeDropDown
                         ]
                     , viewVerticalDivider
                     , column
@@ -710,7 +710,7 @@ fuelDropDown model =
 
 viewFuelTypeDropDown : Model -> Element Msg
 viewFuelTypeDropDown model =
-    toDropDownView (fuelDropDown model)
+    Dropdown.viewFromModel model fuelDropDown
 
 
 routeDropDown : Model -> ( Element Msg, Dropdown.Config SimpleRoute Msg, List SimpleRoute )
@@ -739,7 +739,7 @@ routeDropDown model =
         , dropdownState = model.routeDropdownState
         , errorCaption = Nothing
         , icon = Just Icons.pin
-        , onSelect = Maybe.andThen (.id >> Just) >> Route >> Changed
+        , onSelect = Maybe.map .id >> Route >> Changed
         , options = routes
         , title = "Route"
         , toString = .name
@@ -815,8 +815,10 @@ submit model session form =
                  , ( "stated_milage", Encode.float form.consumptionAmount )
                  , ( "fuel_type", Encode.string form.fuelType )
                  ]
-                    ++ Maybe.withDefault []
-                        (Maybe.andThen (\routeId -> Just [ ( "route_id", Encode.int routeId ) ]) form.routeId)
+                    ++ (form.routeId
+                            |> Maybe.map (\routeId -> [ ( "route_id", Encode.int routeId ) ])
+                            |> Maybe.withDefault []
+                       )
                 )
     in
     case ( isEditing model, model.busID ) of

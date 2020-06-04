@@ -65,8 +65,6 @@ defmodule Uchukuzi.School do
   end
 
   def bus_for(school_id, bus_id) do
-    IO.inspect(bus_id)
-
     with bus when not is_nil(bus) <- Repo.get_by(Bus, school_id: school_id, id: bus_id) do
       {:ok, Repo.preload(bus, [:performed_repairs])}
     else
@@ -291,6 +289,7 @@ defmodule Uchukuzi.School do
       path: path
     }
     |> Route.changeset()
+    |> Route.calculate_expected_tiles()
     |> Repo.insert()
   end
 
@@ -308,7 +307,43 @@ defmodule Uchukuzi.School do
     |> Repo.update()
   end
 
-  def delete_route(school_id, route_id, params) do
+  def update_route_from_trip(school_id, route_id, trip_id) do
+    with trip <- Uchukuzi.Tracking.trip_for(school_id, trip_id) do
+      trip = Repo.preload(trip, :report_collection)
+
+      Route
+      |> where(school_id: ^school_id, id: ^route_id)
+      |> Repo.one()
+      |> change(
+        expected_tiles: trip.report_collection.crossed_tiles,
+        path:
+          trip.report_collection.reports
+          |> Enum.map(& &1.location)
+      )
+      |> Repo.update()
+    end
+  end
+
+  def create_route_from_trip(school_id, trip_id, name) do
+    with trip <- Uchukuzi.Tracking.trip_for(school_id, trip_id) do
+      trip = Repo.preload(trip, :report_collection)
+
+      %{
+        school_id: school_id,
+        name: name
+      }
+      |> Route.changeset()
+      |> change(
+        expected_tiles: trip.report_collection.crossed_tiles,
+        path:
+          trip.report_collection.reports
+          |> Enum.map(& &1.location)
+      )
+      |> Repo.insert()
+    end
+  end
+
+  def delete_route(school_id, route_id) do
     Route
     |> where(school_id: ^school_id, id: ^route_id)
     |> Repo.one()

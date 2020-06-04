@@ -104,7 +104,7 @@ init session id =
       , roleDropdownState = Dropdown.init "rolesDropdown"
       , requestState = NotAsked
       , editState =
-            Maybe.andThen (EditState Loading >> Just) id
+            id |> Maybe.map (EditState Loading)
       }
     , Cmd.batch
         [ Task.succeed (RoleDropdownMsg (Dropdown.selectOption Assistant)) |> Task.perform identity
@@ -161,7 +161,7 @@ update msg model =
                         | form = { form | problems = [] }
                         , requestState = Loading
                       }
-                    , submit model.session validForm (Maybe.andThen (.crewMemberID >> Just) model.editState)
+                    , submit model.session validForm (model.editState |> Maybe.map .crewMemberID)
                     )
 
                 Err problems ->
@@ -202,7 +202,7 @@ update msg model =
                     model.editState
 
                 newModel =
-                    { model | editState = Maybe.andThen (\x -> Just { x | requestState = response }) editState }
+                    { model | editState = editState |> Maybe.map (\x -> { x | requestState = response }) }
             in
             case response of
                 Success crewMember ->

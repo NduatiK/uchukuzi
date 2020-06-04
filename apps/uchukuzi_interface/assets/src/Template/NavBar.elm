@@ -24,13 +24,12 @@ maxHeight =
 type Model
     = Model
         { dropdownVisible : Bool
-        , session : Session.Session
         }
 
 
 init : Session.Session -> Model
 init session =
-    Model { dropdownVisible = False, session = session }
+    Model { dropdownVisible = False }
 
 
 internals model =

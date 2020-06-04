@@ -121,14 +121,13 @@ update msg model =
                                 )
 
                         selectedStudent =
-                            Maybe.andThen
-                                (\household ->
-                                    Just
+                            matchingHousehold
+                                |> Maybe.map
+                                    (\household ->
                                         { student = aStudent
                                         , household = household
                                         }
-                                )
-                                matchingHousehold
+                                    )
                     in
                     ( { model | selectedStudent = selectedStudent }, Cmd.none )
 
@@ -261,7 +260,11 @@ viewOverlay { selectedStudent, session } =
                                     "/api/school/households/"
                                         ++ String.fromInt student.id
                                         ++ "/qr_code.svg?token="
-                                        ++ Maybe.withDefault "" (Maybe.andThen (.token >> Just) (Session.getCredentials session))
+                                        ++ (session
+                                                |> Session.getCredentials
+                                                |> Maybe.map .token
+                                                |> Maybe.withDefault ""
+                                           )
                                 , description = ""
                                 }
                             , el

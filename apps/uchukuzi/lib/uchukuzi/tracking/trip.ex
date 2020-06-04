@@ -17,13 +17,12 @@ defmodule Uchukuzi.Tracking.Trip do
     field(:start_time, :utc_datetime)
     field(:end_time, :utc_datetime)
 
-    embeds_many(:crossed_tiles, Location)
+    has_one(:report_collection, ReportCollection, on_delete: :delete_all)
+
+    field(:travel_time, :string)
+    field(:distance_covered, :float)
 
     embeds_many(:student_activities, StudentActivity)
-
-    has_one(:report_collection, ReportCollection, on_delete: :delete_all)
-    field(:distance_covered, :float)
-    field(:travel_time, :string)
   end
 
   def new(bus) do
@@ -67,6 +66,23 @@ defmodule Uchukuzi.Tracking.Trip do
     |> update_distance_covered()
     |> update_student_activities_locations()
     |> infer_trip_travel_time()
+  end
+
+  def set_deviation_positions(%Trip{} = trip, positions) do
+    count = Enum.count(trip.report_collection.crossed_tiles)
+
+    deviation_positions =
+      positions
+      |> Enum.map(&(count - &1 - 1))
+
+    %Trip{
+      trip
+      | report_collection: %{trip.report_collection | deviation_positions: deviation_positions}
+    }
+  end
+
+  def add_crossed_tiles(%Trip{} = trip, crossed_tiles) do
+    %Trip{trip | report_collection: %{trip.report_collection | crossed_tiles: crossed_tiles}}
   end
 
   @doc """

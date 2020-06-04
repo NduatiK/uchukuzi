@@ -48,8 +48,15 @@ defmodule Uchukuzi.Tracking do
     bus
     |> BusServer.pid_from()
     |> BusServer.last_seen_status()
+    |> add_bus(bus)
   end
 
+  def add_bus(nil, _), do: nil
+
+  def add_bus(last_seen, bus),
+    do:
+      last_seen
+      |> Map.put(:bus, bus.id)
   def students_onboard(%Bus{} = bus) do
     TripTracker.students_onboard(bus)
   end

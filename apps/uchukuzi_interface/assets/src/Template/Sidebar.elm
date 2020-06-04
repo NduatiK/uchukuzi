@@ -174,9 +174,9 @@ viewSideBar currentRoute state viewHeight =
         selectedIndex =
             sideBarSections
                 |> List.indexedMap Tuple.pair
-                |> List.filter (\( _, SideBarOption v ) -> Just v.navPage == Maybe.andThen (toNavigationPage >> Just) currentRoute)
+                |> List.filter (\( _, SideBarOption v ) -> Just v.navPage == (currentRoute |> Maybe.map toNavigationPage))
                 |> List.head
-                |> Maybe.andThen (Tuple.first >> Just)
+                |> Maybe.map Tuple.first
                 |> Maybe.withDefault -1
 
         sideBarWidth =

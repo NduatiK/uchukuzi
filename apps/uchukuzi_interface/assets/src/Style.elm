@@ -132,7 +132,7 @@ tableHeaderStyle : List (Attribute msg)
 tableHeaderStyle =
     [ Region.heading 4
     , Font.size 14
-    , Font.color (rgb255 115 115 115)
+    , Font.color Colors.semiDarkness
     , Font.letterSpacing 0.58
     , Font.bold
     , alignLeft

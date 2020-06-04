@@ -60,7 +60,7 @@ frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pa
                     , alignTop
                     ]
                     [ Element.map toMsg
-                        (el [ width fill, height fill, paddingEach { edges | left = sideBarOffset } ] body)
+                        (el [ width fill, height fill ] body)
                     , bottomBar
                     ]
                 ]

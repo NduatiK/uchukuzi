@@ -21,7 +21,7 @@ import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style
-import StyledElement exposing (toDropDownView, wrappedInput)
+import StyledElement exposing (wrappedInput)
 import StyledElement.DropDown as Dropdown
 import Utils.Validator as Validator
 
@@ -288,7 +288,7 @@ viewForm model =
             ]
 
         -- , if model.bus == Nothing then
-        --     toDropDownView <| busDropdown model
+        --     Dropdown.viewFromModel model busDropdown
         --   else
         --     none
         , viewButton True

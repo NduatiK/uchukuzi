@@ -109,7 +109,6 @@ defmodule UchukuziInterfaceWeb.AuthController do
   def deep_link_redirect_assistant(%{query_params: %{"token" => token}} = conn, _) do
     conn
     |> redirect(external: "uchast://uchukuzi.com/?token=#{token}")
-    |> IO.inspect()
   end
 
   def request_household_token(conn, %{"email" => email}) do

@@ -314,7 +314,7 @@ view model viewHeight =
         email =
             model.session
                 |> Session.getCredentials
-                |> Maybe.andThen (.email >> Just)
+                |> Maybe.map .email
                 |> Maybe.withDefault ""
 
         sectionDivider title =
@@ -341,7 +341,7 @@ view model viewHeight =
                         [ el
                             [ width (px 500)
                             , height (px 400)
-                            , Background.color (rgb255 115 115 115)
+                            , Background.color Colors.semiDarkness
                             ]
                             (if model.overlayType /= Just School then
                                 StyledElement.googleMap [ width fill, height fill ]
@@ -430,7 +430,7 @@ viewOverlay model viewHeight =
 updatePasswordForm model =
     let
         problems =
-            Debug.log "" model.form.problems
+            model.form.problems
     in
     column [ spacing 20, padding 40 ]
         [ el Style.header2Style (text "Change Password")
@@ -464,7 +464,7 @@ updatePasswordForm model =
 updateSchoolForm model =
     let
         problems =
-            Debug.log "" model.form.problems
+            model.form.problems
     in
     column [ spacing 20, padding 40 ]
         [ el Style.header2Style (text "Update School")
@@ -671,12 +671,10 @@ subscriptions model =
     Ports.receivedMapClickLocation
         (\x ->
             x
-                |> Maybe.andThen
+                |> Maybe.map
                     (\s ->
-                        Just
-                            (UpdatedSchoolLocation
-                                { location = Location s.lng s.lat, radius = s.radius }
-                            )
+                        UpdatedSchoolLocation
+                            { location = Location s.lng s.lat, radius = s.radius }
                     )
                 |> Maybe.withDefault NoOp
         )

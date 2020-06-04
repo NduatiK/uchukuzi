@@ -397,7 +397,7 @@ viewBus editedData edits inEditingMode bus =
             (\role ->
                 edits.draggedAbove
                     == Just bus.id
-                    && Maybe.andThen (.role >> Just) edits.draggingCrewMember
+                    && (edits.draggingCrewMember |> Maybe.map .role)
                     == Just role
             )
         ]

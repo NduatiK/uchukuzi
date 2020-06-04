@@ -22,7 +22,6 @@ module StyledElement exposing
     , textStack
     , textStackWithColor
     , textStackWithSpacing
-    , toDropDownView
     , unstyledIconButton
     , wrappedInput
     )
@@ -195,12 +194,12 @@ hoverButton attrs { title, onPress, icon } =
         ([ Background.color Colors.white
          , centerY
          , Font.color Colors.purple
-         , mouseOver [ Background.color (Element.rgb255 222 220 252) ]
+         , mouseOver [ Background.color Colors.backgroundPurple ]
          ]
             ++ attrs
         )
         { label =
-            row [ spacing 8 ]
+            row [ spacing 8, centerX ]
                 [ Maybe.withDefault (always none) icon [ Colors.fillPurple ]
                 , el [ centerY ] (text title)
                 ]
@@ -415,13 +414,6 @@ dropDown attributes { title, caption, dropdownState, dropDownMsg, onSelect, erro
     ( body, config, options )
 
 
-toDropDownView : ( Element msg, Dropdown.Config item msg, List item ) -> Element msg
-toDropDownView aDropdown =
-    case aDropdown of
-        ( view, _, _ ) ->
-            view
-
-
 passwordInput :
     List (Attribute msg)
     ->
@@ -574,7 +566,7 @@ googleMap mapClasses =
     el
         ([ height fill
          , width fill
-         , Background.color (rgb255 115 115 115)
+         , Background.color Colors.semiDarkness
          , Border.color Colors.white
          , Border.width 2
          , padding 2

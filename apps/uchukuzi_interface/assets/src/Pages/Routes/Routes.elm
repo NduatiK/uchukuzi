@@ -210,7 +210,7 @@ viewRoute route =
             [ el routeStyle (text route.name)
             , el timeStyle
                 (text
-                    (Maybe.withDefault "No bus assigned" (Maybe.andThen (.numberPlate >> Just) route.bus))
+                    (Maybe.withDefault "No bus assigned" (route.bus |> Maybe.map .numberPlate))
                 )
 
             --  el (alignRight :: timeStyle) (text (Utils.DateFormatter.timeFormatter timezone trip.startTime))

@@ -1,4 +1,4 @@
-module Pages.Buses.BusPage exposing (Model, Msg, Page(..), init, locationUpdateMsg, pageName, subscriptions, tabBarItems, update, view)
+module Pages.Buses.BusPage exposing (Model, Msg, Page(..), init, locationUpdateMsg, ongoingTripUpdated, pageName, subscriptions, tabBarItems, update, view)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -45,10 +45,6 @@ type alias BusData =
     , pageIndex : Int
     , pendingAction : Cmd Msg
     }
-
-
-type alias Icon =
-    Element Msg
 
 
 {-| Make sure to extend the updatePage method when you add a page
@@ -118,8 +114,13 @@ type Msg
     | LocationUpdate LocationUpdate
 
 
-locationUpdateMsg data =
-    LocationUpdate data
+locationUpdateMsg =
+    LocationUpdate
+
+
+ongoingTripUpdated : Json.Decode.Value -> Msg
+ongoingTripUpdated =
+    RouteHistory.ongoingTripUpdated >> GotRouteHistoryMsg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -160,7 +161,7 @@ update msg model =
                             busData.bus
 
                         newModel =
-                            { model | busData = Success { busData | bus = { bus | last_seen = Just locationUpdate } } }
+                            { model | busData = Success { busData | bus = { bus | lastSeen = Just locationUpdate } } }
                     in
                     case busData.currentPage of
                         AboutPage pageModel ->
@@ -198,7 +199,7 @@ update msg model =
                                             ( page, msg_ )
                             in
                             Cmd.batch
-                                [ -- case ( model.locationUpdate, busData.bus.last_seen ) of
+                                [ -- case ( model.locationUpdate, busData.bus.lastSeen ) of
                                   -- ( Just locationUpdate_, _ ) ->
                                   --     Ports.updateBusMap locationUpdate_
                                   -- ( _, Just locationUpdate_ ) ->
@@ -254,13 +255,13 @@ updatePage msg fullModel =
                     FuelHistory.update msg_ model
                         |> mapModel fullModel FuelHistoryPage GotFuelHistoryMsg
 
-                ( GotBusDeviceMsg msg_, BusDevicePage model ) ->
-                    BusDevice.update msg_ model
-                        |> mapModel fullModel BusDevicePage GotBusDeviceMsg
-
                 ( GotBusRepairsMsg msg_, BusRepairsPage model ) ->
                     BusRepairs.update msg_ model
                         |> mapModel fullModel BusRepairsPage GotBusRepairsMsg
+
+                ( GotBusDeviceMsg msg_, BusDevicePage model ) ->
+                    BusDevice.update msg_ model
+                        |> mapModel fullModel BusDevicePage GotBusDeviceMsg
 
                 _ ->
                     ( fullModel, Cmd.none )
@@ -343,15 +344,15 @@ viewLoaded busData viewHeight viewWidth =
 
             _ ->
                 paddingXY 36 0
+        , inFront (viewOverlay busData viewHeight)
         ]
         [ viewHeading busData buttons
         , Element.row
             [ width fill
             , height fill
-            , spacing 26
             ]
             [ viewSidebar busData
-            , body
+            , el [ paddingXY 26 0, width fill, height fill ] body
             ]
         , el [ height (px 16) ] none
         , footer
@@ -443,6 +444,33 @@ viewFooter busData viewWidth =
         )
 
 
+viewOverlay : BusData -> Int -> Element Msg
+viewOverlay busData viewHeight =
+    let
+        viewPage pageView toMsg =
+            Element.map toMsg pageView
+    in
+    el [ width fill, height fill, Style.clickThrough ]
+        -- el [ width (fill |> maximum viewWidth), height fill ]
+        (case busData.currentPage of
+            AboutPage subPageModel ->
+                none
+
+            RouteHistoryPage subPageModel ->
+                viewPage (RouteHistory.viewOverlay subPageModel viewHeight) GotRouteHistoryMsg
+
+            -- none
+            FuelHistoryPage subPageModel ->
+                none
+
+            BusDevicePage subPageModel ->
+                none
+
+            BusRepairsPage subPageModel ->
+                none
+        )
+
+
 viewButtons : BusData -> Element Msg
 viewButtons busData =
     let
@@ -479,6 +507,13 @@ viewSidebar busData =
     el [ height fill ]
         (column
             [ Background.color (rgb255 233 233 243)
+
+            -- , Border.innerShadow
+            --     { offset = ( -4, -4 )
+            --     , size = 0
+            --     , blur = 16
+            --     , color = Colors.withAlpha Colors.purple 0.2
+            --     }
             , padding 7
             , Border.rounded 100
             , inFront (slider pageCount busData.pageIndex False)
@@ -511,7 +546,19 @@ slider pageCount pageIndex visible =
                     , Border.rounded 48
                     , Border.solid
                     , paddingXY 0 7
-                    , Border.shadow { offset = ( 0, 2 ), blur = 5, size = 0, color = rgba255 0 0 0 0.2 }
+
+                    -- , Border.shadow
+                    --     { offset = ( 0, 2 )
+                    --     , blur = 5
+                    --     , size = 0
+                    --     , color = rgba255 0 0 0 0.2
+                    --     }
+                    , Border.shadow
+                        { offset = ( 0, 0 )
+                        , size = 4
+                        , blur = 8
+                        , color = rgb255 (255 - ((255 - 233) * 2)) (255 - ((255 - 233) * 2)) (255 - ((255 - 243) * 2))
+                        }
                     ]
             }
         )

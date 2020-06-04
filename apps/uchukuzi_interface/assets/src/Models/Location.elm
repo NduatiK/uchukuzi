@@ -2,6 +2,7 @@ port module Models.Location exposing
     ( Location
     , Report
     , clearSchoolLocation
+    , encodeLocation
     , locationDecoder
     , reportDecoder
     , storeSchoolLocation
@@ -10,6 +11,7 @@ port module Models.Location exposing
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, float, string)
 import Json.Decode.Pipeline exposing (required, resolve)
+import Json.Encode as Encode
 import Time
 
 
@@ -37,6 +39,14 @@ locationDecoder =
     Decode.succeed Location
         |> required "lng" float
         |> required "lat" float
+
+
+encodeLocation : Location -> Encode.Value
+encodeLocation location =
+    Encode.object
+        [ ( "lat", Encode.float location.lat )
+        , ( "lng", Encode.float location.lng )
+        ]
 
 
 type alias Report =

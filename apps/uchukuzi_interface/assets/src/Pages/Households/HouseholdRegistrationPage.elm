@@ -26,7 +26,7 @@ import RemoteData exposing (..)
 import Session exposing (Session)
 import Set
 import Style exposing (edges)
-import StyledElement exposing (toDropDownView)
+import StyledElement
 import StyledElement.DropDown as Dropdown
 import StyledElement.WebDataView as WebDataView
 import Task
@@ -138,7 +138,7 @@ emptyForm session guardianID =
         }
     , requestState = NotAsked
     , editState =
-        Maybe.andThen (EditState Loading >> Just) guardianID
+        guardianID |> Maybe.map (EditState Loading)
     , index = -1
     }
 
@@ -377,7 +377,7 @@ update msg model =
                     model.editState
 
                 newModel =
-                    { model | editState = Maybe.andThen (\x -> Just { x | requestState = response }) editState }
+                    { model | editState = editState |> Maybe.map (\x -> { x | requestState = response }) }
             in
             case response of
                 Success household ->
@@ -435,7 +435,7 @@ update msg model =
 buildMapCmds model =
     case model.routeRequestState of
         Success routes ->
-            case Maybe.andThen (.requestState >> Just) model.editState of
+            case model.editState |> Maybe.map .requestState of
                 Just (Success household) ->
                     Cmd.batch
                         [ Ports.initializeSearch
@@ -744,7 +744,7 @@ viewForm model =
     in
     Element.column
         [ width (fillPortion 1), spacing 26 ]
-        [ el [ width (fill |> maximum 300) ] (toDropDownView <| routeDropDown model)
+        [ el [ width (fill |> maximum 300) ] (Dropdown.viewFromModel model routeDropDown)
 
         -- , viewDivider
         , el Style.header2Style (text "Students")
@@ -770,7 +770,7 @@ viewForm model =
 --     [ width fill, spacing 26 ]
 --     [ wrappedRow [ width fill ]
 --         [ column [ spacing 26, alignTop, width fill ]
---             [ el [ width (fill |> maximum 300) ] (toDropDownView <| routeDropDown model)
+--             [ el [ width (fill |> maximum 300) ] (Dropdown.viewFromModel model routeDropDown )
 --             , el Style.header2Style (text "Students")
 --             , viewStudentsInput model.form
 --             ]
@@ -1087,7 +1087,7 @@ routeDropDown model =
         , dropdownState = model.routeDropdownState
         , errorCaption = Errors.inputErrorsFor model.form.problems "route" [ EmptyRoute ]
         , icon = Just Icons.pin
-        , onSelect = Maybe.andThen (.id >> Just) >> Route >> Changed
+        , onSelect = Maybe.map .id >> Route >> Changed
         , options = routes
         , title = "Route"
         , toString =

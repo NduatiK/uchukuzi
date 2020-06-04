@@ -125,7 +125,7 @@ locationUpdatesFrom model =
                                         [ locationUpdate ]
 
                                     Nothing ->
-                                        case bus.last_seen of
+                                        case bus.lastSeen of
                                             Just locationUpdate_ ->
                                                 [ locationUpdate_ ]
 

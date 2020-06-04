@@ -53,6 +53,6 @@ defmodule Uchukuzi.Roles do
     manager
     |> Manager.registration_changeset(%{"password" => new_password})
     |> Repo.update()
-    |> IO.inspect
+
   end
 end

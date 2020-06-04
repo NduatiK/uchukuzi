@@ -5,6 +5,7 @@ port module Ports exposing (..)
 import Models.Bus exposing (LocationUpdate)
 import Models.Location exposing (Location)
 import Models.Route exposing (Route)
+import Models.Tile exposing (Tile)
 
 
 
@@ -22,6 +23,25 @@ port initializeCustomMap : { drawable : Bool, clickable : Bool } -> Cmd msg
 initializeMaps : Cmd msg
 initializeMaps =
     initializeCustomMap { drawable = False, clickable = False }
+
+
+port fitBoundsMap : () -> Cmd msg
+
+
+fitBounds : Cmd msg
+fitBounds =
+    fitBoundsMap ()
+
+
+port setDeviationTileVisible : Bool -> Cmd msg
+
+
+port drawDeviationTiles :
+    { correct : List Tile
+    , deviation : List Tile
+    , visible : Bool
+    }
+    -> Cmd msg
 
 
 initializeSearch : Cmd msg
@@ -80,7 +100,13 @@ port drawEditablePath : { routeID : Int, path : List Location, highlighted : Boo
 port drawPath : { routeID : Int, path : List Location, highlighted : Bool } -> Cmd msg
 
 
-port bulkDrawPath : List { routeID : Int, path : List Location, highlighted : Bool } -> Cmd msg
+port bulkDrawPath :
+    List
+        { routeID : Int
+        , path : List Location
+        , highlighted : Bool
+        }
+    -> Cmd msg
 
 
 port showHomeLocation : Location -> Cmd msg
@@ -90,6 +116,9 @@ port highlightPath : { routeID : Int, highlighted : Bool } -> Cmd msg
 
 
 port cleanMap : () -> Cmd msg
+
+
+port disableClickListeners : () -> Cmd msg
 
 
 port insertCircle : { location : Location, radius : Float } -> Cmd msg

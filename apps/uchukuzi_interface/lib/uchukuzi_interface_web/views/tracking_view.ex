@@ -9,7 +9,12 @@ defmodule UchukuziInterfaceWeb.TrackingView do
   def render("trip.json", %{trip: nil}) do
     nil
   end
+
   def render("trip.json", %{trip: trip}) do
+    render_trip(trip)
+  end
+
+  def render_trip(trip) do
     %{
       id: trip.id,
       bus: trip.bus_id,
@@ -17,7 +22,11 @@ defmodule UchukuziInterfaceWeb.TrackingView do
       end_time: trip.end_time,
       distance_covered: trip.distance_covered,
       travel_time: trip.travel_time,
-      student_activities: Enum.map(trip.student_activities, &render_student_activities/1),
+      reports: render_reports(trip.report_collection),
+      student_activities: Enum.map(trip.student_activities, &render_student_activity/1),
+      crossed_tiles: render_crossed_tiles(trip.report_collection),
+      deviations: render_deviations(trip.report_collection)
+
       # student_activities:
       #   Enum.map(
       #     [
@@ -38,13 +47,12 @@ defmodule UchukuziInterfaceWeb.TrackingView do
       #         time: ~U[2012-11-19 16:38:08Z]
       #       }
       #     ],
-      #     &render_student_activities/1
+      #     &render_student_activity/1
       #   ),
-      reports: render_reports(trip.report_collection)
     }
   end
 
-  def render_student_activities(report) do
+  def render_student_activity(report) do
     # field(:crew_member_id, :integer)
     %{
       location: render_location(report.infered_location),
@@ -76,10 +84,21 @@ defmodule UchukuziInterfaceWeb.TrackingView do
     Enum.map(reports, &render_report/1)
   end
 
+  def render_crossed_tiles(nil), do: nil
+  def render_crossed_tiles(%Ecto.Association.NotLoaded{}), do: []
+
+  def render_crossed_tiles(%{crossed_tiles: crossed_tiles}),
+    do: crossed_tiles |> Enum.map(&render_location/1)
+
+  def render_deviations(nil), do: nil
+  def render_deviations(%Ecto.Association.NotLoaded{}), do: []
+  def render_deviations(%{deviation_positions: deviations}), do: deviations
+
   def render_report(nil), do: nil
 
   def render_report(report) do
     %{
+      bus: Map.get(report, :bus),
       location: render_location(report.location),
       time: report.time,
       speed: Float.round(report.speed + 0.0, 1),

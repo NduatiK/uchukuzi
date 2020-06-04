@@ -5,7 +5,7 @@ defmodule UchukuziInterfaceWeb.AssisantSocket do
   channel "bus_location:*", UchukuziInterfaceWeb.CustomerSocket.BusChannel
 
   def connect(%{"token" => token}, socket, _connect_info) do
-    IO.inspect(token)
+
     with {:ok, assistant_id} <- AssistantAuth.verify(token),
          assistant when not is_nil(assistant) <-
            Uchukuzi.Roles.get_assistant_by(id: assistant_id),

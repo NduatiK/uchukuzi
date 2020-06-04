@@ -8,8 +8,8 @@ defmodule Uchukuzi do
   end
 
   def flush_trips() do
-    Uchukuzi.Repo.all(Uchukuzi.Tracking.Trip)
-    |> Enum.map(&Uchukuzi.Repo.delete!/1)
+    Uchukuzi.Repo.delete_all(Uchukuzi.Tracking.Trip.ReportCollection)
+    Uchukuzi.Repo.delete_all(Uchukuzi.Tracking.Trip)
 
     Uchukuzi.Repo.all(Uchukuzi.School.Bus)
     |> Enum.map(fn bus ->

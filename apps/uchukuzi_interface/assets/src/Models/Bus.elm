@@ -13,6 +13,7 @@ module Models.Bus exposing
     , defaultConsumption
     , defaultSeats
     , imageForPart
+    , locationUpdateDecoder
     , simpleRouteDecoder
     , titleForPart
     , vehicleClassToFuelType
@@ -49,7 +50,7 @@ type alias Bus =
     , route : Maybe SimpleRoute
     , device : Maybe Device
     , repairs : List Repair
-    , last_seen : Maybe LocationUpdate
+    , lastSeen : Maybe LocationUpdate
     }
 
 
@@ -70,13 +71,6 @@ type alias LocationUpdate =
     , speed : Float
     , bearing : Float
     }
-
-
-
--- type alias Student =
---     { id : String
---     , name : String
---     }
 
 
 type VehicleType
@@ -210,11 +204,11 @@ busDecoderWithCallback callback =
                 bus =
                     let
                         lastSeen =
-                            Maybe.andThen
-                                (\update_ ->
-                                    Just (LocationUpdate id update_.location update_.speed update_.bearing)
-                                )
-                                update
+                            update
+                                |> Maybe.map
+                                    (\update_ ->
+                                        LocationUpdate id update_.location update_.speed update_.bearing
+                                    )
 
                         fuelType =
                             case fuel_type of
@@ -295,7 +289,7 @@ repairDecoder =
 locationUpdateDecoder : Decoder LocationUpdate
 locationUpdateDecoder =
     Decode.succeed LocationUpdate
-        |> Json.Decode.Pipeline.hardcoded 0
+        |> required "bus" int
         |> required "location" locationDecoder
         |> required "speed" float
         |> required "bearing" float

@@ -9,7 +9,7 @@ defmodule UchukuziInterface.Application do
     # List all child processes to be supervised
     children = [
       UchukuziInterfaceWeb.Endpoint,
-      UchukuziInterfaceWeb.PredictionForwarderSupervisor
+      UchukuziInterfaceWeb.ChannelForwarderSupervisor
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

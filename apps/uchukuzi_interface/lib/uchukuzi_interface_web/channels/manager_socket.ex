@@ -3,6 +3,7 @@ defmodule UchukuziInterfaceWeb.ManagerSocket do
   alias UchukuziInterfaceWeb.AuthPlugs.ManagerAuth
 
   channel "school:*", UchukuziInterfaceWeb.SchoolChannel
+  channel "trip:*", UchukuziInterfaceWeb.TripChannel
 
   def connect(%{"token" => token}, socket, _connect_info) do
     with {:ok, manager_id} <- ManagerAuth.verify(token),
