@@ -10,6 +10,15 @@ import Html.Attributes
 -- COLORS
 
 
+svgColorwithAlpha : Float -> Color.Color -> Color.Color
+svgColorwithAlpha alpha color =
+    let
+        { red, green, blue } =
+            Color.toRgba color
+    in
+    Color.rgba red green blue alpha
+
+
 toSVGColor : Color -> Color.Color
 toSVGColor color =
     let
@@ -115,10 +124,10 @@ darkness : Color
 darkness =
     Element.rgb255 51 63 78
 
+
 semiDarkness : Color
 semiDarkness =
-    (rgb255 115 115 115)
-         
+    rgb255 115 115 115
 
 
 errorRed : Color

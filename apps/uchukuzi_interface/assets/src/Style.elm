@@ -20,6 +20,7 @@ module Style exposing
     , header2Style
     , headerStyle
     , iconHeader
+    , id
     , ignoreCss
     , labelStyle
     , mobileHidden
@@ -30,6 +31,7 @@ module Style exposing
     , stickyStyle
     , tableElementStyle
     , tableHeaderStyle
+    , zIndex
     )
 
 import Colors exposing (..)
@@ -245,11 +247,10 @@ class className =
         |> htmlAttribute
 
 
-
--- idAttr : String -> Attribute msg
--- idAttr id =
---     Html.Attributes.id id
---         |> htmlAttribute
+id : String -> Attribute msg
+id idValue =
+    Html.Attributes.id idValue
+        |> htmlAttribute
 
 
 edges : { top : Int, right : Int, bottom : Int, left : Int }
@@ -269,3 +270,5 @@ nonClickThrough =
     class "nonClickThrough"
 
 
+zIndex value =
+    htmlAttribute (Html.Attributes.style "z-index" (String.fromInt value))

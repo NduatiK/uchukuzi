@@ -50,6 +50,7 @@ import Template.SideBar as SideBar
 import Template.TabBar as TabBar
 import Time
 import Url
+import Views.NotificationView exposing (Notification)
 
 
 
@@ -71,6 +72,7 @@ type alias Model =
     , loading : Bool
     , error : Bool
     , phoenix : Maybe (Phoenix.Model Msg)
+    , notifications : List Notification
     }
 
 
@@ -168,7 +170,7 @@ init args url navKey =
             changeRouteTo (Navigation.fromUrl url session)
                 { page = Redirect session
                 , route = Nothing
-                , navState = NavBar.init session
+                , navState = NavBar.init
                 , sideBarState = SideBar.init localStorageData.sideBarIsOpen
                 , windowSize =
                     { height = localStorageData.height
@@ -180,6 +182,7 @@ init args url navKey =
                 , loading = localStorageData.isLoading
                 , error = localStorageData.loadError
                 , phoenix = phxModel
+                , notifications = []
                 }
     in
     ( model
@@ -293,17 +296,10 @@ update msg model =
         GotNavBarMsg navBarMsg ->
             let
                 ( newNavState, navMsg ) =
-                    NavBar.update navBarMsg model.navState
+                    NavBar.update navBarMsg model.navState (toSession model.page)
             in
             ( { model | navState = newNavState }
-            , Cmd.batch
-                [ Cmd.map GotNavBarMsg navMsg
-                , if NavBar.isVisible model.navState then
-                    Cmd.map GotNavBarMsg NavBar.hideNavBarMsg
-
-                  else
-                    Cmd.none
-                ]
+            , Cmd.map GotNavBarMsg navMsg
             )
 
         UpdatedTimeZone timezone ->
@@ -647,14 +643,14 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
 view : Model -> Browser.Document Msg
 view appModel =
     let
-        { page, route, navState, windowSize, sideBarState } =
+        { page, route, navState, windowSize, sideBarState, notifications } =
             appModel
 
         viewEmptyPage pageContents =
             viewPage pageContents GotHomeMsg []
 
         viewPage pageContents toMsg tabBarItems =
-            Layout.frame route pageContents (toSession page) toMsg navState GotNavBarMsg sideBarState GotSideBarMsg windowSize.height tabBarItems
+            Layout.frame route pageContents (toSession page) toMsg navState notifications GotNavBarMsg sideBarState GotSideBarMsg windowSize.height tabBarItems
 
         -- viewEmptyPage =
         renderedView =
@@ -739,7 +735,11 @@ view appModel =
     { title = "Uchukuzi"
     , body =
         [ Element.layoutWith layoutOptions
-            Style.labelStyle
+            (Style.labelStyle
+             -- ++ [ inFront
+             --         (NotificationView.view appModel.notifications)
+             --    ]
+            )
             (if appModel.loading then
                 LoadingPage.view
 
@@ -856,6 +856,11 @@ subscriptions model_ =
         [ matching
         , Api.onStoreChange (Api.parseCreds >> ReceivedCreds)
         , Browser.Events.onResize WindowResized
+        , if model_.navState |> NavBar.isVisible then
+            Browser.Events.onClick (Json.succeed (NavBar.hideNavBar |> GotNavBarMsg))
+
+          else
+            Sub.none
         , Sub.map GotSideBarMsg (SideBar.subscriptions model_.sideBarState)
         , PhxMsg.subscribe fromPhoenix PhoenixMessage OutsideError
         ]

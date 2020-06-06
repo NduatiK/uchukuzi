@@ -115,6 +115,11 @@ people =
     iconNamed "images/people.svg"
 
 
+person : List (Attribute msg) -> Element msg
+person =
+    iconNamed "images/person.svg"
+
+
 phone : List (Attribute msg) -> Element msg
 phone =
     iconNamed "images/phone.svg"
@@ -238,3 +243,13 @@ settings =
 exit : List (Attribute msg) -> Element msg
 exit =
     iconNamed "images/exit.svg"
+
+
+notificationsFilled : List (Attribute msg) -> Element msg
+notificationsFilled =
+    iconNamed "images/alarm_filled.svg"
+
+
+notificationsEmpty : List (Attribute msg) -> Element msg
+notificationsEmpty =
+    iconNamed "images/alarm_outlined.svg"

@@ -34,7 +34,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Errors exposing (InputError)
 import Html exposing (node)
-import Html.Attributes exposing (id)
+import Html.Attributes
 import Icons exposing (IconBuilder)
 import Json.Encode as Encode
 import Navigation
@@ -317,7 +317,7 @@ textInput attributes { title, caption, errorCaption, value, onChange, placeholde
     let
         input =
             Input.text
-                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ])
+                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ])
                 { onChange = onChange
                 , text = value
                 , placeholder = placeholder
@@ -344,7 +344,7 @@ multilineInput attributes { title, caption, errorCaption, value, onChange, place
     let
         input =
             Input.multiline
-                (Style.labelStyle ++ [ height fill, centerY, Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ])
+                (Style.labelStyle ++ [ height fill, centerY, Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ])
                 { onChange = onChange
                 , text = value
                 , placeholder = placeholder
@@ -372,7 +372,7 @@ emailInput attributes { title, caption, errorCaption, value, onChange, placehold
     let
         input =
             Input.email
-                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ])
+                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ])
                 { onChange = onChange
                 , text = value
                 , placeholder = placeholder
@@ -439,7 +439,7 @@ passwordInput attributes { title, caption, errorCaption, value, onChange, placeh
 
         input =
             passwordBoxBuilder
-                ([ Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ]
+                ([ Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ]
                     ++ Style.labelStyle
                 )
                 { onChange = onChange
@@ -511,7 +511,7 @@ numberInput attributes { title, caption, errorCaption, value, onChange, placehol
 
         textField =
             Input.text
-                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), htmlAttribute (id (String.replace " " "-" (String.toLower ariaLabel))) ])
+                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ])
                 { onChange = onChangeWithMaxAndMin
                 , text = String.fromInt value
                 , placeholder = placeholder
@@ -573,7 +573,7 @@ googleMap mapClasses =
          ]
             ++ mapClasses
         )
-        (html (node "gmap" [ id "google-map" ] []))
+        (html (node "gmap" [ Html.Attributes.id "google-map" ] []))
 
 
 {-| wrappedInput input title caption errorCaption icon attributes trailingElements

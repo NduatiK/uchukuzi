@@ -11,9 +11,10 @@ import Icons
 import Navigation exposing (Route)
 import Session
 import Style exposing (edges)
-import Template.NavBar as NavBar exposing (view)
+import Template.NavBar as NavBar
 import Template.SideBar as SideBar
 import Template.TabBar as TabBar exposing (TabBarItem(..))
+import Views.NotificationView as NotificationView
 
 
 {-| Transforms a (foreign model, foreign msg) into a (local model, msg)
@@ -34,8 +35,20 @@ sideBarOffset =
     SideBar.handleBarSpacing + SideBar.handleBarWidth
 
 
-frame : Maybe Route -> Element a -> Session.Session -> (a -> msg) -> NavBar.Model -> (NavBar.Msg -> msg) -> SideBar.Model -> (SideBar.Msg -> msg) -> Int -> List (TabBarItem a) -> Element msg
-frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pageHeight tabBarItems =
+frame :
+    Maybe Route
+    -> Element a
+    -> Session.Session
+    -> (a -> msg)
+    -> NavBar.Model
+    -> List NotificationView.Notification
+    -> (NavBar.Msg -> msg)
+    -> SideBar.Model
+    -> (SideBar.Msg -> msg)
+    -> Int
+    -> List (TabBarItem a)
+    -> Element msg
+frame route body session toMsg navState notifications headerToMsg sideBarState sideBarToMsg pageHeight tabBarItems =
     let
         sideBar =
             if Session.getCredentials session == Nothing || Navigation.isPublicRoute route then
@@ -77,7 +90,7 @@ frame route body session toMsg navState headerToMsg sideBarState sideBarToMsg pa
                 ]
 
         renderedHeader =
-            Element.map headerToMsg (view navState session route)
+            Element.map headerToMsg (NavBar.view navState session route notifications)
     in
     column [ width fill, height fill ]
         [ renderedHeader
