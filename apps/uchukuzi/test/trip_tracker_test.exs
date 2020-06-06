@@ -57,7 +57,7 @@ defmodule TripTrackerTest do
   test "the trip tracker is restored with all its state on crash" do
     bus = sample_bus()
 
-    IO.inspect(BusesSupervisor.start_bus(bus))
+
 
     trip_sup = TripSupervisor.pid_from(bus)
 
@@ -90,7 +90,7 @@ defmodule TripTrackerTest do
   test "the trip tracker exits when trip is terminated" do
     bus = sample_bus()
 
-    IO.inspect(BusesSupervisor.start_bus(bus))
+
 
     trip_sup = TripSupervisor.pid_from(bus)
 
@@ -123,7 +123,6 @@ defmodule TripTrackerTest do
   test "student tracking works" do
     bus = sample_bus()
 
-    IO.inspect(BusesSupervisor.start_bus(bus))
 
     trip_sup = TripSupervisor.pid_from(bus)
 

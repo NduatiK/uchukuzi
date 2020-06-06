@@ -29,32 +29,32 @@ defmodule Uchukuzi.School do
       |> where(id: ^school_id)
       |> Repo.one()
 
-    map_if_present = (fn
-      p, params, paramName, internalName   ->
+    map_if_present = fn
+      p, params, paramName, internalName ->
         cond do
-          value = Map.get(params, paramName)  ->
+          value = Map.get(params, paramName) ->
             Map.put(p, internalName, value)
+
           true ->
             p
         end
-    end)
-
-
+    end
 
     perimeter =
       school.perimeter
-      |>map_if_present.(params, "location", :center)
-      |>map_if_present.(params, "radius", :radius)
+      |> map_if_present.(params, "location", :center)
+      |> map_if_present.(params, "radius", :radius)
 
-      change_if_present = (fn
-                 p, params, paramName, internalName   ->
-            cond do
-              value = Map.get(params, paramName)  ->
-                change(p, [{internalName, value}])
-              true ->
-                p
-            end
-      end)
+    change_if_present = fn
+      p, params, paramName, internalName ->
+        cond do
+          value = Map.get(params, paramName) ->
+            change(p, [{internalName, value}])
+
+          true ->
+            p
+        end
+    end
 
     school
     |> change(perimeter: perimeter)
@@ -64,23 +64,21 @@ defmodule Uchukuzi.School do
     |> inform_buses_of_school_update()
   end
 
-  def inform_buses_of_school_update({:ok, school}), do:
-    {:ok, inform_buses_of_school_update(school)}
+  def inform_buses_of_school_update({:ok, school}),
+    do: {:ok, inform_buses_of_school_update(school)}
 
   def inform_buses_of_school_update(%School{} = school) do
     Repo.all(
       from(b in Bus,
-        where: b.school_id == ^school.id,
+        where: b.school_id == ^school.id
       )
     )
-    |> Enum.map(& &1.id)
     |> Enum.map(&Uchukuzi.Tracking.TripTracker.update_school/1)
 
     school
   end
 
   def inform_buses_of_school_update(pass), do: pass
-
 
   def update_location(school_id, location, radius \\ 50) do
     school =
@@ -393,9 +391,6 @@ defmodule Uchukuzi.School do
     |> Repo.one()
     |> Repo.delete()
   end
-
-
-
 
   # ********* HOUSEHOLDS *********
   def create_household(

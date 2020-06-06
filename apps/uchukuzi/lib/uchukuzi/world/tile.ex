@@ -228,6 +228,26 @@ defmodule Uchukuzi.World.Tile do
   """
   def name(%Tile{} = tile), do: tile.coordinate
 
+  def nearby(tile, radius \\ 1) do
+    for lat <- -radius..radius do
+      for lng <- -radius..radius do
+        if lat == 0 and lng == 0 do
+          nil
+        else
+          {:ok, location} =
+            Location.new(
+              tile.coordinate.lng + lng * @default_tile_size,
+              tile.coordinate.lat + lat * @default_tile_size
+            )
+
+          Tile.new(location, @default_tile_size)
+        end
+      end
+    end
+    |> Enum.flat_map(& &1)
+    |> Enum.filter(fn x -> x != nil end)
+  end
+
   def nearby?(tile1, tile2, radius \\ 1)
 
   def nearby?(%Tile{} = tile1, %Tile{} = tile2, radius) do

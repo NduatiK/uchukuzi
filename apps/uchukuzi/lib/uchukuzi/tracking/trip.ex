@@ -3,13 +3,8 @@ defmodule Uchukuzi.Tracking.Trip do
 
   use Uchukuzi.Tracking.Model
 
-  if Mix.env() == :dev do
-    # dublin
-    @naive_timezone +1
-  else
-    # nairobi
-    @naive_timezone 3
-  end
+  # nairobi
+  @naive_timezone 3
 
   schema "trips" do
     belongs_to(:bus, Bus)
@@ -32,14 +27,16 @@ defmodule Uchukuzi.Tracking.Trip do
     }
   end
 
-  def insert_report(%Trip{} = trip, %Report{} = report) do
+  def insert_report(%Trip{} = trip, %Report{} = report, timezone \\ @naive_timezone) do
     trip
-    |> insert_sorted(report)
+    |> insert_sorted(report, timezone)
   end
 
-  defp insert_sorted(trip, %Report{} = report) do
-    reports = Enum.sort([report | trip.report_collection.reports], &(&1.time >= &2.time))
-    [latest_report | _] = reports
+  defp insert_sorted(trip, %Report{} = report, timezone) do
+    # reports = Enum.sort([report | trip.report_collection.reports], &(&1.time >= &2.time))
+    # [latest_report | _] = reports
+    reports = [report | trip.report_collection.reports]
+    latest_report = report
 
     report_collection = %{trip.report_collection | reports: reports}
 
@@ -49,23 +46,33 @@ defmodule Uchukuzi.Tracking.Trip do
         start_time: trip.start_time || latest_report.time,
         end_time: latest_report.time
     }
-    |> infer_trip_travel_time()
+    |> infer_trip_travel_time(timezone)
   end
 
   def insert_student_activity(%Trip{} = trip, %StudentActivity{} = student_activity) do
     student_activity =
       student_activity
-      |> StudentActivity.infer_location(trip)
+      |> StudentActivity.infer_location(trip.report_collection)
       |> StudentActivity.set_inferred_location(student_activity)
 
     %Trip{trip | student_activities: [student_activity | trip.student_activities]}
   end
 
-  def clean_up_trip(%Trip{} = trip) do
+  def clean_up_trip(%Trip{} = trip, timezone) do
     trip
+    |> sort_reports()
     |> update_distance_covered()
     |> update_student_activities_locations()
-    |> infer_trip_travel_time()
+    |> infer_trip_travel_time(timezone)
+  end
+
+  defp sort_reports(trip) do
+    reports = Enum.sort(trip.report_collection.reports, &(&1.time >= &2.time))
+
+    %Trip{
+      trip
+      | report_collection: %{trip.report_collection | reports: reports}
+    }
   end
 
   def set_deviation_positions(%Trip{} = trip, positions) do
@@ -110,7 +117,7 @@ defmodule Uchukuzi.Tracking.Trip do
       trip.student_activities
       |> Enum.map(fn student_activity ->
         student_activity
-        |> StudentActivity.infer_location(trip)
+        |> StudentActivity.infer_location(trip.report_collection)
         |> StudentActivity.set_inferred_location(student_activity)
       end)
 
@@ -121,8 +128,8 @@ defmodule Uchukuzi.Tracking.Trip do
     ["morning", "evening"]
   end
 
-  def infer_trip_travel_time(%Trip{} = trip) do
-    hour = trip.start_time.hour + @naive_timezone
+  def infer_trip_travel_time(%Trip{} = trip, time_zone \\ @naive_timezone) do
+    hour = trip.start_time.hour + time_zone
 
     # if Enum.count(trip.student_activities) > 0 do
     travel_time =
@@ -130,7 +137,7 @@ defmodule Uchukuzi.Tracking.Trip do
         hour < 9 and hour > 4 ->
           "morning"
 
-        hour < 21 and hour > 14 ->
+        hour < 12 + 7 and hour > 12 + 3 ->
           "evening"
 
         true ->
@@ -154,9 +161,9 @@ defmodule Uchukuzi.Tracking.Trip do
     |> Enum.reverse()
     |> Enum.reduce(MapSet.new(), fn activity, students ->
       if StudentActivity.is_boarding?(activity) do
-        students |> MapSet.put(activity.student)
+        students |> MapSet.put(activity.student_id)
       else
-        students |> MapSet.delete(activity.student)
+        students |> MapSet.delete(activity.student_id)
       end
     end)
   end

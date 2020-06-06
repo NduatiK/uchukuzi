@@ -111,13 +111,21 @@ defmodule UchukuziInterfaceWeb.RolesView do
   def render_student(%Uchukuzi.Roles.Student{} = student) do
     student = Uchukuzi.Repo.preload(student, :route)
 
+    home_tile = Uchukuzi.World.Tile.new(student.home_location)
+    # nearby_tiles = Uchukuzi.World.Tile.nearby(home_tile, 1)
+
+    # home_hashes =
+    #   [home_tile | nearby_tiles]
+    #   |> Enum.map(&Uchukuzi.World.ETA.coordinate_hash/1)
+
     %{
       "id" => student.id,
       "name" => student.name,
       "email" => student.email,
       "travel_time" => student.travel_time,
       "home_location" => render_location(student.home_location),
-      "home_hash" => Uchukuzi.World.ETA.coordinate_hash(student.home_location),
+      # "home_hashes" => home_hashes,
+      "home_hash" => Uchukuzi.World.ETA.coordinate_hash(home_tile),
       "route" => UchukuziInterfaceWeb.SchoolView.render_bus_route(student.route)
     }
   end

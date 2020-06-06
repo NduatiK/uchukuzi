@@ -1,4 +1,6 @@
 defmodule Uchukuzi.Tracking.TripTracker do
+  import ExProf.Macro
+
   use GenServer, restart: :transient
 
   @moduledoc """
@@ -30,25 +32,19 @@ defmodule Uchukuzi.Tracking.TripTracker do
   @spec via_tuple(Uchukuzi.School.Bus.t()) :: {:via, Registry, {Uchukuzi.Registry, any}}
   defp via_tuple(%Bus{} = bus),
     do: Uchukuzi.service_name({__MODULE__, bus.id})
-  defp via_tuple(bus_id),
-    do: Uchukuzi.service_name({__MODULE__, bus_id})
 
   @spec pid_from(Uchukuzi.School.Bus.t()) :: nil | pid | {atom, atom}
-  def pid_from(_, retries \\ 0)
-  def pid_from(%Bus{} = bus, retries) do
-    pid_from(bus.id, retries)
-  end
-  def pid_from(bus_id, retries) do
+  def pid_from(%Bus{} = bus, retries \\ 0) do
     pid =
-      bus_id
+      bus
       |> via_tuple()
       |> GenServer.whereis()
 
     result =
       with nil <- pid do
-        BusesSupervisor.start_bus(bus_id)
+        BusesSupervisor.start_bus(bus)
 
-        bus_id
+        bus
         |> via_tuple()
         |> GenServer.whereis()
       end
@@ -60,7 +56,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
         retries = retries + 1
         :timer.sleep(100 * retries)
 
-        pid_from(bus_id, retries)
+        pid_from(bus, retries)
       end
     else
       result
@@ -68,13 +64,21 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   def init(bus) do
+    school = Uchukuzi.Repo.preload(bus, :school).school
+
+    # approximate the time_offset
+    # Nairobi returns 2.45 instead of 3 which should be okay if we allow a margin of 2 hrs each way
+    time_offset = 12 * (school.perimeter.center.lng / 180)
+
     data = %{
       bus_id: bus.id,
       route_id: bus.route_id,
-      school: Uchukuzi.Repo.preload(bus, :school).school,
+      school: school,
+      timezone: time_offset,
       trip: Trip.new(bus),
       trip_path: nil,
-      state: @new
+      state: @new,
+      last_notified_tile: nil
     }
 
     {:ok, data}
@@ -87,9 +91,16 @@ defmodule Uchukuzi.Tracking.TripTracker do
     else
       data =
         data
-        |> insert_trip_path(report)
+        |> insert_trip_path_if_needed(report)
         |> insert_report(report)
         |> set_state(@ongoing)
+
+      if data.trip.travel_time == "evening" do
+        PubSub.publish(
+          :trip_started,
+          {:trip_started, data.route_id, Trip.students_onboard(data.trip)}
+        )
+      end
 
       {:reply, :ok, data, @message_timeout}
     end
@@ -98,7 +109,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def handle_call({:add_report, %Report{} = report}, _from, %{state: @ongoing} = data) do
     data =
       data
-      |> insert_trip_path(report)
+      |> insert_trip_path_if_needed(report)
       |> insert_report(report)
 
     if School.School.contains_point?(data.school, report.location) do
@@ -148,11 +159,13 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   def handle_cast({:crossed_tiles, tiles}, data) do
-    # is_in_student_trip = Enum.member?(Trip.travel_times(), data.trip.travel_time)
+    #  is_in_student_trip = Enum.count(Trip.students_onboard(data.trip)) > 0
+    # is_in_student_trip = data.trip.travel_time in Trip.travel_times()
+    is_in_student_trip = true
 
     data =
       data
-      |> insert_trip_path()
+      |> insert_trip_path_if_needed()
 
     # with path when not is_nil(path) <- data.trip_path do
     # Match crossed tiles to historical tiles
@@ -161,24 +174,71 @@ defmodule Uchukuzi.Tracking.TripTracker do
     # • Report to tile members
 
     trip_path =
-      data.trip_path
-      |> TripPath.crossed_tiles(tiles)
-      |> TripPath.update_predictions(data.trip.end_time)
+      if is_in_student_trip do
+        trip_path =
+          data.trip_path
+          |> TripPath.crossed_tiles(tiles)
+          |> TripPath.update_predictions(data.trip.end_time)
 
-    PubSub.publish(
-      :eta_prediction_update,
-      {:eta_prediction_update, self(), data.route_id, trip_path.eta}
-      )
+        keep_first = fn list ->
+          list
+          |> Enum.uniq_by(fn {tile, _time} -> tile end)
+        end
+
+        keep_last = fn list ->
+          list
+          |> Enum.reverse()
+          |> keep_first.()
+          |> Enum.reverse()
+        end
+
+        etas =
+          if data.trip.travel_time == "evening" do
+            trip_path.eta
+            |> keep_first.()
+          else
+            trip_path.eta
+            |> keep_last.()
+          end
+
+        PubSub.publish(
+          :eta_prediction_update,
+          {:eta_prediction_update, data.route_id, etas}
+        )
+
+        %{trip_path | eta: etas}
+      else
+        data.trip_path
+        |> TripPath.crossed_tiles(tiles)
+      end
 
     data = %{data | trip_path: trip_path}
+
+    last_notified_tile = data.last_notified_tile
+
+    data =
+      case data.trip_path.eta do
+        [] ->
+          data
+
+        [h | _] when h == last_notified_tile ->
+          data
+
+        [{new_next_tile, _eta} | _] ->
+          PubSub.publish(
+            :approaching_tile,
+            {:approaching_tile, data.route_id, new_next_tile,data.trip.travel_time Trip.students_onboard(data.trip)}
+          )
+
+          %{data | last_notified_tile: new_next_tile}
+      end
 
     {:noreply, data, @message_timeout}
   end
 
   def handle_cast(:update_school, data) do
-
     school = Uchukuzi.Repo.get(Uchukuzi.School.School, data.school.id)
-    data = %{ data | school: school}
+    data = %{data | school: school}
 
     {:noreply, data, @message_timeout}
   end
@@ -187,12 +247,21 @@ defmodule Uchukuzi.Tracking.TripTracker do
     {:stop, {:shutdown, :timeout}, data}
   end
 
+  def handle_info(_, data) do
+    {:noreply, data, @message_timeout}
+  end
+
   def terminate(_reason, %{state: @complete} = data) do
-    store_trip(data.trip, data.trip_path)
+    PubSub.publish(
+      :trip_ended,
+      {:trip_ended, data.route_id, Trip.students_onboard(data.trip)}
+    )
+
+    store_trip(data.trip, data.trip_path, data.timezone)
   end
 
   def terminate({:shutdown, :timeout}, %{state: @ongoing} = data) do
-    store_trip(data.trip, data.trip_path)
+    store_trip(data.trip, data.trip_path, data.timezone)
   end
 
   # if stop when incomplete
@@ -200,10 +269,11 @@ defmodule Uchukuzi.Tracking.TripTracker do
     # :ets.insert(tableName(), {data.bus_id, data})
   end
 
-  def insert_trip_path(data, report \\ nil)
+  def insert_trip_path_if_needed(data, report \\ nil)
 
-  def insert_trip_path(%{trip_path: nil} = data, report) do
+  def insert_trip_path_if_needed(%{trip_path: nil} = data, report) do
     deviation_radius = data.school.deviation_radius
+
     expected_tiles =
       Uchukuzi.School.Route
       |> where([r], r.id == ^data.route_id)
@@ -224,24 +294,26 @@ defmodule Uchukuzi.Tracking.TripTracker do
     %{data | trip_path: trip_path}
   end
 
-  def insert_trip_path(data, _report), do: data
+  def insert_trip_path_if_needed(data, _report), do: data
 
   def insert_report(data, report) do
-    trip = data.trip |> Trip.insert_report(report)
+    trip = data.trip |> Trip.insert_report(report, data.timezone)
 
-    if Enum.count(trip.report_collection.reports) == 1 do
-      PubSub.publish(
-        :trip_update,
-        {:trip_update, self(), data.bus_id, trip}
-      )
-    else
-      PubSub.publish(
-        :trip_update,
-        {:trip_update, self(), data.bus_id, report}
-      )
-    end
+    Task.async(fn ->
+      if Enum.count(trip.report_collection.reports) == 1 do
+        PubSub.publish(
+          :trip_update,
+          {:trip_update, data.bus_id, trip}
+        )
+      else
+        PubSub.publish(
+          :trip_update,
+          {:trip_update, data.bus_id, report}
+        )
+      end
+    end)
 
-    %{data | trip: data.trip |> Trip.insert_report(report)}
+    %{data | trip: trip}
   end
 
   def set_state(data, @ongoing = state) do
@@ -263,10 +335,12 @@ defmodule Uchukuzi.Tracking.TripTracker do
     %{data | trip: data.trip |> Trip.insert_student_activity(activity)}
   end
 
-  def store_trip(%Trip{} = trip, trip_path) do
+  def store_trip(%Trip{} = trip, trip_path, timezone) do
+    IO.inspect("store_trip")
+
     trip
     |> Trip.add_crossed_tiles(trip_path.consumed_tile_locs)
-    |> Trip.clean_up_trip()
+    |> Trip.clean_up_trip(timezone)
     |> Trip.set_deviation_positions(trip_path.deviation_positions)
     |> Repo.insert()
   end
@@ -293,16 +367,19 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def crossed_tiles(bus, tiles),
     do: cast_tracker(bus, {:crossed_tiles, tiles})
 
-  def update_school(bus)    do
+  def update_school(bus) do
     # We use this cast to avoid creating buses
     bus
     |> via_tuple()
     |> GenServer.whereis()
-    |> (fn nil -> nil
-    server ->
-      server |> GenServer.cast(:update_school)
-    end).()
-end
+    |> (fn
+          nil ->
+            nil
+
+          server ->
+            server |> GenServer.cast(:update_school)
+        end).()
+  end
 
   defp cast_tracker(bus, arguments) do
     bus

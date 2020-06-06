@@ -9,21 +9,14 @@ defmodule Uchukuzi.Tracking.BusSupervisor do
     Supervisor.start_link(__MODULE__, bus, name: via_tuple(bus))
   end
 
-  def pid_from(%Bus{} = bus),
-    do: pid_from(bus.id)
-
-  def pid_from(bus_id) do
-    bus_id
+  def pid_from(%Bus{} = bus) do
+    bus
     |> via_tuple()
     |> GenServer.whereis()
   end
 
-
   defp via_tuple(%Bus{} = bus),
-    do: via_tuple(bus.id)
-
-  defp via_tuple(bus_id),
-    do: Uchukuzi.service_name({__MODULE__, bus_id})
+    do: Uchukuzi.service_name({__MODULE__, bus.id})
 
   def init(bus) do
     children = [
@@ -32,7 +25,7 @@ defmodule Uchukuzi.Tracking.BusSupervisor do
     ]
 
     # if Mix.env() == :dev do
-      Supervisor.init(children, strategy: :one_for_one, max_restarts: 20_000)
+    Supervisor.init(children, strategy: :one_for_one, max_restarts: 20_000)
     # else
     #   Supervisor.init(children, strategy: :one_for_one)
     # end

@@ -2,7 +2,8 @@ expected - ABCDEFGHIJK_MNOPQRSTUVWXYZ
 actual   - ABCDEF__IJKLMNOPQRSTUVWXYZ
 
 IDEAS
- -  Will always match at start (the school)
+ -  Will always match at start (the school) 
+  [Turns out not to be true in practice -> Rread footer]
         A
         A
  -  Consume while matching
@@ -42,3 +43,15 @@ But is it a deviation or a skip?
         For example, going from F to I was  a deviation 
         and the nearest tile ahead was I 
         (0 seconds away from the tile deviated to)
+
+Imagine
+expected - _ABCDEFGHIJK_MNOPQRSTUVWXYZ
+actual   - 9ABCDEF__IJKLMNOPQRSTUVWXYZ
+ -  Scan ahead to match
+    9 is near A so no deviation
+    Consume 9
+    
+ -  Consume while matching
+ 
+        BCDEF
+        BCDEF

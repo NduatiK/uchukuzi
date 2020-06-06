@@ -11,6 +11,10 @@ defmodule Uchukuzi do
     Uchukuzi.Repo.delete_all(Uchukuzi.Tracking.Trip.ReportCollection)
     Uchukuzi.Repo.delete_all(Uchukuzi.Tracking.Trip)
 
+     flush_servers()
+
+  end
+  def flush_servers() do
     Uchukuzi.Repo.all(Uchukuzi.School.Bus)
     |> Enum.map(fn bus ->
       bus
@@ -20,5 +24,8 @@ defmodule Uchukuzi do
         pid -> GenServer.stop(pid)
       end).()
     end)
+  end
+  def learn() do
+    Uchukuzi.World.ETA.rebuild_models()
   end
 end

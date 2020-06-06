@@ -35,9 +35,7 @@ defmodule Uchukuzi.Tracking do
 
     # Simulate the bus moving through the world
     # Return the tiles it crossed through
-    tiles =
-      World.update(bus_server, previous_report, report)
-
+    tiles = World.update(bus_server, previous_report, report)
 
     # And let it know which tiles have been crossed so far so
     # that it can try to predict the future
@@ -57,6 +55,7 @@ defmodule Uchukuzi.Tracking do
     do:
       last_seen
       |> Map.put(:bus, bus.id)
+
   def students_onboard(%Bus{} = bus) do
     TripTracker.students_onboard(bus)
   end

@@ -25,4 +25,35 @@ defmodule UchukuziInterfaceWeb.CustomerSocket.BusChannel do
       last_seen_report
     )
   end
+
+  def send_bus_event(route_id, event) do
+    UchukuziInterfaceWeb.Endpoint.broadcast(
+      "bus_location:" <> Integer.to_string(route_id),
+      "event",
+      event
+    )
+  end
+
+  intercept ["event", "update"]
+
+  defp authorized_to_receive?(socket, msg) do
+    case socket.assigns.student_ids
+         |> Enum.filter(fn id ->
+           Enum.member?(msg.students_onboard, id)
+         end) do
+      [] -> nil
+      students -> students
+    end
+  end
+
+  def handle_out(event, msg, socket) do
+    cond do
+      students = authorized_to_receive?(socket, msg) ->
+        push(socket, event, Map.put(msg, :students_onboard, students))
+        {:noreply, socket}
+
+      true ->
+        {:noreply, socket}
+    end
+  end
 end

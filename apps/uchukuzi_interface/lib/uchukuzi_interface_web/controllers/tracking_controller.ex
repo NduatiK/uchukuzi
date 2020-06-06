@@ -28,11 +28,11 @@ defmodule UchukuziInterfaceWeb.TrackingController do
         for report <- reports do
           Tracking.move(bus, report)
 
-          #   :timer.sleep(10)
+            :timer.sleep(5)
 
-          #   bus
-          #   |> Tracking.status_of()
-          #   |> broadcast_location_update(bus, bus.school_id)
+            bus
+            |> Tracking.status_of()
+            |> broadcast_location_update(bus, bus.school_id)
         end
 
         bus
@@ -63,10 +63,13 @@ defmodule UchukuziInterfaceWeb.TrackingController do
   def broadcast_location_update(report, bus, school_id) do
     bus_id = bus.id
 
+    students_onboard = Tracking.students_onboard(bus)
+
     output =
       report
       |> UchukuziInterfaceWeb.TrackingView.render_report()
       |> Map.put(:bus, bus_id)
+      |> Map.put(:students_onboard, students_onboard)
 
     UchukuziInterfaceWeb.Endpoint.broadcast("school:#{school_id}", "bus_moved", output)
 

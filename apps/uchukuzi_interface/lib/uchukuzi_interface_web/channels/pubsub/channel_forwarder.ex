@@ -12,17 +12,54 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
   end
 
   def init(state) do
-    PubSub.subscribe(self(), :eta_prediction_update)
+    PubSub.subscribe(self(), :trip_started)
+
     PubSub.subscribe(self(), :trip_update)
+    PubSub.subscribe(self(), :approaching_tile)
+    PubSub.subscribe(self(), :eta_prediction_update)
+
+    PubSub.subscribe(self(), :trip_ended)
 
     {:ok, state}
   end
 
-  def handle_info({:eta_prediction_update, _tracker_pid, nil, _eta_sequence} = _event, state) do
+  def handle_info({:trip_started, route_id, students_onboard} = _event, state) do
+    UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_event(route_id, %{
+      event: "left_school",
+      students_onboard: students_onboard
+    })
+
     {:noreply, state}
   end
 
-  def handle_info({:eta_prediction_update, _tracker_pid, route_id, eta_sequence} = _event, state) do
+  def handle_info({:approaching_tile, route_id, tile, travel_time, students_onboard}, state)
+      when travel_time in ["morning", "evening"] do
+    tile_hash =
+      case tile do
+        %Location{} = loc ->
+          Uchukuzi.World.ETA.coordinate_hash(loc)
+
+        loc ->
+          loc
+      end
+
+    UchukuziInterfaceWeb.CustomerSocket.PredictionsChannel.send_event(
+      route_id,
+      tile_hash,
+      %{
+        event: "approaching_" <> travel_time,
+        students_onboard: students_onboard
+      }
+    )
+
+    {:noreply, state}
+  end
+
+  def handle_info({:eta_prediction_update, nil, _eta_sequence} = _event, state) do
+    {:noreply, state}
+  end
+
+  def handle_info({:eta_prediction_update, route_id, eta_sequence} = _event, state) do
     eta_sequence
     |> Enum.map(fn
       {%Location{} = loc, time} ->
@@ -31,6 +68,7 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
       {loc, time} when is_binary(loc) ->
         {loc, time}
     end)
+    |> IO.inspect()
     |> Enum.map(fn {tile_hash, eta} ->
       UchukuziInterfaceWeb.CustomerSocket.PredictionsChannel.send_prediction(
         route_id,
@@ -42,8 +80,21 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
     {:noreply, state}
   end
 
-  def handle_info({:trip_update, _tracker_pid, bus_id, update} = _event, state) do
+  def handle_info({:trip_update, bus_id, update} = _event, state) do
     UchukuziInterfaceWeb.TripChannel.send_trip_update(bus_id, update)
+    {:noreply, state}
+  end
+
+  def handle_info({:trip_ended, route_id, students_onboard} = _event, state) do
+    UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_event(route_id, %{
+      event: "arrived_at_school",
+      students_onboard: students_onboard
+    })
+
+    {:noreply, state}
+  end
+
+  def handle_info(_, state) do
     {:noreply, state}
   end
 end

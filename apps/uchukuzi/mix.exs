@@ -54,6 +54,9 @@ defmodule Uchukuzi.MixProject do
       {:ecto_sql, "~> 3.0"},
       {:postgrex, ">= 0.0.0"},
 
+      # ----- Profiling --------
+      {:exprof, "~> 0.2.0"},
+
       # ----- DOCS --------
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]

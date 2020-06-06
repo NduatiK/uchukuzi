@@ -50,4 +50,37 @@ defmodule UchukuziInterfaceWeb.CustomerSocket.PredictionsChannel do
       data
     )
   end
+
+  # * ------
+
+  def send_event(route_id, tile_hash, event) do
+    UchukuziInterfaceWeb.Endpoint.broadcast(
+      "predictions:" <> Integer.to_string(route_id) <> ":" <> tile_hash,
+      "approaching",
+      event
+    )
+  end
+
+  intercept ["approaching", "update"]
+
+  defp authorized_to_receive?(socket, msg) do
+    case socket.assigns.student_ids
+         |> Enum.filter(fn id ->
+           Enum.member?(msg.students_onboard, id)
+         end) do
+      [] -> nil
+      students -> students
+    end
+  end
+
+  def handle_out(event, msg, socket) do
+    cond do
+      students = authorized_to_receive?(socket, msg) ->
+        push(socket, event, Map.put(msg, :students_onboard, students))
+        {:noreply, socket}
+
+      true ->
+        {:noreply, socket}
+    end
+  end
 end

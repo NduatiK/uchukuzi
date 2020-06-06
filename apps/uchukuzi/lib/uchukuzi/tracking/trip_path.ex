@@ -7,6 +7,7 @@ defmodule Uchukuzi.Tracking.TripPath do
   defstruct [
     # Tiles we predict on
     :anticipated_tile_locs,
+    :deviation_radius,
     # Tiles crossed
     consumed_tile_locs: [],
     eta: %{},
@@ -14,21 +15,24 @@ defmodule Uchukuzi.Tracking.TripPath do
     deviation_positions: []
   ]
 
-  def new(nil) do
+  def new(nil, deviation_radius) do
     %TripPath{
-      anticipated_tile_locs: nil
+      anticipated_tile_locs: nil,
+      deviation_radius: deviation_radius
     }
   end
 
-  def new(anticipated_tile_locs) do
+  def new(anticipated_tile_locs, deviation_radius) do
     %TripPath{
       anticipated_tile_locs:
-        anticipated_tile_locs
-        |> Enum.reverse()
+        anticipated_tile_locs,
+      deviation_radius: deviation_radius
     }
   end
 
   def crossed_tiles(%TripPath{} = path, tile_locs) do
+
+
     case {path.consumed_tile_locs, tile_locs} do
       #  If the tiles overlap, ignore the first new tile
       {[h | _], [h | tail]} ->
@@ -47,6 +51,7 @@ defmodule Uchukuzi.Tracking.TripPath do
     |> set_needs_update()
   end
 
+  @spec set_needs_update(Uchukuzi.Tracking.TripPath.t()) :: Uchukuzi.Tracking.TripPath.t()
   def set_needs_update(%TripPath{} = path) do
     %{path | needs_prediction_update: true}
   end
@@ -58,14 +63,15 @@ defmodule Uchukuzi.Tracking.TripPath do
     path
   end
 
-  def update_predictions(%TripPath{needs_prediction_update: false} = path, _) do
-    path
-  end
-
-  def update_predictions(%TripPath{} = path, date) do
+  def update_predictions(%TripPath{needs_prediction_update: true} = path, date) do
     if date != nil do
+
+
       {_final_arrival_time, predictions} =
-        ETA.predict_on_sequence_of_tiles(path.anticipated_tile_locs, date)
+        path.anticipated_tile_locs
+        |> ETA.predict_on_sequence_of_tiles(date)
+
+
 
       %{
         path
@@ -73,6 +79,10 @@ defmodule Uchukuzi.Tracking.TripPath do
           needs_prediction_update: false
       }
     end
+  end
+
+  def update_predictions(%TripPath{} = path, _) do
+    path
   end
 
   def entered_tile(%TripPath{anticipated_tile_locs: nil} = path, %Location{} = tile) do
@@ -125,8 +135,7 @@ defmodule Uchukuzi.Tracking.TripPath do
               # Else anticipate the match and the cells after the match
               {:ok,
                path.anticipated_tile_locs
-               |> Enum.drop_while(fn x -> x != match end)
-              }
+               |> Enum.drop_while(fn x -> x != match end)}
           end
       end
     else

@@ -3,10 +3,8 @@ defmodule UchukuziInterfaceWeb.CustomerSocket do
 
   alias UchukuziInterfaceWeb.AuthPlugs.HouseholdAuth
 
-
   channel "predictions:*", UchukuziInterfaceWeb.CustomerSocket.PredictionsChannel
   channel "bus_location:*", UchukuziInterfaceWeb.CustomerSocket.BusChannel
-
 
   def connect(params, socket, _connect_info) do
     with {:ok, %{"role" => role, "id" => user_id, "type" => "bearer"}} <-
@@ -23,13 +21,19 @@ defmodule UchukuziInterfaceWeb.CustomerSocket do
              customer.students
              |> Enum.map(fn s -> s.route_id end)
              |> Enum.uniq()
+           )
+           |> assign(
+             :student_ids,
+             customer.students
+             |> Enum.map(fn s -> s.id end)
            )}
 
         customer = role == "student" && user_id && Uchukuzi.Roles.get_student_by(id: user_id) ->
           {:ok,
            socket
            |> assign(:customer, customer)
-           |> assign(:allowed_routes, [customer.route_id])}
+           |> assign(:allowed_routes, [customer.route_id])
+           |> assign(:student_ids, [customer.id])}
 
         true ->
           :error

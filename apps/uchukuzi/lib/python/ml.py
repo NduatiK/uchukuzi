@@ -24,6 +24,13 @@ def learn(name, data):
     # standard deviations from the mean
     data = data[((data[1] - data[1].mean()) / data[1].std()).abs() < 3]
 
+    try:
+        import os
+        os.mkdir(models_dir)
+    except:
+        pass
+
+    
     if data.size < 10:
         # if we have insufficient data to make it
         # worthwhile to build a model, then calulate
@@ -44,11 +51,6 @@ def learn(name, data):
 
         svr = svr.fit(X, y.ravel())
 
-        try:
-            import os
-            os.mkdir(models_dir)
-        except:
-            pass
 
         dump((sc_X, sc_y, svr), open(model_name(name), 'wb'))
 

@@ -6,7 +6,7 @@ config :uchukuzi,
 config :uchukuzi, Uchukuzi.Scheduler,
   jobs: [
     # {"* * * * *", {Uchukuzi.ETA, :rebuild_models, []}}
-    {"@daily", {Uchukuzi.ETA, :rebuild_models, []}}
+    {"@daily", {Uchukuzi.World.ETA, :rebuild_models, []}}
   ]
 
 
