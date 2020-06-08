@@ -11,7 +11,10 @@ models_dir = "./models"
 
 
 def model_name(name):
-    return '{}/{}.pkl'.format(models_dir, name)
+    return '{}/{}.pkl' \
+        .format(models_dir, name) \
+        .replace("b'", "") \
+        .replace("'", "")
 
 
 def learn(name, data):
@@ -22,20 +25,23 @@ def learn(name, data):
     # Remove outliers
     # - Outliers are records that are more than 3
     # standard deviations from the mean
-    data = data[((data[1] - data[1].mean()) / data[1].std()).abs() < 3]
+    if data[1].std() != 0 and data[1].size > 0:
+        data = data[((data[1] - data[1].mean()) / data[1].std()).abs() < 3]
 
+ 
     try:
         import os
         os.mkdir(models_dir)
     except:
         pass
 
-    
-    if data.size < 10:
+    if data[1].size < 10 and data[1].size > 0:
         # if we have insufficient data to make it
         # worthwhile to build a model, then calulate
         # the average and store that
         dump(("ave", data[1].mean()), open(model_name(name), 'wb'))
+    elif data[1].size == 0:
+        pass
     else:
         # otherwise scale the data,
         # build a support vector regressor
@@ -50,7 +56,6 @@ def learn(name, data):
         svr = SVR(kernel='rbf', C=100, gamma=0.1, epsilon=.1)
 
         svr = svr.fit(X, y.ravel())
-
 
         dump((sc_X, sc_y, svr), open(model_name(name), 'wb'))
 
@@ -77,3 +82,10 @@ def predict(name, time):
         scaled_prediction = svr.predict(time)
         prediction = sc_y.inverse_transform(scaled_prediction)
         return float(prediction[0])
+
+
+# def predict_print(name, time):
+#     print(predict(name, time))
+
+# def predict_learn(name, data):
+#     print(learn(name, data))

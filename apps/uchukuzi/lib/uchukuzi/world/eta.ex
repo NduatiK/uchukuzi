@@ -12,7 +12,7 @@ defmodule Uchukuzi.World.ETA do
   def dateToHourValue(date),
     do: date.hour + date.minute / 60
 
-  def insert(_, _, cross_time) when cross_time > 2400 do
+  def insert(_, _, cross_time) when cross_time > 1200 do
   end
 
   def insert(tile, %DateTime{} = date, cross_time) do
@@ -73,41 +73,53 @@ defmodule Uchukuzi.World.ETA do
     sequence
     |> Enum.with_index()
     |> Enum.reduce({hour_value, []}, fn {tile, index}, {hour_value, acc} ->
-      [prediction] = predict_cross_time(tile, hour_value)
-
-      prediction = adjust_by_index(prediction, index)
-
-      hour_value = hour_value + prediction / 3600 + 24
+      [prediction_in_seconds] = predict_cross_time(tile, hour_value)
 
       hour_value =
-        cond do
-          hour_value >= 24 ->
-            hour_value - 24
+        (hour_value + prediction_in_seconds / 3600)
+        |> cleanse_hour_value()
 
-          hour_value < 0 ->
-            hour_value + 24
+      # IO.inspect(coordinate_hash(tile), label: "name")
 
-          true ->
-            hour_value
-        end
+      error_compensated_hour_value =
+        hour_value
+        |> adjust_by_index(index)
+        |> cleanse_hour_value()
 
-      {hour_value, [{tile, hour_value} | acc]}
+      {hour_value, [{tile, error_compensated_hour_value} | acc]}
     end)
   end
 
-  def adjust_by_index(prediction, x) do
-    # prediction - (10.15 + 0.52 * x + 0.0034 * x * x)
+  def cleanse_hour_value(hour_value) do
+    cond do
+      hour_value >= 24 ->
+        hour_value - 24
 
-    a0 = 0.2731
-    a1 = 2.4603
-    a2 = -0.0934
-    a3 = 0.0016
-    y = a0 + a1 * x + a2 * :math.pow(x, 2) + a3 * :math.pow(x, 3)
+      hour_value < 0 ->
+        hour_value + 24
 
-    prediction - y * 2.5
+      true ->
+        hour_value
+    end
+  end
 
-    # a = 1.27
-    # b = -2.1
-    # prediction - (a * index + b)
+  def adjust_by_index(hour_value, x) do
+    # a = 0.5805
+    # b = -0.0467
+
+    # a = 1.1918
+    # b = 0.4747
+
+    a = 1.4066
+    b = -0.5105
+
+    y = (a * x + b) / 60
+    # y = (a * x * x / 4 + a * x + b) / 60
+
+    # IO.inspect(y, label: "y")
+    # IO.inspect(x, label: "x")
+    # IO.inspect(hour_value - y, label: "hour_value")
+    hour_value - y
+    # hour_value
   end
 end

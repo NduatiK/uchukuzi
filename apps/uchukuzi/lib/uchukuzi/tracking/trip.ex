@@ -166,5 +166,8 @@ defmodule Uchukuzi.Tracking.Trip do
         students |> MapSet.delete(activity.student_id)
       end
     end)
+    |> MapSet.to_list()
+
+    [1]
   end
 end

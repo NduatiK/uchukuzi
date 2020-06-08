@@ -10,7 +10,7 @@ defmodule Uchukuzi.Tracking.TripPath do
     :deviation_radius,
     # Tiles crossed
     consumed_tile_locs: [],
-    eta: %{},
+    eta: [],
     needs_prediction_update: false,
     deviation_positions: []
   ]
@@ -22,6 +22,7 @@ defmodule Uchukuzi.Tracking.TripPath do
     }
   end
 
+
   def new(anticipated_tile_locs, deviation_radius) do
     %TripPath{
       anticipated_tile_locs:
@@ -31,8 +32,6 @@ defmodule Uchukuzi.Tracking.TripPath do
   end
 
   def crossed_tiles(%TripPath{} = path, tile_locs) do
-
-
     case {path.consumed_tile_locs, tile_locs} do
       #  If the tiles overlap, ignore the first new tile
       {[h | _], [h | tail]} ->
@@ -65,17 +64,13 @@ defmodule Uchukuzi.Tracking.TripPath do
 
   def update_predictions(%TripPath{needs_prediction_update: true} = path, date) do
     if date != nil do
-
-
       {_final_arrival_time, predictions} =
         path.anticipated_tile_locs
         |> ETA.predict_on_sequence_of_tiles(date)
 
-
-
       %{
         path
-        | eta: predictions,
+        | eta: predictions |> Enum.reverse(),
           needs_prediction_update: false
       }
     end

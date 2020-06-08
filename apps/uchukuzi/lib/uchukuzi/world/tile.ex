@@ -2,8 +2,8 @@ defmodule Uchukuzi.World.Tile do
   # ~ 555m
   # @default_tile_size_metres 111_111 / 100 / 2
   # @default_tile_size @default_tile_size_metres / 111_111
-  @default_tile_size_metres 111_111 / 100 / 2
-  @default_tile_size 0.005
+  @default_tile_size_metres 111_111 / 100 / 2 / 2
+  @default_tile_size 0.0025
 
   @moduledoc """
   A square on the world's geographical
@@ -39,18 +39,7 @@ defmodule Uchukuzi.World.Tile do
   defstruct [:coordinate, :opposite_coordinate, :polygon]
 
   defp get_size(size) do
-    cond do
-      size != nil ->
-        size
-
-      true ->
-        with {:ok, size} <- Application.fetch_env(:uchukuzi, :default_tile_size) do
-          size
-        else
-          _ ->
-            @default_tile_size
-        end
-    end
+    @default_tile_size
   end
 
   def new(%Location{} = location, size \\ nil) do
@@ -116,7 +105,7 @@ defmodule Uchukuzi.World.Tile do
   end
 
   def rounded(%Location{lat: lat, lng: lng}) do
-    %Location{lat: Float.round(lat, 3), lng: Float.round(lng, 3)}
+    %Location{lat: Float.round(lat, 4), lng: Float.round(lng, 4)}
   end
 
   @doc """

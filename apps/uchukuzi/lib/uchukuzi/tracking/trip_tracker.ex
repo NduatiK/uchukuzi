@@ -1,6 +1,4 @@
 defmodule Uchukuzi.Tracking.TripTracker do
-  import ExProf.Macro
-
   use GenServer, restart: :transient
 
   @moduledoc """
@@ -195,15 +193,15 @@ defmodule Uchukuzi.Tracking.TripTracker do
         etas =
           if data.trip.travel_time == "evening" do
             trip_path.eta
-            |> keep_first.()
+            # |> keep_first.()
           else
             trip_path.eta
-            |> keep_last.()
+            # |> keep_last.()
           end
 
         PubSub.publish(
           :eta_prediction_update,
-          {:eta_prediction_update, data.route_id, etas}
+          {:eta_prediction_update, data.route_id, etas, Trip.students_onboard(data.trip)}
         )
 
         %{trip_path | eta: etas}
@@ -227,7 +225,8 @@ defmodule Uchukuzi.Tracking.TripTracker do
         [{new_next_tile, _eta} | _] ->
           PubSub.publish(
             :approaching_tile,
-            {:approaching_tile, data.route_id, new_next_tile,data.trip.travel_time Trip.students_onboard(data.trip)}
+            {:approaching_tile, data.route_id, new_next_tile, data.trip.travel_time,
+             Trip.students_onboard(data.trip)}
           )
 
           %{data | last_notified_tile: new_next_tile}
@@ -284,7 +283,10 @@ defmodule Uchukuzi.Tracking.TripTracker do
 
     trip_path =
       if not is_nil(expected_tiles) do
+        school_tile = Tile.new(data.school.perimeter.center).coordinate
+
         expected_tiles
+        |> Enum.filter(&(&1 != school_tile))
         |> TripPath.new(deviation_radius)
         |> TripPath.update_predictions(report)
       else

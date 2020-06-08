@@ -33,7 +33,11 @@ defmodule Uchukuzi.World.ETA.PredictionWorker do
   end
 
   @impl true
-  def handle_call({coordinate, hour_value}, _from, state) do
+  def handle_call({%Uchukuzi.Common.Location{} = coordinate, hour_value}, _from, state) do
+
+    # coordinate
+    # |> IO.inspect()
+
     result =
       state.py
       |> Python.call(@python_module, @python_method, [ETA.coordinate_hash(coordinate), hour_value])
@@ -41,6 +45,13 @@ defmodule Uchukuzi.World.ETA.PredictionWorker do
     {:reply, [result], state}
   end
 
+  def handle_call({hash, hour_value}, _from, state) do
+    result =
+      state.py
+      |> Python.call(@python_module, @python_method, [hash, hour_value])
+
+    {:reply, [result], state}
+  end
 
   def predict(coordinate, hour_value) do
     :poolboy.transaction(
