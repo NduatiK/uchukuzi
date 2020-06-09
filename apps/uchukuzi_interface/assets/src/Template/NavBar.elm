@@ -13,6 +13,7 @@ import Element.Region as Region
 import Html.Events as HEvents
 import Icons
 import Json.Decode as Json exposing (Value)
+import Models.Notification exposing (Notification)
 import Navigation exposing (Route)
 import Session
 import Style exposing (edges)
@@ -106,19 +107,27 @@ update msg model session =
             )
 
         Logout ->
-            ( model
+            ( Model
+                { internalData
+                    | accountDropdownVisible = False
+                    , notificationsVisible = False
+                }
             , Cmd.batch
                 [ Api.logout
                 ]
             )
 
         OpenSettings ->
-            ( model
+            ( Model
+                { internalData
+                    | accountDropdownVisible = False
+                    , notificationsVisible = False
+                }
             , Navigation.rerouteTo { session = session } Navigation.Settings
             )
 
 
-view : Model -> Session.Session -> Maybe Route -> List NotificationView.Notification -> Element Msg
+view : Model -> Session.Session -> Maybe Route -> List Notification -> Element Msg
 view model session route notifications =
     let
         viewFlotillaLogo : Element Msg
@@ -198,7 +207,7 @@ viewGuestHeader route =
         loginOptions
 
 
-viewLoggedInHeader : Model -> Session.Cred -> List NotificationView.Notification -> Element Msg
+viewLoggedInHeader : Model -> Session.Cred -> List Notification -> Element Msg
 viewLoggedInHeader model creds notifications =
     let
         { accountDropdownVisible, notificationsVisible } =
@@ -222,7 +231,7 @@ viewLoggedInHeader model creds notifications =
 
         elementBelow =
             if accountDropdownVisible then
-                viewDropDownList []
+                viewDropDownList [ onClickWithoutPropagation NoOp ]
                     [ paragraph [ paddingXY 15 15, Font.size 14 ]
                         [ el [] (text "Signed in as ")
                         , el [ Font.bold ] (text creds.name)
@@ -232,17 +241,18 @@ viewLoggedInHeader model creds notifications =
                     ]
 
             else if notificationsVisible then
-                viewDropDownList [ width (fill |> maximum 300) ]
+                viewDropDownList
+                    [ width (fill |> maximum 300)
+                    , onClickWithoutPropagation NoOp
+                    ]
                     [ el
                         [ paddingXY 15 15
                         , width fill
                         , Font.bold
                         , Font.size 14
-
-                        -- , Background.color Colors.sassyGreyDark
                         ]
                         (text "Notifications")
-                    , dropdownOption Icons.settings "Logout" (Just Logout)
+                    , NotificationView.view notifications
                     ]
 
             else
@@ -260,19 +270,12 @@ viewLoggedInHeader model creds notifications =
         ]
         [ el
             [ alignRight
-            , htmlAttribute
-                (HEvents.stopPropagationOn "click"
-                    (Json.succeed ( ToggleNotificationsDropDown, True ))
-                )
+            , onClickWithoutPropagation ToggleNotificationsDropDown
             ]
             (NotificationView.icon notifications NoOp)
         , el [ width (px 12) ] none
         , viewProfileIcon
-            (htmlAttribute
-                (HEvents.stopPropagationOn "click"
-                    (Json.succeed ( ToggleAccountDropDown, True ))
-                )
-            )
+            (onClickWithoutPropagation ToggleAccountDropDown)
         , el [ width (px 16) ] none
         ]
 
@@ -407,3 +410,10 @@ isVisible (Model model) =
 
 hideNavBar =
     HideDropDown
+
+
+onClickWithoutPropagation msg =
+    htmlAttribute
+        (HEvents.stopPropagationOn "click"
+            (Json.succeed ( msg, True ))
+        )

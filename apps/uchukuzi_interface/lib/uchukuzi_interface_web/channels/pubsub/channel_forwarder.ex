@@ -20,8 +20,14 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
 
     PubSub.subscribe(self(), :trip_ended)
 
-    {:ok, state}
+    {:ok, file} = File.open("./logs/eta.log", [:append, :utf8])
+
+    {:ok,
+     %{
+       log_file: file
+     }}
   end
+
 
   def handle_info({:trip_started, route_id, students_onboard} = _event, state) do
     UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_event(route_id, %{
@@ -32,8 +38,7 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
     {:noreply, state}
   end
 
-  def handle_info({:approaching_tile, route_id, tile, travel_time, students_onboard}, state)
-      when travel_time in ["morning", "evening"] do
+  def handle_info({:approaching_tile, route_id, tile, travel_time, students_onboard}, state) do
     tile_hash =
       case tile do
         %Location{} = loc ->
@@ -43,6 +48,13 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
           loc
       end
 
+    travel_time =
+      if travel_time == "evening" do
+        travel_time
+      else
+        "morning"
+      end
+
     UchukuziInterfaceWeb.CustomerSocket.PredictionsChannel.send_event(
       route_id,
       tile_hash,
@@ -50,16 +62,24 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
         event: "approaching_" <> travel_time,
         students_onboard: students_onboard
       }
+      # |> IO.inspect()
     )
 
     {:noreply, state}
   end
 
-  def handle_info({:eta_prediction_update, nil, _eta_sequence} = _event, state) do
+  def handle_info({:eta_prediction_update, _, _eta_sequence, []} = _event, state) do
     {:noreply, state}
   end
 
-  def handle_info({:eta_prediction_update, route_id, eta_sequence} = _event, state) do
+  def handle_info({:eta_prediction_update, nil, _eta_sequence, _} = _event, state) do
+    {:noreply, state}
+  end
+
+  def handle_info(
+        {:eta_prediction_update, route_id, eta_sequence, students_onboard} = _event,
+        state
+      ) do
     eta_sequence
     |> Enum.map(fn
       {%Location{} = loc, time} ->
@@ -68,12 +88,24 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
       {loc, time} when is_binary(loc) ->
         {loc, time}
     end)
-    |> IO.inspect()
+    |> (fn etas ->
+          IO.write(
+            state.log_file,
+            "\n" <>
+              (inspect(etas, pretty: true, limit: :infinity)
+               |> String.replace("{", "(")
+               |> String.replace("}", ")")) <>
+              ","
+          )
+
+          etas
+          # |> IO.inspect()
+        end).()
     |> Enum.map(fn {tile_hash, eta} ->
       UchukuziInterfaceWeb.CustomerSocket.PredictionsChannel.send_prediction(
         route_id,
         tile_hash,
-        %{eta: eta + 0.0}
+        %{eta: eta + 0.0, students_onboard: students_onboard}
       )
     end)
 

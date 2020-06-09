@@ -14,6 +14,7 @@ import Json.Decode.Pipeline exposing (optional, requiredAt)
 import Json.Encode as Encode
 import Layout exposing (..)
 import Models.Bus exposing (LocationUpdate)
+import Models.Notification exposing (Notification)
 import Navigation exposing (Route)
 import Pages.Activate as Activate
 import Pages.Blank
@@ -50,7 +51,6 @@ import Template.SideBar as SideBar
 import Template.TabBar as TabBar
 import Time
 import Url
-import Views.NotificationView exposing (Notification)
 
 
 

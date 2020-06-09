@@ -99,27 +99,35 @@ newCreateRouteForm trip =
 
 init : Int -> Session -> ( Model, Cmd Msg )
 init busID session =
-    ( { busID = busID
-      , sliderValue = 0
-      , mapVisuals =
-            { showDeviations = True
-            , showGeofence = False
-            , showStops = False
+    let
+        model =
+            { busID = busID
+            , sliderValue = 0
+            , mapVisuals =
+                { showDeviations = True
+                , showGeofence = False
+                , showStops = False
+                }
+            , historicalTrips = RemoteData.NotAsked
+            , showingOngoingTrip = True
+            , groupedTrips = []
+            , selectedGroup = Nothing
+            , selectedTrip = Nothing
+            , session = session
+            , loadedTrips = Dict.fromList []
+            , loadingTrip = NotAsked
+            , requestedTrip = Nothing
+            , ongoingTrip = RemoteData.Loading
+            , createRouteForm = Nothing
             }
-      , historicalTrips = RemoteData.NotAsked
-      , showingOngoingTrip = True
-      , groupedTrips = []
-      , selectedGroup = Nothing
-      , selectedTrip = Nothing
-      , session = session
-      , loadedTrips = Dict.fromList []
-      , loadingTrip = NotAsked
-      , requestedTrip = Nothing
-      , ongoingTrip = RemoteData.Loading
-      , createRouteForm = Nothing
-      }
+    in
+    ( model
     , Cmd.batch
-        [ fetchOngoingTripForBus session busID
+        [ if model.showingOngoingTrip then
+            fetchOngoingTripForBus session busID
+
+          else
+            fetchHistoricalTripsForBus model.session model.busID
         ]
     )
 
@@ -200,20 +208,20 @@ update msg model =
                         [ Ports.selectPoint
                             { location = report.location
                             , bearing =
-                                (if model.showingOngoingTrip then
+                                if model.showingOngoingTrip then
                                     report.bearing
                                     -- |> round
                                     -- |> (\x -> x - 180)
                                     -- |> modBy 360
                                     -- |> toFloat
 
-                                 else
+                                else
                                     report.bearing
-                                 -- |> round
-                                 -- |> (\x -> x - 180)
-                                 -- |> modBy 360
-                                 -- |> toFloat
-                                )
+
+                            -- |> round
+                            -- |> (\x -> x - 180)
+                            -- |> modBy 360
+                            -- |> toFloat
                             }
                         , case model.selectedTrip of
                             Nothing ->

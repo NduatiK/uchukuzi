@@ -8,6 +8,7 @@ module Layout exposing
 import Element exposing (..)
 import Html.Attributes exposing (id)
 import Icons
+import Models.Notification exposing (Notification)
 import Navigation exposing (Route)
 import Session
 import Style exposing (edges)
@@ -41,7 +42,7 @@ frame :
     -> Session.Session
     -> (a -> msg)
     -> NavBar.Model
-    -> List NotificationView.Notification
+    -> List Notification
     -> (NavBar.Msg -> msg)
     -> SideBar.Model
     -> (SideBar.Msg -> msg)

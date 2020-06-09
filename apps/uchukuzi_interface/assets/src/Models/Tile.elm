@@ -29,13 +29,8 @@ tileAt location =
 -- see apps/uchukuzi/lib/uchukuzi/world/tile.ex
 
 
-default_tile_size_metres : Float
-default_tile_size_metres =
-    111111 / 100 / 2
-
-
 size =
-    default_tile_size_metres / 111111
+    0.0025
 
 
 originOfTile location =

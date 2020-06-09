@@ -31,3 +31,7 @@ apps/uchukuzi_interface/priv/static/css/app.css
 apps/uchukuzi_interface/priv/static/css/app.js 
 .vscode/settings.json
 models/
+exports/
+logs/
+trip_data_archive/
+trip_data_testing/

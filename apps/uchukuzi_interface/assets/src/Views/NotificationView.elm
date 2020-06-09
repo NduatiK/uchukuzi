@@ -1,32 +1,17 @@
 module Views.NotificationView exposing
-    ( Notification
-    , icon
+    ( icon
     , view
     )
 
-import Browser.Events
 import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
-import Element.Region as Region
-import Html.Attributes exposing (style)
-import Html.Events exposing (on)
 import Icons
-import Json.Decode as Json
-import Navigation exposing (Route)
-import Style exposing (edges)
+import Models.Notification exposing (Notification)
+import Style
 import StyledElement
-import Time
-
-
-type alias Notification =
-    { time : Time.Posix
-    , notificationType : String
-    , content : String
-    }
 
 
 icon : List Notification -> msg -> Element msg
@@ -46,6 +31,11 @@ icon notifications onPress =
             [ Border.rounded 24
             , alpha 1
             , Colors.fillDarkness
+            , if notifications == [] then
+                Style.class ""
+
+              else
+                Style.class "shakingBell"
             , inFront
                 (if notifications == [] then
                     none
@@ -67,23 +57,65 @@ icon notifications onPress =
         }
 
 
-view : List String -> Element msg
-view notifications =
-    el ([ alignTop, alignRight, padding 30, Style.clickThrough ] ++ Style.labelStyle)
-        (el
-            [ Style.nonClickThrough
-            , Background.color Colors.backgroundPurple
-            , Border.color Colors.semiDarkText
-            , Border.width 1
-            , Border.rounded 5
-            , padding 13
-            , Style.elevated2
-            , width (px 300)
+view : List Notification -> Element msg
+view notifications_ =
+    let
+        notifications =
+            [ { notificationType = "String"
+              , content =
+                    """ 
+                Icons.notificationsEmpty [ width (px 100), height (px 100), centerX, alpha 1, Colors.fillDarkness ]
+                , el [ centerX ] (text "Nothing to see here")
+                """
+              , title = "String"
+              , seen = True
+              }
             ]
-            -- none
-            (row [ spacing 10 ]
-                [ Icons.info [ Colors.fillDarkness, alpha 1 ]
-                , text "KAU361 has left the school"
+    in
+    if notifications == [] then
+        el [ padding 30, width fill, height (px 300) ]
+            (column [ centerX, height fill, spacing 16 ]
+                [ el [ height (px 30) ] none
+                , Icons.notificationsEmpty [ width (px 100), height (fill |> minimum 100), centerX, alpha 1, Colors.fillDarkness ]
+                , el [ centerX ] (text "Nothing to see here")
                 ]
             )
-        )
+
+    else
+        column [ width fill ]
+            (List.map viewMessage notifications)
+
+
+viewMessage notification =
+    row
+        [ width fill
+        , height (fill |> minimum 70)
+        , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.24 }
+        , padding 16
+        , if notification.seen then
+            Background.color Colors.backgroundGray
+
+          else
+            Background.color Colors.white
+        ]
+        [ el
+            [ Border.rounded 8
+            , width (px 8)
+            , height (px 8)
+            , if notification.seen then
+                Background.color Colors.sassyGrey
+
+              else
+                Background.color Colors.purple
+            ]
+            none
+        , el [ width (px 16) ] none
+        , column [ width fill ]
+            [ paragraph [ width fill, padding 0 ]
+                [ el [ width fill, Font.bold, Font.size 16 ] (text notification.title)
+                ]
+            , paragraph [ width fill ]
+                [ el (width fill :: Style.captionStyle) (text notification.content)
+                ]
+            ]
+        ]
