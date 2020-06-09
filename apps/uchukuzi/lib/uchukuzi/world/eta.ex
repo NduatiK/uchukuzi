@@ -113,13 +113,18 @@ defmodule Uchukuzi.World.ETA do
     a = 1.4066
     b = -0.5105
 
-    y = (a * x + b) / 60
+    y = a * x + b
     # y = (a * x * x / 4 + a * x + b) / 60
+    a0 = 0.1166
+    a1 = 1.5381
+    a2 = -0.0066
+    a3 = 5.8506e-5
+    y = a0 + a1 * x + a2 * :math.pow(x, 2) + a3 * :math.pow(x, 3)
 
     # IO.inspect(y, label: "y")
     # IO.inspect(x, label: "x")
     # IO.inspect(hour_value - y, label: "hour_value")
-    hour_value - y
+    hour_value - y / 60
     # hour_value
   end
 end
