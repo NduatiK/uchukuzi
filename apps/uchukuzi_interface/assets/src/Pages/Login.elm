@@ -18,6 +18,7 @@ import RemoteData exposing (..)
 import Session exposing (Session)
 import Style
 import StyledElement
+import StyledElement.WebDataView as WebDataView
 
 
 
@@ -27,7 +28,6 @@ import StyledElement
 type alias Model =
     { session : Session
     , form : Form
-    , error : Maybe String
     , message : Maybe String
     , status : WebData SuccessfulLogin
     }
@@ -52,7 +52,6 @@ init session redirect =
     in
     ( { session = session
       , form = { email = "", password = "" }
-      , error = Nothing
       , message = message
       , status = NotAsked
       }
@@ -86,40 +85,26 @@ update msg model =
             ( { model | form = { form | email = email } }, Cmd.none )
 
         SubmitForm ->
-            ( { model | error = Nothing, status = Loading }, login model.session form )
+            ( { model | status = Loading }, login model.session form )
 
         ReceivedLoginResponse requestStatus ->
-            let
-                updatedModel =
-                    { model | status = requestStatus }
-            in
-            updateStatus updatedModel requestStatus
+            case requestStatus of
+                Success data ->
+                    ( { model
+                        | status = requestStatus
+                        , session = Session.withCredentials model.session (Just data.creds)
+                      }
+                    , Cmd.batch
+                        [ Api.storeCredentials data.creds
+                        , Models.Location.storeSchoolLocation data.location
+                        , Navigation.rerouteTo model Navigation.Buses
+                        ]
+                    )
 
-
-updateStatus : Model -> WebData SuccessfulLogin -> ( Model, Cmd Msg )
-updateStatus model msg =
-    case msg of
-        Loading ->
-            ( model, Cmd.none )
-
-        Failure error ->
-            let
-                ( apiError, _ ) =
-                    Errors.decodeErrors error
-            in
-            ( { model | error = Just (Errors.errorToString apiError) }, Cmd.none )
-
-        NotAsked ->
-            ( model, Cmd.none )
-
-        Success data ->
-            ( { model | session = Session.withCredentials model.session (Just data.creds) }
-            , Cmd.batch
-                [ Api.storeCredentials data.creds
-                , Models.Location.storeSchoolLocation data.location
-                , Navigation.rerouteTo model Navigation.Buses
-                ]
-            )
+                _ ->
+                    ( { model | status = requestStatus }
+                    , Cmd.none
+                    )
 
 
 view : Model -> Element Msg
@@ -127,6 +112,13 @@ view model =
     let
         spacer =
             el [] none
+
+        errorCaption =
+            if RemoteData.isFailure model.status then
+                Just (Errors.InputError "" [])
+
+            else
+                Nothing
     in
     column [ centerX, centerY, width (fill |> maximum 500), spacing 10, paddingXY 30 0 ]
         [ el (alignLeft :: Style.headerStyle)
@@ -142,7 +134,7 @@ view model =
         , StyledElement.textInput [ centerX ]
             { title = "Email"
             , caption = Nothing
-            , errorCaption = Nothing
+            , errorCaption = errorCaption
             , value = model.form.email
             , onChange = UpdatedEmail
             , placeholder = Nothing
@@ -153,7 +145,7 @@ view model =
         , StyledElement.passwordInput [ centerX ]
             { title = "Password"
             , caption = Nothing
-            , errorCaption = Nothing
+            , errorCaption = errorCaption
             , value = model.form.password
             , onChange = UpdatedPassword
             , placeholder = Nothing
@@ -161,7 +153,7 @@ view model =
             , icon = Nothing
             , newPassword = False
             }
-        , viewError model.error
+        , viewError model.status
         , spacer
         , viewButton model
         , viewDivider
@@ -170,16 +162,18 @@ view model =
         ]
 
 
-viewError : Maybe String -> Element Msg
-viewError error =
-    case error of
-        Nothing ->
-            none
+viewError : WebData SuccessfulLogin -> Element Msg
+viewError status =
+    case status of
+        Failure error ->
+            el []
+                (Element.paragraph [ Font.color Colors.errorRed ]
+                    [ text (Errors.loginErrorToString error)
+                    ]
+                )
 
-        Just errorStr ->
-            row
-                ([ width fill, padding 10, Background.color (Colors.withAlpha Colors.errorRed 0.5) ] ++ Style.labelStyle)
-                [ Element.paragraph [] [ text errorStr ] ]
+        _ ->
+            none
 
 
 viewMessage : Maybe String -> Element Msg

@@ -1,71 +1,131 @@
 module Errors exposing
-    ( Errors(..)
-    , InputError(..)
-    , containsErrorFor
-    , customInputErrorsFor
-    , decodeErrors
-    , errorToString
-    , handleError
-    , inputErrorsFor
-    , toClientSideError
-    , toClientSideErrors
-    , toServerSideErrors
+    ( InputError, Errors(..)
+    , toServerSideErrors, toValidationError, toValidationErrors
+    , captionFor, toMsg, unwrapInputError
+    , containServerErrorFor
+    , customInputErrorsFor, errorToString, loginErrorToString
     )
+
+{-| This module makes it easier to deal with errors intended for the UI.
+It maps server and validation error definitions to the correct inputs
+
+
+# Definition
+
+@docs InputError, Errors
+
+
+# Constructors
+
+@docs toServerSideErrors, toValidationError, toValidationErrors
+
+
+# Using errors
+
+@docs captionFor, toMsg, unwrapInputError
+
+
+# Query Helpers
+
+@docs containServerErrorFor
+
+-}
 
 import Api
 import Dict
-import Element exposing (..)
-import Html.Attributes exposing (id)
 import Http
 import Json.Decode as Decode exposing (Decoder, decodeString, dict, list, string)
-import Navigation
-import Session exposing (Session)
-import Style exposing (..)
 
 
-type InputError
-    = InputError (List String)
+{-| A list of error strings intended to be displayed on an input field
+-}
+type alias InputError validationError =
+    { visibleName : FieldName
+    , errors : List (Errors validationError)
+    }
+
+
+{-| Represent errors generated from failing validation on the client
+and from server side errors
+-}
+type Errors validationError
+    = ValidationError validationError ErrorString
+    | ServerSideError FieldName (List ErrorString)
 
 
 type alias FieldName =
     String
 
 
-type Errors internalError
-    = ClientSideError internalError String
-    | ServerSideError FieldName (List String)
+type alias ErrorString =
+    String
 
 
-{-| customInputErrorsFor formProblems fieldName visibleName errorsToMatch
+{-| Match validation and server errors intended for a given field;
+however when presenting the error, describe the field with another name
+
+    (customInputErrorsFor [ServerSideError "manager_email" ["is already taken"]] "manager_email" "email" [...])
+    |> unwrapInputError
+        -- Just ["The email is already taken"]}
+
 -}
-customInputErrorsFor : List (Errors clientError) -> String -> String -> List clientError -> Maybe InputError
-customInputErrorsFor formProblems fieldName visibleName errorsToMatch =
+customInputErrorsFor :
+    List (Errors validationError)
+    -> String
+    -> String
+    -> List validationError
+    -> Maybe (InputError validationError)
+customInputErrorsFor formProblems fieldName visibleName validationErrorsToMatch =
     let
-        clientSideErrors =
-            List.map (\x -> ClientSideError x "") errorsToMatch
-    in
-    Maybe.map InputError
-        (errorWhenContains
-            clientSideErrors
+        possibleValidationErrors =
+            validationErrorsToMatch
+                |> List.map (\x -> ValidationError x "")
+
+        matchingValidationErrors =
             formProblems
-            fieldName
-            visibleName
-        )
+                |> List.filter (\x -> possibleValidationErrors |> contains x)
+
+        matchingServerErrors =
+            formProblems
+                |> List.filter (\x -> [ ServerSideError fieldName [] ] |> contains x)
+
+        allErrors =
+            matchingValidationErrors ++ matchingServerErrors
+    in
+    case allErrors of
+        [] ->
+            Nothing
+
+        _ ->
+            Just
+                (InputError visibleName allErrors)
 
 
-inputErrorsFor : List (Errors clientError) -> String -> List clientError -> Maybe InputError
-inputErrorsFor formProblems fieldName errorsToMatch =
+{-| Match validation and server errors intended for a given field
+For server errors it attempts to sanitize the field name before displaying it as part of the error
+
+    (captionFor [ServerSideError "manager_email" ["is already taken"]] "manager_email" [LongEmail, "The email is too long"])
+    |> unwrapInputError
+        -- Just ["The manager_email is already taken", "The email is too long"]}
+
+-}
+captionFor :
+    List (Errors validationError)
+    -> String
+    -> List validationError
+    -> Maybe (InputError validationError)
+captionFor formProblems fieldName errorsToMatch =
     customInputErrorsFor formProblems fieldName fieldName errorsToMatch
 
 
-toClientSideError : ( a, String ) -> Errors a
-toClientSideError problem =
-    ClientSideError (Tuple.first problem) (Tuple.second problem)
+toValidationError : ( a, String ) -> Errors a
+toValidationError problem =
+    ValidationError (Tuple.first problem) (Tuple.second problem)
 
 
-toClientSideErrors : List ( a, String ) -> List (Errors a)
-toClientSideErrors problems =
-    List.map (\x -> ClientSideError (Tuple.first x) (Tuple.second x)) problems
+toValidationErrors : List ( a, String ) -> List (Errors a)
+toValidationErrors problems =
+    List.map toValidationError problems
 
 
 toServerSideErrors : Http.Error -> List (Errors a)
@@ -81,7 +141,7 @@ contains anError listOfErrors =
                 ( ServerSideError aFieldName _, ServerSideError xFieldName _ ) ->
                     aFieldName == xFieldName
 
-                ( ClientSideError aError _, ClientSideError xError _ ) ->
+                ( ValidationError aError _, ValidationError xError _ ) ->
                     aError == xError
 
                 _ ->
@@ -90,33 +150,11 @@ contains anError listOfErrors =
         listOfErrors
 
 
-errorWhenContains : List (Errors e) -> List (Errors e) -> String -> String -> Maybe (List String)
-errorWhenContains matchFields formProblems fieldName visibleFieldName =
-    let
-        errorsForField =
-            List.filter (\x -> contains x (ServerSideError fieldName [] :: matchFields)) formProblems
-
-        beautifyError =
-            \x ->
-                case x of
-                    ClientSideError _ string ->
-                        [ string ]
-
-                    ServerSideError fieldName2 strings ->
-                        List.map (\str -> "The " ++ String.replace "_" " " visibleFieldName ++ " " ++ str) strings
-    in
-    case List.concatMap beautifyError errorsForField of
-        [] ->
-            Nothing
-
-        errorStrings ->
-            Just errorStrings
-
-
-containsErrorFor fields problems =
+containServerErrorFor : List FieldName -> List (Errors internalError) -> Bool
+containServerErrorFor fields problems =
     List.any
         (\field ->
-            contains (ServerSideError field []) problems
+            problems |> contains (ServerSideError field [])
         )
         fields
 
@@ -130,21 +168,12 @@ type NetworkError
     | BadRequest String
 
 
-handleError : NetworkError -> Cmd msg
-handleError error =
-    case error of
-        Unauthorized ->
-            Cmd.batch
-                [ Api.storeCache Nothing
-                ]
-
-        _ ->
-            Cmd.none
-
-
 decodeErrors : Http.Error -> ( NetworkError, Cmd msg )
 decodeErrors error =
     let
+        defaultError =
+            "Something went wrong, please reload the page"
+
         networkError =
             case error of
                 Http.BadStatus response ->
@@ -155,13 +184,25 @@ decodeErrors error =
                         BadRequest
                             (response.body
                                 |> decodeString (Decode.at [ "errors", "detail" ] string)
-                                |> Result.withDefault "Server error"
+                                |> Result.withDefault defaultError
                             )
 
                 _ ->
-                    BadRequest "Server error"
+                    BadRequest defaultError
     in
     ( networkError, handleError networkError )
+
+
+handleError : NetworkError -> Cmd msg
+handleError error =
+    case error of
+        Unauthorized ->
+            Cmd.batch
+                [ Api.storeCache Nothing
+                ]
+
+        _ ->
+            Cmd.none
 
 
 decodeFormErrors : Http.Error -> List ( String, List String )
@@ -189,11 +230,62 @@ decodeFormErrors error =
             []
 
 
-errorToString : NetworkError -> String
+toNetworkError : Http.Error -> NetworkError
+toNetworkError =
+    decodeErrors >> Tuple.first
+
+
+{-| Produce command for received Http.Error
+
+    toMsg [ Unauthorized ] -- Api.logout
+
+-}
+toMsg : Http.Error -> Cmd msg
+toMsg =
+    decodeErrors >> Tuple.second
+
+
+{-| Produce error string when user is logged in
+-}
+errorToString : Http.Error -> String
 errorToString error =
-    case error of
+    case toNetworkError error of
+        Unauthorized ->
+            "Your session has expired, please log in again"
+
+        BadRequest errorText ->
+            errorText
+
+
+{-| Produce error string when user is not logged in
+-}
+loginErrorToString : Http.Error -> String
+loginErrorToString error =
+    case toNetworkError error of
         Unauthorized ->
             "Invalid email or password"
 
         BadRequest errorText ->
             errorText
+
+
+{-| Unwrap strings inside an InputError for error rendering
+-}
+unwrapInputError : InputError e -> Maybe (List String)
+unwrapInputError error =
+    let
+        beautifyError =
+            \x ->
+                case x of
+                    ValidationError _ string ->
+                        [ string ]
+
+                    ServerSideError _ strings ->
+                        List.map (\str -> "The " ++ String.replace "_" " " error.visibleName ++ " " ++ str) strings
+    in
+    case List.concatMap beautifyError error.errors of
+        [] ->
+            Nothing
+
+        errorStrings ->
+            Just errorStrings

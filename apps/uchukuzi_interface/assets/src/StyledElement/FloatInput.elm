@@ -37,7 +37,7 @@ view :
     ->
         { title : String
         , caption : Maybe String
-        , errorCaption : Maybe InputError
+        , errorCaption : Maybe (InputError e)
         , value : FloatInput
         , onChange : FloatInput -> msg
         , placeholder : Maybe (Input.Placeholder msg)

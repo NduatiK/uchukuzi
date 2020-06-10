@@ -165,7 +165,7 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+                    ( { model | form = { form | problems = Errors.toValidationErrors problems } }, Cmd.none )
 
         ReceivedCreateResponse response ->
             let
@@ -181,17 +181,13 @@ update msg model =
 
                 Failure error ->
                     let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-
                         apiFormError =
-                            Errors.toServerSideErrors
-                                error
+                            Errors.toServerSideErrors error
 
                         updatedForm =
                             { form | problems = form.problems ++ apiFormError }
                     in
-                    ( { newModel | form = updatedForm }, error_msg )
+                    ( { newModel | form = updatedForm }, Errors.toMsg error )
 
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
@@ -324,7 +320,7 @@ viewNameInput problems name =
         [ width (fill |> minimum 300 |> maximum 300) ]
         { ariaLabel = "Name"
         , caption = Nothing
-        , errorCaption = Errors.inputErrorsFor problems "name" [ EmptyName ]
+        , errorCaption = Errors.captionFor problems "name" [ EmptyName ]
         , icon = Nothing
         , onChange = Name >> Changed
         , placeholder = Nothing
@@ -339,7 +335,7 @@ viewEmailInput problems email =
         [ width (fill |> minimum 300 |> maximum 300) ]
         { ariaLabel = "Email Address"
         , caption = Just "Used to log into the Assistant app"
-        , errorCaption = Errors.inputErrorsFor problems "email" [ EmptyEmail, InvalidEmail ]
+        , errorCaption = Errors.captionFor problems "email" [ EmptyEmail, InvalidEmail ]
         , icon = Just Icons.email
         , onChange = Email >> Changed
         , placeholder = Nothing
@@ -354,7 +350,7 @@ viewPhoneInput problems phone_number =
         [ alignTop, width (fill |> minimum 300 |> maximum 300) ]
         { ariaLabel = "'s Phone Number"
         , caption = Nothing
-        , errorCaption = Errors.inputErrorsFor problems "phone_number" [ EmptyPhoneNumber, InvalidPhoneNumber ]
+        , errorCaption = Errors.captionFor problems "phone_number" [ EmptyPhoneNumber, InvalidPhoneNumber ]
         , icon = Just Icons.phone
         , onChange = PhoneNumber >> Changed
         , placeholder = Nothing

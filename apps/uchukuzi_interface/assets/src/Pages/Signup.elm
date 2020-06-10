@@ -14,7 +14,7 @@ import Icons
 import Json.Decode as Decode exposing (Decoder, float, int, list, string)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required, resolve)
 import Json.Encode as Encode
-import Models.Location as Location
+import Models.Location as Location exposing (Location)
 import Navigation exposing (LoginRedirect, Route)
 import Ports
 import RemoteData exposing (..)
@@ -49,10 +49,6 @@ type Name
     = Name String
 
 
-type alias Location =
-    { lat : Float, lng : Float, radius : Float }
-
-
 type alias ManagerDetailsForm =
     { firstName : Name
     , lastName : Name
@@ -70,7 +66,11 @@ type alias ValidManagerForm =
 
 type alias SchoolDetailsForm =
     { schoolName : Name
-    , location : Maybe Location
+    , perimeter :
+        Maybe
+            { location : Location
+            , radius : Float
+            }
     }
 
 
@@ -99,7 +99,10 @@ type alias Form =
 
 type alias ValidSchoolForm =
     { schoolName : String
-    , schoolLocation : Location
+    , schoolLocation :
+        { location : Location
+        , radius : Float
+        }
     }
 
 
@@ -120,7 +123,7 @@ init session =
             }
         , school =
             { schoolName = Name ""
-            , location = Nothing
+            , perimeter = Nothing
             }
         , page = ManagerDetails
         , problems = []
@@ -142,7 +145,7 @@ type Msg
     | UpdatedEmail Email
     | UpdatedPassword Password
     | RequestGeoLocation
-    | LocationSelected (Maybe Location)
+    | LocationSelected (Maybe { lat : Float, lng : Float, radius : Float })
     | ToManagerForm
     | ToSchoolForm
     | NoOp
@@ -161,59 +164,62 @@ update msg model =
 
         school =
             form.school
+
+        updateManager manager_ model_ =
+            { model_ | form = { form | manager = manager_ } }
+
+        updateSchool school_ model_ =
+            { model_ | form = { form | school = school_ } }
+
+        updateProblems problems model_ =
+            { model_ | form = { form | problems = problems } }
     in
     case msg of
         UpdatedFirstName name ->
-            ( { model
-                | form =
-                    { form | manager = { manager | firstName = name } }
-              }
+            ( model |> updateManager { manager | firstName = name }
             , Cmd.none
             )
 
         UpdatedLastName name ->
-            ( { model
-                | form =
-                    { form | manager = { manager | lastName = name } }
-              }
-            , Cmd.none
-            )
-
-        UpdatedSchoolName name ->
-            ( { model
-                | form =
-                    { form | school = { school | schoolName = name } }
-              }
+            ( model |> updateManager { manager | lastName = name }
             , Cmd.none
             )
 
         UpdatedPassword password ->
-            ( { model
-                | form =
-                    { form | manager = { manager | password = password } }
-              }
+            ( model |> updateManager { manager | password = password }
             , Cmd.none
             )
 
         UpdatedEmail email ->
-            ( { model
-                | form =
-                    { form | manager = { manager | email = email } }
-              }
+            ( model |> updateManager { manager | email = email }
+            , Cmd.none
+            )
+
+        UpdatedSchoolName name ->
+            ( model |> updateSchool { school | schoolName = name }
             , Cmd.none
             )
 
         RequestGeoLocation ->
             ( { model | loadingGeocode = True }, Ports.requestGeoLocation () )
 
-        LocationSelected location ->
-            ( { model
-                | form =
-                    { form
-                        | school = { school | location = location }
-                    }
-                , loadingGeocode = False
-              }
+        LocationSelected perimeter ->
+            let
+                updatedPerimeter =
+                    perimeter
+                        |> Maybe.map
+                            (\p ->
+                                { location =
+                                    { lat = p.lat
+                                    , lng = p.lng
+                                    }
+                                , radius = p.radius
+                                }
+                            )
+            in
+            ( model
+                |> updateSchool { school | perimeter = updatedPerimeter }
+                |> (\m -> { m | loadingGeocode = False })
             , Cmd.none
             )
 
@@ -228,7 +234,9 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+                    ( model |> updateProblems (Errors.toValidationErrors problems)
+                    , Cmd.none
+                    )
 
         ToManagerForm ->
             ( { model | form = { form | page = ManagerDetails } }, Cmd.none )
@@ -236,57 +244,45 @@ update msg model =
         SubmittedForm ->
             case validateForm form of
                 Ok validForm ->
-                    ( { model | form = { form | problems = [] } }, signup model.session validForm )
+                    ( model |> updateProblems []
+                    , signup model.session validForm
+                    )
 
                 Err problems ->
-                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+                    ( model |> updateProblems (Errors.toValidationErrors problems)
+                    , Cmd.none
+                    )
 
         ReceivedSignupResponse requestStatus ->
             let
                 updatedModel =
                     { model | status = requestStatus }
             in
-            updateStatus updatedModel requestStatus
+            -- updateStatus updatedModel requestStatus
+            case requestStatus of
+                Failure error ->
+                    let
+                        apiFormErrors =
+                            Errors.toServerSideErrors error
+
+                        updatedForm =
+                            { form | problems = form.problems ++ apiFormErrors }
+                    in
+                    ( { model | form = updatedForm }, Errors.toMsg error )
+
+                Success data ->
+                    ( model
+                    , Cmd.batch
+                        [ Navigation.rerouteTo model (Navigation.Login (Just Navigation.ConfirmEmail))
+                        , Location.storeSchoolLocation data.location
+                        ]
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
-
-
-updateStatus : Model -> WebData SuccessfulLogin -> ( Model, Cmd Msg )
-updateStatus model msg =
-    case msg of
-        Loading ->
-            ( model, Cmd.none )
-
-        Failure error ->
-            let
-                ( _, error_msg ) =
-                    Errors.decodeErrors error
-
-                apiFormErrors =
-                    Errors.toServerSideErrors
-                        error
-
-                form =
-                    model.form
-
-                updatedForm =
-                    { form | problems = form.problems ++ apiFormErrors }
-            in
-            ( { model | form = updatedForm }, error_msg )
-
-        NotAsked ->
-            ( model, Cmd.none )
-
-        Success data ->
-            ( model
-            , Cmd.batch
-                [ Navigation.rerouteTo model (Navigation.Login (Just Navigation.ConfirmEmail))
-
-                -- , Api.storeCredentials data.creds
-                , Location.storeSchoolLocation data.location
-                ]
-            )
 
 
 
@@ -340,13 +336,13 @@ viewSchoolForm model =
             model.form
 
         errorMapper =
-            Errors.inputErrorsFor form.problems
+            Errors.captionFor form.problems
 
         hasMapError =
             List.any
                 (\x ->
                     case x of
-                        Errors.ClientSideError y _ ->
+                        Errors.ValidationError y _ ->
                             y == EmptySchoolLocation
 
                         _ ->
@@ -437,7 +433,7 @@ viewManagerForm model =
             model.form
 
         errorMapper =
-            Errors.inputErrorsFor form.problems
+            Errors.captionFor form.problems
     in
     column [ centerX, alignTop, width (fill |> maximum 500), spacing 10 ]
         [ formPageHeader "Your Details" "(1/2)"
@@ -505,7 +501,10 @@ viewFooter =
             [ el (Font.size 15 :: Style.labelStyle)
                 (text "Already have an account?")
             , row [ spacing 8 ]
-                [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15, Font.bold ] { label = text "Login", route = Navigation.Login Nothing }
+                [ StyledElement.textLink [ Font.color Colors.darkGreen, Font.size 15 ]
+                    { label = text "Login"
+                    , route = Navigation.Login Nothing
+                    }
                 , Icons.chevronDown [ rotate (-pi / 2) ]
                 ]
             ]
@@ -581,14 +580,14 @@ validateSchoolForm school =
 
                   else
                     []
-                , if school.location == Nothing then
+                , if school.perimeter == Nothing then
                     [ ( EmptySchoolLocation, "Required" ) ]
 
                   else
                     []
                 ]
     in
-    case ( schoolProblems, school.location ) of
+    case ( schoolProblems, school.perimeter ) of
         ( [], Just location ) ->
             Ok
                 { schoolLocation = location
@@ -641,7 +640,7 @@ viewButtons model =
         _ ->
             let
                 ( borderStyle, label ) =
-                    if Errors.containsErrorFor [ "manager_name", "manager_email", "manager_password" ] model.form.problems then
+                    if Errors.containServerErrorFor [ "manager_name", "manager_email", "manager_password" ] model.form.problems then
                         ( [ Border.color Colors.errorRed, Border.width 2 ]
                         , row [ spacing 4 ]
                             [ Icons.chevronDown [ rotate (pi / 2), Colors.fillErrorRed, alpha 1 ]
@@ -691,8 +690,8 @@ signup session form =
                 [ ( "name", Encode.string form.school.schoolName )
                 , ( "geo"
                   , Encode.object
-                        [ ( "lat", Encode.float form.school.schoolLocation.lat )
-                        , ( "lng", Encode.float form.school.schoolLocation.lng )
+                        [ ( "lat", Encode.float form.school.schoolLocation.location.lat )
+                        , ( "lng", Encode.float form.school.schoolLocation.location.lng )
                         , ( "radius", Encode.float form.school.schoolLocation.radius )
                         ]
                   )

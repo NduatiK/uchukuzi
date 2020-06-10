@@ -19,6 +19,7 @@ import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import StyledElement.WebDataView as WebDataView
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
@@ -78,11 +79,7 @@ update msg model =
                     )
 
                 Failure error ->
-                    let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-                    in
-                    ( newModel, error_msg )
+                    ( newModel, Errors.toMsg error )
 
                 _ ->
                     ( newModel, Cmd.none )
@@ -118,36 +115,28 @@ viewHeading model =
 
 
 viewRoutes model =
-    case model.routes of
-        Failure error ->
-            let
-                ( apiError, _ ) =
-                    Errors.decodeErrors error
-            in
-            text (Errors.errorToString apiError)
-
-        Success [] ->
-            column (centerX :: spacing 8 :: centerY :: Style.labelStyle)
-                [ el [ centerX ] (text "You have no routes set up.")
-                , el [ centerX ] (text "Click the + button above to create one.")
-                ]
-
-        Success routes ->
-            el
-                [ scrollbarY
-                , height fill
-                , width fill
-                ]
-                (wrappedRow
-                    [ spacing 10
-                    , paddingEach { edges | right = 10, bottom = 10 }
+    WebDataView.view model.routes
+        (\routes ->
+            if routes == [] then
+                column (centerX :: spacing 8 :: centerY :: Style.labelStyle)
+                    [ el [ centerX ] (text "You have no routes set up.")
+                    , el [ centerX ] (text "Click the + button above to create one.")
                     ]
-                    (List.map viewRoute routes)
-                 -- (List.map viewRoute (routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes))
-                )
 
-        _ ->
-            el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
+            else
+                el
+                    [ scrollbarY
+                    , height fill
+                    , width fill
+                    ]
+                    (wrappedRow
+                        [ spacing 10
+                        , paddingEach { edges | right = 10, bottom = 10 }
+                        ]
+                        (List.map viewRoute routes)
+                     -- (List.map viewRoute (routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes ++ routes))
+                    )
+        )
 
 
 viewRoute : Route -> Element Msg

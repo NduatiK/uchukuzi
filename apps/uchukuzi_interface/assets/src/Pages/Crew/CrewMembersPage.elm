@@ -130,11 +130,7 @@ update msg model =
             in
             case response of
                 Failure error ->
-                    let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-                    in
-                    ( newModel, error_msg )
+                    ( newModel, Errors.toMsg error )
 
                 Success data_ ->
                     ( { newModel

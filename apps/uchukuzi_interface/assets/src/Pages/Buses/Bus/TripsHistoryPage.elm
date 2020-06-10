@@ -260,7 +260,7 @@ update msg model =
                             Ports.initializeMaps
 
                         Failure error ->
-                            Tuple.second (Errors.decodeErrors error)
+                            Errors.toMsg error
 
                         _ ->
                             Cmd.none
@@ -441,7 +441,7 @@ update msg model =
                             )
 
                         Err problems ->
-                            ( { model | createRouteForm = Just { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+                            ( { model | createRouteForm = Just { form | problems = Errors.toValidationErrors problems } }, Cmd.none )
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -886,23 +886,24 @@ viewMapOptions :
     -> Element Msg
 viewMapOptions mapVisuals =
     row [ paddingXY 10 0, spacing 110 ]
-        [ Input.checkbox []
-            { onChange = ToggledShowStops
-            , icon = StyledElement.checkboxIcon
-            , checked = mapVisuals.showStops
-            , label =
-                Input.labelRight Style.labelStyle
-                    (text "Show Stops")
-            }
-        , Input.checkbox []
-            { onChange = ToggledShowGeofence
-            , icon = StyledElement.checkboxIcon
-            , checked = mapVisuals.showGeofence
-            , label =
-                Input.labelRight Style.labelStyle
-                    (text "Show Geofence")
-            }
-        , Input.checkbox []
+        [ -- [ Input.checkbox []
+          --     { onChange = ToggledShowStops
+          --     , icon = StyledElement.checkboxIcon
+          --     , checked = mapVisuals.showStops
+          --     , label =
+          --         Input.labelRight Style.labelStyle
+          --             (text "Show Stops")
+          --     }
+          -- , Input.checkbox []
+          --     { onChange = ToggledShowGeofence
+          --     , icon = StyledElement.checkboxIcon
+          --     , checked = mapVisuals.showGeofence
+          --     , label =
+          --         Input.labelRight Style.labelStyle
+          --             (text "Show Geofence")
+          --     }
+          -- ,
+          Input.checkbox []
             { onChange = ToggledShowDeviation
             , icon = StyledElement.checkboxIcon
             , checked = mapVisuals.showDeviations
@@ -1123,7 +1124,7 @@ viewOverlay model viewHeight =
                                                 [ StyledElement.textInput [ width (fill |> minimum 300) ]
                                                     { title = "Route Name"
                                                     , caption = Nothing
-                                                    , errorCaption = Errors.inputErrorsFor form.problems "name" [ EmptyRouteName ]
+                                                    , errorCaption = Errors.captionFor form.problems "name" [ EmptyRouteName ]
                                                     , value = name
                                                     , onChange = UpdatedRouteName
                                                     , placeholder = Nothing
@@ -1174,7 +1175,7 @@ routeDropDown form =
         , prompt = Nothing
         , dropDownMsg = RouteDropdownMsg
         , dropdownState = form.routeDropdownState
-        , errorCaption = Errors.inputErrorsFor problems "id" [ EmptyRoute ]
+        , errorCaption = Errors.captionFor problems "id" [ EmptyRoute ]
         , icon = Just Icons.pin
         , onSelect = ExistingRoute >> SetSaveToRoute
         , options = routes

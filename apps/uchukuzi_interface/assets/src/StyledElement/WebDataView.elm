@@ -1,6 +1,8 @@
 module StyledElement.WebDataView exposing (view)
 
+import Api
 import Element exposing (Element, centerX, centerY, el, height, paragraph, px, text, width)
+import Errors
 import Icons
 import RemoteData exposing (RemoteData(..), WebData)
 import Style
@@ -16,8 +18,8 @@ view remoteData successView =
         Success data ->
             successView data
 
-        Failure _ ->
-            el (centerX :: centerY :: Style.labelStyle) (paragraph [] [ text "Something went wrong, please reload the page" ])
+        Failure error ->
+            text (Errors.errorToString error)
 
         _ ->
             Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]

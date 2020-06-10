@@ -109,7 +109,7 @@ type PageModel
 
 
 type alias LocalStorageData =
-    { creds : Maybe Session.Cred
+    { creds : Maybe Session.Credentials
     , width : Int
     , height : Int
     , isLoading : Bool
@@ -200,7 +200,7 @@ init args url navKey =
 type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url.Url
-    | ReceivedCreds (Maybe Session.Cred)
+    | ReceivedCreds (Maybe Session.Credentials)
     | UpdatedTimeZone Time.Zone
     | WindowResized Int Int
       ------------

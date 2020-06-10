@@ -12,6 +12,7 @@ import RemoteData exposing (..)
 import Session exposing (Session)
 import Style
 import StyledElement
+import StyledElement.WebDataView as WebDataView
 
 
 type alias Model =
@@ -87,23 +88,10 @@ viewHeading title subLine =
 
 viewBody : Model -> Element msg
 viewBody model =
-    case model.devices of
-        Success devices ->
+    WebDataView.view model.devices
+        (\devices ->
             viewDevicesTable devices
-
-        NotAsked ->
-            text "Initialising."
-
-        Loading ->
-            el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
-
-        -- Failure error ->
-        Failure error ->
-            let
-                ( apiError, _ ) =
-                    Errors.decodeErrors error
-            in
-            text (Errors.errorToString apiError)
+        )
 
 
 viewDevicesTable devices =

@@ -33,7 +33,7 @@ defmodule Uchukuzi.Common.Geofence do
     |> validate_required([:type])
     |> cast_embed(:perimeter, with: &Location.changeset/2)
   end
-  
+
   def new_school_fence(%{lat: _lat, lng: _lng} = center, radius)
       when is_number(radius) do
     %Geofence{}
@@ -50,7 +50,8 @@ defmodule Uchukuzi.Common.Geofence do
     end
 
   def contains_point?(%Geofence{type: "school"} = geofence, %Location{} = location) do
-    Location.distance_between(geofence.center, location) <= geofence.radius
+    # The school radius is magnified to capture points as early as possible
+    Location.distance_between(geofence.center, location) <= (geofence.radius * 2)
   end
 
   @spec contains_point?(Uchukuzi.Common.Geofence.t(), Uchukuzi.Common.Location.t()) :: boolean

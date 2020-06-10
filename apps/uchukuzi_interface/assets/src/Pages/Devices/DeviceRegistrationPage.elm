@@ -121,7 +121,7 @@ update msg model =
                     ( { model
                         | form =
                             { form
-                                | problems = Errors.toClientSideErrors problems
+                                | problems = Errors.toValidationErrors problems
                             }
                       }
                     , Cmd.none
@@ -133,7 +133,7 @@ update msg model =
                     | cameraState = CameraOpening
                     , form =
                         { form
-                            | problems = List.filter (\x -> x /= Errors.ClientSideError CameraOpenError "") model.form.problems
+                            | problems = List.filter (\x -> x /= Errors.ValidationError CameraOpenError "") model.form.problems
                         }
                   }
                 , Ports.initializeCamera ()
@@ -157,7 +157,7 @@ update msg model =
         GotCameraNotFoundError ->
             let
                 newError =
-                    Errors.toClientSideError
+                    Errors.toValidationError
                         ( CameraOpenError, "No webcam found, type in the code or try again later" )
             in
             ( { model
@@ -205,17 +205,13 @@ update msg model =
 
                 Failure error ->
                     let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-
                         apiFormError =
-                            Errors.toServerSideErrors
-                                error
+                            Errors.toServerSideErrors error
 
                         updatedForm =
                             { form | problems = form.problems ++ apiFormError }
                     in
-                    ( { newModel | form = updatedForm }, error_msg )
+                    ( { newModel | form = updatedForm }, Errors.toMsg error )
 
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
@@ -368,10 +364,7 @@ viewDeviceSerialInput : String -> List (Errors.Errors Problem) -> Element Msg
 viewDeviceSerialInput serial problems =
     let
         errorMapper =
-            Errors.customInputErrorsFor problems
-
-        inputError errorText =
-            Errors.InputError [ errorText ]
+            Errors.customInputErrorsFor problems "imei" "serial"
     in
     StyledElement.textInput
         [ width
@@ -383,11 +376,7 @@ viewDeviceSerialInput serial problems =
         { ariaLabel = "Device Serial"
         , caption = Just "You can find this on the side of the device"
         , errorCaption =
-            errorMapper "imei"
-                "serial"
-                [ InvalidSerial
-                , CameraOpenError
-                ]
+            errorMapper [ InvalidSerial, CameraOpenError ]
         , icon = Nothing
         , onChange = ChangedDeviceSerial
         , placeholder = Nothing

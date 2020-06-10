@@ -305,7 +305,7 @@ textInput :
     ->
         { title : String
         , caption : Maybe String
-        , errorCaption : Maybe InputError
+        , errorCaption : Maybe (InputError e)
         , value : String
         , onChange : String -> msg
         , placeholder : Maybe (Input.Placeholder msg)
@@ -332,7 +332,7 @@ multilineInput :
     ->
         { title : String
         , caption : Maybe String
-        , errorCaption : Maybe InputError
+        , errorCaption : Maybe (InputError e)
         , value : String
         , onChange : String -> msg
         , placeholder : Maybe (Input.Placeholder msg)
@@ -360,7 +360,7 @@ emailInput :
     ->
         { title : String
         , caption : Maybe String
-        , errorCaption : Maybe InputError
+        , errorCaption : Maybe (InputError e)
         , value : String
         , onChange : String -> msg
         , placeholder : Maybe (Input.Placeholder msg)
@@ -387,7 +387,7 @@ dropDown :
     ->
         { title : String
         , caption : Maybe String
-        , errorCaption : Maybe InputError
+        , errorCaption : Maybe (InputError e)
         , options : List item
         , ariaLabel : String
         , icon : Maybe (IconBuilder msg)
@@ -419,7 +419,7 @@ passwordInput :
     ->
         { title : String
         , caption : Maybe String
-        , errorCaption : Maybe InputError
+        , errorCaption : Maybe (InputError e)
         , value : String
         , onChange : String -> msg
         , placeholder : Maybe (Input.Placeholder msg)
@@ -475,7 +475,7 @@ numberInput :
     ->
         { title : String
         , caption : Maybe String
-        , errorCaption : Maybe InputError
+        , errorCaption : Maybe (InputError e)
         , value : Int
         , onChange : Int -> msg
         , placeholder : Maybe (Input.Placeholder msg)
@@ -578,7 +578,7 @@ googleMap mapClasses =
 
 {-| wrappedInput input title caption errorCaption icon attributes trailingElements
 -}
-wrappedInput : Element msg -> String -> Maybe String -> Maybe InputError -> Maybe (IconBuilder msg) -> List (Attribute msg) -> List (Element msg) -> Element msg
+wrappedInput : Element msg -> String -> Maybe String -> Maybe (InputError e) -> Maybe (IconBuilder msg) -> List (Attribute msg) -> List (Element msg) -> Element msg
 wrappedInput input title caption errorCaption icon attributes trailingElements =
     let
         captionLabel =
@@ -590,12 +590,17 @@ wrappedInput input title caption errorCaption icon attributes trailingElements =
                     none
 
         errorCaptionLabel =
-            case errorCaption of
-                Just (Errors.InputError errors) ->
-                    Element.paragraph Style.errorStyle (List.map text errors)
+            errorCaption
+                |> Maybe.map
+                    (\e ->
+                        case Errors.unwrapInputError e of
+                            Just errors ->
+                                Element.paragraph Style.errorStyle (List.map text errors)
 
-                _ ->
-                    none
+                            Nothing ->
+                                none
+                    )
+                |> Maybe.withDefault none
 
         textBoxIcon =
             case icon of

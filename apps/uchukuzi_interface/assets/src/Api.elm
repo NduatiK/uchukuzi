@@ -8,7 +8,7 @@ import Json.Encode as Encode
 import Models.Location exposing (Location, locationDecoder)
 import Navigation exposing (LoginRedirect, Route)
 import RemoteData exposing (RemoteData(..), WebData)
-import Session exposing (Cred, Session)
+import Session exposing (Credentials, Session)
 
 
 delete : Session -> Endpoint -> Decoder a -> Cmd (WebData a)
@@ -45,16 +45,16 @@ port storeCache : Maybe Value -> Cmd msg
 port onStoreChange : (Maybe Value -> msg) -> Sub msg
 
 
-credDecoder : Decoder Cred
+credDecoder : Decoder Credentials
 credDecoder =
-    Decode.succeed Cred
+    Decode.succeed Credentials
         |> requiredAt [ "name" ] Decode.string
         |> requiredAt [ "email" ] Decode.string
         |> requiredAt [ "token" ] Decode.string
         |> requiredAt [ "school_id" ] Decode.int
 
 
-credEncoder : Cred -> Value
+credEncoder : Credentials -> Value
 credEncoder { name, email, token, school_id } =
     Encode.object
         [ ( "email", Encode.string email )
@@ -66,7 +66,7 @@ credEncoder { name, email, token, school_id } =
 
 type alias SuccessfulLogin =
     { location : Location
-    , creds : Session.Cred
+    , creds : Session.Credentials
     }
 
 
@@ -84,20 +84,20 @@ loginDecoder =
         |> required "creds" credDecoder
 
 
-storeCredentials : Cred -> Cmd msg
+storeCredentials : Credentials -> Cmd msg
 storeCredentials cred =
     storeCache (Just (credEncoder cred))
 
 
-parseCreds : Maybe Value -> Maybe Cred
+parseCreds : Maybe Value -> Maybe Credentials
 parseCreds maybeCreds =
     maybeCreds
         |> Maybe.andThen
-            (\aCred ->
-                case Decode.decodeValue credDecoder aCred of
+            (\aCredentials ->
+                case Decode.decodeValue credDecoder aCredentials of
                     Err e ->
                         Nothing
 
-                    Ok resolvedCred ->
-                        Just resolvedCred
+                    Ok resolvedCredentials ->
+                        Just resolvedCredentials
             )

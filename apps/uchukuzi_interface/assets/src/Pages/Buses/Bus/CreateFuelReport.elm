@@ -185,7 +185,7 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | problems = Errors.toClientSideErrors problems }, Cmd.none )
+                    ( { model | problems = Errors.toValidationErrors problems }, Cmd.none )
 
         ReceivedCreateResponse response ->
             let
@@ -198,14 +198,10 @@ update msg model =
 
                 Failure error ->
                     let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-
                         apiFormError =
-                            Errors.toServerSideErrors
-                                error
+                            Errors.toServerSideErrors error
                     in
-                    ( { newModel | problems = model.problems ++ apiFormError }, error_msg )
+                    ( { newModel | problems = model.problems ++ apiFormError }, Errors.toMsg error )
 
                 _ ->
                     ( { newModel | problems = [] }, Cmd.none )
@@ -265,7 +261,7 @@ viewDatePicker model =
         (StyledElement.DatePicker.view []
             { title = "Purchase Date"
             , caption = Nothing
-            , errorCaption = Errors.inputErrorsFor model.problems "date" [ EmptyDate ]
+            , errorCaption = Errors.captionFor model.problems "date" [ EmptyDate ]
             , icon = Nothing
             , onChange = DatePickerUpdated
             , value = model.form.date
@@ -279,7 +275,7 @@ viewCostInput model =
     StyledElement.textInput [ width (fill |> minimum 300 |> maximum 300) ]
         { ariaLabel = "Cost of purchase"
         , caption = Just ""
-        , errorCaption = Errors.inputErrorsFor model.problems "cost" [ EmptyCost ]
+        , errorCaption = Errors.captionFor model.problems "cost" [ EmptyCost ]
         , icon = Nothing
         , onChange = ChangedCost
         , placeholder = Nothing
@@ -298,7 +294,7 @@ viewVolumeInput model =
     StyledElement.textInput [ width (fill |> minimum 300 |> maximum 300) ]
         { ariaLabel = ""
         , caption = Just "In litres"
-        , errorCaption = Errors.inputErrorsFor model.problems "volume" [ EmptyVolume ]
+        , errorCaption = Errors.captionFor model.problems "volume" [ EmptyVolume ]
         , icon = Nothing
         , onChange = ChangedVolume
         , placeholder = Nothing

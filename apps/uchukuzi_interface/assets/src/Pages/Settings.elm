@@ -237,7 +237,7 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+                    ( { model | form = { form | problems = Errors.toValidationErrors problems } }, Cmd.none )
 
         ReceivedUpdatePasswordResponse response ->
             let
@@ -250,17 +250,13 @@ update msg model =
 
                 Failure error ->
                     let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-
                         apiFormError =
-                            Errors.toServerSideErrors
-                                error
+                            Errors.toServerSideErrors error
 
                         updatedForm =
                             { form | problems = form.problems ++ apiFormError }
                     in
-                    ( { newModel | form = updatedForm }, error_msg )
+                    ( { newModel | form = updatedForm }, Errors.toMsg error )
 
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
@@ -276,7 +272,7 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+                    ( { model | form = { form | problems = Errors.toValidationErrors problems } }, Cmd.none )
 
         ReceivedUpdateSchoolResponse response ->
             let
@@ -301,17 +297,13 @@ update msg model =
 
                 Failure error ->
                     let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-
                         apiFormError =
-                            Errors.toServerSideErrors
-                                error
+                            Errors.toServerSideErrors error
 
                         updatedForm =
                             { form | problems = form.problems ++ apiFormError }
                     in
-                    ( { newModel | form = updatedForm }, error_msg )
+                    ( { newModel | form = updatedForm }, Errors.toMsg error )
 
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
@@ -454,7 +446,7 @@ view model viewHeight =
         , WebDataView.view model.schoolDetailsRequest
             (\school ->
                 column [ spacing 16, width fill ]
-                    [ sectionDivider "Deviation DeviationRadius"
+                    [ sectionDivider "Deviation Radius"
                     , viewSlider model school.deviationRadius
                     ]
             )
@@ -646,7 +638,7 @@ updatePasswordForm model =
             [ StyledElement.passwordInput [ width (fill |> minimum 300) ]
                 { title = "Old Password"
                 , caption = Nothing
-                , errorCaption = Errors.inputErrorsFor problems "old_password" [ EmptyOldPassword ]
+                , errorCaption = Errors.captionFor problems "old_password" [ EmptyOldPassword ]
                 , value = model.form.oldPassword
                 , onChange = UpdatedOldPassword
                 , placeholder = Nothing
@@ -657,7 +649,7 @@ updatePasswordForm model =
             , StyledElement.passwordInput [ width fill ]
                 { title = "New Password"
                 , caption = Nothing
-                , errorCaption = Errors.inputErrorsFor problems "password" [ EmptyNewPassword ]
+                , errorCaption = Errors.captionFor problems "password" [ EmptyNewPassword ]
                 , value = model.form.newPassword
                 , onChange = UpdatedNewPassword
                 , placeholder = Nothing
@@ -685,7 +677,7 @@ updateSchoolForm model =
             , StyledElement.textInput [ width fill ]
                 { title = "School Name"
                 , caption = Nothing
-                , errorCaption = Errors.inputErrorsFor problems "name" [ EmptyNewPassword ]
+                , errorCaption = Errors.captionFor problems "name" [ EmptyNewPassword ]
                 , value = model.form.schoolName
                 , onChange = UpdatedSchoolName
                 , placeholder = Nothing

@@ -102,7 +102,7 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | problems = Errors.toClientSideErrors problems }, Cmd.none )
+                    ( { model | problems = Errors.toValidationErrors problems }, Cmd.none )
 
         StartedDragging part ->
             ( { model | pickedUpItem = Just part }, Cmd.none )
@@ -204,14 +204,10 @@ update msg model =
 
                 Failure error ->
                     let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-
                         apiFormError =
-                            Errors.toServerSideErrors
-                                error
+                            Errors.toServerSideErrors error
                     in
-                    ( { newModel | problems = model.problems ++ apiFormError }, error_msg )
+                    ( { newModel | problems = model.problems ++ apiFormError }, Errors.toMsg error )
 
                 _ ->
                     ( { newModel | problems = [] }, Cmd.none )
@@ -250,7 +246,7 @@ viewRecords : Model -> Element Msg
 viewRecords model =
     let
         problemAttrs =
-            if List.member (Errors.toClientSideError noRecordsError) model.problems then
+            if List.member (Errors.toValidationError noRecordsError) model.problems then
                 [ Border.solid
                 , Border.color Colors.errorRed
                 , below (el [ Font.color Colors.errorRed, paddingXY 0 8 ] (text (Tuple.second noRecordsError)))

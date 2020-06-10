@@ -22,6 +22,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import StyledElement.WebDataView as WebDataView
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
@@ -83,12 +84,8 @@ update msg model =
 
         ReceivedStudentsResponse response ->
             case response of
-                Failure error ->
-                    let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-                    in
-                    ( { model | groupedStudents = response }, error_msg )
+                Failure error -> 
+                    ( { model | groupedStudents = response }, Errors.toMsg error )
 
                 Success ( groupedStudents, _ ) ->
                     ( { model
@@ -296,39 +293,29 @@ viewHeading =
 
 
 viewBody : Model -> Element Msg
-viewBody { groupedStudents, selectedGroupedStudents } =
-    case groupedStudents of
-        NotAsked ->
-            text "Initialising."
+viewBody { groupedStudents, selectedGroupedStudents, session } =
+    WebDataView.view groupedStudents
+        (\groups ->
+            case groups of
+                ( [], [] ) ->
+                    column (centerX :: spacing 8 :: centerY :: Style.labelStyle)
+                        [ el [ centerX ] (text "You have not added any students.")
+                        , el [ centerX ] (text "Click the + button above to create one do so.")
+                        ]
 
-        Loading ->
-            row [ width fill, height fill ] [ el [ width fill, height fill ] (Icons.loading [ centerX, centerY ]) ]
+                _ ->
+                    Element.column [ spacing 40 ]
+                        [ viewRoutes groups selectedGroupedStudents
+                        , case selectedGroupedStudents of
+                            Just students ->
+                                Element.column [ spacing 40 ]
+                                    [ viewHouseholdsTable students
+                                    ]
 
-        Failure error ->
-            let
-                ( apiError, _ ) =
-                    Errors.decodeErrors error
-            in
-            text (Errors.errorToString apiError)
-
-        Success ( [], [] ) ->
-            column (centerX :: spacing 8 :: centerY :: Style.labelStyle)
-                [ el [ centerX ] (text "You have not added any students.")
-                , el [ centerX ] (text "Click the + button above to create one do so.")
-                ]
-
-        Success groups ->
-            Element.column [ spacing 40 ]
-                [ viewRoutes groups selectedGroupedStudents
-                , case selectedGroupedStudents of
-                    Just students ->
-                        Element.column [ spacing 40 ]
-                            [ viewHouseholdsTable students
-                            ]
-
-                    Nothing ->
-                        none
-                ]
+                            Nothing ->
+                                none
+                        ]
+        )
 
 
 viewRoutes groups selectedGroupedStudents =

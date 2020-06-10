@@ -129,7 +129,7 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+                    ( { model | form = { form | problems = Errors.toValidationErrors problems } }, Cmd.none )
 
         ReceivedCreateResponse response ->
             updateStatus model response
@@ -191,12 +191,8 @@ updateStatus model_ response =
 
         Failure error ->
             let
-                ( _, error_msg ) =
-                    Errors.decodeErrors error
-
                 apiFormErrors =
-                    Errors.toServerSideErrors
-                        error
+                    Errors.toServerSideErrors error
 
                 form =
                     model.form
@@ -204,7 +200,7 @@ updateStatus model_ response =
                 updatedForm =
                     { form | problems = form.problems ++ apiFormErrors }
             in
-            ( { model | form = updatedForm }, error_msg )
+            ( { model | form = updatedForm }, Errors.toMsg error )
 
         NotAsked ->
             ( model, Cmd.none )
@@ -275,7 +271,7 @@ googleMap model =
             List.any
                 (\x ->
                     case x of
-                        Errors.ClientSideError y _ ->
+                        Errors.ValidationError y _ ->
                             y == EmptyPath
 
                         _ ->
@@ -346,7 +342,7 @@ viewRouteNameInput problems name =
         ]
         { ariaLabel = "Route Name"
         , caption = Nothing
-        , errorCaption = Errors.inputErrorsFor problems "name" [ EmptyName ]
+        , errorCaption = Errors.captionFor problems "name" [ EmptyName ]
         , icon = Nothing
         , onChange = RouteNameChanged
         , placeholder = Just (Input.placeholder [] (text "eg Riruta Route"))
@@ -383,8 +379,6 @@ submit session form editingID =
 aDecoder : Decoder ()
 aDecoder =
     Decode.succeed ()
-
-
 
 
 validateForm : Form -> Result (List ( Problem, String )) ValidForm

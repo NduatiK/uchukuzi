@@ -67,7 +67,9 @@ defmodule Uchukuzi.World.TileServer do
   end
 
   defp remove(state, pid) do
-    Process.demonitor(state.pids[pid].ref)
+    if state.pids[pid] != nil do
+      Process.demonitor(state.pids[pid].ref)
+    end
 
     %{state | pids: Map.delete(state.pids, pid)}
   end

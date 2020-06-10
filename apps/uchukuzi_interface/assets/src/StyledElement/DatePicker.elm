@@ -44,7 +44,7 @@ view :
     ->
         { title : String
         , caption : Maybe String
-        , errorCaption : Maybe InputError
+        , errorCaption : Maybe (InputError e)
         , icon : Maybe (IconBuilder msg)
         , onChange : DatePicker.Msg -> msg
         , value : Maybe Date.Date

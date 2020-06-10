@@ -155,7 +155,9 @@ update msg model =
                 currentBus =
                     model.bus
             in
-            ( { model | bus = { currentBus | lastSeen = Just locationUpdate } }, Cmd.none )
+            ( { model | bus = { currentBus | lastSeen = Just locationUpdate } }
+            , Ports.updateBusMap locationUpdate
+            )
 
 
 locationUpdateMsg : LocationUpdate -> Msg
@@ -325,7 +327,7 @@ viewCrewPage model =
 
         Success crew ->
             if crew == [] then
-                column [ centerX, spacing 20 ]
+                column [ centerX, centerY, spacing 20 ]
                     [ paragraph [] [ text "No crew driver or assistant assigned" ]
                     , StyledElement.ghostButtonLink [ centerX ]
                         { title = "Assign crew"

@@ -79,7 +79,7 @@ function initializeCamera(app) {
                         canvasElement.height
                     );
                     var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-                    if (code) {
+                    if (code && code.data !== "") {
                         drawBox(
                             code.location.topLeftCorner,
                             code.location.topRightCorner,

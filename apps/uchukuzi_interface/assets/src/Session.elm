@@ -1,4 +1,4 @@
-module Session exposing (Cred, Session, authHeader, fromCredentials, getCredentials, isGuest, navKey, timeZone, toGuest, withCredentials, withTimeZone)
+module Session exposing (Credentials, Session, authHeader, fromCredentials, getCredentials, isGuest, navKey, timeZone, toGuest, withCredentials, withTimeZone)
 
 import Browser.Navigation as Nav
 import Http
@@ -10,11 +10,11 @@ import Time
 
 
 type Session
-    = LoggedIn Nav.Key Time.Zone Cred
+    = LoggedIn Nav.Key Time.Zone Credentials
     | Guest Nav.Key Time.Zone
 
 
-type alias Cred =
+type alias Credentials =
     { name : String
     , email : String
     , token : String
@@ -22,7 +22,7 @@ type alias Cred =
     }
 
 
-getCredentials : Session -> Maybe Cred
+getCredentials : Session -> Maybe Credentials
 getCredentials session =
     case session of
         LoggedIn _ _ credentials ->
@@ -62,7 +62,7 @@ withTimeZone session newTimeZone =
             Guest key newTimeZone
 
 
-fromCredentials : Nav.Key -> Time.Zone -> Maybe Cred -> Session
+fromCredentials : Nav.Key -> Time.Zone -> Maybe Credentials -> Session
 fromCredentials key timezone credentials_ =
     case credentials_ of
         Nothing ->
@@ -72,7 +72,7 @@ fromCredentials key timezone credentials_ =
             LoggedIn key timezone credentials
 
 
-withCredentials : Session -> Maybe Cred -> Session
+withCredentials : Session -> Maybe Credentials -> Session
 withCredentials session maybeCredentials =
     case maybeCredentials of
         Nothing ->

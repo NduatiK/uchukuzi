@@ -211,11 +211,8 @@ update msg model =
                                 ]
 
                         Failure error ->
-                            let
-                                ( _, error_msg ) =
-                                    Errors.decodeErrors error
-                            in
-                            error_msg
+ 
+                            Errors.toMsg error
 
                         _ ->
                             Cmd.none

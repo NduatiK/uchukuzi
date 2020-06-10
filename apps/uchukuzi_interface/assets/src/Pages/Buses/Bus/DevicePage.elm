@@ -98,6 +98,7 @@ viewDeviceRegistration model =
     column
         [ spacing 60
         , centerX
+        , centerY
         ]
         [ column [ spacing 30, centerX ]
             [ Icons.dashedBox [ Background.color Colors.white ]

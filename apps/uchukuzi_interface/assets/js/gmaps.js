@@ -291,6 +291,20 @@ function insertCircle(pos, app, map, radius = 50) {
             sendSchoolCircle(schoolCircle)
         })
         google.maps.event.addListener(schoolCircle, "center_changed", function () {
+
+            if (!schoolMarker) {
+                var image = {
+                    url: `/images/school_marker.svg`,
+                    size: new google.maps.Size(26, 26),
+                    anchor: new google.maps.Point(13, 13),
+                    scaledSize: new google.maps.Size(26, 26)
+                }
+                schoolMarker = new google.maps.Marker({
+                    icon: image,
+                    map: map,
+                    title: `School [${schoolCircle.center.lng}, ${schoolCircle.center.lat}]`
+                })
+            }
             schoolMarker.setPosition(schoolCircle.center)
             sendSchoolCircle(schoolCircle)
         })
@@ -528,14 +542,22 @@ function setupMapPorts(app) {
     const updateMarker = function ({ location, bearing, markerID, bus }) {
         initializeMaps(app, false, false, 0)
             .then((map) => {
+                console.log(markerID, bus)
+                var id = bus
+
+                if (markerID) {
+                    id = markerID
+                }
+
+
                 var marker = markers.find((value, _indx, _list) => {
-                    return value.id == markerID
+                    return value.id == id
                 })
 
                 if (marker === undefined) {
 
                     marker = new google.maps.Marker({
-                        id: markerID ?? bus,
+                        id: id,
                         map: map,
                         title: "Bus Trip"
                     })
@@ -778,9 +800,10 @@ function renderPathPoint(position, map, app, markerIdx) {
         id: markerIdx.toString(),
         position: position,
         icon: {
-            url: "https://maps.gstatic.com/intl/en_us/mapfiles/markers2/measle.png",
-            size: new google.maps.Size(7, 7),
-            anchor: new google.maps.Point(3.5, 3.5)
+            url: "/images/handle.svg",
+            size: new google.maps.Size(28, 28),
+            anchor: new google.maps.Point(7, 7),
+            scaledSize: new google.maps.Size(14, 14)
         },
         draggable: true,
         map: map,

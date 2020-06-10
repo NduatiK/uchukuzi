@@ -15,6 +15,7 @@ import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events
 import Element.Font as Font
 import Element.Input as Input
 import Errors
@@ -165,11 +166,15 @@ type Msg
     | FuelDropdownMsg (Dropdown.Msg FuelType)
     | ConsumptionDropdownMsg (Dropdown.Msg ConsumptionType)
     | ReturnToBusList
+    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         ReturnToBusList ->
             ( model, Navigation.rerouteTo model Navigation.Buses )
 
@@ -221,7 +226,7 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+                    ( { model | form = { form | problems = Errors.toValidationErrors problems } }, Cmd.none )
 
         ReceivedEditResponse response_ ->
             let
@@ -263,17 +268,13 @@ update msg model =
 
                 Failure error ->
                     let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-
                         apiFormError =
-                            Errors.toServerSideErrors
-                                error
+                            Errors.toServerSideErrors error
 
                         updatedForm =
                             { form | problems = form.problems ++ apiFormError }
                     in
-                    ( { newModel | form = updatedForm }, error_msg )
+                    ( { newModel | form = updatedForm }, Errors.toMsg error )
 
                 _ ->
                     ( { newModel | form = { form | problems = [] } }, Cmd.none )
@@ -508,7 +509,7 @@ viewNumberPlateInput : String -> List (Errors.Errors Problem) -> Element Msg
 viewNumberPlateInput numberPlate problems =
     let
         errorMapper =
-            Errors.inputErrorsFor problems
+            Errors.captionFor problems
     in
     StyledElement.textInput
         [ width
@@ -533,7 +534,7 @@ viewAvailableSeatingInput : Int -> List (Errors.Errors Problem) -> Element Msg
 viewAvailableSeatingInput seats problems =
     let
         errorMapper =
-            Errors.inputErrorsFor problems
+            Errors.captionFor problems
     in
     StyledElement.numberInput
         [ width
@@ -671,7 +672,7 @@ fuelDropDown model =
             model.form.problems
 
         errorMapper =
-            Errors.inputErrorsFor model.form.problems
+            Errors.captionFor model.form.problems
 
         justFuelType x =
             Maybe.withDefault (vehicleClassToFuelType model.form.vehicleClass) x
@@ -726,12 +727,41 @@ routeDropDown model =
                     []
     in
     StyledElement.dropDown
-        [ width
+        ([ width
             (fill
                 |> maximum 300
             )
-        , alignTop
-        ]
+         , alignTop
+         ]
+            ++ (if routes == [] then
+                    [ Style.clickThrough
+                    , inFront
+                        (el
+                            [ centerX
+                            , alpha 0
+                            , width (fill |> maximum 310)
+                            , height fill
+                            , mouseOver [ alpha 1 ]
+                            ]
+                            (paragraph
+                                ([ Background.color Colors.white
+                                 , Style.elevated2
+                                 , moveDown 100
+                                 , Border.color Colors.darkGreen
+                                 , Border.width 1
+                                 , padding 8
+                                 ]
+                                    ++ Style.captionStyle
+                                )
+                                [ text "You have not created any routes yet, you can leave this blank and add one later" ]
+                            )
+                        )
+                    ]
+
+                else
+                    []
+               )
+        )
         { ariaLabel = "Select bus dropdown"
         , caption = Just "Which route will the bus ply?"
         , prompt = Nothing
@@ -745,13 +775,6 @@ routeDropDown model =
         , toString = .name
         , isLoading = False
         }
-
-
-viewRouteDropDown : Model -> Element Msg
-viewRouteDropDown model =
-    case routeDropDown model of
-        ( dropDown, _, _ ) ->
-            dropDown
 
 
 subscriptions : Model -> Sub Msg

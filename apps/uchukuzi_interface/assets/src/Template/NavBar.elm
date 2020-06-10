@@ -207,7 +207,7 @@ viewGuestHeader route =
         loginOptions
 
 
-viewLoggedInHeader : Model -> Session.Cred -> List Notification -> Element Msg
+viewLoggedInHeader : Model -> Session.Credentials -> List Notification -> Element Msg
 viewLoggedInHeader model creds notifications =
     let
         { accountDropdownVisible, notificationsVisible } =

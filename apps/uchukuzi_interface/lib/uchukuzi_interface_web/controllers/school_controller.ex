@@ -63,20 +63,21 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
-  def edit_school_details(        conn,        params,        school_id      ) do
-
-
-    location = with lat when is_number(lat) <- Map.get(params, "lat"),
-                    lng when is_number(lat) <- Map.get(params, "lng") ,
-                    {:ok, location} <- Location.new(lng, lat) do
-                      location
-                    else _-> nil
-     end
+  def edit_school_details(conn, params, school_id) do
+    location =
+      with lat when is_number(lat) <- Map.get(params, "lat"),
+           lng when is_number(lat) <- Map.get(params, "lng"),
+           {:ok, location} <- Location.new(lng, lat) do
+        location
+      else
+        _ -> nil
+      end
 
     with {:ok, school} <-
-           School.update_school_details(school_id,
-           Map.put(params, "location", location)
-            ) do
+           School.update_school_details(
+             school_id,
+             Map.put(params, "location", location)
+           ) do
       conn
       |> put_status(200)
       |> render("school.json", school: school)
@@ -341,7 +342,12 @@ defmodule UchukuziInterfaceWeb.SchoolController do
 
   def get_students_onboard(conn, %{"bus_id" => bus_id}, school_id) do
     with {:ok, bus} <- School.bus_for(school_id, bus_id) do
-      students = Uchukuzi.Tracking.students_onboard(bus)
+      student_ids = Uchukuzi.Tracking.students_onboard(bus)
+
+      students =
+        Uchukuzi.Roles.Student
+        |> where([c], c.id in ^student_ids)
+        |> Uchukuzi.Repo.all()
 
       conn
       |> put_view(UchukuziInterfaceWeb.RolesView)

@@ -19,6 +19,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import StyledElement.WebDataView as WebDataView
 import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
@@ -80,11 +81,7 @@ update msg model =
             in
             case response of
                 Failure error ->
-                    let
-                        ( _, error_msg ) =
-                            Errors.decodeErrors error
-                    in
-                    ( newModel, error_msg )
+                    ( newModel, Errors.toMsg error )
 
                 _ ->
                     ( newModel, Ports.bulkUpdateBusMap (locationUpdatesFrom newModel) )
@@ -162,24 +159,12 @@ viewBody : Model -> Element Msg
 viewBody model =
     let
         body =
-            case model.buses of
-                NotAsked ->
-                    text "Initialising."
-
-                Loading ->
-                    el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
-
-                Failure error ->
-                    let
-                        ( apiError, _ ) =
-                            Errors.decodeErrors error
-                    in
-                    text (Errors.errorToString apiError)
-
-                Success buses ->
+            WebDataView.view model.buses
+                (\buses ->
                     column [ width fill ]
                         [ viewBuses buses model.filterText
                         ]
+                )
     in
     Element.column
         [ spacing 40

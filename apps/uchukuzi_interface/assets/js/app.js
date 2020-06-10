@@ -111,12 +111,16 @@ function init() {
             credentialsUpdated(state)
         }
     }, false)
+
+    function credentialsUpdated(credentials) {
+        app.ports.onStoreChange.send(credentials);
+    }
 }
 
-// var app = Elm.Main.init({
-//     flags: { window: windowSize, loading: true },
-//     node: document.getElementById("elm-loading")
-// })
+var app = Elm.Main.init({
+    flags: { window: windowSize, loading: true },
+    node: document.getElementById("elm-loading")
+})
 
 
 
@@ -127,9 +131,9 @@ loadMapAPI()
             flags: { window: windowSize, error: true },
             node: document.getElementById("elm")
         })
-        if (env.isDevelopment) {
-            console.log("inite")
-            init()
-        }
+        // if (env.isDevelopment) {
+        //     console.log("inite")
+        //     init()
+        // }
     })
 

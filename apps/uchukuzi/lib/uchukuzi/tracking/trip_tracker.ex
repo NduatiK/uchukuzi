@@ -274,10 +274,14 @@ defmodule Uchukuzi.Tracking.TripTracker do
     deviation_radius = data.school.deviation_radius
 
     expected_tiles =
+    if data.route_id == nil do
+      nil
+    else
       Uchukuzi.School.Route
       |> where([r], r.id == ^data.route_id)
       |> Uchukuzi.Repo.one()
       |> (& &1.expected_tiles).()
+    end
 
     IO.puts("TripPath.new")
 

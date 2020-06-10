@@ -222,7 +222,7 @@ update msg model =
                     )
 
                 Err problems ->
-                    ( { model | form = { form | problems = Errors.toClientSideErrors problems } }, Cmd.none )
+                    ( { model | form = { form | problems = Errors.toValidationErrors problems } }, Cmd.none )
 
         SaveStudentPressed ->
             let
@@ -318,7 +318,7 @@ update msg model =
         AutocompleteError ->
             let
                 apiFormErrors =
-                    Errors.toClientSideError ( AutocompleteFailed, "Unable to load autocomplete, please refresh the page" )
+                    Errors.toValidationError ( AutocompleteFailed, "Unable to load autocomplete, please refresh the page" )
 
                 updatedForm =
                     { form | problems = apiFormErrors :: form.problems }
@@ -464,12 +464,8 @@ updateStatus model webData =
 
         Failure error ->
             let
-                ( _, error_msg ) =
-                    Errors.decodeErrors error
-
                 apiFormErrors =
-                    Errors.toServerSideErrors
-                        error
+                    Errors.toServerSideErrors error
 
                 form =
                     model.form
@@ -477,7 +473,7 @@ updateStatus model webData =
                 updatedForm =
                     { form | problems = form.problems ++ apiFormErrors }
             in
-            ( { model | form = updatedForm }, error_msg )
+            ( { model | form = updatedForm }, Errors.toMsg error )
 
         NotAsked ->
             ( model, Cmd.none )
@@ -671,7 +667,7 @@ googleMap model =
             List.any
                 (\x ->
                     case x of
-                        Errors.ClientSideError y _ ->
+                        Errors.ValidationError y _ ->
                             y == EmptyHomeLocation
 
                         _ ->
@@ -705,7 +701,7 @@ googleMap model =
                 (StyledElement.textInput [ padding 10 ]
                     { ariaLabel = "search input"
                     , caption = Nothing
-                    , errorCaption = Errors.inputErrorsFor model.form.problems "search" [ AutocompleteFailed ]
+                    , errorCaption = Errors.captionFor model.form.problems "search" [ AutocompleteFailed ]
                     , icon = Just Icons.search
                     , onChange = SearchTextChanged
                     , placeholder = Nothing
@@ -819,7 +815,7 @@ viewStudentsInput { students, problems, currentStudent, editingStudent, deletedS
                 Element.none
 
         errorMapper =
-            Errors.inputErrorsFor problems
+            Errors.captionFor problems
     in
     Element.column
         [ spacing 10
@@ -992,7 +988,7 @@ viewPhoneInput problems phone_number =
         ]
         { ariaLabel = "Guardian's Phone Number"
         , caption = Nothing
-        , errorCaption = Errors.inputErrorsFor problems "guardian_phone_number" [ EmptyGuardianPhoneNumber, InvalidGuardianPhoneNumber ]
+        , errorCaption = Errors.captionFor problems "guardian_phone_number" [ EmptyGuardianPhoneNumber, InvalidGuardianPhoneNumber ]
         , icon = Just Icons.phone
         , onChange = PhoneNumber >> Changed
         , placeholder = Nothing
@@ -1011,7 +1007,7 @@ viewGuardianNameInput problems name =
         ]
         { ariaLabel = "Guardian's Name"
         , caption = Nothing
-        , errorCaption = Errors.inputErrorsFor problems "guardian_name" [ EmptyGuardianName ]
+        , errorCaption = Errors.captionFor problems "guardian_name" [ EmptyGuardianName ]
         , icon = Nothing
         , onChange = GuardianName >> Changed
         , placeholder = Nothing
@@ -1030,7 +1026,7 @@ viewEmailInput problems email =
         ]
         { ariaLabel = "Guardian's Email Address"
         , caption = Just "Used to connect the parent to the mobile app"
-        , errorCaption = Errors.inputErrorsFor problems "guardian_email" [ EmptyGuardianEmail, InvalidGuardianEmail ]
+        , errorCaption = Errors.captionFor problems "guardian_email" [ EmptyGuardianEmail, InvalidGuardianEmail ]
         , icon = Just Icons.email
         , onChange = Email >> Changed
         , placeholder = Nothing
@@ -1085,7 +1081,7 @@ routeDropDown model =
         , prompt = Nothing
         , dropDownMsg = DropdownMsg
         , dropdownState = model.routeDropdownState
-        , errorCaption = Errors.inputErrorsFor model.form.problems "route" [ EmptyRoute ]
+        , errorCaption = Errors.captionFor model.form.problems "route" [ EmptyRoute ]
         , icon = Just Icons.pin
         , onSelect = Maybe.map .id >> Route >> Changed
         , options = routes
