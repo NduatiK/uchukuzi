@@ -5,11 +5,9 @@ module Style exposing
     , animatesNone
     , animatesShadow
     , blurredStyle
-    , borderedContainer
     , captionStyle
     , class
     , clickThrough
-    , clipStyle
     , cssResponsive
     , defaultFontFace
     , edges
@@ -36,13 +34,11 @@ module Style exposing
 
 import Colors exposing (..)
 import Element exposing (..)
-import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Region as Region
 import Html.Attributes
-import Html.Events
-import Json.Decode
+import Icons exposing (IconBuilder)
 
 
 elevated : Attr decorative msg
@@ -64,18 +60,12 @@ elevatedTile =
 -- STYLES
 
 
+iconHeader : IconBuilder msg -> String -> Element msg
 iconHeader icon title =
     row [ spacing 8 ]
         [ icon [ alpha 1, height (px 31), width (px 31), Colors.fillDarkness, centerY ]
         , el headerStyle (text title)
         ]
-
-
-borderedContainer : List (Attribute msg)
-borderedContainer =
-    [ Border.width 1
-    , Border.color (rgb255 163 175 190)
-    ]
 
 
 headerStyle : List (Attribute msg)
@@ -84,8 +74,6 @@ headerStyle =
     , Font.size 31
     , Font.family
         [ Font.typeface "SF Pro Display"
-
-        --  Font.typeface "InterUI-Bold"
         , Font.sansSerif
         ]
     , paddingXY 0 10
@@ -100,8 +88,6 @@ header2Style =
     , Font.color (rgb255 51 63 78)
     , Font.family
         [ Font.typeface "SF Pro Display"
-
-        --  Font.typeface "InterUI-Bold"
         , Font.sansSerif
         ]
     , Font.bold
@@ -170,11 +156,6 @@ defaultFontFace =
 blurredStyle : Attribute msg
 blurredStyle =
     class "blurred"
-
-
-clipStyle : Attribute msg
-clipStyle =
-    class "safari-clip"
 
 
 overline : Attribute msg
@@ -262,13 +243,16 @@ edges =
     }
 
 
+clickThrough : Attribute msg
 clickThrough =
     class "clickThrough"
 
 
+nonClickThrough : Attribute msg
 nonClickThrough =
     class "nonClickThrough"
 
 
+zIndex : Int -> Attribute msg
 zIndex value =
     htmlAttribute (Html.Attributes.style "z-index" (String.fromInt value))

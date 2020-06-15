@@ -49,30 +49,22 @@ defmodule Uchukuzi.School.Bus do
     end
   end
 
-  def distance_travelled(bus) do
-    result =
-      Repo.all(
-        from(b in Bus,
-          left_join: t in assoc(b, :trips),
-          # where: b.id == ^bus.id and t.bus_id == ^bus.id,
-          select: type(sum(t.distance_covered), :float)
-        )
-      )
+  # def distance_travelled(bus) do
+  #   result =
+  #     Repo.all(
+  #       from(b in Bus,
+  #         left_join: t in assoc(b, :trips),
+  #         where: b.id == ^bus.id,
+  #         select: type(sum(t.distance_covered), :float)
+  #       )
+  #     )
 
 
-    Repo.all(
-      from(b in Bus,
-        left_join: t in assoc(b, :trips),
-        # where: b.id == ^bus.id and t.bus_id == ^bus.id,
-        select: count(t.distance_covered)
-      )
-    )
-
-    case result do
-      [nil] -> 0
-      [value] -> round(value)
-    end
-  end
+  #   case result do
+  #     [nil] -> 0
+  #     [value] -> round(value)
+  #   end
+  # end
 
   def distance_travelled_before(bus, date) do
     date = NaiveDateTime.to_date(date)
@@ -81,7 +73,7 @@ defmodule Uchukuzi.School.Bus do
       Repo.all(
         from(b in Bus,
           left_join: t in assoc(b, :trips),
-          where: fragment("?::date", t.end_time) <= ^date,
+          where: fragment("?::date", t.end_time) <= ^date and b.id == ^bus.id,
           select: type(sum(t.distance_covered), :float)
         )
       )

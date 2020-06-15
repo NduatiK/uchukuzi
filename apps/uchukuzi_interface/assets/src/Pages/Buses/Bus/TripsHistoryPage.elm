@@ -25,6 +25,7 @@ import Errors exposing (Errors)
 import Icons
 import Json.Decode exposing (Decoder, list)
 import Json.Encode as Encode
+import Layout.TabBar as TabBar
 import Models.Location exposing (Location, Report)
 import Models.Route exposing (Route)
 import Models.Tile exposing (Tile, newTile)
@@ -40,7 +41,6 @@ import StyledElement.DropDown as Dropdown
 import StyledElement.TripSlider as TripSlider
 import StyledElement.WebDataView as WebDataView
 import Task
-import Template.TabBar as TabBar
 import Time
 import Utils.DateFormatter
 import Utils.GroupBy
@@ -675,7 +675,6 @@ viewMap model viewWidth =
     column
         [ height (px mapHeight)
         , width fill
-        , Style.clipStyle
         , Border.solid
         , Border.color Colors.darkness
         , Border.width 1
@@ -1289,9 +1288,7 @@ tabBarItems model mapper =
                                 ]
 
                             Loading ->
-                                [ TabBar.LoadingButton
-                                    { title = ""
-                                    }
+                                [ TabBar.LoadingButton 
                                 ]
 
                             _ ->

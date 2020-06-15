@@ -12,6 +12,7 @@ import Errors
 import Html.Events
 import Icons
 import Json.Decode exposing (list, succeed)
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Route exposing (Route, routeDecoder)
 import Navigation
 import Ports
@@ -20,7 +21,6 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.WebDataView as WebDataView
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 type alias Model =

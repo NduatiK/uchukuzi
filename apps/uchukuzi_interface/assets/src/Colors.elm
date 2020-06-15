@@ -71,7 +71,7 @@ white : Color
 white =
     Element.rgb 1 1 1
 
-{-| Use this color for clickable highlight
+{-| Use this color for clickable highlights
 -}
 purple : Color
 purple =
@@ -137,6 +137,13 @@ errorRed : Color
 errorRed =
     Element.rgb255 200 0 0
 
+
+-- ICON COLORS
+{-| Icons ignore the standard colors. 
+These attributes paint into images using filters
+
+Have a look at 
+-}
 
 fillPurple : Attribute msg
 fillPurple =

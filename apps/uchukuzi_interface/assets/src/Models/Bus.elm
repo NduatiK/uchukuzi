@@ -295,26 +295,28 @@ locationUpdateDecoder =
         |> required "bearing" float
 
 
+{-| Litres of fuel consumed per 100 km.
+-}
 defaultConsumption : VehicleClass -> Float
 defaultConsumption vehicleClass =
     case vehicleClass of
         VehicleClass Van Gasoline ->
-            7.4
+            13.5
 
         VehicleClass Van Diesel ->
-            8.1
+            12.4
 
         VehicleClass Shuttle Gasoline ->
-            3.3
+            30.6
 
         VehicleClass Shuttle Diesel ->
-            3.3
+            30.1
 
         VehicleClass SchoolBus Gasoline ->
-            2.7
+            37.2
 
         VehicleClass SchoolBus Diesel ->
-            3.0
+            33.6
 
 
 defaultSeats : VehicleClass -> Int

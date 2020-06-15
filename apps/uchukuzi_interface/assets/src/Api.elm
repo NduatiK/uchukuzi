@@ -1,12 +1,11 @@
 port module Api exposing (..)
 
 import Api.Endpoint as Endpoint exposing (Endpoint)
-import Http exposing (Body)
+import Http
 import Json.Decode as Decode exposing (Decoder, Value, string)
-import Json.Decode.Pipeline exposing (required, requiredAt, resolve)
+import Json.Decode.Pipeline exposing (required, requiredAt)
 import Json.Encode as Encode
 import Models.Location exposing (Location, locationDecoder)
-import Navigation exposing (LoginRedirect, Route)
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Credentials, Session)
 
@@ -32,11 +31,6 @@ patch session url body decoder =
         session
         (body |> Http.jsonBody)
         decoder
-
-
-credStorageKey : String
-credStorageKey =
-    "cred"
 
 
 port storeCache : Maybe Value -> Cmd msg
@@ -78,6 +72,7 @@ logout =
         ]
 
 
+loginDecoder : Decoder SuccessfulLogin
 loginDecoder =
     Decode.succeed SuccessfulLogin
         |> required "location" locationDecoder
@@ -95,7 +90,7 @@ parseCreds maybeCreds =
         |> Maybe.andThen
             (\aCredentials ->
                 case Decode.decodeValue credDecoder aCredentials of
-                    Err e ->
+                    Err _ ->
                         Nothing
 
                     Ok resolvedCredentials ->

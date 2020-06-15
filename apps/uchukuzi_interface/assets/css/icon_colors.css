@@ -1,0 +1,41 @@
+.fillErrorRedOnHover:hover img {
+  filter: var(--error-red)
+}
+
+.fillWhiteOnHover:hover img {
+  filter: var(--white);
+}
+
+
+.fillPurple img {
+  filter: var(--purple);
+}
+
+
+.fillWhite img {
+  filter: var(--white);
+}
+
+
+.fillDarkGreen img {
+  filter: var(--dark_green);
+}
+
+
+.fillDarkness img {
+  filter: var(--darknesss)
+}
+
+
+.fillErrorRed img {
+  filter: var(--error-red)
+}
+
+
+html {
+  --white: brightness(100%) saturate(0) invert(1);
+  --purple: brightness(0) saturate(100%) invert(24%) sepia(97%) saturate(1937%) hue-rotate(235deg) brightness(97%) contrast(93%);
+  --darknesss: invert(59%) sepia(40%) saturate(363%) hue-rotate(170deg) brightness(33%) contrast(99%);
+  --dark_green: invert(59%) sepia(40%) saturate(342%) hue-rotate(114deg) brightness(93%) contrast(88%);
+  --error-red: invert(41%) sepia(100%) saturate(379%) hue-rotate(317deg) brightness(71%) contrast(164%);
+}

@@ -15,6 +15,7 @@ import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (hardcoded)
 import Json.Encode as Encode
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Household exposing (TravelTime(..))
 import Models.Location exposing (Location, encodeLocation)
 import Models.Route exposing (Route, routeDecoder)
@@ -24,7 +25,6 @@ import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator exposing (..)
 
 
@@ -445,8 +445,6 @@ tabBarItems { requestState } =
 
         Loading ->
             [ TabBar.LoadingButton
-                { title = ""
-                }
             ]
 
         _ ->

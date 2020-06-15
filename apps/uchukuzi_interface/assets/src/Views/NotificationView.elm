@@ -11,8 +11,7 @@ import Element.Events as Events
 import Element.Font as Font
 import Icons
 import Models.Notification exposing (Notification)
-import Navigation
-import Style exposing (edges)
+import Style
 import StyledElement
 
 
@@ -61,26 +60,9 @@ icon notifications onPress =
 
 view : List Notification -> (String -> msg) -> Element msg
 view notifications redirectTo =
-    -- let
-    --     notifications =
-    --         [ { notificationType = "String"
-    --           , content =
-    --                 """
-    --             Icons.notificationsEmpty [ width (px 100), height (px 100), centerX, alpha 1, Colors.fillDarkness ]
-    --             , el [ centerX ] (text "Nothing to see here")
-    --             """
-    --           , title = "String"
-    --           , seen = True
-    --           }
-    --         ]
-    -- in
     if notifications == [] then
         el [ padding 30, width fill, height (px 300) ]
-            (column
-                [ centerX
-                , height fill
-                , spacing 16
-                ]
+            (column [ centerX, height fill, spacing 16 ]
                 [ el [ height (px 30) ] none
                 , Icons.notificationsEmpty
                     [ width (px 100)
@@ -88,6 +70,8 @@ view notifications redirectTo =
                     , centerX
                     , alpha 1
                     , Colors.fillDarkness
+
+                    -- Slash on alarm
                     , inFront
                         (el
                             [ width (px 10)
@@ -109,11 +93,7 @@ view notifications redirectTo =
             )
 
     else
-        column
-            [ width fill
-            , height (fill |> maximum 300)
-            , scrollbarY
-            ]
+        column [ width fill, height (fill |> maximum 300), scrollbarY ]
             (List.map (viewMessage redirectTo) notifications)
 
 

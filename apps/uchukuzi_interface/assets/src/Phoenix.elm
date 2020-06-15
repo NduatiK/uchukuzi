@@ -1,10 +1,18 @@
 module Phoenix exposing (Model, Send, addChannel, addPush, initialize, update)
 
+{-| A wrapper library for talking to a Phoenix backend over sockets
+
+Reference:
+The contents of this module, those in the Phoenix.\* modules and the javascript file `ElmPhoenixChannels.js`
+were sourced from the internals of an online multi-player scrabble game available at:
+<https://github.com/zkayser/elm_scrabble>
+
+-}
+
 import Dict exposing (Dict)
 import Json.Encode as Encode exposing (Value)
 import Phoenix.Channel as Channel exposing (Channel)
-import Phoenix.Message as Message exposing (Data, Event(..), Message(..), PhoenixCommand(..))
-import Phoenix.Payload
+import Phoenix.Message exposing (Data, Event(..), Message(..), PhoenixCommand(..))
 import Phoenix.Push as Push exposing (Push)
 import Phoenix.Socket as Socket exposing (Socket)
 import Task

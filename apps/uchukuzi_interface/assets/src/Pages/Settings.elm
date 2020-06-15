@@ -22,6 +22,7 @@ import Html.Events exposing (..)
 import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Encode as Encode
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Location exposing (Location)
 import Models.School exposing (School)
 import Ports
@@ -30,7 +31,6 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.WebDataView as WebDataView
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 type alias Model =
@@ -743,8 +743,6 @@ tabBarItems model =
 
                 Loading ->
                     [ TabBar.LoadingButton
-                        { title = ""
-                        }
                     ]
 
                 _ ->
@@ -777,8 +775,6 @@ tabBarItems model =
 
                 Loading ->
                     [ TabBar.LoadingButton
-                        { title = ""
-                        }
                     ]
 
                 _ ->

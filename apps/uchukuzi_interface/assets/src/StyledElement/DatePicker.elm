@@ -1,20 +1,12 @@
 module StyledElement.DatePicker exposing (update, view)
 
-import Browser.Dom as Dom
-import Colors
 import Date
 import DatePicker
 import Element exposing (..)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Events as Events
-import Element.Font as Font
-import Element.Input as Input
 import Errors exposing (InputError)
 import Html
-import Html.Attributes exposing (id)
+import Html.Attributes
 import Icons exposing (IconBuilder)
-import Style
 import StyledElement exposing (wrappedInput)
 
 

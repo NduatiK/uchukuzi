@@ -1,17 +1,9 @@
-module Views.DragAndDrop exposing (Config, draggable, droppable)
+module Views.DragAndDrop exposing (draggable, droppable)
 
 import Element exposing (htmlAttribute)
 import Html.Attributes exposing (attribute)
 import Html.Events exposing (custom, on)
 import Json.Decode as Json
-
-
-type alias Config msg dragData dropData =
-    { dragStartMsg : dragData -> msg
-    , dragEndMsg : msg
-    , dropMsg : dropData -> msg
-    , dragOverMsg : dropData -> msg
-    }
 
 
 {-| Add this to things that can be dragged
@@ -22,7 +14,7 @@ type alias Config msg dragData dropData =
         }
 
 -}
-draggable : { a | onDragStart : msg, onDragEnd : msg } -> List (Element.Attribute msg)
+draggable : { onDragStart : msg, onDragEnd : msg } -> List (Element.Attribute msg)
 draggable { onDragStart, onDragEnd } =
     [ htmlAttribute (attribute "draggable" "true")
     , htmlAttribute (on "dragstart" <| Json.succeed <| onDragStart)
@@ -38,7 +30,7 @@ draggable { onDragStart, onDragEnd } =
         }
 
 -}
-droppable : { a | onDrop : msg, onDragOver : msg } -> List (Element.Attribute msg)
+droppable : { onDrop : msg, onDragOver : msg } -> List (Element.Attribute msg)
 droppable { onDrop, onDragOver } =
     [ htmlAttribute (attribute "droppable" "true")
     , htmlAttribute (custom "drop" <| Json.succeed { message = onDrop, preventDefault = True, stopPropagation = True })

@@ -17,6 +17,7 @@ import Icons
 import Json.Decode as Decode exposing (Decoder, field, float, int, list, string)
 import Json.Decode.Pipeline exposing (hardcoded)
 import Json.Encode as Encode
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Household exposing (Guardian, Household, TravelTime(..))
 import Models.Location exposing (Location)
 import Models.Route exposing (Route, routeDecoder)
@@ -30,7 +31,6 @@ import StyledElement
 import StyledElement.DropDown as Dropdown
 import StyledElement.WebDataView as WebDataView
 import Task
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator exposing (..)
 
 
@@ -1306,8 +1306,6 @@ tabBarItems { requestState } =
 
         Loading ->
             [ TabBar.LoadingButton
-                { title = ""
-                }
             ]
 
         _ ->

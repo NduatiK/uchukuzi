@@ -8,14 +8,13 @@ module Layout exposing
 import Element exposing (..)
 import Html.Attributes exposing (id)
 import Icons
+import Layout.NavBar as NavBar
+import Layout.SideBar as SideBar
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Notification exposing (Notification)
 import Navigation exposing (Route)
 import Session
-import Style exposing (edges)
-import Template.NavBar as NavBar
-import Template.SideBar as SideBar
-import Template.TabBar as TabBar exposing (TabBarItem(..))
-import Views.NotificationView as NotificationView
+import Style
 
 
 {-| Transforms a (foreign model, foreign msg) into a (local model, msg)
@@ -32,39 +31,40 @@ viewHeight pageHeight =
     pageHeight - NavBar.maxHeight
 
 
+sideBarOffset : Int
 sideBarOffset =
     SideBar.handleBarSpacing + SideBar.handleBarWidth
 
 
 frame :
-    Maybe Route
-    -> Element a
-    -> Session.Session
-    -> (a -> msg)
-    -> NavBar.Model
-    -> List Notification
-    -> (NavBar.Msg -> msg)
-    -> SideBar.Model
-    -> (SideBar.Msg -> msg)
+    Session.Session
+    -> Maybe Route
+    -> { body : Element a, bodyMsgToPageMsg : a -> msg }
+    -> { navBarState : NavBar.Model, notifications : List Notification, navBarMsgToPageMsg : NavBar.Msg -> msg }
+    -> { sideBarState : SideBar.Model, sideBarMsgToPageMsg : SideBar.Msg -> msg }
     -> Int
     -> List (TabBarItem a)
     -> Element msg
-frame route body session toMsg navState notifications headerToMsg sideBarState sideBarToMsg pageHeight tabBarItems =
+frame session route { body, bodyMsgToPageMsg } { navBarState, notifications, navBarMsgToPageMsg } { sideBarState, sideBarMsgToPageMsg } pageHeight tabBarItems =
     let
         sideBar =
             if Session.getCredentials session == Nothing || Navigation.isPublicRoute route then
                 none
 
             else
-                Element.map sideBarToMsg (SideBar.view route sideBarState (viewHeight pageHeight))
+                Element.map sideBarMsgToPageMsg (SideBar.view route sideBarState (viewHeight pageHeight))
 
         bottomBar =
-            -- if Session.getCredentials session == Nothing || Navigation.isPublicRoute route || tabBarItems == [] then
-            if Session.getCredentials session == Nothing || Navigation.isPublicRoute route then
+            if Session.getCredentials session == Nothing || Navigation.isPublicRoute route || tabBarItems == [] then
+                -- if Session.getCredentials session == Nothing || Navigation.isPublicRoute route then
                 none
 
             else
-                TabBar.view tabBarItems toMsg
+                TabBar.view tabBarItems bodyMsgToPageMsg
+
+        bodyContent =
+            Element.map bodyMsgToPageMsg
+                (el [ width fill, height fill ] body)
 
         renderedBody =
             row
@@ -79,19 +79,14 @@ frame route body session toMsg navState notifications headerToMsg sideBarState s
                     )
                 ]
                 [ sideBar
-                , column
-                    [ width fill
-                    , height (px (viewHeight pageHeight))
-                    , alignTop
-                    ]
-                    [ Element.map toMsg
-                        (el [ width fill, height fill ] body)
+                , column [ width fill, height (px (viewHeight pageHeight)), alignTop ]
+                    [ bodyContent
                     , bottomBar
                     ]
                 ]
 
         renderedHeader =
-            Element.map headerToMsg (NavBar.view navState session route notifications)
+            Element.map navBarMsgToPageMsg (NavBar.view navBarState session route notifications)
     in
     column [ width fill, height fill ]
         [ renderedHeader

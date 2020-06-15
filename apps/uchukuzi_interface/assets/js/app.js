@@ -50,7 +50,7 @@ function init() {
     app = null
 
     const appArgs = { credentials: storedCredentials, window: windowSize, sideBarIsOpen: sideBarIsOpen }
-    
+
     console.log(appArgs)
 
     var app = Elm.Main.init({
@@ -122,22 +122,25 @@ function init() {
     }
 }
 
-// var app = Elm.Main.init({
-//     flags: { window: windowSize, loading: true },
-//     node: document.getElementById("elm-loading")
-// })
-
+if (!env.isDevelopment) {
+    var app = Elm.Main.init({
+        flags: { window: windowSize, loading: true },
+        node: document.getElementById("elm-loading")
+    })
+}
 
 
 loadMapAPI()
     .then(init)
     .catch((_) => {
-        var app = Elm.Main.init({
-            flags: { window: windowSize, error: true },
-            node: document.getElementById("elm")
-        })
+
         if (env.isDevelopment) {
             init()
+        } else {
+            var app = Elm.Main.init({
+                flags: { window: windowSize, error: true },
+                node: document.getElementById("elm")
+            })
         }
     })
 

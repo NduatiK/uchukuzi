@@ -8,11 +8,13 @@ import Browser.Events
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
 import Element exposing (..)
-import Html.Attributes
 import Json.Decode as Json exposing (Value)
-import Json.Decode.Pipeline exposing (optional, requiredAt)
+import Json.Decode.Pipeline exposing (optionalAt)
 import Json.Encode as Encode
-import Layout exposing (..)
+import Layout
+import Layout.NavBar as NavBar exposing (view)
+import Layout.SideBar as SideBar
+import Layout.TabBar as TabBar
 import Models.Bus exposing (LocationUpdate)
 import Models.Notification exposing (Notification)
 import Navigation exposing (Route)
@@ -23,8 +25,8 @@ import Pages.Buses.Bus.CreateFuelReport as CreateFuelReport
 import Pages.Buses.Bus.Navigation exposing (BusPage(..))
 import Pages.Buses.BusPage as BusDetailsPage
 import Pages.Buses.BusesPage as BusesList
-import Pages.Buses.CreateBusPage as BusRegistration
-import Pages.Crew.CrewMemberRegistrationPage as CrewMemberRegistration
+import Pages.Buses.CreateBusPage as CreateBusPage
+import Pages.Crew.CrewMemberRegistrationPage as CreateCrewMemberPage
 import Pages.Crew.CrewMembersPage as CrewMembers
 import Pages.Devices.DeviceRegistrationPage as DeviceRegistration
 import Pages.ErrorPage as ErrorPage
@@ -33,7 +35,6 @@ import Pages.Households.HouseholdRegistrationPage as StudentRegistration
 import Pages.Households.HouseholdsPage as HouseholdList
 import Pages.LoadingPage as LoadingPage
 import Pages.Login as Login
-import Pages.Logout as Logout
 import Pages.NotFound as NotFound
 import Pages.Routes.CreateRoutePage as CreateRoute
 import Pages.Routes.Routes as RoutesList
@@ -47,9 +48,6 @@ import Ports
 import Session exposing (Session)
 import Style
 import Task
-import Template.NavBar as NavBar exposing (view)
-import Template.SideBar as SideBar
-import Template.TabBar as TabBar
 import Time
 import Url
 
@@ -61,7 +59,7 @@ import Url
 type alias Model =
     { page : PageModel
     , route : Maybe Route
-    , navState : NavBar.Model
+    , navigationBarState : NavBar.Model
     , sideBarState : SideBar.Model
     , windowSize :
         { height : Int
@@ -88,7 +86,6 @@ type PageModel
     | Settings Settings.Model
     | Login Login.Model
     | Activate Activate.Model
-    | Logout Logout.Model
     | Signup Signup.Model
       ------------
     | RoutesList RoutesList.Model
@@ -99,14 +96,14 @@ type PageModel
       ------------
     | BusesList BusesList.Model
     | BusDetailsPage BusDetailsPage.Model
-    | BusRegistration BusRegistration.Model
+    | BusRegistration CreateBusPage.Model
     | CreateBusRepair CreateBusRepair.Model
     | CreateFuelReport CreateFuelReport.Model
       ------------
     | DeviceRegistration DeviceRegistration.Model
       ------------
     | CrewMembers CrewMembers.Model
-    | CrewMemberRegistration CrewMemberRegistration.Model
+    | CrewMemberRegistration CreateCrewMemberPage.Model
 
 
 type alias LocalStorageData =
@@ -122,12 +119,12 @@ type alias LocalStorageData =
 localStorageDataDecoder : Json.Decoder LocalStorageData
 localStorageDataDecoder =
     Json.succeed LocalStorageData
-        |> Json.Decode.Pipeline.optionalAt [ "credentials" ] (Json.nullable Api.credDecoder) Nothing
-        |> Json.Decode.Pipeline.optionalAt [ "window", "width" ] Json.int 100
-        |> Json.Decode.Pipeline.optionalAt [ "window", "height" ] Json.int 100
-        |> Json.Decode.Pipeline.optionalAt [ "loading" ] Json.bool False
-        |> Json.Decode.Pipeline.optionalAt [ "sideBarIsOpen" ] Json.bool True
-        |> Json.Decode.Pipeline.optionalAt [ "error" ] Json.bool False
+        |> optionalAt [ "credentials" ] (Json.nullable Api.credDecoder) Nothing
+        |> optionalAt [ "window", "width" ] Json.int 100
+        |> optionalAt [ "window", "height" ] Json.int 100
+        |> optionalAt [ "loading" ] Json.bool False
+        |> optionalAt [ "sideBarIsOpen" ] Json.bool True
+        |> optionalAt [ "error" ] Json.bool False
 
 
 init : Maybe Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -155,11 +152,11 @@ init args url navKey =
                         )
                     |> Maybe.withDefault ( Nothing, Cmd.none )
 
-        ( model, cmds ) =
+        ( model, _ ) =
             changeRouteTo (Navigation.fromUrl session url)
                 { page = Redirect session
                 , route = Nothing
-                , navState = NavBar.init
+                , navigationBarState = NavBar.init
                 , sideBarState = SideBar.init localStorageData.sideBarIsOpen
                 , windowSize =
                     { height = localStorageData.height
@@ -209,7 +206,7 @@ type Msg
       ------------
     | GotBusesListMsg BusesList.Msg
     | GotBusDetailsPageMsg BusDetailsPage.Msg
-    | GotBusRegistrationMsg BusRegistration.Msg
+    | GotBusRegistrationMsg CreateBusPage.Msg
     | GotCreateBusRepairMsg CreateBusRepair.Msg
     | GotCreateFuelReportMsg CreateFuelReport.Msg
       ------------
@@ -217,7 +214,7 @@ type Msg
     | GotDeviceRegistrationMsg DeviceRegistration.Msg
       ------------
     | GotCrewMembersMsg CrewMembers.Msg
-    | GotCrewMemberRegistrationMsg CrewMemberRegistration.Msg
+    | GotCrewMemberRegistrationMsg CreateCrewMemberPage.Msg
       ------------
     | PhoenixMessage Event
     | SocketOpened Int
@@ -228,10 +225,6 @@ type Msg
     | OngoingTripStarted Json.Value
     | OngoingTripUpdated Json.Value
     | OngoingTripEnded Json.Value
-
-
-
--- | JoinedChannel Json.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -257,13 +250,11 @@ update msg model =
                         |> Channel.on "bus_moved" BusMoved
                         |> Channel.on "notification" ReceivedNotification
 
-                phxMsg =
-                    PhxMsg.createChannel channel
-
                 ( phoenixModel, phxCmd ) =
                     case model.phoenix of
                         Just phxModel ->
-                            Phoenix.update phxMsg phxModel
+                            phxModel
+                                |> Phoenix.update (PhxMsg.createChannel channel)
                                 |> Tuple.mapFirst Just
 
                         Nothing ->
@@ -288,13 +279,13 @@ update msg model =
 
         GotNavBarMsg navBarMsg ->
             let
-                ( newNavState, navMsg, clearNotifications ) =
-                    NavBar.update navBarMsg model.navState (pageToSession model.page)
+                ( newNavState, navMsg, shouldClearNotifications ) =
+                    NavBar.update navBarMsg model.navigationBarState (pageToSession model.page)
             in
             ( { model
-                | navState = newNavState
+                | navigationBarState = newNavState
                 , notifications =
-                    if clearNotifications then
+                    if shouldClearNotifications then
                         []
 
                     else
@@ -456,7 +447,7 @@ updatePage page_msg fullModel =
                 |> mapModelAndMsg BusesList GotBusesListMsg
 
         ( GotBusRegistrationMsg msg, BusRegistration model ) ->
-            BusRegistration.update msg model
+            CreateBusPage.update msg model
                 |> mapModelAndMsg BusRegistration GotBusRegistrationMsg
 
         ( GotBusDetailsPageMsg msg, BusDetailsPage model ) ->
@@ -508,7 +499,7 @@ updatePage page_msg fullModel =
                 |> mapModelAndMsg CrewMembers GotCrewMembersMsg
 
         ( GotCrewMemberRegistrationMsg msg, CrewMemberRegistration model ) ->
-            CrewMemberRegistration.update msg model
+            CreateCrewMemberPage.update msg model
                 |> mapModelAndMsg CrewMemberRegistration GotCrewMemberRegistrationMsg
 
         ( _, _ ) ->
@@ -606,12 +597,12 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     BusesList.init session model.locationUpdates
                         |> updateWith BusesList GotBusesListMsg
 
-                Just Navigation.BusRegistration ->
-                    BusRegistration.init session
+                Just Navigation.CreateBusPage ->
+                    CreateBusPage.init session
                         |> updateWith BusRegistration GotBusRegistrationMsg
 
                 Just (Navigation.EditBusDetails busID) ->
-                    BusRegistration.initEdit busID session
+                    CreateBusPage.initEdit busID session
                         |> updateWith BusRegistration GotBusRegistrationMsg
 
                 Just (Navigation.BusDeviceRegistration busID) ->
@@ -634,7 +625,7 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     HouseholdList.init session
                         |> updateWith HouseholdList GotHouseholdListMsg
 
-                Just Navigation.StudentRegistration ->
+                Just Navigation.CreateHousehold ->
                     StudentRegistration.init session Nothing
                         |> updateWith StudentRegistration GotStudentRegistrationMsg
 
@@ -649,10 +640,6 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                 Just (Navigation.Login redirect) ->
                     Login.init session redirect
                         |> updateWith Login GotLoginMsg
-
-                Just Navigation.Logout ->
-                    Logout.init session
-                        |> updateWith Logout GotLogoutMsg
 
                 Just Navigation.Settings ->
                     Settings.init session
@@ -678,12 +665,12 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                     CrewMembers.init session
                         |> updateWith CrewMembers GotCrewMembersMsg
 
-                Just Navigation.CrewMemberRegistration ->
-                    CrewMemberRegistration.init session Nothing
+                Just Navigation.CreateCrewMember ->
+                    CreateCrewMemberPage.init session Nothing
                         |> updateWith CrewMemberRegistration GotCrewMemberRegistrationMsg
 
                 Just (Navigation.EditCrewMember id) ->
-                    CrewMemberRegistration.init session (Just id)
+                    CreateCrewMemberPage.init session (Just id)
                         |> updateWith CrewMemberRegistration GotCrewMemberRegistrationMsg
 
         channel busID =
@@ -710,7 +697,7 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                             let
                                 tripChannels =
                                     phxModel.channels
-                                        |> Dict.filter (\k v -> String.startsWith "trip:" k)
+                                        |> Dict.filter (\k _ -> String.startsWith "trip:" k)
                                         |> Dict.values
                             in
                             tripChannels
@@ -745,17 +732,30 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
 view : Model -> Browser.Document Msg
 view appModel =
     let
-        { page, route, navState, windowSize, sideBarState, notifications } =
+        { page, route, navigationBarState, windowSize, sideBarState, notifications } =
             appModel
 
         viewEmptyPage pageContents =
             viewPage pageContents GotHomeMsg []
 
         viewPage pageContents toMsg tabBarItems =
-            Layout.frame route pageContents (pageToSession page) toMsg navState notifications GotNavBarMsg sideBarState GotSideBarMsg windowSize.height tabBarItems
+            Layout.frame (pageToSession page)
+                route
+                { body = pageContents
+                , bodyMsgToPageMsg = toMsg
+                }
+                { navBarState = navigationBarState
+                , notifications = notifications
+                , navBarMsgToPageMsg = GotNavBarMsg
+                }
+                { sideBarState = sideBarState
+                , sideBarMsgToPageMsg = GotSideBarMsg
+                }
+                windowSize.height
+                tabBarItems
 
-        -- viewEmptyPage =
-        renderedView =
+        renderView : () -> Element Msg
+        renderView () =
             let
                 viewHeight =
                     Layout.viewHeight windowSize.height
@@ -782,9 +782,6 @@ view appModel =
                 Redirect _ ->
                     viewEmptyPage Pages.Blank.view
 
-                Logout _ ->
-                    viewEmptyPage Pages.Blank.view
-
                 NotFound _ ->
                     viewEmptyPage NotFound.view
 
@@ -798,7 +795,7 @@ view appModel =
                     viewPage (BusesList.view model (viewHeight - TabBar.maxHeight)) GotBusesListMsg BusesList.tabBarItems
 
                 BusRegistration model ->
-                    viewPage (BusRegistration.view model (viewHeight - TabBar.maxHeight)) GotBusRegistrationMsg (BusRegistration.tabBarItems model)
+                    viewPage (CreateBusPage.view model (viewHeight - TabBar.maxHeight)) GotBusRegistrationMsg (CreateBusPage.tabBarItems model)
 
                 BusDetailsPage model ->
                     viewPage (BusDetailsPage.view model (viewHeight - TabBar.maxHeight) viewWidth) GotBusDetailsPageMsg (BusDetailsPage.tabBarItems model)
@@ -822,7 +819,7 @@ view appModel =
                     viewPage (CrewMembers.view model (viewHeight - TabBar.maxHeight)) GotCrewMembersMsg (CrewMembers.tabBarItems model)
 
                 CrewMemberRegistration model ->
-                    viewPage (CrewMemberRegistration.view model) GotCrewMemberRegistrationMsg (CrewMemberRegistration.tabBarItems model)
+                    viewPage (CreateCrewMemberPage.view model) GotCrewMemberRegistrationMsg (CreateCrewMemberPage.tabBarItems model)
 
         layoutOptions =
             { options =
@@ -837,11 +834,7 @@ view appModel =
     { title = "Uchukuzi"
     , body =
         [ Element.layoutWith layoutOptions
-            (Style.labelStyle
-             -- ++ [ inFront
-             --         (NotificationView.view appModel.notifications)
-             --    ]
-            )
+            Style.labelStyle
             (if appModel.loading then
                 LoadingPage.view
 
@@ -849,7 +842,7 @@ view appModel =
                 ErrorPage.view
 
              else
-                renderedView
+                renderView ()
             )
         ]
     }
@@ -862,9 +855,6 @@ pageToSession pageModel =
             model.session
 
         Settings model ->
-            model.session
-
-        Logout model ->
             model.session
 
         Activate subModel ->
@@ -882,8 +872,6 @@ pageToSession pageModel =
         NotFound session ->
             session
 
-        -- Dashboard subModel ->
-        --     subModel.session
         HouseholdList subModel ->
             subModel.session
 
@@ -958,7 +946,7 @@ subscriptions model_ =
         [ matching
         , Api.onStoreChange (Api.parseCreds >> ReceivedCreds)
         , Browser.Events.onResize WindowResized
-        , if model_.navState |> NavBar.isVisible then
+        , if model_.navigationBarState |> NavBar.isVisible then
             Browser.Events.onClick (Json.succeed (NavBar.hideNavBar |> GotNavBarMsg))
 
           else

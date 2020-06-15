@@ -36,7 +36,6 @@ import Errors exposing (InputError)
 import Html exposing (node)
 import Html.Attributes
 import Icons exposing (IconBuilder)
-import Json.Encode as Encode
 import Navigation
 import Regex
 import Style exposing (..)

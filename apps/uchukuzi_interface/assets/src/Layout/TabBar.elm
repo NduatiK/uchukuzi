@@ -1,4 +1,4 @@
-module Template.TabBar exposing (TabBarItem(..), maxHeight, view)
+module Layout.TabBar exposing (TabBarItem(..), maxHeight, view)
 
 import Colors
 import Element exposing (..)
@@ -6,12 +6,9 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
-import Element.Region as Region
-import Html.Attributes
 import Icons
 import Navigation exposing (Route)
 import Style exposing (edges)
-import Template.SideBar exposing (handleBarSpacing, handleBarWidth)
 
 
 maxHeight : Int
@@ -31,8 +28,6 @@ type TabBarItem msgA
         , onPress : msgA
         }
     | LoadingButton
-        { title : String
-        }
 
 
 view : List (TabBarItem msgA) -> (msgA -> msg) -> Element msg
@@ -79,7 +74,7 @@ viewTabItem item =
                         , Colors.fillWhiteOnHover
                         ]
 
-                    LoadingButton _ ->
+                    LoadingButton ->
                         []
                )
         )
@@ -103,9 +98,11 @@ viewTabItem item =
                     , text button.title
                     ]
 
-                LoadingButton loading ->
+                -- LoadingButton title ->
+                LoadingButton ->
                     [ Icons.loading [ width (px 24), height (px 24) ]
-                    , text loading.title
+
+                    -- , text title
                     ]
             )
         )

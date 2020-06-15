@@ -3,7 +3,8 @@ module Utils.Validator exposing (isValidEmail, isValidImei, isValidNumberPlate, 
 import Regex
 
 
-matchOnPattern pattern =
+matchesPattern : String -> (String -> Bool)
+matchesPattern pattern =
     Regex.fromString pattern
         |> Maybe.withDefault Regex.never
         |> Regex.contains
@@ -15,7 +16,7 @@ isValidEmail =
         pattern =
             "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}"
     in
-    matchOnPattern pattern
+    matchesPattern pattern
 
 
 isValidPhoneNumber : String -> Bool
@@ -24,7 +25,7 @@ isValidPhoneNumber =
         pattern =
             "^(?:254|\\+254|0)?(7[0-9]{8})$"
     in
-    matchOnPattern pattern
+    matchesPattern pattern
 
 
 isValidNumberPlate : String -> Bool
@@ -36,7 +37,7 @@ isValidNumberPlate =
         pattern =
             "^K[" ++ letters ++ "]{2}\\d{3}[" ++ letters ++ "]{0,1}$"
     in
-    matchOnPattern pattern
+    matchesPattern pattern
 
 
 isValidImei : String -> Bool
@@ -86,7 +87,6 @@ isValidImei imei =
             in
             (x * 2) |> String.fromInt |> String.foldl sum_of_double_ 0
     in
-    -- Regex.contains regex email
     case String.toInt imei of
         Just imei_number ->
             is_valid_length && (imei_number |> luhns_sum |> Basics.remainderBy 10) == 0

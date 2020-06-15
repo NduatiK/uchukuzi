@@ -23,6 +23,7 @@ import Html.Events exposing (..)
 import Icons
 import Json.Decode exposing (Decoder, field, float, int, list, string)
 import Json.Encode as Encode
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Bus exposing (..)
 import Navigation
 import Pages.Buses.Bus.Navigation exposing (BusPage(..))
@@ -35,7 +36,6 @@ import StyledElement.DropDown as Dropdown
 import StyledElement.FloatInput as FloatInput exposing (FloatInput)
 import StyledElement.WebDataView as WebDataView
 import Task
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator as Validator
 
 
@@ -582,22 +582,6 @@ viewButton requestState =
     none
 
 
-
--- let
---     buttonView =
---         case requestState of
---             Loading ->
---                 Icons.loading [ alignRight, width (px 46), height (px 46) ]
---             _ ->
---                 StyledElement.button [ alignRight ]
---                     { onPress = Just SubmitButtonMsg
---                     , label = text "Save"
---                     }
--- in
--- el (Style.labelStyle ++ [ width fill, paddingEach { edges | right = 24 } ])
---     buttonView
-
-
 consumptionDropDown : Model -> ( Element Msg, Dropdown.Config ConsumptionType Msg, List ConsumptionType )
 consumptionDropDown model =
     let
@@ -898,8 +882,6 @@ tabBarItems { requestState } =
     case requestState of
         Loading ->
             [ TabBar.LoadingButton
-                { title = ""
-                }
             ]
 
         Failure _ ->

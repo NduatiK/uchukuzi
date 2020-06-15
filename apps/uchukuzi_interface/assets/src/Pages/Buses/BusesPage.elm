@@ -10,6 +10,7 @@ import Element.Font as Font
 import Errors
 import Icons
 import Json.Decode exposing (list)
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Bus exposing (Bus, LocationUpdate, busDecoder, vehicleTypeToString)
 import Models.Location exposing (Location)
 import Navigation
@@ -20,7 +21,6 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.WebDataView as WebDataView
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 
@@ -38,7 +38,7 @@ type alias Model =
 
 type Msg
     = SelectedBus Bus
-    | CreateBus
+    | CreateBusPage
     | ChangedFilterText String
     | ReceivedBusesResponse (WebData (List Bus))
     | LocationUpdate (Dict Int LocationUpdate)
@@ -93,8 +93,8 @@ update msg model =
         SelectedBus bus ->
             ( model, Navigation.rerouteTo model (Navigation.Bus bus.id About) )
 
-        CreateBus ->
-            ( model, Navigation.rerouteTo model Navigation.BusRegistration )
+        CreateBusPage ->
+            ( model, Navigation.rerouteTo model Navigation.CreateBusPage )
 
         LocationUpdate locationUpdates ->
             ( { model | locationUpdates = locationUpdates }, Ports.bulkUpdateBusMap (locationUpdatesFrom model) )
@@ -374,6 +374,6 @@ tabBarItems =
     [ TabBar.Button
         { title = "Add a Bus"
         , icon = Icons.add
-        , onPress = CreateBus
+        , onPress = CreateBusPage
         }
     ]

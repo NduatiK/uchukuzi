@@ -1,3 +1,10 @@
+// Part of a wrapper library used to make Elm -> Phoenix communication much nicer
+// 
+// Reference:
+//  Sourced from the internals of an online multi-player scrabble game at: https://github.com/zkayser/elm_scrabble
+// 
+// Look at the Elm Phoenix and Phoenix.* modules for more
+// 
 const TAGS = {
   CREATE_SOCKET: 'CreateSocket',
   CREATE_CHANNEL: 'CreateChannel',

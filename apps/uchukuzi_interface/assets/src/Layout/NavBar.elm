@@ -1,28 +1,24 @@
-module Template.NavBar exposing (Model, Msg, hideNavBar, init, isVisible, maxHeight, update, view)
+module Layout.NavBar exposing (Model, Msg, hideNavBar, init, isVisible, maxHeight, update, view)
 
 import Api
-import Browser.Dom as Dom
 import Colors
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Element.Region as Region
 import Html.Events as HEvents
 import Icons
-import Json.Decode as Json exposing (Value)
+import Json.Decode as Json
 import Models.Notification exposing (Notification)
 import Navigation exposing (Route)
 import Session
 import Style exposing (edges)
 import StyledElement
-import Task
-import TypedSvg exposing (g, svg)
+import TypedSvg exposing (svg)
 import TypedSvg.Attributes exposing (stroke, viewBox)
 import TypedSvg.Types exposing (Paint(..), Transform(..))
-import Url exposing (Url)
 import Views.NotificationView as NotificationView
 
 
@@ -32,11 +28,14 @@ maxHeight =
 
 
 type Model
-    = Model
-        { accountDropdownVisible : Bool
-        , notificationsVisible : Bool
-        , shouldClearNotifications : Bool
-        }
+    = Model Internals
+
+
+type alias Internals =
+    { accountDropdownVisible : Bool
+    , notificationsVisible : Bool
+    , shouldClearNotifications : Bool
+    }
 
 
 init : Model
@@ -48,6 +47,7 @@ init =
         }
 
 
+internals : Model -> Internals
 internals model =
     case model of
         Model i ->
@@ -250,12 +250,6 @@ viewLoggedInHeader model creds notifications =
             else
                 0
 
-        topOffset =
-            -- if notificationsVisible then
-            --     6
-            -- else
-            0
-
         elementBelow =
             if accountDropdownVisible then
                 viewDropDownList [ onClickWithoutPropagation NoOp ]
@@ -316,7 +310,7 @@ viewLoggedInHeader model creds notifications =
         [ alignRight
         , width fill
         , inFront
-            (column [ width fill, paddingEach { edges | top = topOffset, right = rightOffset }, Style.clickThrough, Style.animatesAll ]
+            (column [ width fill, paddingEach { edges | right = rightOffset }, Style.clickThrough, Style.animatesAll ]
                 [ el [ height (px 54), Style.clickThrough ] none
                 , elementBelow
                 ]
@@ -356,6 +350,7 @@ viewProfileIcon clickAttr =
         }
 
 
+viewDropDownList : List (Attribute msg) -> List (Element msg) -> Element msg
 viewDropDownList attrs views =
     column
         ([ alignRight
@@ -379,6 +374,7 @@ viewDropDownList attrs views =
         views
 
 
+dropdownTriangle : Element msg
 dropdownTriangle =
     let
         path =
@@ -416,6 +412,7 @@ dropdownTriangle =
         )
 
 
+dropdownOption : (List (Attribute msg) -> Element msg) -> String -> Maybe msg -> Element msg
 dropdownOption icon optionText action =
     let
         alphaValue =
@@ -459,14 +456,17 @@ dropdownOption icon optionText action =
         }
 
 
+isVisible : Model -> Bool
 isVisible (Model model) =
     model.accountDropdownVisible || model.notificationsVisible
 
 
+hideNavBar : Msg
 hideNavBar =
     HideDropDown
 
 
+onClickWithoutPropagation : Msg -> Attribute Msg
 onClickWithoutPropagation msg =
     htmlAttribute
         (HEvents.stopPropagationOn "click"

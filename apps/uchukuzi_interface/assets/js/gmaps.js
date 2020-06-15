@@ -557,7 +557,7 @@ function setupMapPorts(app) {
                     marker = new google.maps.Marker({
                         id: id,
                         map: map,
-                        title: "Bus Trip"
+                        title: "Bus"
                     })
                     markers.push(marker)
                     var image = {

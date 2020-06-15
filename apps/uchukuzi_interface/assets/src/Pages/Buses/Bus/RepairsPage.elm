@@ -8,6 +8,7 @@ import Element.Events exposing (onMouseEnter, onMouseLeave)
 import Element.Font as Font
 import Icons
 import Icons.Repairs
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Bus exposing (Part(..), Repair)
 import Navigation
 import RemoteData exposing (..)
@@ -15,7 +16,6 @@ import Session exposing (Session)
 import Style
 import StyledElement
 import StyledElement.Footer as Footer
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Time
 import Utils.GroupBy
 
@@ -130,7 +130,6 @@ viewPastRepairs model viewHeight =
     row
         [ height (px viewHeight)
         , width fill
-        , Style.clipStyle
         , spacing 20
         ]
         [ viewGroupedRepairs model

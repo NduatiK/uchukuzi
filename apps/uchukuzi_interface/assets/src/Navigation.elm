@@ -12,9 +12,6 @@ module Navigation exposing
     )
 
 import Browser.Navigation as Nav
-import Html exposing (Attribute)
-import Html.Attributes as Attr
-import Json.Decode as Decode exposing (Decoder)
 import Pages.Buses.Bus.Navigation exposing (BusPage(..), allBusPages)
 import Session exposing (Session)
 import Url exposing (Url)
@@ -38,7 +35,6 @@ type LoginRedirect
 type Route
     = Home
       -------------
-    | Logout
     | Activate String
     | Login (Maybe LoginRedirect)
     | Signup
@@ -49,15 +45,15 @@ type Route
     | EditRoute Int
       -------------
     | CrewMembers
-    | CrewMemberRegistration
+    | CreateCrewMember
     | EditCrewMember Int
       -------------
     | HouseholdList
     | EditHousehold Int
-    | StudentRegistration
+    | CreateHousehold
       -------------
     | Buses
-    | BusRegistration
+    | CreateBusPage
     | EditBusDetails Int
     | Bus Int BusPage
     | BusDeviceRegistration Int
@@ -65,14 +61,7 @@ type Route
     | CreateFuelReport Int
 
 
-
--------------
--- | DeviceList
--- http://localhost:4000/#/fleet/1/?page=trips
---  Parser.map Bus (s (routeName Buses) </> int <?> Query.string "page")
-
-
-loggedInParser : Parser (Route -> a) a
+loggedInParser : Parser (Route -> Route) Route
 loggedInParser =
     oneOf
         (Parser.map Buses Parser.top
@@ -83,37 +72,41 @@ loggedInParser =
                 , CrewMembers
                 , Settings
                 ]
-            ++ [ Parser.map CreateFuelReport (s (routeName Buses) </> int </> s (busPageToString FuelHistory) </> s (routeName (CreateFuelReport -1)))
-               , Parser.map CreateBusRepair (s (routeName Buses) </> int </> s (busPageToString BusRepairs) </> s (routeName (CreateBusRepair -1)))
-               , Parser.map CreateRoute (s (routeName Routes) </> s (routeName CreateRoute))
+            ++ [ Parser.map CreateRoute (s (routeName Routes) </> s (routeName CreateRoute))
                , Parser.map EditRoute (s (routeName Routes) </> int </> s (routeName (EditRoute -1)))
-               , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s (routeName (EditCrewMember -1)))
-               , Parser.map EditHousehold (s (routeName HouseholdList) </> int </> s (routeName (EditHousehold -1)))
+
+               -----
+               , Parser.map CreateBusPage (s (routeName Buses) </> s (routeName CreateBusPage))
+               , Parser.map CreateFuelReport (s (routeName Buses) </> int </> s (busPageToString FuelHistory) </> s (routeName (CreateFuelReport -1)))
+               , Parser.map CreateBusRepair (s (routeName Buses) </> int </> s (busPageToString BusRepairs) </> s (routeName (CreateBusRepair -1)))
                , Parser.map EditBusDetails (s (routeName Buses) </> int </> s (routeName (EditBusDetails -1)))
                , Parser.map BusDeviceRegistration (s (routeName Buses) </> int </> s (routeName (BusDeviceRegistration -1)))
-               ]
-            ++ parsersFor2
-                [ ( HouseholdList, StudentRegistration )
-                , ( CrewMembers, CrewMemberRegistration )
-                , ( Buses, BusRegistration )
 
-                -- , ( DeviceList, DeviceRegistration )
-                ]
-            ++ [ Parser.map (\a -> Bus a About) (s (routeName Buses) </> int)
+               -----
+               , Parser.map (\busID -> Bus busID About) (s (routeName Buses) </> int)
                , Parser.map
-                    (\a b ->
-                        let
-                            matching =
-                                List.head (List.filter (\p -> busPageToString p == b) allBusPages)
-                        in
-                        Bus a (Maybe.withDefault About matching)
+                    (\busID pageName ->
+                        -- Match bus subpage or default to bus about page
+                        allBusPages
+                            |> List.filter (\busPage -> busPageToString busPage == pageName)
+                            |> List.head
+                            |> Maybe.withDefault About
+                            |> Bus busID
                     )
                     (s (routeName Buses) </> int </> string)
+
+               -----
+               , Parser.map CreateCrewMember (s (routeName CrewMembers) </> s (routeName CreateCrewMember))
+               , Parser.map EditCrewMember (s (routeName CrewMembers) </> int </> s (routeName (EditCrewMember -1)))
+
+               -----
+               , Parser.map CreateHousehold (s (routeName HouseholdList) </> s (routeName CreateHousehold))
+               , Parser.map EditHousehold (s (routeName HouseholdList) </> int </> s (routeName (EditHousehold -1)))
                ]
         )
 
 
-notLoggedInParser : Parser (Route -> a) a
+notLoggedInParser : Parser (Route -> Route) Route
 notLoggedInParser =
     oneOf
         [ Parser.map (\x -> Activate (Maybe.withDefault "" x)) (s (routeName (Activate "")) <?> Query.string "token")
@@ -141,28 +134,19 @@ isPublicRoute route =
 
 
 
--- buildParser : Route -> Parser (String -> )Route
 
-
-parsersFor : List Route -> List (Parser (Route -> c) c)
+parsersFor : List Route -> List (Parser (Route -> Route) Route)
 parsersFor routes =
     List.map buildParser routes
 
 
-parsersFor2 : List ( Route, Route ) -> List (Parser (Route -> c) c)
-parsersFor2 routes =
-    List.map
-        (\r -> Parser.map (Tuple.second r) (s (routeName (Tuple.first r)) </> s (routeName (Tuple.second r))))
-        routes
-
-
+buildParser : Route -> Parser (Route -> Route) Route
 buildParser route =
     Parser.map route (s (routeName route))
 
 
 loginUrlParser : Parser (Maybe LoginRedirect -> a) a
 loginUrlParser =
-    -- Parser.custom "String" (\str -> Just str)
     Parser.custom "loginUrlParser" (stringToLoginRedirect >> Just)
 
 
@@ -179,12 +163,6 @@ href targetRoute =
 Change the URL, but do not trigger a page load.
 
 This will not add a new entry to the browser history.
-
-This can be useful if you have search box and you want the ?search=hats in
-the URL to match without adding a history entry for every single key
-stroke. Imagine how annoying it would be to click back
-thirty times and still be on the same page!
-
 -}
 replaceUrl : Nav.Key -> Route -> Cmd msg
 replaceUrl key route =
@@ -194,12 +172,6 @@ replaceUrl key route =
 {-| Change the URL, but do not trigger a page load.
 
 This will add a new entry to the browser history.
-
-**Note:** If the user has gone `back` a few pages, there will be &ldquo;future
-pages&rdquo; that the user can go `forward` to. Adding a new URL in that
-scenario will clear out any future pages. It is like going back in time and
-making a different choice.
-
 -}
 pushUrl : Nav.Key -> Route -> Cmd msg
 pushUrl key route =
@@ -316,16 +288,13 @@ routeToString page =
                 Settings ->
                     [ routeName page ]
 
-                Logout ->
-                    [ routeName page ]
-
                 Signup ->
                     [ routeName page ]
 
                 HouseholdList ->
                     [ routeName page ]
 
-                StudentRegistration ->
+                CreateHousehold ->
                     [ routeName HouseholdList, routeName page ]
 
                 EditHousehold guardianID ->
@@ -340,8 +309,8 @@ routeToString page =
                 Bus busID busPage ->
                     [ routeName Buses, String.fromInt busID, busPageToString busPage ]
 
-                BusRegistration ->
-                    [ routeName Buses, routeName BusRegistration ]
+                CreateBusPage ->
+                    [ routeName Buses, routeName CreateBusPage ]
 
                 EditBusDetails id ->
                     [ routeName Buses, String.fromInt id, routeName page ]
@@ -364,7 +333,7 @@ routeToString page =
                 CrewMembers ->
                     [ routeName CrewMembers ]
 
-                CrewMemberRegistration ->
+                CreateCrewMember ->
                     [ routeName CrewMembers, routeName page ]
 
                 EditCrewMember id ->
@@ -388,9 +357,6 @@ routeName page =
         Login _ ->
             "login"
 
-        Logout ->
-            "logout"
-
         Signup ->
             "signup"
 
@@ -400,7 +366,7 @@ routeName page =
         BusDeviceRegistration _ ->
             "register_device"
 
-        StudentRegistration ->
+        CreateHousehold ->
             "new"
 
         Buses ->
@@ -409,7 +375,7 @@ routeName page =
         Bus _ _ ->
             "fleet"
 
-        BusRegistration ->
+        CreateBusPage ->
             "new"
 
         EditBusDetails _ ->
@@ -433,7 +399,7 @@ routeName page =
         CrewMembers ->
             "crew"
 
-        CrewMemberRegistration ->
+        CreateCrewMember ->
             "new"
 
         EditCrewMember _ ->

@@ -11,6 +11,7 @@ import Html.Events exposing (..)
 import Icons
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Encode as Encode
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.CrewMember exposing (CrewMember, Role(..))
 import Navigation
 import RemoteData exposing (..)
@@ -20,7 +21,6 @@ import StyledElement
 import StyledElement.DropDown as Dropdown
 import StyledElement.WebDataView as WebDataView
 import Task
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Utils.Validator as Validator
 
 
@@ -485,8 +485,6 @@ tabBarItems { requestState } =
 
         Loading ->
             [ TabBar.LoadingButton
-                { title = ""
-                }
             ]
 
         _ ->

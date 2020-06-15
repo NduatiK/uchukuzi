@@ -16,6 +16,7 @@ import Html.Attributes exposing (id)
 import Icons
 import Json.Decode as Decode exposing (list)
 import Json.Decode.Pipeline exposing (optional, required, resolve)
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Bus exposing (Bus, busDecoder)
 import Models.CrewMember exposing (Change(..), CrewMember, Role(..), applyChanges, crewDecoder, encodeChanges, roleToString)
 import Navigation
@@ -24,7 +25,6 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.WebDataView as WebDataView
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Views.DragAndDrop exposing (draggable, droppable)
 
 
@@ -121,7 +121,7 @@ update msg model =
             ( model, Cmd.none )
 
         RegisterCrewMembers ->
-            ( model, Navigation.rerouteTo model Navigation.CrewMemberRegistration )
+            ( model, Navigation.rerouteTo model Navigation.CreateCrewMember )
 
         ReceivedCrewMembersResponse response ->
             let
@@ -309,7 +309,7 @@ viewBody model viewHeight =
                                 [ paragraph [ centerX, Font.center ] [ text "You have no buses set up" ]
                                 , StyledElement.ghostButtonLink [ centerX ]
                                     { title = "Add a bus"
-                                    , route = Navigation.BusRegistration
+                                    , route = Navigation.CreateBusPage
                                     }
                                 ]
 
@@ -640,8 +640,6 @@ tabBarItems { data, inEditingMode } =
         case data of
             Loading ->
                 [ TabBar.LoadingButton
-                    { title = ""
-                    }
                 ]
 
             Failure _ ->

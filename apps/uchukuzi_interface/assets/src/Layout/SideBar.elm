@@ -1,4 +1,4 @@
-port module Template.SideBar exposing
+port module Layout.SideBar exposing
     ( Model
     , Msg
     , handleBarSpacing
@@ -19,12 +19,10 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Region as Region
 import Html.Attributes exposing (style)
-import Html.Events exposing (on)
 import Icons
 import Json.Decode as Json
 import Navigation exposing (Route)
 import Style exposing (edges)
-import StyledElement
 
 
 port setOpenState : Bool -> Cmd msg
@@ -42,22 +40,27 @@ type SideBarOption msg
     = SideBarOption (Section msg)
 
 
+topPadding : Int
 topPadding =
     100
 
 
+maxSideBarWidth : Int
 maxSideBarWidth =
     180
 
 
+minSideBarWidth : Int
 minSideBarWidth =
     54 + handleBarSpacing + (handleBarWidth // 2)
 
 
+handleBarWidth : Int
 handleBarWidth =
     10
 
 
+handleBarSpacing : Int
 handleBarSpacing =
     8
 
@@ -85,6 +88,7 @@ type alias Model =
     }
 
 
+init : Bool -> Model
 init isOpen =
     { isResizing = False
     , hasDraggedHandle = False
@@ -103,6 +107,7 @@ type Msg
     | MovedSidebar Int
 
 
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         StartResize ->
@@ -164,12 +169,13 @@ update msg model =
 view : Maybe Route -> Model -> Int -> Element Msg
 view currentRoute state viewHeight =
     row [ width shrink, height fill, spacing 8, htmlAttribute (style "z-index" "10") ]
-        [ viewSideBar currentRoute state (toFloat viewHeight)
+        [ viewSideBarList currentRoute state (toFloat viewHeight)
         , viewResizeHandle
         ]
 
 
-viewSideBar currentRoute state viewHeight =
+viewSideBarList : Maybe Route -> Model -> Float -> Element Msg
+viewSideBarList currentRoute state viewHeight =
     let
         selectedIndex =
             sideBarSections
@@ -211,6 +217,7 @@ viewSideBar currentRoute state viewHeight =
         )
 
 
+highlightView : Float -> Int -> Element Msg
 highlightView viewHeight selectedIndex =
     el
         ([ paddingEach
@@ -228,7 +235,7 @@ highlightView viewHeight selectedIndex =
                     [ moveDown (toFloat (38 * selectedIndex)) ]
 
                 else
-                    [ moveDown (viewHeight - 44 - topPadding) ]
+                    [ moveDown (viewHeight - 44 - toFloat topPadding) ]
                )
         )
         (el
@@ -242,7 +249,8 @@ highlightView viewHeight selectedIndex =
         )
 
 
-viewSideBarSection width_ currentRoute (SideBarOption item) =
+viewSideBarSection : Int -> Maybe Route -> SideBarOption Msg -> Element Msg
+viewSideBarSection viewWidth currentRoute (SideBarOption item) =
     let
         shouldHighlight =
             case currentRoute of
@@ -281,7 +289,7 @@ viewSideBarSection width_ currentRoute (SideBarOption item) =
                             ]
                         )
                     , el
-                        [ alpha (percentCollapsed width_ * percentCollapsed width_ * percentCollapsed width_)
+                        [ alpha (toFloat viewWidth ^ 3)
                         ]
                         (text item.title)
                     ]
@@ -318,20 +326,6 @@ sideBarSubSectionStyle =
            ]
 
 
-colorFor : NavigationPage -> Maybe Route -> Color
-colorFor navPage1 route =
-    case route of
-        Nothing ->
-            rgba 0 0 0 0
-
-        Just aRoute ->
-            if navPage1 == toNavigationPage aRoute then
-                highlightColor
-
-            else
-                rgba 0 0 0 0
-
-
 highlightColor : Color
 highlightColor =
     Colors.teal
@@ -365,7 +359,7 @@ toNavigationPage route =
         Navigation.Bus _ _ ->
             Buses
 
-        Navigation.BusRegistration ->
+        Navigation.CreateBusPage ->
             Buses
 
         Navigation.BusDeviceRegistration _ ->
@@ -383,7 +377,7 @@ toNavigationPage route =
         Navigation.HouseholdList ->
             HouseholdList
 
-        Navigation.StudentRegistration ->
+        Navigation.CreateHousehold ->
             HouseholdList
 
         Navigation.EditHousehold _ ->
@@ -396,9 +390,6 @@ toNavigationPage route =
             Buses
 
         Navigation.Login _ ->
-            Buses
-
-        Navigation.Logout ->
             Buses
 
         Navigation.Settings ->
@@ -419,13 +410,14 @@ toNavigationPage route =
         Navigation.CrewMembers ->
             CrewMembers
 
-        Navigation.CrewMemberRegistration ->
+        Navigation.CreateCrewMember ->
             CrewMembers
 
         Navigation.EditCrewMember _ ->
             CrewMembers
 
 
+subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         (if model.isResizing then
@@ -440,9 +432,11 @@ subscriptions model =
         )
 
 
+percentCollapsed : Int -> Float
 percentCollapsed width =
     toFloat (width - minSideBarWidth) / toFloat (maxSideBarWidth - minSideBarWidth)
 
 
+unwrapWidth : Model -> Int
 unwrapWidth { width } =
     width

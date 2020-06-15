@@ -10,6 +10,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Icons
 import Json.Decode exposing (list)
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Bus exposing (Bus, LocationUpdate)
 import Models.CrewMember exposing (CrewMember, crewDecoder)
 import Models.Household exposing (Student, studentDecoder)
@@ -21,7 +22,6 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement exposing (textStack, textStackWithSpacing)
 import StyledElement.Footer as Footer
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 type alias Model =

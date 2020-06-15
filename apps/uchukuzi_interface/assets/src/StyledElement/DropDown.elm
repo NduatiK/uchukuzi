@@ -7,7 +7,8 @@ module StyledElement.DropDown exposing
     , dropDownConfig, filterText, selectOption, viewFromModel
     )
 
-{-| Elm UI Dropdown.
+{-| Reference
+Elm UI Dropdown.
 MIT License
 
 Copyright (c) 2019 PaackEng
@@ -48,7 +49,6 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
-import Element.Region as Region
 import Html.Attributes
 import Html.Events
 import Icons
@@ -128,6 +128,7 @@ type Msg item
     | OnKeyDown Key
 
 
+selectOption : item -> Msg item
 selectOption item =
     OnSelect item
 
@@ -732,6 +733,7 @@ onBlurAttribute config state =
         |> htmlAttribute
 
 
+viewFromModel : model -> (model -> ( Element msg, a, b )) -> Element msg
 viewFromModel someModel dropdownBuilder =
     case dropdownBuilder someModel of
         ( dropDown, _, _ ) ->

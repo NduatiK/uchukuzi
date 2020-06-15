@@ -15,6 +15,7 @@ import Html.Attributes exposing (id)
 import Html.Events exposing (..)
 import Icons
 import Json.Decode exposing (list)
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Household exposing (Household, Student, TravelTime(..), householdDecoder, studentByRouteDecoder)
 import Navigation
 import Ports
@@ -23,7 +24,6 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.WebDataView as WebDataView
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 
@@ -80,11 +80,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         RegisterStudent ->
-            ( model, Navigation.rerouteTo model Navigation.StudentRegistration )
+            ( model, Navigation.rerouteTo model Navigation.CreateHousehold )
 
         ReceivedStudentsResponse response ->
             case response of
-                Failure error -> 
+                Failure error ->
                     ( { model | groupedStudents = response }, Errors.toMsg error )
 
                 Success ( groupedStudents, _ ) ->

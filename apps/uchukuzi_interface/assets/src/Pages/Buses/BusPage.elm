@@ -27,6 +27,7 @@ import Html.Attributes exposing (id)
 import Icons
 import Json.Decode exposing (Decoder)
 import Layout
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Bus exposing (Bus, LocationUpdate, busDecoderWithCallback)
 import Navigation
 import Pages.Buses.Bus.AboutBus as About
@@ -40,7 +41,6 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement.WebDataView as WebDataView
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 
 
 type alias Model =
@@ -419,7 +419,7 @@ viewBody height width busData =
             viewPage (RouteHistory.view subPageModel width) GotRouteHistoryMsg
 
         FuelHistoryPage subPageModel ->
-            viewPage (FuelHistory.view subPageModel (height - 300)) GotFuelHistoryMsg
+            viewPage (FuelHistory.view subPageModel (height - 190)) GotFuelHistoryMsg
 
         BusDevicePage subPageModel ->
             viewPage (BusDevice.view subPageModel) GotBusDeviceMsg
