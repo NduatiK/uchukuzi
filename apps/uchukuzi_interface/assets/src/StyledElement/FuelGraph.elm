@@ -1,23 +1,23 @@
-module StyledElement.Graph exposing (view)
+module StyledElement.FuelGraph exposing (view)
 
 import Axis
 import Colors
 import Element exposing (..)
-import Html.Attributes exposing (id)
-import Icons exposing (IconBuilder)
+import Icons
+import Models.FuelReport as FuelReport exposing (ConsumptionRate, Distance, FuelReport, Volume)
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)
 import Shape
-import StyledElement exposing (wrappedInput)
 import Time
 import TypedSvg exposing (g, svg)
-import TypedSvg.Attributes exposing (class, fontFamily, stroke, transform, viewBox)
+import TypedSvg.Attributes exposing (class, stroke, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (strokeWidth)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..), Transform(..))
 
 
-{-| Adapted from <https://elm-visualization.netlify.app/linechart/>
+{-| Reference
+Adapted from <https://elm-visualization.netlify.app/linechart/>
 -}
 w : Float
 w =
@@ -135,12 +135,20 @@ viewOutlierLines stats distances min max xScale yScale =
         validThreshholds
 
 
-view : List ( Time.Posix, Float, Float ) -> Maybe { a | mean : Float, stdDev : Float } -> Time.Zone -> Element msg
+view :
+    List
+        { date : Time.Posix
+        , consumptionOnDate : ConsumptionRate
+        , runningAverage : ConsumptionRate
+        }
+    -> Maybe { a | mean : Float, stdDev : Float }
+    -> Time.Zone
+    -> Element msg
 view chartData statistics timezone =
     let
         times =
             List.map
-                ((\( a, _, _ ) -> a) >> Time.posixToMillis)
+                (.date >> Time.posixToMillis)
                 chartData
 
         min =
@@ -151,7 +159,12 @@ view chartData statistics timezone =
 
         ( xScale, yScale ) =
             ( xScaleBuilder min max timezone
-            , yScaleBuilder (Maybe.withDefault 3 (List.maximum (List.map (\( _, b, _ ) -> b) chartData)))
+            , yScaleBuilder
+                (chartData
+                    |> List.map (.consumptionOnDate >> FuelReport.consumptionToFloat)
+                    |> List.maximum
+                    |> Maybe.withDefault 3
+                )
             )
     in
     el [ width fill, height fill ]
@@ -171,7 +184,7 @@ view chartData statistics timezone =
                     [ transform [ Translate padding padding ]
                     , class [ "series" ]
                     ]
-                    [ Path.element (line (List.map (\( a, b, _ ) -> ( a, b )) chartData) xScale yScale)
+                    [ Path.element (line (List.map (\x -> ( x.date, x.consumptionOnDate |> FuelReport.consumptionToFloat )) chartData) xScale yScale)
                         [ stroke <|
                             Paint <|
                                 Colors.toSVGColor Colors.darkGreen
@@ -183,7 +196,7 @@ view chartData statistics timezone =
                     [ transform [ Translate padding padding ]
                     , class [ "series" ]
                     ]
-                    [ Path.element (line (List.map (\( a, _, c ) -> ( a, c )) chartData) xScale yScale)
+                    [ Path.element (line (List.map (\x -> ( x.date, x.runningAverage |> FuelReport.consumptionToFloat )) chartData) xScale yScale)
                         [ stroke <|
                             Paint <|
                                 Colors.toSVGColor Colors.sassyGrey
@@ -193,10 +206,10 @@ view chartData statistics timezone =
                     ]
                  ]
                     ++ (case List.head (List.reverse chartData) of
-                            Just ( _, _, consumption ) ->
+                            Just x ->
                                 [ g
                                     [ transform
-                                        [ Translate (w - 2 * padding + 10) (Scale.convert yScale consumption + padding - 25)
+                                        [ Translate (w - 2 * padding + 10) (Scale.convert yScale (x.runningAverage |> FuelReport.consumptionToFloat) + padding - 25)
                                         ]
                                     ]
                                     [ TypedSvg.text_
@@ -206,12 +219,12 @@ view chartData statistics timezone =
                                     ]
                                 , g
                                     [ transform
-                                        [ Translate (w - 2 * padding + 10) (Scale.convert yScale consumption + padding - 15)
+                                        [ Translate (w - 2 * padding + 10) (Scale.convert yScale (x.runningAverage |> FuelReport.consumptionToFloat) + padding - 15)
                                         ]
                                     ]
                                     [ TypedSvg.text_
                                         []
-                                        [ TypedSvg.Core.text (String.fromFloat (round100 consumption) ++ " km/l")
+                                        [ TypedSvg.Core.text (String.fromFloat (round100 (x.runningAverage |> FuelReport.consumptionToFloat)) ++ " km/l")
                                         ]
                                     ]
                                 ]

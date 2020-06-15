@@ -21,7 +21,8 @@ import Element.Font as Font
 import Html.Attributes exposing (id)
 import Icons
 import Json.Decode as Decode exposing (Decoder, int, list, string)
-import Models.FuelReport exposing (FuelReport, fuelRecordDecoder)
+import Layout.TabBar as TabBar exposing (TabBarItem(..))
+import Models.FuelReport as FuelReport exposing (ConsumptionRate, Distance, FuelReport, Volume, fuelRecordDecoder)
 import Navigation
 import RemoteData exposing (..)
 import Session exposing (Session)
@@ -29,10 +30,9 @@ import Statistics
 import Style exposing (edges)
 import StyledElement
 import StyledElement.Footer as Footer
-import StyledElement.Graph
+import StyledElement.FuelGraph
 import StyledElement.WebDataView as WebDataView
 import Task
-import Template.TabBar as TabBar exposing (TabBarItem(..))
 import Time
 import Utils.GroupBy
 
@@ -40,48 +40,46 @@ import Utils.GroupBy
 type alias Model =
     { session : Session
     , busID : Int
-    , currentPage : Page
     , reports : WebData (List GroupedReports)
-    , statistics :
-        Maybe
-            { stdDev : Float
-            , mean : Float
-            }
-    , chartData :
-        Maybe
-            { data : List ( Time.Posix, Float, Float )
-            , month : String
-            }
+    , statistics : Maybe Statistics
+    , chartData : Maybe ChartData
     }
 
 
-type alias Distance =
-    Int
+{-| Statistics for all the reports
+-}
+type alias Statistics =
+    { stdDev : Float
+    , mean : Float
+    }
+
+
+type alias ChartData =
+    { data :
+        List
+            { date : Time.Posix
+            , consumptionOnDate : ConsumptionRate
+            , runningAverage : ConsumptionRate
+            }
+    , month : String
+    }
+
+
+type alias AnnotatedReport =
+    { report : FuelReport
+    , cumulativeFuelPurchased : Volume
+    , distanceSinceLastFueling : Distance
+    }
 
 
 type alias GroupedReports =
-    ( String, List ( FuelReport, Distance, Float ) )
-
-
-type Page
-    = Summary
-    | ConsumptionSpikes
-
-
-pageToString page =
-    case page of
-        Summary ->
-            "Summary"
-
-        ConsumptionSpikes ->
-            "Consumption Spikes"
+    ( String, List AnnotatedReport )
 
 
 init : Int -> Session -> ( Model, Cmd Msg )
 init busID session =
     ( { session = session
       , busID = busID
-      , currentPage = Summary
       , reports = Loading
       , chartData = Nothing
       , statistics = Nothing
@@ -95,23 +93,19 @@ init busID session =
 
 
 type Msg
-    = ClickedSummaryPage
-      --------------------
-    | ClickedConsumptionSpikesPage
-    | RecordsResponse (WebData ( List ( FuelReport, Distance, Float ), List GroupedReports ))
+    = RecordsResponse (WebData ( List AnnotatedReport, List GroupedReports ))
       -- | Show (GroupedReports)
     | Show String
     | CreateFuelReport
     | NoOp
-    
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    -- let
-    --     chartData =
-    --         model.chartData
-    -- in
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         CreateFuelReport ->
             ( model, Navigation.rerouteTo model (Navigation.CreateFuelReport model.busID) )
 
@@ -123,21 +117,20 @@ update msg model =
                             List.head (List.filter (Tuple.first >> (\x -> x == month)) reports)
                     in
                     case matching of
-                        Just match ->
+                        Just ( month_, reports_ ) ->
                             ( { model
                                 | chartData =
                                     Just
-                                        { month = month
+                                        { month = month_
                                         , data =
-                                            List.map
-                                                (\( report, distance, cumulativeFuel ) ->
-                                                    if report.volume > 0 then
-                                                        ( report.date, toFloat distance / report.volume / 1000, cumulativeFuel )
-
-                                                    else
-                                                        ( report.date, 0, 0 )
-                                                )
-                                                (Tuple.second match)
+                                            reports_
+                                                |> List.map
+                                                    (\{ report, distanceSinceLastFueling, cumulativeFuelPurchased } ->
+                                                        { date = report.date
+                                                        , consumptionOnDate = FuelReport.consumption distanceSinceLastFueling report.volume
+                                                        , runningAverage = FuelReport.consumption report.totalDistanceCovered cumulativeFuelPurchased
+                                                        }
+                                                    )
                                         }
                               }
                             , Browser.Dom.setViewportOf "view" 0 0
@@ -151,46 +144,38 @@ update msg model =
                 _ ->
                     ( { model | chartData = Nothing }, Cmd.none )
 
-        ClickedSummaryPage ->
-            ( { model | currentPage = Summary }, Cmd.none )
-
-        NoOp ->
-            ( model, Cmd.none )
-
-        ClickedConsumptionSpikesPage ->
-            ( { model | currentPage = ConsumptionSpikes }, Cmd.none )
-
         RecordsResponse response ->
             case response of
                 Success ( distanced, grouped ) ->
+                    -- Select the head as the default
                     let
                         ( chartData, statistics ) =
                             case List.head grouped of
-                                Just head ->
+                                Just ( monthName, reports ) ->
                                     let
-                                        data =
-                                            List.map
-                                                (\( report, distance, cumulativeFuel ) ->
-                                                    if report.volume > 0 then
-                                                        ( report.date, toFloat distance / report.volume / 1000, cumulativeFuel )
-
-                                                    else
-                                                        ( report.date, 0, 0 )
-                                                )
-                                                (Tuple.second head)
-
-                                        fuelConsuptions =
-                                            List.map (\( a, b, c ) -> b) data
+                                        fuelConsumptions =
+                                            reports
+                                                |> List.map (\x -> FuelReport.consumption x.distanceSinceLastFueling x.report.volume)
+                                                |> List.map FuelReport.consumptionToFloat
 
                                         stdDev =
-                                            Statistics.deviation fuelConsuptions
+                                            Statistics.deviation fuelConsumptions
 
                                         mean =
-                                            List.foldl (+) 0 fuelConsuptions / toFloat (List.length fuelConsuptions)
+                                            (fuelConsumptions |> List.foldl (+) 0)
+                                                / toFloat (List.length fuelConsumptions)
                                     in
                                     ( Just
-                                        { month = Tuple.first head
-                                        , data = data
+                                        { month = monthName
+                                        , data =
+                                            reports
+                                                |> List.map
+                                                    (\{ report, distanceSinceLastFueling, cumulativeFuelPurchased } ->
+                                                        { date = report.date
+                                                        , consumptionOnDate = FuelReport.consumption distanceSinceLastFueling report.volume
+                                                        , runningAverage = FuelReport.consumption report.totalDistanceCovered cumulativeFuelPurchased
+                                                        }
+                                                    )
                                         }
                                     , case ( stdDev, mean ) of
                                         ( Just stdDev_, mean_ ) ->
@@ -239,7 +224,6 @@ view model viewHeight =
         , width fill
         , clip
         , scrollbarY
-        , Style.clipStyle
         , Border.solid
         , htmlAttribute (id "view")
         , htmlAttribute (Html.Attributes.style "scroll-behavior" "smooth")
@@ -279,7 +263,7 @@ viewGraph model =
                         (text "Fuel Consumption (km/l)")
                     )
                 ]
-                (StyledElement.Graph.view
+                (StyledElement.FuelGraph.view
                     chartData.data
                     model.statistics
                     (Session.timeZone model.session)
@@ -311,6 +295,7 @@ viewGroupedReports model groupedReports =
         rowTextStyle =
             width (fill |> minimum 180) :: Style.tableElementStyle
 
+        viewGroup : ( String, List AnnotatedReport ) -> Element Msg
         viewGroup ( month, reportsForDate ) =
             column [ spacing 12, height fill ]
                 [ el
@@ -337,22 +322,36 @@ viewGroupedReports model groupedReports =
                         [ { header = tableHeader [ "DATE" ] []
                           , width = fill
                           , view =
-                                \( report, _, _ ) ->
+                                \x ->
                                     let
                                         dateText =
-                                            report.date |> Date.fromPosix timezone |> Date.format "MMM ddd"
+                                            x.report.date |> Date.fromPosix timezone |> Date.format "MMM ddd"
                                     in
                                     el rowTextStyle (text dateText)
                           }
                         , { header = tableHeader [ "FUEL CONSUMPTION", "(KM/L)" ] [ alignRight ]
                           , width = fill
                           , view =
-                                \( report, distance, _ ) ->
+                                \x ->
                                     let
                                         consumptionText =
-                                            String.fromFloat (round100 (Basics.toFloat distance / (report.volume * 1000)))
+                                            FuelReport.consumption x.distanceSinceLastFueling x.report.volume
+                                                |> FuelReport.consumptionToFloat
+                                                |> String.fromFloat
+                                                |> (\c ->
+                                                        case List.head (String.indexes "." c) of
+                                                            Nothing ->
+                                                                c ++ ".00"
+
+                                                            Just location ->
+                                                                let
+                                                                    length =
+                                                                        String.length c
+                                                                in
+                                                                String.padRight (length + (2 - (length - location - 1))) '0' c
+                                                   )
                                     in
-                                    el rowTextStyle (text consumptionText)
+                                    el (rowTextStyle ++ [ Font.alignRight ]) (text consumptionText)
                           }
                         , { header =
                                 column (alignRight :: Style.tableHeaderStyle)
@@ -361,11 +360,11 @@ viewGroupedReports model groupedReports =
                                     ]
                           , width = fill
                           , view =
-                                \( report, distance, _ ) ->
+                                \x ->
                                     let
                                         distanceText =
-                                            if distance > 0 then
-                                                String.fromInt (distance // 1000)
+                                            if FuelReport.distanceToInt x.distanceSinceLastFueling > 0 then
+                                                String.fromInt (FuelReport.distanceToInt x.distanceSinceLastFueling // 1000)
 
                                             else
                                                 "-"
@@ -375,8 +374,8 @@ viewGroupedReports model groupedReports =
                         , { header = tableHeader [ "FUEL COST", "(KES)" ] [ alignRight ]
                           , width = fill
                           , view =
-                                \( report, distance, _ ) ->
-                                    el (width fill :: Font.alignRight :: rowTextStyle) (text (String.fromInt report.cost))
+                                \x ->
+                                    el (width fill :: Font.alignRight :: rowTextStyle) (text (String.fromInt x.report.cost))
                           }
                         ]
                     }
@@ -402,12 +401,10 @@ viewButtons model =
 
 
 viewFooter : Model -> Element Msg
-viewFooter model =
-    Footer.coloredView model.currentPage
-        pageToString
-        [ { page = Summary, body = "", action = ClickedSummaryPage, highlightColor = Colors.darkGreen }
-
-        -- , { page = ConsumptionSpikes, body = "3", action = ClickedConsumptionSpikesPage, highlightColor = Colors.errorRed }
+viewFooter _ =
+    Footer.coloredView ()
+        (always "Summary")
+        [ { page = (), body = "", action = NoOp, highlightColor = Colors.darkGreen }
         ]
 
 
@@ -417,41 +414,52 @@ fetchFuelHistory session bus_id =
         |> Cmd.map (groupReports (Session.timeZone session) >> RecordsResponse)
 
 
-groupReports : Time.Zone -> WebData (List FuelReport) -> WebData ( List ( FuelReport, Distance, Float ), List GroupedReports )
+groupReports :
+    Time.Zone
+    -> WebData (List FuelReport)
+    -> WebData ( List AnnotatedReport, List GroupedReports )
 groupReports timezone reports_ =
     case reports_ of
         Success reports ->
             let
                 sortedReports : List FuelReport
                 sortedReports =
-                    List.sortWith compareReports reports
+                    reports
+                        |> List.sortWith compareReports
 
-                distancedReports : List ( FuelReport, Distance, Float )
+                distancedReports : List AnnotatedReport
                 distancedReports =
-                    let
-                        data =
-                            List.foldl
-                                (\report ( totalDistance, acc, cumulativeFuel ) ->
-                                    ( report.distance_covered
-                                    , ( report, report.distance_covered - totalDistance, toFloat report.distance_covered / 1000 / (cumulativeFuel + report.volume) ) :: acc
-                                    , cumulativeFuel + report.volume
-                                    )
+                    sortedReports
+                        |> List.foldl
+                            (\report ( ( totalDistance, cumulativeFuel ), acc ) ->
+                                let
+                                    totalFuelConsumed : Volume
+                                    totalFuelConsumed =
+                                        FuelReport.volumeSum cumulativeFuel report.volume
+
+                                    distanceSinceLastFueling : Distance
+                                    distanceSinceLastFueling =
+                                        FuelReport.distanceDifference report.totalDistanceCovered totalDistance
+                                in
+                                ( ( report.totalDistanceCovered, totalFuelConsumed )
+                                , { report = report
+                                  , cumulativeFuelPurchased = totalFuelConsumed
+                                  , distanceSinceLastFueling = distanceSinceLastFueling
+                                  }
+                                    :: acc
                                 )
-                                ( 0, [], 0 )
-                                sortedReports
-                    in
-                    case data of
-                        ( _, result, _ ) ->
-                            result
+                            )
+                            ( ( FuelReport.distance 0, FuelReport.volume 0 ), [] )
+                        |> Tuple.second
             in
             Success
                 ( distancedReports
-                , Utils.GroupBy.attr
-                    { groupBy = (\( a, b, c ) -> a) >> .date >> Date.fromPosix timezone >> Date.format "yyyy MM"
-                    , nameAs = (\( a, b, c ) -> a) >> .date >> Date.fromPosix timezone >> Date.format "MMM yyyy"
-                    , reverse = False
-                    }
-                    distancedReports
+                , distancedReports
+                    |> Utils.GroupBy.attr
+                        { groupBy = .report >> .date >> Date.fromPosix timezone >> Date.format "yyyy MM"
+                        , nameAs = .report >> .date >> Date.fromPosix timezone >> Date.format "MMM yyyy"
+                        , reverse = False
+                        }
                 )
 
         Failure error ->
@@ -469,8 +477,14 @@ compareReports report1 report2 =
     let
         getDate =
             .date >> Time.posixToMillis
+
+        dateOrder =
+            compare (getDate report1) (getDate report2)
+
+        distanceOrder =
+            compare (FuelReport.distanceToInt report1.totalDistanceCovered) (FuelReport.distanceToInt report2.totalDistanceCovered)
     in
-    case ( compare (getDate report1) (getDate report2), compare report1.distance_covered report2.distance_covered ) of
+    case ( dateOrder, distanceOrder ) of
         ( GT, _ ) ->
             GT
 
@@ -481,13 +495,12 @@ compareReports report1 report2 =
             x
 
 
-round100 : Float -> Float
-round100 float =
-    toFloat (round (float * 100)) / 100
-
-
-totalForGroup group =
-    List.foldl (\x y -> y + ((\( a, b, c ) -> a) >> .cost) x) 0 group
+totalForGroup : List AnnotatedReport -> Int
+totalForGroup reports =
+    reports
+        |> List.foldl
+            (\x acc -> acc + (x |> .report |> .cost))
+            0
 
 
 tabBarItems mapper =

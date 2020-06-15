@@ -1,6 +1,17 @@
 module Models.FuelReport exposing
-    ( FuelReport
+    ( ConsumptionRate
+    , Distance
+    , FuelReport
+    , Volume
+    , consumption
+    , consumptionToFloat
+    , distance
+    , distanceDifference
+    , distanceToInt
     , fuelRecordDecoder
+    , volume
+    , volumeSum
+    , volumeToFloat
     )
 
 import Iso8601
@@ -12,8 +23,10 @@ import Time
 type alias FuelReport =
     { id : Int
     , cost : Int
-    , volume : Float
-    , distance_covered : Int
+    , volume : Volume
+
+    -- The total distance covered by the bus since the start of time
+    , totalDistanceCovered : Distance
     , date : Time.Posix
     }
 
@@ -21,14 +34,14 @@ type alias FuelReport =
 fuelRecordDecoder : Decoder FuelReport
 fuelRecordDecoder =
     let
-        decoder id cost volume distance_covered dateTimeString =
+        decoder id cost volume_ distance_covered dateTimeString =
             case Iso8601.toTime dateTimeString of
                 Result.Ok dateTime ->
                     Decode.succeed
                         { id = id
                         , cost = cost
-                        , volume = volume
-                        , distance_covered = distance_covered
+                        , volume = Volume volume_
+                        , totalDistanceCovered = Distance distance_covered
                         , date = dateTime
                         }
 
@@ -42,3 +55,61 @@ fuelRecordDecoder =
         |> required "distance_travelled" int
         |> required "date" string
         |> resolve
+
+
+type Distance
+    = Distance Int
+
+
+type Volume
+    = Volume Float
+
+
+distance : Int -> Distance
+distance =
+    Distance
+
+
+distanceToInt (Distance value) =
+    value
+
+
+volume : Float -> Volume
+volume =
+    Volume
+
+
+volumeToFloat (Volume value) =
+    value
+
+
+type ConsumptionRate
+    = ConsumptionRate Float
+
+
+consumption : Distance -> Volume -> ConsumptionRate
+consumption (Distance distance1) (Volume volume1) =
+    if volume1 > 0 then
+        ConsumptionRate (round100 (100 * volume1 / (toFloat distance1 / 1000)))
+
+    else
+        ConsumptionRate 0
+
+
+consumptionToFloat (ConsumptionRate value) =
+    value
+
+
+distanceDifference : Distance -> Distance -> Distance
+distanceDifference (Distance distance1) (Distance distance2) =
+    Distance (distance1 - distance2)
+
+
+volumeSum : Volume -> Volume -> Volume
+volumeSum (Volume volume1) (Volume volume2) =
+    Volume (volume1 + volume2)
+
+
+round100 : Float -> Float
+round100 float =
+    toFloat (round (float * 100)) / 100
