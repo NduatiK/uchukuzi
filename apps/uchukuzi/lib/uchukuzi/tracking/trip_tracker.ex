@@ -70,10 +70,12 @@ defmodule Uchukuzi.Tracking.TripTracker do
 
     data = %{
       bus_id: bus.id,
+      bus: bus,
       route_id: bus.route_id,
       school: school,
       timezone: time_offset,
       trip: Trip.new(bus),
+      trip_id: Ecto.UUID.generate(),
       trip_path: nil,
       state: @new,
       last_notified_tile: nil
@@ -93,10 +95,18 @@ defmodule Uchukuzi.Tracking.TripTracker do
         |> insert_report(report)
         |> set_state(@ongoing)
 
-      if data.trip.travel_time == "evening" do
+      if Trip.students_onboard(data.trip) != [] do
         PubSub.publish(
           :trip_started,
-          {:trip_started, data.route_id, Trip.students_onboard(data.trip)}
+          %{
+            event: :trip_started,
+            route_id: data.route_id,
+            bus_id: data.bus_id,
+            bus: data.bus,
+            students_onboard: Trip.students_onboard(data.trip),
+            number_plate: data.bus.number_plate,
+            school_id: data.school.id
+          }
         )
       end
 
@@ -193,10 +203,10 @@ defmodule Uchukuzi.Tracking.TripTracker do
         etas =
           if data.trip.travel_time == "evening" do
             trip_path.eta
-            # |> keep_first.()
+            |> keep_first.()
           else
             trip_path.eta
-            # |> keep_last.()
+            |> keep_last.()
           end
 
         PubSub.publish(
@@ -253,13 +263,34 @@ defmodule Uchukuzi.Tracking.TripTracker do
   def terminate(_reason, %{state: @complete} = data) do
     PubSub.publish(
       :trip_ended,
-      {:trip_ended, data.route_id, Trip.students_onboard(data.trip)}
+      %{
+        event: :trip_ended,
+        route_id: data.route_id,
+        bus_id: data.bus_id,
+        students_onboard: Trip.students_onboard(data.trip),
+        bus: data.bus,
+        number_plate: data.bus.number_plate,
+        school_id: data.school.id
+      }
     )
 
     store_trip(data.trip, data.trip_path, data.timezone)
   end
 
   def terminate({:shutdown, :timeout}, %{state: @ongoing} = data) do
+    PubSub.publish(
+      :trip_ended,
+      %{
+        event: :trip_ended,
+        route_id: data.route_id,
+        bus_id: data.bus_id,
+        students_onboard: Trip.students_onboard(data.trip),
+        bus: data.bus,
+        number_plate: data.bus.number_plate,
+        school_id: data.school.id
+      }
+    )
+
     store_trip(data.trip, data.trip_path, data.timezone)
   end
 
@@ -274,14 +305,14 @@ defmodule Uchukuzi.Tracking.TripTracker do
     deviation_radius = data.school.deviation_radius
 
     expected_tiles =
-    if data.route_id == nil do
-      nil
-    else
-      Uchukuzi.School.Route
-      |> where([r], r.id == ^data.route_id)
-      |> Uchukuzi.Repo.one()
-      |> (& &1.expected_tiles).()
-    end
+      if data.route_id == nil do
+        nil
+      else
+        Uchukuzi.School.Route
+        |> where([r], r.id == ^data.route_id)
+        |> Uchukuzi.Repo.one()
+        |> (& &1.expected_tiles).()
+      end
 
     IO.puts("TripPath.new")
 

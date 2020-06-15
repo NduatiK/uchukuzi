@@ -62,7 +62,6 @@ init session locationUpdates =
         [ fetchBuses session
         , Ports.cleanMap ()
         , Ports.initializeMaps
-        , Ports.initializeLiveView ()
         ]
     )
 

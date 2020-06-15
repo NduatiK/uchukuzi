@@ -1,6 +1,7 @@
 module Models.Tile exposing
     ( Tile
-    , tileAt
+    , contains
+    , newTile
     )
 
 import Models.Location exposing (Location)
@@ -21,7 +22,7 @@ type alias Tile =
 --     Tile coord (offset coord)
 
 
-tileAt location =
+newTile location =
     Tile location (offset location)
 
 
@@ -54,4 +55,15 @@ offset origin =
             else
                 origin.lng + size
     in
-    Location lng lat
+    Location (round10000 lng) (round10000 lat)
+
+
+contains : Location -> Tile -> Bool
+contains location tile =
+    ((tile.bottomLeft.lng < location.lng) && (location.lng < tile.topRight.lng))
+        && ((tile.bottomLeft.lat < location.lat) && (location.lat < tile.topRight.lat))
+
+
+round10000 : Float -> Float
+round10000 float =
+    toFloat (round (float * 10000)) / 10000

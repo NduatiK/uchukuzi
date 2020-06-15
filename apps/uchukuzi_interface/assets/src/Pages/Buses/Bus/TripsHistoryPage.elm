@@ -1,4 +1,15 @@
-module Pages.Buses.Bus.TripsHistoryPage exposing (Model, Msg, init, ongoingTripUpdated, tabBarItems, update, view, viewFooter, viewOverlay)
+module Pages.Buses.Bus.TripsHistoryPage exposing
+    ( Model
+    , Msg
+    , init
+    , ongoingTripEnded
+    , ongoingTripUpdated
+    , tabBarItems
+    , update
+    , view
+    , viewFooter
+    , viewOverlay
+    )
 
 import Api exposing (get)
 import Api.Endpoint as Endpoint exposing (trips)
@@ -16,15 +27,17 @@ import Json.Decode exposing (Decoder, list)
 import Json.Encode as Encode
 import Models.Location exposing (Location, Report)
 import Models.Route exposing (Route)
-import Models.Tile exposing (Tile, tileAt)
-import Models.Trip exposing (LightWeightTrip, OngoingTrip, StudentActivity, Trip, ongoingToTrip, ongoingTripDecoder, tripDecoder, tripDetailsDecoder)
+import Models.Tile exposing (Tile, newTile)
+import Models.Trip as Trip exposing (LightWeightTrip, OngoingTrip, StudentActivity, Trip, ongoingToTrip, ongoingTripDecoder, tripDecoder, tripDetailsDecoder)
 import Navigation
+import Pages.Buses.Bus.Navigation exposing (BusPage(..))
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.DropDown as Dropdown
+import StyledElement.TripSlider as TripSlider
 import StyledElement.WebDataView as WebDataView
 import Task
 import Template.TabBar as TabBar
@@ -40,9 +53,10 @@ type alias Model =
         { showDeviations : Bool
         , showGeofence : Bool
         , showStops : Bool
+        , showSpeed : Bool
         }
     , showingOngoingTrip : Bool
-    , historicalTrips : WebData (List Models.Trip.LightWeightTrip)
+    , historicalTrips : WebData (List Trip.LightWeightTrip)
     , groupedTrips : List GroupedTrips
     , selectedGroup : Maybe GroupedTrips
     , selectedTrip : Maybe Trip
@@ -50,6 +64,7 @@ type alias Model =
     , loadedTrips : Dict Int Trip
     , loadingTrip : WebData Trip
     , ongoingTrip : WebData (Maybe OngoingTrip)
+    , needRefreshOngoingTrip : Bool
     , requestedTrip : Maybe Int
     , createRouteForm : Maybe CreateRouteForm
     }
@@ -107,6 +122,7 @@ init busID session =
                 { showDeviations = True
                 , showGeofence = False
                 , showStops = False
+                , showSpeed = False
                 }
             , historicalTrips = RemoteData.NotAsked
             , showingOngoingTrip = True
@@ -118,6 +134,7 @@ init busID session =
             , loadingTrip = NotAsked
             , requestedTrip = Nothing
             , ongoingTrip = RemoteData.Loading
+            , needRefreshOngoingTrip = False
             , createRouteForm = Nothing
             }
     in
@@ -138,14 +155,16 @@ init busID session =
 
 type Msg
     = AdjustedValue Int
-    | ToggledShowGeofence Bool
-    | ToggledShowStops Bool
-    | ToggledShowDeviation Bool
     | ReceivedTripsResponse (WebData (List LightWeightTrip))
     | ReceivedOngoingTripResponse (WebData (Maybe OngoingTrip))
     | ReceivedTripDetailsResponse (WebData Trip)
     | ClickedOn Int
     | SelectedGroup GroupedTrips
+      ------
+    | ToggledShowGeofence Bool
+    | ToggledShowStops Bool
+    | ToggledShowSpeed Bool
+    | ToggledShowDeviation Bool
       ------
     | ShowHistoricalTrips
     | ShowCurrentTrip
@@ -153,6 +172,7 @@ type Msg
     | CreateRouteFromTrip
     | CancelRouteCreation
     | OngoingTripUpdated Json.Decode.Value
+    | OngoingTripEnded
       ------
     | UpdatedRouteName String
     | SetSaveToRoute UpdateRoute
@@ -173,6 +193,10 @@ ongoingTripUpdated =
     OngoingTripUpdated
 
 
+ongoingTripEnded =
+    OngoingTripEnded
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
@@ -188,7 +212,7 @@ update msg model =
                             Nothing
 
                         Just trip ->
-                            pointAt sliderValue trip
+                            Trip.pointAt sliderValue trip
 
                 scrollToStudentActivity =
                     Cmd.none
@@ -207,21 +231,7 @@ update msg model =
                     , Cmd.batch
                         [ Ports.selectPoint
                             { location = report.location
-                            , bearing =
-                                if model.showingOngoingTrip then
-                                    report.bearing
-                                    -- |> round
-                                    -- |> (\x -> x - 180)
-                                    -- |> modBy 360
-                                    -- |> toFloat
-
-                                else
-                                    report.bearing
-
-                            -- |> round
-                            -- |> (\x -> x - 180)
-                            -- |> modBy 360
-                            -- |> toFloat
+                            , bearing = report.bearing
                             }
                         , case model.selectedTrip of
                             Nothing ->
@@ -238,6 +248,9 @@ update msg model =
 
         ToggledShowStops show ->
             ( { model | mapVisuals = { mapVisuals | showStops = show } }, Cmd.none )
+
+        ToggledShowSpeed show ->
+            ( { model | mapVisuals = { mapVisuals | showSpeed = show } }, Cmd.none )
 
         ToggledShowDeviation show ->
             ( { model | mapVisuals = { mapVisuals | showDeviations = show } }
@@ -307,7 +320,7 @@ update msg model =
                             , sliderValue = 0
                           }
                         , Cmd.batch
-                            [ case pointAt model.sliderValue loadedTrip of
+                            [ case Trip.pointAt model.sliderValue loadedTrip of
                                 Nothing ->
                                     Ports.deselectPoint ()
 
@@ -380,11 +393,11 @@ update msg model =
                         [ fetchRoutes model.session
                         , Ports.cleanMap ()
                         , Ports.disableClickListeners ()
-                        , Ports.drawEditableRoute
-                            { id = 0
-                            , name = ""
+                        , Ports.drawEditablePath
+                            { routeID = 0
                             , path = form.path
-                            , bus = Nothing
+                            , highlighted = False
+                            , editable = False
                             }
                         ]
                     )
@@ -492,6 +505,20 @@ update msg model =
         ReceivedOngoingTripResponse ongoingTrip ->
             selectOngoingTrip { model | ongoingTrip = ongoingTrip }
 
+        OngoingTripEnded ->
+            ( { model
+                | selectedTrip = Nothing
+                , ongoingTrip = NotAsked
+                , needRefreshOngoingTrip = True
+              }
+            , if model.showingOngoingTrip then
+                Navigation.Bus model.busID RouteHistory
+                    |> Navigation.rerouteTo model
+
+              else
+                Cmd.none
+            )
+
         OngoingTripUpdated updateValue ->
             let
                 change =
@@ -500,7 +527,7 @@ update msg model =
                             (Json.Decode.oneOf
                                 [ Json.Decode.map NewTrip ongoingTripDecoder
                                 , Json.Decode.map NewReport Models.Location.reportDecoder
-                                , Json.Decode.map NewStudentActivity Models.Trip.studentActivityDecoder
+                                , Json.Decode.map NewStudentActivity Trip.studentActivityDecoder
                                 , Json.Decode.null NoOngoingTrip
                                 ]
                             )
@@ -597,16 +624,17 @@ selectOngoingTrip model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model viewWidth =
     let
         viewContents =
             always
                 (column
                     [ width fill
+                    , height fill
                     , spacing 16
                     ]
-                    [ viewMap model
+                    [ viewMap model viewWidth
                     , viewMapOptions model.mapVisuals
                     , if not model.showingOngoingTrip then
                         viewTrips model
@@ -620,10 +648,12 @@ view model =
                                         none
 
                                     Nothing ->
-                                        column [ centerX ]
-                                            [ el [ centerX ] (text "No trip in progress")
-                                            , el [ centerX ] (text "Click below to see past trips")
-                                            ]
+                                        el [ width fill, height fill ]
+                                            (column [ centerX, centerY ]
+                                                [ el [ centerX ] (text "No trip in progress")
+                                                , el [ centerX ] (text "Click below to see past trips")
+                                                ]
+                                            )
                             )
                     ]
                 )
@@ -640,8 +670,8 @@ mapHeight =
     500
 
 
-viewMap : Model -> Element Msg
-viewMap model =
+viewMap : Model -> Int -> Element Msg
+viewMap model viewWidth =
     column
         [ height (px mapHeight)
         , width fill
@@ -661,7 +691,7 @@ viewMap model =
                                 none
 
                             Just trip ->
-                                case pointAt model.sliderValue trip of
+                                case Trip.pointAt model.sliderValue trip of
                                     Nothing ->
                                         none
 
@@ -696,7 +726,14 @@ viewMap model =
                 ]
             , case model.selectedTrip of
                 Just trip ->
-                    viewSlider model (Session.timeZone model.session) trip
+                    TripSlider.view
+                        { sliderValue = model.sliderValue
+                        , zone = Session.timeZone model.session
+                        , trip = trip
+                        , onAdjustValue = AdjustedValue
+                        , viewWidth = viewWidth
+                        , showSpeed = model.mapVisuals.showSpeed
+                        }
 
                 Nothing ->
                     none
@@ -705,117 +742,6 @@ viewMap model =
          else
             []
         )
-
-
-sliderHeight : Int
-sliderHeight =
-    93
-
-
-viewSlider : Model -> Time.Zone -> Trip -> Element Msg
-viewSlider model zone trip =
-    let
-        max : Int
-        max =
-            List.length trip.reports - 1
-
-        currentPointTimeElement : Element msg
-        currentPointTimeElement =
-            let
-                routeStyle =
-                    Style.defaultFontFace
-                        ++ [ Font.color Colors.darkness
-                           , Font.size 14
-                           , Font.bold
-                           ]
-            in
-            case pointAt model.sliderValue trip of
-                Nothing ->
-                    none
-
-                Just point ->
-                    el (centerX :: routeStyle) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone point.time)))
-
-        ticks : Element msg
-        ticks =
-            let
-                createTick point =
-                    el
-                        [ -- width (px 2)
-                          -- , height (px 8)
-                          centerY
-                        , if List.head trip.reports == Just point then
-                            Background.color (rgba 1 1 1 0)
-
-                          else
-                            Background.color Colors.purple
-                        ]
-                        none
-            in
-            row [ spaceEvenly, width fill, centerY ] (List.map createTick trip.reports)
-    in
-    row
-        [ paddingXY 10 0
-        , Border.color Colors.darkness
-        , Border.widthEach { edges | top = 1 }
-        , alignBottom
-        , height (px sliderHeight)
-        , Background.color Colors.white
-        , width fill
-        ]
-        [ -- row [] [ viewSlider model zone trip,
-          el [ width (fillPortion 1), width (fillPortion 1) ] none
-        , column [ width (fillPortion 40) ]
-            [ Input.slider
-                [ height (px 48)
-                , Element.below (el (Style.captionStyle ++ [ alignLeft ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone trip.startTime))))
-                , Element.below (el (Style.captionStyle ++ [ alignRight ]) (text (String.toUpper (Utils.DateFormatter.timeFormatter zone trip.endTime))))
-
-                -- "Track styling"
-                , Element.behindContent
-                    (row [ height fill, width fill, centerY, Element.behindContent ticks ]
-                        [ Element.el
-                            -- "Filled track"
-                            [ width (fillPortion model.sliderValue)
-                            , height (px 3)
-                            , Background.color Colors.purple
-                            , Border.rounded 2
-                            ]
-                            Element.none
-                        , Element.el
-                            -- "Default track"
-                            [ width (fillPortion (max - model.sliderValue))
-                            , height (px 3)
-                            , alpha 0.38
-                            , Background.color Colors.purple
-                            , Border.rounded 2
-                            ]
-                            Element.none
-                        ]
-                    )
-                ]
-                { onChange = round >> AdjustedValue
-                , label =
-                    Input.labelHidden "Timeline Slider"
-                , min = 0
-                , max = Basics.toFloat max
-                , step = Just 1
-                , value = Basics.toFloat model.sliderValue
-                , thumb =
-                    Input.thumb
-                        [ Background.color Colors.purple
-                        , width (px 16)
-                        , height (px 16)
-                        , Border.rounded 8
-                        , Border.solid
-                        , Border.color (rgb 1 1 1)
-                        , Border.width 2
-                        ]
-                }
-            , currentPointTimeElement
-            ]
-        , el [ width (fillPortion 1) ] none
-        ]
 
 
 viewStudentActivities : List StudentActivity -> Time.Zone -> Element Msg
@@ -865,7 +791,7 @@ viewStudentActivities activities timezone =
         -- }
     in
     column
-        [ height (px (mapHeight - sliderHeight))
+        [ height (px (mapHeight - TripSlider.viewHeight))
         , scrollbarY
         ]
         (List.map viewActivity activities)
@@ -879,12 +805,12 @@ viewStudentActivities activities timezone =
 
 
 viewMapOptions :
-    { showDeviations : Bool
-    , showGeofence : Bool
-    , showStops : Bool
+    { a
+        | showDeviations : Bool
+        , showSpeed : Bool
     }
     -> Element Msg
-viewMapOptions mapVisuals =
+viewMapOptions { showDeviations, showSpeed } =
     row [ paddingXY 10 0, spacing 110 ]
         [ -- [ Input.checkbox []
           --     { onChange = ToggledShowStops
@@ -894,19 +820,18 @@ viewMapOptions mapVisuals =
           --         Input.labelRight Style.labelStyle
           --             (text "Show Stops")
           --     }
-          -- , Input.checkbox []
-          --     { onChange = ToggledShowGeofence
-          --     , icon = StyledElement.checkboxIcon
-          --     , checked = mapVisuals.showGeofence
-          --     , label =
-          --         Input.labelRight Style.labelStyle
-          --             (text "Show Geofence")
-          --     }
-          -- ,
           Input.checkbox []
+            { onChange = ToggledShowSpeed
+            , icon = StyledElement.checkboxIcon
+            , checked = showSpeed
+            , label =
+                Input.labelRight Style.labelStyle
+                    (text "Show Speed Graph")
+            }
+        , Input.checkbox []
             { onChange = ToggledShowDeviation
             , icon = StyledElement.checkboxIcon
-            , checked = mapVisuals.showDeviations
+            , checked = showDeviations
             , label =
                 Input.labelRight Style.labelStyle
                     (text "Show Deviations")
@@ -1274,11 +1199,6 @@ groupTrips trips timezone =
     Utils.GroupBy.date timezone .startTime trips
 
 
-pointAt : Int -> Trip -> Maybe Report
-pointAt index trip =
-    List.head (List.drop index trip.reports)
-
-
 drawPath :
     Trip
     -> Int
@@ -1319,10 +1239,10 @@ tilesForDeviation trip =
         |> List.foldl
             (\( index, location ) acc ->
                 if List.member index trip.deviations then
-                    { acc | deviation = acc.deviation ++ [ tileAt location ] }
+                    { acc | deviation = acc.deviation ++ [ newTile location ] }
 
                 else
-                    { acc | correct = acc.correct ++ [ tileAt location ] }
+                    { acc | correct = acc.correct ++ [ newTile location ] }
             )
             { correct = [], deviation = [], visible = True }
 

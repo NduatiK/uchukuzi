@@ -14,9 +14,6 @@ import Models.Tile exposing (Tile)
 
 {-| Accepts bool `is clickable` which when true allows creating a circle
 -}
-port initializeLiveView : () -> Cmd msg
-
-
 port initializeCustomMap : { drawable : Bool, clickable : Bool } -> Cmd msg
 
 
@@ -86,7 +83,7 @@ port printCardPort : () -> Cmd msg
 
 drawEditableRoute : Route -> Cmd msg
 drawEditableRoute route =
-    drawEditablePath { routeID = route.id, path = route.path, highlighted = False }
+    drawEditablePath { routeID = route.id, path = route.path, highlighted = False, editable = True }
 
 
 drawRoute : Route -> Cmd msg
@@ -94,7 +91,7 @@ drawRoute route =
     drawPath { routeID = route.id, path = route.path, highlighted = False }
 
 
-port drawEditablePath : { routeID : Int, path : List Location, highlighted : Bool } -> Cmd msg
+port drawEditablePath : { routeID : Int, path : List Location, highlighted : Bool, editable : Bool } -> Cmd msg
 
 
 port drawPath : { routeID : Int, path : List Location, highlighted : Bool } -> Cmd msg

@@ -3,8 +3,10 @@ module Models.Trip exposing
     , OngoingTrip
     , StudentActivity
     , Trip
+    , annotatedReports
     , ongoingToTrip
     , ongoingTripDecoder
+    , pointAt
     , studentActivityDecoder
     , tripDecoder
     , tripDetailsDecoder
@@ -14,6 +16,7 @@ import Iso8601
 import Json.Decode as Decode exposing (Decoder, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (optional, required, resolve)
 import Models.Location exposing (Location, Report, locationDecoder, reportDecoder)
+import Models.Tile as Tile
 import Time
 
 
@@ -191,3 +194,67 @@ studentActivityDecoder =
         |> required "student" int
         |> optional "student_name" string ""
         |> resolve
+
+
+pointAt : Int -> Trip -> Maybe Report
+pointAt index trip =
+    List.head (List.drop index trip.reports)
+
+
+annotatedReports : Trip -> List { report : Report, deviated : Bool }
+annotatedReports trip =
+    let
+        indexedTiles_ =
+            trip.crossedTiles
+                |> List.map Tile.newTile
+                |> List.indexedMap Tuple.pair
+
+        emptyList : List { report : Report, deviated : Bool }
+        emptyList =
+            []
+    in
+    trip.reports
+        |> List.foldl
+            (\report ( indexedTiles, annotatedReports_ ) ->
+                case List.head indexedTiles of
+                    Just ( index, tile ) ->
+                        if Tile.contains report.location tile then
+                            ( indexedTiles
+                            , { report = report, deviated = List.member index trip.deviations }
+                                :: annotatedReports_
+                            )
+
+                        else
+                            let
+                                tail =
+                                    List.drop 1 indexedTiles
+                            in
+                            case List.head tail of
+                                Just ( idx, headOfTail ) ->
+                                    if Tile.contains report.location headOfTail then
+                                        ( tail
+                                        , { report = report, deviated = List.member idx trip.deviations }
+                                            :: annotatedReports_
+                                        )
+
+                                    else
+                                        ( tail
+                                        , { report = report, deviated = False }
+                                            :: annotatedReports_
+                                        )
+
+                                Nothing ->
+                                    ( tail
+                                    , { report = report, deviated = False }
+                                        :: annotatedReports_
+                                    )
+
+                    Nothing ->
+                        ( []
+                        , { report = report, deviated = False }
+                            :: annotatedReports_
+                        )
+            )
+            ( indexedTiles_, emptyList )
+        |> Tuple.second
+        |> List.reverse

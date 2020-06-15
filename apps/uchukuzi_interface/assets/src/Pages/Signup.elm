@@ -289,8 +289,8 @@ update msg model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model viewHeight=
     let
         formPage =
             case model.form.page of
@@ -302,7 +302,8 @@ view model =
 
         -- option2 ->
     in
-    column [ centerX, centerY, spacing 10, paddingXY 30 0 ]
+    el [width fill, height (px viewHeight)] 
+    (column [ centerX, centerY, spacing 10, paddingXY 30 0 ]
         [ el (alignLeft :: Style.headerStyle) (text "Sign Up")
         , formPage model
         , spacer
@@ -311,8 +312,7 @@ view model =
         , viewDivider
         , viewFooter
         , el [ height (fill |> minimum 100) ] none
-        ]
-
+        ])
 
 spacer : Element msg
 spacer =

@@ -48,8 +48,13 @@ function init() {
         return new Promise((resolve) => setTimeout(resolve, time))
     }
     app = null
+
+    const appArgs = { credentials: storedCredentials, window: windowSize, sideBarIsOpen: sideBarIsOpen }
+    
+    console.log(appArgs)
+
     var app = Elm.Main.init({
-        flags: { credentials: storedCredentials, window: windowSize, sideBarIsOpen: sideBarIsOpen },
+        flags: appArgs,
         node: document.getElementById("elm")
     })
     new ElmPhoenixChannels(Socket, app.ports);
@@ -117,10 +122,10 @@ function init() {
     }
 }
 
-var app = Elm.Main.init({
-    flags: { window: windowSize, loading: true },
-    node: document.getElementById("elm-loading")
-})
+// var app = Elm.Main.init({
+//     flags: { window: windowSize, loading: true },
+//     node: document.getElementById("elm-loading")
+// })
 
 
 
@@ -131,9 +136,8 @@ loadMapAPI()
             flags: { window: windowSize, error: true },
             node: document.getElementById("elm")
         })
-        // if (env.isDevelopment) {
-        //     console.log("inite")
-        //     init()
-        // }
+        if (env.isDevelopment) {
+            init()
+        }
     })
 

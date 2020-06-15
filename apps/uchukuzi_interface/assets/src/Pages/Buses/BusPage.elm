@@ -1,4 +1,18 @@
-module Pages.Buses.BusPage exposing (Model, Msg, Page(..), init, locationUpdateMsg, ongoingTripUpdated, pageName, subscriptions, tabBarItems, update, view)
+module Pages.Buses.BusPage exposing
+    ( Model
+    , Msg
+    , Page(..)
+    , init
+    , locationUpdateMsg
+    , ongoingTripEnded
+    , ongoingTripStarted
+    , ongoingTripUpdated
+    , pageName
+    , subscriptions
+    , tabBarItems
+    , update
+    , view
+    )
 
 import Api
 import Api.Endpoint as Endpoint
@@ -92,7 +106,6 @@ init busID session locationUpdate currentPage =
       }
     , Cmd.batch
         [ fetchBus busID session currentPage locationUpdate
-        , Ports.initializeLiveView ()
         ]
     )
 
@@ -121,6 +134,16 @@ locationUpdateMsg =
 ongoingTripUpdated : Json.Decode.Value -> Msg
 ongoingTripUpdated =
     RouteHistory.ongoingTripUpdated >> GotRouteHistoryMsg
+
+
+ongoingTripStarted : Json.Decode.Value -> Msg
+ongoingTripStarted =
+    ongoingTripUpdated
+
+
+ongoingTripEnded : Msg
+ongoingTripEnded =
+    GotRouteHistoryMsg RouteHistory.ongoingTripEnded
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -198,20 +221,9 @@ update msg model =
                                         Just ( page, msg_ ) ->
                                             ( page, msg_ )
                             in
-                            Cmd.batch
-                                [ -- case ( model.locationUpdate, busData.bus.lastSeen ) of
-                                  -- ( Just locationUpdate_, _ ) ->
-                                  --     Ports.updateBusMap locationUpdate_
-                                  -- ( _, Just locationUpdate_ ) ->
-                                  --     Ports.updateBusMap locationUpdate_
-                                  -- _ ->
-                                  --     Cmd.none
-                                  -- ,
-                                  pageMsg
-                                ]
+                            pageMsg
 
                         Failure error ->
- 
                             Errors.toMsg error
 
                         _ ->
@@ -322,7 +334,7 @@ viewLoaded : BusData -> Int -> Int -> Element Msg
 viewLoaded busData viewHeight viewWidth =
     let
         ( body, footer, buttons ) =
-            ( viewBody viewHeight busData
+            ( viewBody viewHeight viewWidth busData
             , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData (viewWidth - 55))
             , viewButtons busData
             )
@@ -393,8 +405,8 @@ viewHeading busData button =
         ]
 
 
-viewBody : Int -> BusData -> Element Msg
-viewBody height busData =
+viewBody : Int -> Int -> BusData -> Element Msg
+viewBody height width busData =
     let
         viewPage pageView toMsg =
             Element.map toMsg pageView
@@ -404,7 +416,7 @@ viewBody height busData =
             viewPage (About.view subPageModel height) GotAboutMsg
 
         RouteHistoryPage subPageModel ->
-            viewPage (RouteHistory.view subPageModel) GotRouteHistoryMsg
+            viewPage (RouteHistory.view subPageModel width) GotRouteHistoryMsg
 
         FuelHistoryPage subPageModel ->
             viewPage (FuelHistory.view subPageModel (height - 300)) GotFuelHistoryMsg

@@ -51,7 +51,7 @@ defmodule Uchukuzi.Common.Geofence do
 
   def contains_point?(%Geofence{type: "school"} = geofence, %Location{} = location) do
     # The school radius is magnified to capture points as early as possible
-    Location.distance_between(geofence.center, location) <= (geofence.radius * 2)
+    Location.distance_between(geofence.center, location) <= (geofence.radius + 10)
   end
 
   @spec contains_point?(Uchukuzi.Common.Geofence.t(), Uchukuzi.Common.Location.t()) :: boolean

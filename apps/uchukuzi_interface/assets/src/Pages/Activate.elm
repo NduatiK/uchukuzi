@@ -28,9 +28,9 @@ type Msg
     | RequestActivate
 
 
-view : Model -> Element msg
-view model =
-    el [ width fill, height fill ] (Icons.loading [ centerX, centerY ])
+view : Model -> Int -> Element msg
+view model viewHeight =
+    el [ width fill, height (px viewHeight) ] (Icons.loading [ centerX, centerY ])
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

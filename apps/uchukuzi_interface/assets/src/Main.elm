@@ -20,6 +20,7 @@ import Pages.Activate as Activate
 import Pages.Blank
 import Pages.Buses.Bus.CreateBusRepairPage as CreateBusRepair
 import Pages.Buses.Bus.CreateFuelReport as CreateFuelReport
+import Pages.Buses.Bus.Navigation exposing (BusPage(..))
 import Pages.Buses.BusPage as BusDetailsPage
 import Pages.Buses.BusesPage as BusesList
 import Pages.Buses.CreateBusPage as BusRegistration
@@ -121,7 +122,7 @@ type alias LocalStorageData =
 localStorageDataDecoder : Json.Decoder LocalStorageData
 localStorageDataDecoder =
     Json.succeed LocalStorageData
-        |> Json.Decode.Pipeline.requiredAt [ "credentials" ] (Json.nullable Api.credDecoder)
+        |> Json.Decode.Pipeline.optionalAt [ "credentials" ] (Json.nullable Api.credDecoder) Nothing
         |> Json.Decode.Pipeline.optionalAt [ "window", "width" ] Json.int 100
         |> Json.Decode.Pipeline.optionalAt [ "window", "height" ] Json.int 100
         |> Json.Decode.Pipeline.optionalAt [ "loading" ] Json.bool False
@@ -150,24 +151,12 @@ init args url navKey =
                 localStorageData.creds
                     |> Maybe.map
                         (\credentials ->
-                            let
-                                phxModel_ =
-                                    Phoenix.initialize
-                                        (Socket.init "/socket/manager"
-                                            |> Socket.withParams (Encode.object [ ( "token", Encode.string credentials.token ) ])
-                                            |> Socket.onOpen (SocketOpened credentials.school_id)
-                                            |> Socket.withDebug
-                                        )
-                                        toPhoenix
-                            in
-                            phxModel_
-                                |> Phoenix.update (PhxMsg.createSocket phxModel_.socket)
-                                |> Tuple.mapFirst Just
+                            initializePhoenix credentials
                         )
                     |> Maybe.withDefault ( Nothing, Cmd.none )
 
         ( model, cmds ) =
-            changeRouteTo (Navigation.fromUrl url session)
+            changeRouteTo (Navigation.fromUrl session url)
                 { page = Redirect session
                 , route = Nothing
                 , navState = NavBar.init
@@ -234,8 +223,11 @@ type Msg
     | SocketOpened Int
     | OutsideError String
       ------------
+    | ReceivedNotification Json.Value
     | BusMoved Json.Value
+    | OngoingTripStarted Json.Value
     | OngoingTripUpdated Json.Value
+    | OngoingTripEnded Json.Value
 
 
 
@@ -263,6 +255,7 @@ update msg model =
                 channel =
                     Channel.init ("school:" ++ String.fromInt schoolID)
                         |> Channel.on "bus_moved" BusMoved
+                        |> Channel.on "notification" ReceivedNotification
 
                 phxMsg =
                     PhxMsg.createChannel channel
@@ -295,19 +288,27 @@ update msg model =
 
         GotNavBarMsg navBarMsg ->
             let
-                ( newNavState, navMsg ) =
-                    NavBar.update navBarMsg model.navState (toSession model.page)
+                ( newNavState, navMsg, clearNotifications ) =
+                    NavBar.update navBarMsg model.navState (pageToSession model.page)
             in
-            ( { model | navState = newNavState }
+            ( { model
+                | navState = newNavState
+                , notifications =
+                    if clearNotifications then
+                        []
+
+                    else
+                        model.notifications
+              }
             , Cmd.map GotNavBarMsg navMsg
             )
 
         UpdatedTimeZone timezone ->
             let
                 session =
-                    Session.withTimeZone (toSession model.page) timezone
+                    Session.withTimeZone (pageToSession model.page) timezone
             in
-            changeRouteWithUpdatedSessionTo (Navigation.fromUrl model.url session) model session
+            changeRouteWithUpdatedSessionTo (Navigation.fromUrl session model.url) model session
 
         -- ( { model | windowHeight = height }, Cmd.none )
         UrlRequested urlRequest ->
@@ -319,7 +320,7 @@ update msg model =
 
                         Just _ ->
                             ( model
-                            , Nav.pushUrl (Session.navKey (toSession model.page)) (Url.toString url)
+                            , Nav.pushUrl (Session.navKey (pageToSession model.page)) (Url.toString url)
                             )
 
                 Browser.External href ->
@@ -333,7 +334,7 @@ update msg model =
                     Navigation.isSamePage model.url url
             in
             if not isSamePage then
-                changeRouteTo (Navigation.fromUrl url (toSession model.page))
+                changeRouteTo (Navigation.fromUrl (pageToSession model.page) url)
                     { model | url = url }
 
             else
@@ -342,13 +343,15 @@ update msg model =
         ReceivedCreds cred ->
             let
                 session =
-                    Session.withCredentials (toSession model.page) cred
+                    Session.withCredentials (pageToSession model.page) cred
             in
             if cred == Nothing then
                 changeRouteWithUpdatedSessionTo (Just (Navigation.Login Nothing)) model session
+                    |> updatePhoenix
 
             else
-                changeRouteWithUpdatedSessionTo (Navigation.fromUrl model.url session) model session
+                changeRouteWithUpdatedSessionTo (Navigation.fromUrl session model.url) model session
+                    |> updatePhoenix
 
         BusMoved locUpdateValue ->
             let
@@ -366,6 +369,32 @@ update msg model =
                             model
             in
             updatePage msg newModel
+
+        ReceivedNotification notificationValue ->
+            let
+                id =
+                    model.notifications
+                        |> List.map .id
+                        |> List.drop (List.length model.notifications - 1)
+                        |> List.head
+                        |> Maybe.map (\x -> x + 1)
+                        |> Maybe.withDefault 1
+
+                notification =
+                    notificationValue
+                        |> Json.decodeValue (Models.Notification.decoder id)
+                        |> Result.toMaybe
+            in
+            case notification of
+                Just notification_ ->
+                    ( { model
+                        | notifications = notification_ :: model.notifications
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         _ ->
             updatePage msg model
@@ -395,9 +424,25 @@ updatePage page_msg fullModel =
                 Nothing ->
                     ( fullModel, Cmd.none )
 
+        ( OngoingTripStarted value, BusDetailsPage model ) ->
+            let
+                ( model_, msg_ ) =
+                    BusDetailsPage.update (BusDetailsPage.ongoingTripStarted value) model
+                        |> mapModelAndMsg BusDetailsPage GotBusDetailsPageMsg
+            in
+            ( model_, Cmd.batch [ msg_ ] )
+
         ( OngoingTripUpdated tripUpdateValue, BusDetailsPage model ) ->
             BusDetailsPage.update (BusDetailsPage.ongoingTripUpdated tripUpdateValue) model
                 |> mapModelAndMsg BusDetailsPage GotBusDetailsPageMsg
+
+        ( OngoingTripEnded _, BusDetailsPage model ) ->
+            let
+                ( model_, msg_ ) =
+                    BusDetailsPage.update BusDetailsPage.ongoingTripEnded model
+                        |> mapModelAndMsg BusDetailsPage GotBusDetailsPageMsg
+            in
+            ( model_, Cmd.batch [ msg_ ] )
 
         ( OngoingTripUpdated tripUpdateValue, _ ) ->
             ( fullModel, Cmd.none )
@@ -430,9 +475,6 @@ updatePage page_msg fullModel =
             StudentRegistration.update msg model
                 |> mapModelAndMsg StudentRegistration GotStudentRegistrationMsg
 
-        -- ( GotDevicesListMsg msg, DevicesList model ) ->
-        --     DevicesList.update msg model
-        --         |> mapModelAndMsg DevicesList GotDevicesListMsg
         ( GotActivateMsg msg, Activate model ) ->
             Activate.update msg model
                 |> mapModelAndMsg Activate GotActivateMsg
@@ -473,11 +515,71 @@ updatePage page_msg fullModel =
             ( fullModel, Cmd.none )
 
 
+updatePhoenix : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+updatePhoenix ( model, msg ) =
+    let
+        credentials =
+            model.page |> pageToSession |> Session.getCredentials
+    in
+    case ( credentials, model.phoenix ) of
+        ( Nothing, Just phoenix ) ->
+            -- Need to unsubscribe
+            let
+                ( phxModel, phxMsg ) =
+                    phoenix
+                        |> Phoenix.update PhxMsg.disconnect
+                        |> Tuple.mapFirst Just
+            in
+            ( { model
+                | phoenix = phxModel
+                , notifications = []
+              }
+            , Cmd.batch
+                [ phxMsg
+                , msg
+                ]
+            )
+
+        ( Just credentials_, Nothing ) ->
+            -- Need to create a channel
+            let
+                ( phxModel, phxMsg ) =
+                    initializePhoenix credentials_
+            in
+            ( { model | phoenix = phxModel }
+            , Cmd.batch
+                [ phxMsg
+                , msg
+                ]
+            )
+
+        _ ->
+            -- No change needed
+            ( model, msg )
+
+
+initializePhoenix : Session.Credentials -> ( Maybe (Phoenix.Model Msg), Cmd Msg )
+initializePhoenix credentials =
+    let
+        phxModel_ =
+            Phoenix.initialize
+                (Socket.init "/socket/manager"
+                    |> Socket.withParams (Encode.object [ ( "token", Encode.string credentials.token ) ])
+                    |> Socket.onOpen (SocketOpened credentials.school_id)
+                    |> Socket.withDebug
+                )
+                toPhoenix
+    in
+    phxModel_
+        |> Phoenix.update (PhxMsg.createSocket phxModel_.socket)
+        |> Tuple.mapFirst Just
+
+
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
     let
         session =
-            toSession model.page
+            pageToSession model.page
     in
     changeRouteWithUpdatedSessionTo maybeRoute model session
 
@@ -587,11 +689,13 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
         channel busID =
             Channel.init ("trip:" ++ String.fromInt busID)
                 |> Channel.onJoin OngoingTripUpdated
+                |> Channel.on "started" OngoingTripStarted
                 |> Channel.on "update" OngoingTripUpdated
+                |> Channel.on "ended" OngoingTripEnded
 
         ( phoenixModel, phxCmd ) =
             case maybeRoute of
-                Just (Navigation.Bus busID _) ->
+                Just (Navigation.Bus busID RouteHistory) ->
                     case model.phoenix of
                         Just phxModel ->
                             Phoenix.update (PhxMsg.createChannel (channel busID)) phxModel
@@ -609,23 +713,21 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
                                         |> Dict.filter (\k v -> String.startsWith "trip:" k)
                                         |> Dict.values
                             in
-                            List.foldl
-                                (\tripChannel ( phxModel_, phxMsg_ ) ->
-                                    let
-                                        ( newPhxModel, newPhxMsg ) =
-                                            phxModel_
-                                                |> Phoenix.update (PhxMsg.leaveChannel tripChannel)
-                                    in
-                                    ( newPhxModel, Cmd.batch [ phxMsg_, newPhxMsg ] )
-                                )
-                                ( phxModel, Cmd.none )
-                                tripChannels
+                            tripChannels
+                                |> List.foldl
+                                    (\tripChannel ( phxModel_, phxMsg_ ) ->
+                                        let
+                                            ( newPhxModel, newPhxMsg ) =
+                                                phxModel_
+                                                    |> Phoenix.update (PhxMsg.leaveChannel tripChannel)
+                                        in
+                                        ( newPhxModel, Cmd.batch [ phxMsg_, newPhxMsg ] )
+                                    )
+                                    ( phxModel, Cmd.none )
                                 |> Tuple.mapFirst Just
 
                         Nothing ->
                             ( model.phoenix, Cmd.none )
-
-        -- ( model.phoenix, Cmd.none )
     in
     ( { model | page = updatedPage, route = maybeRoute, phoenix = phoenixModel }
     , Cmd.batch
@@ -650,7 +752,7 @@ view appModel =
             viewPage pageContents GotHomeMsg []
 
         viewPage pageContents toMsg tabBarItems =
-            Layout.frame route pageContents (toSession page) toMsg navState notifications GotNavBarMsg sideBarState GotSideBarMsg windowSize.height tabBarItems
+            Layout.frame route pageContents (pageToSession page) toMsg navState notifications GotNavBarMsg sideBarState GotSideBarMsg windowSize.height tabBarItems
 
         -- viewEmptyPage =
         renderedView =
@@ -666,16 +768,16 @@ view appModel =
                     viewEmptyPage Home.view
 
                 Activate model ->
-                    viewPage (Activate.view model) GotActivateMsg []
+                    viewPage (Activate.view model viewHeight) GotActivateMsg []
 
                 Login model ->
-                    viewPage (Login.view model) GotLoginMsg []
+                    viewPage (Login.view model viewHeight) GotLoginMsg []
 
                 Settings model ->
                     viewPage (Settings.view model (viewHeight - TabBar.maxHeight)) GotSettingsMsg (Settings.tabBarItems model)
 
                 Signup model ->
-                    viewPage (Signup.view model) GotSignupMsg []
+                    viewPage (Signup.view model viewHeight) GotSignupMsg []
 
                 Redirect _ ->
                     viewEmptyPage Pages.Blank.view
@@ -753,8 +855,8 @@ view appModel =
     }
 
 
-toSession : PageModel -> Session
-toSession pageModel =
+pageToSession : PageModel -> Session
+pageToSession pageModel =
     case pageModel of
         Home model ->
             model.session

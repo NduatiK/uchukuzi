@@ -1,5 +1,7 @@
 module Colors exposing (..)
 
+{-| This module provides a color palette
+-}
 import Color
 import Element exposing (..)
 import Element.Background as Background
@@ -69,7 +71,8 @@ white : Color
 white =
     Element.rgb 1 1 1
 
-
+{-| Use this color for clickable highlight
+-}
 purple : Color
 purple =
     Element.rgb255 89 79 238
@@ -170,5 +173,6 @@ fillWhiteOnHover =
     class "fillWhiteOnHover"
 
 
+class : String -> Attribute msg
 class string =
     htmlAttribute (Html.Attributes.class string)

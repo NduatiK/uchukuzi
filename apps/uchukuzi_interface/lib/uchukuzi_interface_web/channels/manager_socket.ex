@@ -2,8 +2,8 @@ defmodule UchukuziInterfaceWeb.ManagerSocket do
   use Phoenix.Socket
   alias UchukuziInterfaceWeb.AuthPlugs.ManagerAuth
 
-  channel "school:*", UchukuziInterfaceWeb.SchoolChannel
-  channel "trip:*", UchukuziInterfaceWeb.TripChannel
+  channel "school:*", UchukuziInterfaceWeb.ManagerSocket.SchoolChannel
+  channel "trip:*", UchukuziInterfaceWeb.ManagerSocket.TripChannel
 
   def connect(%{"token" => token}, socket, _connect_info) do
     with {:ok, manager_id} <- ManagerAuth.verify(token),

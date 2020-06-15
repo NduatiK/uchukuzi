@@ -1,4 +1,4 @@
-defmodule UchukuziInterfaceWeb.SchoolChannel do
+defmodule UchukuziInterfaceWeb.ManagerSocket.SchoolChannel do
   use UchukuziInterfaceWeb, :channel
 
   @moduledoc """
@@ -29,5 +29,46 @@ defmodule UchukuziInterfaceWeb.SchoolChannel do
     }
 
     {:reply, {:ok, reply}, socket}
+  end
+
+  def send_notification(school_id, update) do
+    UchukuziInterfaceWeb.Endpoint.broadcast(
+      "school:" <> Integer.to_string(school_id),
+      "notification",
+      update
+    )
+  end
+
+  def send_bus_event(school_id, %{
+        event: "left_school",
+        number_plate: number_plate,
+        students_onboard: students_onboard,
+        bus_id: bus_id
+      }) do
+    send_notification(school_id, %{
+      time: DateTime.utc_now(),
+      title: "Bus Left School",
+      content:
+        "Bus #{number_plate} has left the school with #{Enum.count(students_onboard)} students onboard",
+      redirectUrl: "/#/fleet/#{bus_id}"
+    })
+  end
+
+  def send_bus_event(school_id, %{
+        event: "arrived_at_school",
+        number_plate: number_plate,
+        students_onboard: students_onboard,
+        bus_id: bus_id
+      }) do
+    send_notification(school_id, %{
+      time: DateTime.utc_now(),
+      title: "Bus Arrived",
+      content:
+        "Bus #{number_plate} has arrived at school with #{Enum.count(students_onboard)} students onboard",
+      redirectUrl: "/#/fleet/#{bus_id}"
+    })
+  end
+
+  def send_bus_event(_, _) do
   end
 end

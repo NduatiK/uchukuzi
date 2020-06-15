@@ -15,6 +15,7 @@ defmodule Uchukuzi.World.TileSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
+  @spec tile_for(%{__struct__: Uchukuzi.Common.Location | Uchukuzi.World.Tile}) :: any
   def tile_for(%Location{} = location) do
     with nil <- GenServer.whereis(TileServer.via_tuple(location)) do
       with {:ok, child} <-

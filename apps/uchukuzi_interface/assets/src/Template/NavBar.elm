@@ -22,6 +22,7 @@ import Task
 import TypedSvg exposing (g, svg)
 import TypedSvg.Attributes exposing (stroke, viewBox)
 import TypedSvg.Types exposing (Paint(..), Transform(..))
+import Url exposing (Url)
 import Views.NotificationView as NotificationView
 
 
@@ -34,23 +35,23 @@ type Model
     = Model
         { accountDropdownVisible : Bool
         , notificationsVisible : Bool
+        , shouldClearNotifications : Bool
         }
 
 
 init : Model
 init =
-    Model { accountDropdownVisible = False, notificationsVisible = False }
+    Model
+        { accountDropdownVisible = False
+        , notificationsVisible = False
+        , shouldClearNotifications = False
+        }
 
 
 internals model =
     case model of
         Model i ->
             i
-
-
-referenceDataName : String
-referenceDataName =
-    "navbar-dropdown-id"
 
 
 
@@ -62,14 +63,16 @@ type Msg
       -----------
     | Logout
     | OpenSettings
+    | RedirectTo String
       -----------
     | ToggleAccountDropDown
     | ToggleNotificationsDropDown
       -----------
     | HideDropDown
+    | ClearNotifications
 
 
-update : Msg -> Model -> Session.Session -> ( Model, Cmd Msg )
+update : Msg -> Model -> Session.Session -> ( Model, Cmd Msg, Bool )
 update msg model session =
     let
         internalData =
@@ -77,7 +80,7 @@ update msg model session =
     in
     case msg of
         NoOp ->
-            ( model, Cmd.none )
+            ( model, Cmd.none, False )
 
         ToggleAccountDropDown ->
             ( Model
@@ -86,6 +89,7 @@ update msg model session =
                     , notificationsVisible = False
                 }
             , Cmd.none
+            , False
             )
 
         HideDropDown ->
@@ -95,6 +99,7 @@ update msg model session =
                     , notificationsVisible = False
                 }
             , Cmd.none
+            , False
             )
 
         ToggleNotificationsDropDown ->
@@ -104,6 +109,13 @@ update msg model session =
                     , notificationsVisible = not internalData.notificationsVisible
                 }
             , Cmd.none
+            , False
+            )
+
+        RedirectTo urlString ->
+            ( model
+            , Navigation.rerouteToString { session = session } urlString
+            , False
             )
 
         Logout ->
@@ -115,6 +127,7 @@ update msg model session =
             , Cmd.batch
                 [ Api.logout
                 ]
+            , False
             )
 
         OpenSettings ->
@@ -124,7 +137,21 @@ update msg model session =
                     , notificationsVisible = False
                 }
             , Navigation.rerouteTo { session = session } Navigation.Settings
+            , False
             )
+
+        ClearNotifications ->
+            ( Model
+                { internalData
+                    | shouldClearNotifications = True
+                }
+            , Cmd.none
+            , True
+            )
+
+
+
+-- VIEW
 
 
 view : Model -> Session.Session -> Maybe Route -> List Notification -> Element Msg
@@ -245,14 +272,41 @@ viewLoggedInHeader model creds notifications =
                     [ width (fill |> maximum 300)
                     , onClickWithoutPropagation NoOp
                     ]
-                    [ el
-                        [ paddingXY 15 15
-                        , width fill
-                        , Font.bold
-                        , Font.size 14
+                    [ row
+                        [ width fill
+                        , paddingXY 15 0
+                        , Border.shadow { offset = ( 0, 0 ), size = 0, blur = 2, color = rgba 0 0 0 0.24 }
                         ]
-                        (text "Notifications")
-                    , NotificationView.view notifications
+                        [ el
+                            [ paddingXY 0 15
+                            , Font.bold
+                            , Font.size 14
+                            ]
+                            (text "Notifications")
+                        , el [ alignRight ]
+                            (if notifications /= [] then
+                                StyledElement.plainButton
+                                    [ Background.color Colors.white
+                                    , centerY
+                                    , Font.color Colors.purple
+                                    , Font.size 15
+                                    , mouseOver [ Background.color Colors.backgroundPurple ]
+                                    , Border.rounded 4
+                                    , paddingXY 8 4
+                                    , moveDown 2
+                                    ]
+                                    { label =
+                                        row [ centerX ]
+                                            [ el [ centerY ] (text "Clear")
+                                            ]
+                                    , onPress = Just ClearNotifications
+                                    }
+
+                             else
+                                none
+                            )
+                        ]
+                    , NotificationView.view notifications RedirectTo
                     ]
 
             else
@@ -311,6 +365,7 @@ viewDropDownList attrs views =
             , blur = 5
             , color = rgba 0 0 0 0.14
             }
+         , spacing 1
          , Border.rounded 3
          , Border.width 1
          , Border.color (Colors.withAlpha Colors.black 0.3)

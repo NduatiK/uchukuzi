@@ -118,8 +118,8 @@ defmodule Uchukuzi.Tracking.TripPath do
           # Look for a nearby anticipated cell
           match =
             path.anticipated_tile_locs
-            |> Enum.take(9)
-            |> Enum.find(fn x -> Tile.nearby?(x, tile) end)
+            |> Enum.take(4)
+            |> Enum.find(fn x -> Tile.nearby?(x, tile, path.deviation_radius) end)
 
           case(match) do
             nil ->

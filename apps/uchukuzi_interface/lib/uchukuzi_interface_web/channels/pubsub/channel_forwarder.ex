@@ -28,12 +28,31 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
      }}
   end
 
-
-  def handle_info({:trip_started, route_id, students_onboard} = _event, state) do
+  def handle_info(
+        %{
+          event: :trip_started,
+          route_id: route_id,
+          students_onboard: students_onboard,
+          number_plate: number_plate,
+          school_id: school_id,
+          bus_id: bus_id,
+          bus: bus
+        },
+        state
+      ) do
     UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_event(route_id, %{
       event: "left_school",
       students_onboard: students_onboard
     })
+
+    UchukuziInterfaceWeb.ManagerSocket.SchoolChannel.send_bus_event(school_id, %{
+      event: "left_school",
+      students_onboard: students_onboard,
+      number_plate: number_plate,
+      bus_id: bus_id
+    })
+
+    UchukuziInterfaceWeb.ManagerSocket.TripChannel.send_trip_started(bus)
 
     {:noreply, state}
   end
@@ -113,14 +132,34 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
   end
 
   def handle_info({:trip_update, bus_id, update} = _event, state) do
-    UchukuziInterfaceWeb.TripChannel.send_trip_update(bus_id, update)
+    UchukuziInterfaceWeb.ManagerSocket.TripChannel.send_trip_update(bus_id, update)
     {:noreply, state}
   end
 
-  def handle_info({:trip_ended, route_id, students_onboard} = _event, state) do
+  def handle_info(
+        %{
+          event: :trip_ended,
+          route_id: route_id,
+          students_onboard: students_onboard,
+          number_plate: number_plate,
+          school_id: school_id,
+          bus_id: bus_id,
+          bus: bus
+        },
+        state
+      ) do
     UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_event(route_id, %{
       event: "arrived_at_school",
       students_onboard: students_onboard
+    })
+
+    UchukuziInterfaceWeb.ManagerSocket.TripChannel.send_trip_ended(bus_id)
+
+    UchukuziInterfaceWeb.ManagerSocket.SchoolChannel.send_bus_event(school_id, %{
+      event: "arrived_at_school",
+      students_onboard: students_onboard,
+      number_plate: number_plate,
+      bus_id: bus_id
     })
 
     {:noreply, state}

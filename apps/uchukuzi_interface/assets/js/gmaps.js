@@ -1,5 +1,6 @@
 import mapStyles from "./mapStyles"
 import env from "./env"
+
 const schoolLocationStorageKey = "schoolLocation"
 
 const isDevelopment = env.isDevelopment
@@ -142,7 +143,6 @@ const insertMap = (sleepTime) => (data) => {
  * Removes items from the map before reuse
  */
 function cleanMap() {
-    console.log("cleanMap")
     polylines.forEach((x) => {
         x.setMap(null)
     })
@@ -192,9 +192,7 @@ function cleanGrid() {
 }
 
 function disableClickListeners(time = 300) {
-    console.log(time)
     sleep(time).then(() => {
-        console.log(time)
         if (MapLibraryInstance) {
             google.maps.event.clearInstanceListeners(MapLibraryInstance, "click")
             homeMarkerMapClickListener = null
@@ -542,7 +540,7 @@ function setupMapPorts(app) {
     const updateMarker = function ({ location, bearing, markerID, bus }) {
         initializeMaps(app, false, false, 0)
             .then((map) => {
-                console.log(markerID, bus)
+                
                 var id = bus
 
                 if (markerID) {
@@ -703,7 +701,7 @@ function setupMapPorts(app) {
         initializeMaps(app)
             .then((map) => {
                 sleep(200).then(() => {
-                    drawPath(map, true)(path)
+                    drawPath(map, path.editable)(path)
                     sleep(100).then(() => {
                         fitBoundsMap(map)
                     })

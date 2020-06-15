@@ -107,8 +107,8 @@ update msg model =
                     )
 
 
-view : Model -> Element Msg
-view model =
+view : Model -> Int -> Element Msg
+view model viewHeight =
     let
         spacer =
             el [] none
@@ -120,46 +120,48 @@ view model =
             else
                 Nothing
     in
-    column [ centerX, centerY, width (fill |> maximum 500), spacing 10, paddingXY 30 0 ]
-        [ el (alignLeft :: Style.headerStyle)
-            (text
-                (if model.message == Nothing then
-                    "Welcome back!"
+    el [ width fill, height (px viewHeight) ]
+        (column [ centerX, centerY, width (fill |> maximum 500), spacing 10, paddingXY 30 0 ]
+            [ el (alignLeft :: Style.headerStyle)
+                (text
+                    (if model.message == Nothing then
+                        "Welcome back!"
 
-                 else
-                    "Welcome!"
+                     else
+                        "Welcome!"
+                    )
                 )
-            )
-        , viewMessage model.message
-        , StyledElement.textInput [ centerX ]
-            { title = "Email"
-            , caption = Nothing
-            , errorCaption = errorCaption
-            , value = model.form.email
-            , onChange = UpdatedEmail
-            , placeholder = Nothing
-            , ariaLabel = "Email input"
-            , icon = Nothing
-            }
-        , spacer
-        , StyledElement.passwordInput [ centerX ]
-            { title = "Password"
-            , caption = Nothing
-            , errorCaption = errorCaption
-            , value = model.form.password
-            , onChange = UpdatedPassword
-            , placeholder = Nothing
-            , ariaLabel = "Password input"
-            , icon = Nothing
-            , newPassword = False
-            }
-        , viewError model.status
-        , spacer
-        , viewButton model
-        , viewDivider
-        , viewFooter
-        , el [ height (fill |> minimum 100) ] none
-        ]
+            , viewMessage model.message
+            , StyledElement.textInput [ centerX ]
+                { title = "Email"
+                , caption = Nothing
+                , errorCaption = errorCaption
+                , value = model.form.email
+                , onChange = UpdatedEmail
+                , placeholder = Nothing
+                , ariaLabel = "Email input"
+                , icon = Nothing
+                }
+            , spacer
+            , StyledElement.passwordInput [ centerX ]
+                { title = "Password"
+                , caption = Nothing
+                , errorCaption = errorCaption
+                , value = model.form.password
+                , onChange = UpdatedPassword
+                , placeholder = Nothing
+                , ariaLabel = "Password input"
+                , icon = Nothing
+                , newPassword = False
+                }
+            , viewError model.status
+            , spacer
+            , viewButton model
+            , viewDivider
+            , viewFooter
+            , el [ height (fill |> minimum 100) ] none
+            ]
+        )
 
 
 viewError : WebData SuccessfulLogin -> Element Msg

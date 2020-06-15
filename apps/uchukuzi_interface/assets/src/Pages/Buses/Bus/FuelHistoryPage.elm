@@ -2,7 +2,6 @@ module Pages.Buses.Bus.FuelHistoryPage exposing
     ( Model
     , Msg
     , init
-    
     , tabBarItems
     , update
     , view

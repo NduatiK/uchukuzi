@@ -1,4 +1,15 @@
-module Navigation exposing (LoginRedirect(..), Route(..), fromUrl, href, isPublicRoute, isSamePage, pushUrl, replaceUrl, rerouteTo)
+module Navigation exposing
+    ( LoginRedirect(..)
+    , Route(..)
+    , fromUrl
+    , href
+    , isPublicRoute
+    , isSamePage
+    , pushUrl
+    , replaceUrl
+    , rerouteTo
+    , rerouteToString
+    )
 
 import Browser.Navigation as Nav
 import Html exposing (Attribute)
@@ -195,6 +206,19 @@ pushUrl key route =
     Nav.pushUrl key (routeToString route)
 
 
+isSamePage : Url -> Url -> Bool
+isSamePage url1 url2 =
+    case ( Parser.parse loggedInParser (parseUrl url1), Parser.parse loggedInParser (parseUrl url2) ) of
+        ( Nothing, Nothing ) ->
+            Parser.parse notLoggedInParser (parseUrl url1) == Parser.parse notLoggedInParser (parseUrl url2)
+
+        ( Just (Bus a _), Just (Bus b _) ) ->
+            a == b
+
+        ( a, b ) ->
+            a == b
+
+
 parseUrl : Url -> Url
 parseUrl url =
     let
@@ -215,21 +239,8 @@ parseUrl url =
     { url | path = path, fragment = Nothing, query = Just query }
 
 
-isSamePage : Url -> Url -> Bool
-isSamePage url1 url2 =
-    case ( Parser.parse loggedInParser (parseUrl url1), Parser.parse loggedInParser (parseUrl url2) ) of
-        ( Nothing, Nothing ) ->
-            Parser.parse notLoggedInParser (parseUrl url1) == Parser.parse notLoggedInParser (parseUrl url2)
-
-        ( Just (Bus a _), Just (Bus b _) ) ->
-            a == b
-
-        ( a, b ) ->
-            a == b
-
-
-fromUrl : Url -> Session -> Maybe Route
-fromUrl url session =
+fromUrl : Session -> Url -> Maybe Route
+fromUrl session url =
     let
         newUrl =
             parseUrl url
@@ -277,6 +288,11 @@ rerouteTo a route =
     Nav.pushUrl
         (Session.navKey a.session)
         (routeToString route)
+
+
+rerouteToString : { a | session : Session } -> String -> Cmd msg
+rerouteToString a route =
+    Nav.pushUrl (Session.navKey a.session) route
 
 
 

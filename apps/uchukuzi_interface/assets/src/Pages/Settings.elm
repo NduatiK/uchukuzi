@@ -457,9 +457,33 @@ view model viewHeight =
 viewSlider : Model -> Int -> Element Msg
 viewSlider model deviationRadius =
     let
+        values =
+            [ 1, 2, 4, 6 ]
+
+        value =
+            1
+                + (values
+                    |> List.indexedMap Tuple.pair
+                    |> List.filter (\( index, x ) -> x == deviationRadius)
+                    |> List.head
+                    |> Maybe.map Tuple.first
+                    |> Maybe.withDefault 0
+                  )
+
+        valueStrings =
+            List.map
+                (\x ->
+                    if x > 3 then
+                        String.fromFloat (x * 250 / 1000) ++ " km"
+
+                    else
+                        String.fromFloat (x * 250) ++ " m"
+                )
+                values
+
         max : Int
         max =
-            3
+            List.length values
 
         ticks : Element msg
         ticks =
@@ -522,13 +546,21 @@ viewSlider model deviationRadius =
                             ]
                         )
                     ]
-                    { onChange = round >> UpdatedDeviationRadius
+                    { onChange =
+                        round
+                            >> (\x ->
+                                    List.drop (x - 1) values
+                               )
+                            >> Debug.log "list"
+                            >> List.head
+                            >> Maybe.withDefault 1
+                            >> UpdatedDeviationRadius
                     , label =
                         Input.labelHidden "Timeline Slider"
                     , min = 0
                     , max = Basics.toFloat max
                     , step = Just 1
-                    , value = Basics.toFloat deviationRadius
+                    , value = toFloat value
                     , thumb =
                         Input.thumb
                             [ Background.color Colors.purple
@@ -572,10 +604,10 @@ viewSlider model deviationRadius =
                 , width (fill |> maximum 320)
                 ]
                 (List.map
-                    (\value ->
-                        el ([ width fill, Font.center ] ++ Style.captionStyle) (text value)
+                    (\str ->
+                        el ([ width fill, Font.center ] ++ Style.captionStyle) (text str)
                     )
-                    [ "500 m", "1 km", "1.5 km" ]
+                    valueStrings
                 )
             ]
         ]

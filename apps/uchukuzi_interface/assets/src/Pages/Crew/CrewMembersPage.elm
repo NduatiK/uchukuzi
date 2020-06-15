@@ -162,10 +162,10 @@ update msg model =
                 )
 
         StartedDragging crewMember ->
-            ( { model | edits = { edits | draggingCrewMember = Just crewMember } }, Cmd.none )
+            ( { model | edits = { edits | draggedAbove = Nothing, draggingCrewMember = Just crewMember } }, Cmd.none )
 
-        StoppedDragging crewMember ->
-            ( { model | edits = { edits | draggedAbove = Nothing } }, Cmd.none )
+        StoppedDragging _ ->
+            ( { model | edits = { edits | draggedAbove = Nothing, draggingCrewMember = Nothing } }, Cmd.none )
 
         DroppedCrewMemberOnto bus ->
             let
@@ -208,7 +208,7 @@ update msg model =
                     Models.CrewMember.trimChanges serverData editedData
             in
             ( { model
-                | edits = { edits | changes = trimmedChanges }
+                | edits = { edits | changes = trimmedChanges, draggingCrewMember = Nothing, draggedAbove = Nothing }
                 , editedData = editedData
               }
             , Cmd.none
@@ -305,7 +305,7 @@ viewBody model viewHeight =
                 busList =
                     case data.buses of
                         [] ->
-                            column [ centerX, spacing 20, width fill ]
+                            column [ centerX, spacing 20, width (fillPortion 1) ]
                                 [ paragraph [ centerX, Font.center ] [ text "You have no buses set up" ]
                                 , StyledElement.ghostButtonLink [ centerX ]
                                     { title = "Add a bus"
@@ -320,7 +320,7 @@ viewBody model viewHeight =
                 [ busList
                 , el [ width (px 60) ] none
                 , el [ width (px 2), height (px (viewHeight // 2)), Background.color Colors.darkness ] none
-                , Lazy.lazy3 viewUnassignedCrewMembers editedData viewHeight model.inEditingMode
+                , Lazy.lazy3 viewUnassignedCrewMembers editedData viewHeight model
                 ]
         )
 
@@ -330,6 +330,7 @@ viewBuses editedData edits inEditingMode =
     wrappedRow
         [ alignTop
         , spacing 24
+        , width (fillPortion 2)
         ]
         (List.map (viewBus editedData edits inEditingMode) editedData.buses)
 
@@ -470,8 +471,8 @@ viewCrew bus drivers assistants inEditingMode aboveRole =
         ]
 
 
-viewUnassignedCrewMembers : Data -> Int -> Bool -> Element Msg
-viewUnassignedCrewMembers data windowHeight inEditingMode =
+viewUnassignedCrewMembers : Data -> Int -> Model -> Element Msg
+viewUnassignedCrewMembers data windowHeight { inEditingMode, edits } =
     let
         unassignedCrewMembers =
             List.filter (\c -> c.bus == Nothing) data.crew
@@ -492,6 +493,11 @@ viewUnassignedCrewMembers data windowHeight inEditingMode =
                    , spacing 2
                    , padding 0
                    , Font.color Colors.darkGreen
+                   , if edits.draggingCrewMember == Nothing then
+                        Background.color Colors.white
+
+                     else
+                        Background.color Colors.backgroundGray
                    ]
 
         textStyle x =
@@ -518,7 +524,7 @@ viewUnassignedCrewMembers data windowHeight inEditingMode =
             [ Background.color Colors.darkGreen, Font.color Colors.white ]
     in
     column
-        ([ width fill, height fill, spacing 8 ]
+        ([ width (fillPortion 1), height fill, spacing 8 ]
             ++ (if inEditingMode then
                     droppable
                         { onDrop = DroppedCrewMemberOntoUnassigned
