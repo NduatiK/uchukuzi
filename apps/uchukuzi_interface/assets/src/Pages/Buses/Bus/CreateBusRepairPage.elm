@@ -292,7 +292,12 @@ viewRecord : List (Errors.Errors Problem) -> Repair -> Element Msg
 viewRecord problems repair =
     let
         errorMapper field match =
-            Errors.customInputErrorsFor problems (String.fromInt repair.id ++ "_" ++ field) field match
+            Errors.customInputErrorsFor
+                { problems = problems
+                , serverFieldName = String.fromInt repair.id ++ "_" ++ field
+                , visibleName = field
+                }
+                match
     in
     el
         [ width fill

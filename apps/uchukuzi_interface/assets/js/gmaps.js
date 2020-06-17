@@ -193,12 +193,22 @@ function cleanGrid() {
 
 function disableClickListeners(time = 300) {
     sleep(time).then(() => {
+
         if (MapLibraryInstance) {
+
             google.maps.event.clearInstanceListeners(MapLibraryInstance, "click")
             homeMarkerMapClickListener = null
             homeMarkerDragListener = null
             circleClickListener = null
             mapClickListener = null
+
+            if (homeMarker) {
+                console.log("disableClickListeners")
+
+                console.log("homeMarker.setDraggable")
+                homeMarker.setDraggable(false)
+            }
+
         }
     })
 }
@@ -482,8 +492,9 @@ function initializeSearch(app) {
 
 var homeMarkerDragListener
 
-function setupHomeMarker(app, map) {
+function setupHomeMarker(app, map, draggable = true) {
     if (homeMarker) {
+        homeMarker.setDraggable(draggable)
         return
     }
     var image = {
@@ -492,7 +503,7 @@ function setupHomeMarker(app, map) {
         anchor: new google.maps.Point(12, 24),
     }
     homeMarker = new google.maps.Marker({
-        draggable: true,
+        draggable: draggable,
         map: map,
         icon: image
     })
@@ -505,7 +516,8 @@ function setupHomeMarker(app, map) {
     })
 }
 
-function fitBoundsMap(map) {
+function fitBoundsMap(map, objects) {
+
     var bounds = new google.maps.LatLngBounds()
 
     const extendBounds = (mapObject) => {
@@ -521,11 +533,15 @@ function fitBoundsMap(map) {
         }
     }
 
-    polylines.forEach(extendBounds)
-    markers.forEach(extendBounds)
-    tiles.forEach(extendBounds)
-    polylineMarkers.forEach(extendBounds)
-    extendBounds(schoolMarker)
+    if (!objects) {
+        polylines.forEach(extendBounds)
+        markers.forEach(extendBounds)
+        tiles.forEach(extendBounds)
+        polylineMarkers.forEach(extendBounds)
+        extendBounds(schoolMarker)
+    } else {
+        objects.forEach(extendBounds)
+    }
 
     map.fitBounds(bounds)
 }
@@ -536,14 +552,14 @@ function setupMapPorts(app) {
         cleanMap()
     })
     app.ports.disableClickListeners.subscribe((_) => {
-        disableClickListeners(2000)
+        disableClickListeners()
     })
 
     // One time actions, we don't want too many subscriptions
     const updateMarker = function ({ location, bearing, markerID, bus }) {
         initializeMaps(app, false, false, 0)
             .then((map) => {
-                
+
                 var id = bus
 
                 if (markerID) {
@@ -618,22 +634,16 @@ function setupMapPorts(app) {
         updateMarker({ location: location, bearing: bearing, markerID: markerID })
     })
 
-    app.ports.showHomeLocation.subscribe((location) => {
+
+    app.ports.showHomeLocation.subscribe(({location, draggable}) => {
         initializeMaps(app)
             .then((map) => {
-                setupHomeMarker(app, map)
-
+                setupHomeMarker(app, map, draggable)
                 homeMarker.setPosition(location)
+                fitBoundsMap(map, [schoolMarker, homeMarker])
             })
     })
 
-    app.ports.showHomeLocation.subscribe((location) => {
-        initializeMaps(app)
-            .then((map) => {
-                setupHomeMarker(app, map)
-                homeMarker.setPosition(location)
-            })
-    })
 
     app.ports.highlightPath.subscribe(({ routeID, highlighted }) => {
         const performHighlighting = () => {

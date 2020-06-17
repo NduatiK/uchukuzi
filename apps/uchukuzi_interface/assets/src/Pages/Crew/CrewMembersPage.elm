@@ -3,7 +3,6 @@ module Pages.Crew.CrewMembersPage exposing (Model, Msg, init, tabBarItems, updat
 import Api
 import Api.Endpoint as Endpoint
 import Colors
-import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -11,18 +10,16 @@ import Element.Font as Font
 import Element.Input as Input
 import Element.Lazy as Lazy
 import Errors
-import Html exposing (Html)
-import Html.Attributes exposing (id)
 import Icons
 import Json.Decode as Decode exposing (list)
-import Json.Decode.Pipeline exposing (optional, required, resolve)
+import Json.Decode.Pipeline exposing (required)
 import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Bus exposing (Bus, busDecoder)
 import Models.CrewMember exposing (Change(..), CrewMember, Role(..), applyChanges, crewDecoder, encodeChanges, roleToString)
 import Navigation
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
-import Style exposing (edges)
+import Style
 import StyledElement
 import StyledElement.WebDataView as WebDataView
 import Views.DragAndDrop exposing (draggable, droppable)
@@ -248,6 +245,7 @@ update msg model =
                 | edits =
                     { edits
                         | changes = trimmedChanges
+                        , draggingCrewMember = Nothing
                     }
                 , editedData = editedData
               }
@@ -432,11 +430,16 @@ viewCrew bus drivers assistants inEditingMode aboveRole =
                              , Border.rounded 3
                              , Background.color (Colors.withAlpha Colors.darkGreen 0.2)
                              ]
-                                ++ draggable
-                                    { onDragStart = StartedDragging x
-                                    , onDragEnd = StoppedDragging x
-                                    }
-                                ++ Style.labelStyle
+                                ++ (if inEditingMode then
+                                        draggable
+                                            { onDragStart = StartedDragging x
+                                            , onDragEnd = StoppedDragging x
+                                            }
+
+                                    else
+                                        []
+                                            ++ Style.labelStyle
+                                   )
                             )
                             provideView
                     }
@@ -483,7 +486,7 @@ viewUnassignedCrewMembers data windowHeight { inEditingMode, edits } =
         unassignedAssistants =
             List.filter (\x -> x.role == Assistant) unassignedCrewMembers
 
-        listStyle =
+        listStyle role =
             Style.header2Style
                 ++ [ height fill
                    , Border.color Colors.darkGreen
@@ -493,11 +496,14 @@ viewUnassignedCrewMembers data windowHeight { inEditingMode, edits } =
                    , spacing 2
                    , padding 0
                    , Font.color Colors.darkGreen
-                   , if edits.draggingCrewMember == Nothing then
-                        Background.color Colors.white
+                   , if
+                        inEditingMode
+                            && ((edits.draggingCrewMember |> Maybe.map .role) == Just role)
+                     then
+                        Background.color Colors.backgroundGray
 
                      else
-                        Background.color Colors.backgroundGray
+                        Background.color Colors.white
                    ]
 
         textStyle x =
@@ -537,11 +543,11 @@ viewUnassignedCrewMembers data windowHeight { inEditingMode, edits } =
         )
         [ column [ width fill, height (fill |> maximum (windowHeight // 2)), alignTop ]
             [ el Style.header2Style (text "Unassigned Drivers")
-            , column listStyle (List.map (\x -> textStyle x (text x.name)) unassignedDrivers)
+            , column (listStyle Driver) (List.map (\x -> textStyle x (text x.name)) unassignedDrivers)
             ]
         , column [ width fill, height (fill |> maximum (windowHeight // 2)), alignTop ]
             [ el Style.header2Style (text "Unassigned Assistants")
-            , column listStyle
+            , column (listStyle Assistant)
                 (List.map (\x -> textStyle x (text x.name)) unassignedAssistants)
             ]
         ]

@@ -5,13 +5,11 @@ module Pages.Buses.Bus.FuelHistoryPage exposing
     , tabBarItems
     , update
     , view
-    , viewButtons
     , viewFooter
     )
 
 import Api
 import Api.Endpoint as Endpoint
-import Browser.Dom
 import Colors
 import Date
 import Element exposing (..)
@@ -20,19 +18,16 @@ import Element.Border as Border
 import Element.Font as Font
 import Html.Attributes exposing (id)
 import Icons
-import Json.Decode as Decode exposing (Decoder, int, list, string)
+import Json.Decode exposing (list)
 import Layout.TabBar as TabBar exposing (TabBarItem(..))
-import Models.FuelReport as FuelReport exposing (ConsumptionRate, Distance, FuelReport, Volume, fuelRecordDecoder)
+import Models.FuelReport as FuelReport exposing (Distance, FuelReport, Volume, fuelRecordDecoder)
 import Navigation
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Statistics
 import Style exposing (edges)
-import StyledElement
-import StyledElement.Footer as Footer
 import StyledElement.WebDataView as WebDataView
-import Task
 import Time
 import Utils.GroupBy
 
@@ -50,18 +45,6 @@ type alias Model =
 type alias Statistics =
     { stdDev : Float
     , mean : Float
-    }
-
-
-type alias ChartData =
-    { data :
-        List
-            { date : Time.Posix
-            , consumptionOnDate : ConsumptionRate
-            , runningAverage : ConsumptionRate
-            , distanceSinceLastFueling : Distance
-            }
-    , month : String
     }
 
 
@@ -92,28 +75,24 @@ init busID session =
 
 
 type Msg
-    = RecordsResponse (WebData ( List AnnotatedReport, List GroupedReports ))
+    = RecordsResponse (WebData (List GroupedReports))
     | CreateFuelReport
-    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
-
         CreateFuelReport ->
             ( model, Navigation.rerouteTo model (Navigation.CreateFuelReport model.busID) )
 
         RecordsResponse response ->
             case response of
-                Success ( distanced, grouped ) ->
+                Success grouped ->
                     -- Select the head as the default
                     let
                         ( statistics, cmd ) =
                             case List.head grouped of
-                                Just ( monthName, reports ) ->
+                                Just ( _, reports ) ->
                                     let
                                         fuelConsumptions =
                                             reports
@@ -211,7 +190,7 @@ view model viewHeight =
             (\reports ->
                 row [ width fill, height fill ]
                     [ column [ width fill, height fill ]
-                        [ viewGraph model
+                        [ viewGraph
                         , viewGroupedReports model reports
                         ]
                     , el [ width (px 36) ] none
@@ -220,8 +199,8 @@ view model viewHeight =
         ]
 
 
-viewGraph : Model -> Element msg
-viewGraph model =
+viewGraph : Element msg
+viewGraph =
     el [ width fill, height (px 350), Style.id "chart" ] none
 
 
@@ -266,7 +245,7 @@ viewGroupedReports model groupedReports =
                                         dateText =
                                             x.report.date |> Date.fromPosix timezone |> Date.format "MMM ddd"
                                     in
-                                    el rowTextStyle (text dateText)
+                                    el Style.tableElementStyle (text dateText)
                           }
                         , { header = tableHeader [ "FUEL VOLUME", "(L)" ] [ alignRight ]
                           , width = fill
@@ -342,22 +321,9 @@ viewGroupedReports model groupedReports =
         (List.map viewGroup groupedReports)
 
 
-viewButtons model =
-    el
-        [ alignRight, paddingEach { edges | top = 12 } ]
-        none
-
-
 viewFooter : Model -> Element Msg
 viewFooter _ =
     none
-
-
-
--- Footer.coloredView ()
---     (always "Summary")
---     [ { page = (), body = "", action = NoOp, highlightColor = Colors.darkGreen }
---     ]
 
 
 fetchFuelHistory : Session -> Int -> Cmd Msg
@@ -369,7 +335,7 @@ fetchFuelHistory session bus_id =
 groupReports :
     Time.Zone
     -> WebData (List FuelReport)
-    -> WebData ( List AnnotatedReport, List GroupedReports )
+    -> WebData (List GroupedReports)
 groupReports timezone reports_ =
     case reports_ of
         Success reports ->
@@ -405,8 +371,7 @@ groupReports timezone reports_ =
                         |> Tuple.second
             in
             Success
-                ( distancedReports
-                , distancedReports
+                (distancedReports
                     |> Utils.GroupBy.attr
                         { groupBy = .report >> .date >> Date.fromPosix timezone >> Date.format "yyyy MM"
                         , nameAs = .report >> .date >> Date.fromPosix timezone >> Date.format "MMM yyyy"
@@ -455,6 +420,7 @@ totalForGroup reports =
             0
 
 
+tabBarItems : (Msg -> msg) -> List (TabBarItem msg)
 tabBarItems mapper =
     [ TabBar.Button
         { title = "Add Fuel record"
@@ -464,6 +430,7 @@ tabBarItems mapper =
     ]
 
 
+roundString100 : String -> String
 roundString100 =
     \c ->
         case List.head (String.indexes "." c) of

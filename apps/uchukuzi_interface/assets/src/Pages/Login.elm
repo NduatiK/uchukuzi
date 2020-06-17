@@ -9,16 +9,14 @@ import Element.Border as Border
 import Element.Font as Font
 import Errors
 import Icons
-import Json.Decode as Decode exposing (Decoder, string)
-import Json.Decode.Pipeline exposing (required)
+import Json.Decode exposing (string)
 import Json.Encode as Encode
-import Models.Location exposing (Location, locationDecoder)
-import Navigation exposing (LoginRedirect, Route)
+import Models.Location
+import Navigation exposing (LoginRedirect)
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style
 import StyledElement
-import StyledElement.WebDataView as WebDataView
 
 
 
@@ -115,7 +113,7 @@ view model viewHeight =
 
         errorCaption =
             if RemoteData.isFailure model.status then
-                Just (Errors.InputError "" [])
+                Just Errors.emptyInputError
 
             else
                 Nothing

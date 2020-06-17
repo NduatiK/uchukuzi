@@ -629,11 +629,7 @@ view model viewWidth =
     let
         viewContents =
             always
-                (column
-                    [ width fill
-                    , height fill
-                    , spacing 16
-                    ]
+                (column [ width fill, height fill, spacing 16 ]
                     [ viewMap model viewWidth
                     , viewMapOptions model.mapVisuals
                     , if not model.showingOngoingTrip then
@@ -1288,7 +1284,7 @@ tabBarItems model mapper =
                                 ]
 
                             Loading ->
-                                [ TabBar.LoadingButton 
+                                [ TabBar.LoadingButton
                                 ]
 
                             _ ->

@@ -8,11 +8,9 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Errors exposing (Errors, InputError)
+import Errors exposing (Errors)
 import Html.Attributes exposing (id)
 import Icons
-import Json.Decode as Decode exposing (Decoder, float, int, list, string)
-import Json.Decode.Pipeline exposing (hardcoded, optional, required, resolve)
 import Json.Encode as Encode
 import Models.Location as Location exposing (Location)
 import Navigation exposing (LoginRedirect, Route)
@@ -290,7 +288,7 @@ update msg model =
 
 
 view : Model -> Int -> Element Msg
-view model viewHeight=
+view model viewHeight =
     let
         formPage =
             case model.form.page of
@@ -302,17 +300,19 @@ view model viewHeight=
 
         -- option2 ->
     in
-    el [width fill, height (px viewHeight)] 
-    (column [ centerX, centerY, spacing 10, paddingXY 30 0 ]
-        [ el (alignLeft :: Style.headerStyle) (text "Sign Up")
-        , formPage model
-        , spacer
-        , spacer
-        , viewButtons model
-        , viewDivider
-        , viewFooter
-        , el [ height (fill |> minimum 100) ] none
-        ])
+    el [ width fill, height (px viewHeight) ]
+        (column [ centerX, centerY, spacing 10, paddingXY 30 0 ]
+            [ el (alignLeft :: Style.headerStyle) (text "Sign Up")
+            , formPage model
+            , spacer
+            , spacer
+            , viewButtons model
+            , viewDivider
+            , viewFooter
+            , el [ height (fill |> minimum 100) ] none
+            ]
+        )
+
 
 spacer : Element msg
 spacer =

@@ -1,4 +1,4 @@
-module Pages.Buses.Bus.AboutBus exposing (Model, Msg, init, locationUpdateMsg, tabBarItems, update, view, viewButtons, viewFooter)
+module Pages.Buses.Bus.AboutBus exposing (Model, Msg, init, locationUpdateMsg, tabBarItems, update, view, viewFooter)
 
 import Api
 import Api.Endpoint as Endpoint
@@ -36,7 +36,7 @@ type alias Model =
 
 type Page
     = Statistics
-    | Students (Maybe Int)
+    | Students (Maybe Student)
     | Crew
 
 
@@ -59,7 +59,7 @@ type Msg
     | ClickedStudentsPage
     | FetchStudentsOnboard
     | ReceivedStudentsOnboardResponse (WebData (List Student))
-    | SelectedStudent Int
+    | SelectedStudent Student
       --------------------
     | ClickedCrewPage
     | ReceivedCrewMembersResponse (WebData (List CrewMember))
@@ -122,8 +122,13 @@ update msg model =
         ClickedStudentsPage ->
             ( { model | currentPage = Students Nothing }, Cmd.none )
 
-        SelectedStudent index ->
-            ( { model | currentPage = Students (Just index) }, Ports.initializeMaps )
+        SelectedStudent student ->
+            ( { model | currentPage = Students (Just student) }
+            , Cmd.batch
+                [ Ports.initializeMaps
+                , Ports.showStaticHomeLocation student.homeLocation
+                ]
+            )
 
         ReceivedStudentsOnboardResponse response ->
             ( { model | studentsOnboard = response }, Cmd.none )
@@ -170,7 +175,11 @@ locationUpdateMsg =
 
 
 view : Model -> Int -> Element Msg
-view model viewHeight =
+view model viewHeight_ =
+    let
+        viewHeight =
+            viewHeight_ - 180
+    in
     case model.currentPage of
         Statistics ->
             viewStatisticsPage model
@@ -184,7 +193,7 @@ view model viewHeight =
 
 viewGMAP : Element Msg
 viewGMAP =
-    StyledElement.googleMap [ height (fill |> minimum 300), width (fillPortion 2) ]
+    StyledElement.googleMap [ height fill, width (fillPortion 2) ]
 
 
 viewStatisticsPage : Model -> Element Msg
@@ -218,12 +227,12 @@ viewStudentsPage model viewHeight =
         viewStudent index student =
             let
                 selected =
-                    Students (Just index) == model.currentPage
+                    Students (Just student) == model.currentPage
 
                 highlightAttrs =
                     [ Background.color Colors.darkGreen, Font.color Colors.white ]
             in
-            Input.button [ width fill, paddingEach { edges | right = 12 } ]
+            Input.button [ width fill, paddingXY 2 0 ]
                 { label =
                     paragraph
                         (Style.header2Style
@@ -235,9 +244,8 @@ viewStudentsPage model viewHeight =
                                     [ Background.color Colors.white, Font.color Colors.darkGreen ]
                                )
                         )
-                        -- [ text (String.fromInt (index + 1) ++ ". " ++ student) ]
-                        [ text student.name ]
-                , onPress = Just (SelectedStudent index)
+                        [ text (String.fromInt (index + 1) ++ ". " ++ student.name) ]
+                , onPress = Just (SelectedStudent student)
                 }
 
         gradient =
@@ -246,58 +254,59 @@ viewStudentsPage model viewHeight =
                 (el
                     [ height (px 36)
                     , width fill
-                    , Colors.withGradient pi Colors.white
+                    , Colors.withGradient 0 Colors.white
                     ]
                     none
                 )
     in
-    wrappedRow [ width fill, height fill, spacing 24 ]
-        [ -- viewGMAP
-          -- ,
-          column [ width fill, height fill ]
-            [ --      Input.button [ width fill, height fill ]
-              --     { label = row [ spacing 10 ] [ el Style.header2Style (text "All Students"), Icons.chevronDown [ rotate (-pi / 2) ] ]
-              --     , onPress = Nothing
-              --     }
-              -- ,
-              case model.studentsOnboard of
-                Failure _ ->
+    row [ width fill, height (fill |> maximum viewHeight), spacing 24 ]
+        [ viewGMAP
+        , case model.studentsOnboard of
+            Failure _ ->
+                column [ centerX, centerY, spacing 20 ]
+                    [ paragraph [] [ text "Unable to load students" ]
+                    , StyledElement.failureButton [ centerX ]
+                        { title = "Try Again"
+                        , onPress = Just FetchStudentsOnboard
+                        }
+                    ]
+
+            Success students ->
+                if students == [] then
                     column [ centerX, centerY, spacing 20 ]
-                        [ paragraph [] [ text "Unable to load students" ]
-                        , StyledElement.failureButton [ centerX ]
-                            { title = "Try Again"
-                            , onPress = Just FetchStudentsOnboard
-                            }
+                        [ paragraph [] [ text "0 students currently onboard" ]
                         ]
 
-                Success students ->
-                    if students == [] then
-                        column [ centerX, centerY, spacing 20 ]
-                            [ paragraph [] [ text "0 students currently onboard" ]
-                            ]
+                else
+                    el
+                        [ alignTop
+                        , width fill
+                        , height (shrink |> maximum viewHeight)
+                        , Border.color Colors.darkGreen
+                        , Border.width 2
+                        , if (36 * List.length students) > viewHeight then
+                            inFront gradient
 
-                    else
-                        el
+                          else
+                            moveUp 0
+                        , clip
+                        ]
+                        (column
                             [ width fill
-                            , height (fill |> maximum (viewHeight // 2))
-                            , Border.color Colors.darkGreen
-                            , Border.width 0
-                            , inFront gradient
+                            , scrollbarY
                             ]
-                            (column
-                                [ width fill
-                                , height (fill |> maximum (viewHeight // 2))
-                                , scrollbarY
-                                , paddingEach { edges | bottom = 24 }
-                                ]
-                                (List.indexedMap viewStudent
-                                    students
-                                )
-                            )
+                            (List.indexedMap viewStudent students
+                                ++ (if (36 * List.length students) > viewHeight then
+                                        [ el [ height (px 36) ] none ]
 
-                _ ->
-                    el [ centerX, centerY ] (Icons.loading [])
-            ]
+                                    else
+                                        []
+                                   )
+                            )
+                        )
+
+            _ ->
+                el [ centerX, centerY ] (Icons.loading [])
         ]
 
 
@@ -343,13 +352,6 @@ viewCrewPage model =
             el [ centerX, centerY ] (Icons.loading [])
 
 
-viewButtons : Model -> Element Msg
-viewButtons _ =
-    el
-        [ alignRight, paddingEach { edges | top = 12 } ]
-        none
-
-
 viewFooter : Model -> Element Msg
 viewFooter model =
     Footer.view model.currentPage
@@ -370,6 +372,7 @@ viewFooter model =
         ]
 
 
+tabBarItems : (Msg -> msg) -> List (TabBarItem msg)
 tabBarItems mapper =
     [ TabBar.Button
         { title = "Edit details"
@@ -379,11 +382,13 @@ tabBarItems mapper =
     ]
 
 
+fetchCrewMembers : Session -> Int -> Cmd Msg
 fetchCrewMembers session busID =
     Api.get session (Endpoint.crewMembersForBus busID) (list crewDecoder)
         |> Cmd.map ReceivedCrewMembersResponse
 
 
+fetchStudentsOnboard : Session -> Int -> Cmd Msg
 fetchStudentsOnboard session busID =
     Api.get session (Endpoint.studentsOnboard busID) (list studentDecoder)
         |> Cmd.map ReceivedStudentsOnboardResponse

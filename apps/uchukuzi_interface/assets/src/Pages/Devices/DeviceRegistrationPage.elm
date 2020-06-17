@@ -364,7 +364,11 @@ viewDeviceSerialInput : String -> List (Errors.Errors Problem) -> Element Msg
 viewDeviceSerialInput serial problems =
     let
         errorMapper =
-            Errors.customInputErrorsFor problems "imei" "serial"
+            Errors.customInputErrorsFor
+                { problems = problems
+                , serverFieldName = "imei"
+                , visibleName = "serial"
+                }
     in
     StyledElement.textInput
         [ width

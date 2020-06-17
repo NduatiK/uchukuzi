@@ -3,7 +3,6 @@ const loadChartLib = () => {
     if (typeof ApexCharts !== typeof undefined) {
         return Promise.resolve()
     }
-    freezeFrame = false
     return new Promise((resolve, reject) => {
         const script = document.createElement('script')
         script.type = 'text/javascript'
@@ -34,12 +33,18 @@ function renderChart(dates, y, statistics) {
             var consumptionOnDateSeries = []
 
             for (var i = 0; i < dateCount; i++) {
-                // if (i != dateCount - 1) {
+                if (i != dateCount - 1) {
                     runningAverageSeries.push([dates[i], runningAverage[i]])
-                // }
-
+                } else {
+                    runningAverageSeries.push([dates[i], null])
+                }
 
                 consumptionOnDateSeries.push([dates[i], consumptionOnDate[i]])
+
+                if (statistics) {
+                    allTimeAverage.push([dates[i], statistics.mean])
+                }
+
             }
 
 
@@ -48,12 +53,6 @@ function renderChart(dates, y, statistics) {
             var annotations = undefined
 
             if (statistics) {
-
-                var innerArr = [dates[0], statistics.mean]
-                allTimeAverage.push(innerArr)
-                var innerArr = [dates[dateCount - 1], statistics.mean]
-                allTimeAverage.push(innerArr)
-
                 annotations = {
                     yaxis: [{
                         y: statistics.mean + 2 * statistics.stdDev,
@@ -71,8 +70,6 @@ function renderChart(dates, y, statistics) {
                             text: 'High',
                             offsetY: 37,
                             offsetX: 30,
-
-                            // offsetY: 'bottom
                         }
                     }]
                 }
@@ -86,13 +83,12 @@ function renderChart(dates, y, statistics) {
                         name: 'Consumption Rate',
                         type: 'column',
                         data: consumptionOnDateSeries
-                    }, {
+                    },
+                    {
                         name: 'All time average',
-                        type: 'line',
                         data: allTimeAverage
-                    },{
+                    }, {
                         name: 'Running Average',
-                        type: 'line',
                         data: runningAverageSeries
                     }],
 
@@ -104,13 +100,17 @@ function renderChart(dates, y, statistics) {
                         type: 'x',
                         enabled: true,
                     },
+                    animations: {
+                        enabled: false
+                    }
                 },
                 stroke: {
                     width: [2, 2, 4],
-                    curve: ['smooth', 'straight','smooth']
+                    curve: 'smooth'
                 },
                 markers: {
-                    size: 5,
+                    size: [5, 0, 5],
+                    
                     hover: {
                         size: 7
                     }
@@ -136,10 +136,10 @@ function renderChart(dates, y, statistics) {
                         }
                     }
                 },
-                fill: {
-                    opacity: 1,
-                    type: 'solid'
-                }
+                // fill: {
+                //     opacity: 1,
+                //     type: 'solid'
+                // }
             }
 
             var myChart = new ApexCharts(document.querySelector("#chart"), options)

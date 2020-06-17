@@ -357,14 +357,14 @@ update msg model =
                             ( newModel
                             , Cmd.batch
                                 [ Task.succeed (DropdownMsg (Dropdown.selectOption route)) |> Task.perform identity
-                                , buildMapCmds newModel
+                                , prepareMap newModel
                                 ]
                             )
 
                         _ ->
                             ( newModel
                             , Cmd.batch
-                                [ buildMapCmds newModel
+                                [ prepareMap newModel
                                 ]
                             )
 
@@ -408,7 +408,7 @@ update msg model =
                     in
                     ( { newModel | form = newForm }
                     , Cmd.batch
-                        [ buildMapCmds newModel
+                        [ prepareMap newModel
                         , case model.routeRequestState of
                             Success routes ->
                                 let
@@ -432,14 +432,14 @@ update msg model =
                     ( newModel, Cmd.none )
 
 
-buildMapCmds model =
+prepareMap model =
     case model.routeRequestState of
         Success routes ->
             case model.editState |> Maybe.map .requestState of
                 Just (Success household) ->
                     Cmd.batch
                         [ Ports.initializeSearch
-                        , Ports.showHomeLocation household.homeLocation
+                        , Ports.showDraggableHomeLocation household.homeLocation
                         , Ports.bulkDrawPath (List.map (\r -> { routeID = r.id, path = r.path, highlighted = r.id == household.route }) routes)
                         ]
 

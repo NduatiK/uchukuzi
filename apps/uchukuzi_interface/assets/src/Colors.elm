@@ -2,6 +2,7 @@ module Colors exposing (..)
 
 {-| This module provides a color palette
 -}
+
 import Color
 import Element exposing (..)
 import Element.Background as Background
@@ -34,7 +35,7 @@ withGradient : Float -> Color -> Attr decorative msg
 withGradient radius color =
     Background.gradient
         { angle = radius
-        , steps = [ color, withAlpha color 0, withAlpha color 0 ]
+        , steps = [ color, withAlpha color 0.7, withAlpha color 0 ]
         }
 
 
@@ -71,11 +72,17 @@ white : Color
 white =
     Element.rgb 1 1 1
 
+
 {-| Use this color for clickable highlights
 -}
 purple : Color
 purple =
     Element.rgb255 89 79 238
+
+
+purpleShadow : Color
+purpleShadow =
+    rgb255 (255 - ((255 - 233) * 2)) (255 - ((255 - 233) * 2)) (255 - ((255 - 243) * 2))
 
 
 backgroundPurple : Color
@@ -138,13 +145,16 @@ errorRed =
     Element.rgb255 200 0 0
 
 
+
 -- ICON COLORS
-{-| Icons ignore the standard colors. 
+
+
+{-| Icons ignore the standard colors.
 These attributes paint into images using filters
 
-Have a look at 
--}
+Have a look at
 
+-}
 fillPurple : Attribute msg
 fillPurple =
     class "fillPurple"

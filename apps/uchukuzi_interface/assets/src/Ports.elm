@@ -106,7 +106,17 @@ port bulkDrawPath :
     -> Cmd msg
 
 
-port showHomeLocation : Location -> Cmd msg
+port showHomeLocation : { location : Location, draggable : Bool } -> Cmd msg
+
+
+showDraggableHomeLocation : Location -> Cmd msg
+showDraggableHomeLocation location =
+    showHomeLocation { location = location, draggable = True }
+
+
+showStaticHomeLocation : Location -> Cmd msg
+showStaticHomeLocation location =
+    showHomeLocation { location = location, draggable = False }
 
 
 port highlightPath : { routeID : Int, highlighted : Bool } -> Cmd msg

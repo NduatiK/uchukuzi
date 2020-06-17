@@ -182,7 +182,7 @@ view model session route notifications =
         , Border.color (Colors.withAlpha Colors.black 0.2)
         , spacing 8
         , Element.inFront viewFlotillaLogo
-        , Style.zIndex 10
+        , Style.zIndex 22
         ]
         [ viewBusesLogo
         , el [ width (px 24) ] none

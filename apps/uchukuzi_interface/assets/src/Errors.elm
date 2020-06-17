@@ -1,6 +1,6 @@
 module Errors exposing
     ( InputError, Errors(..)
-    , toServerSideErrors, toValidationError, toValidationErrors
+    , toServerSideErrors, toValidationError, toValidationErrors, emptyInputError
     , captionFor, toMsg, unwrapInputError
     , containServerErrorFor
     , customInputErrorsFor, errorToString, loginErrorToString
@@ -17,7 +17,7 @@ It maps server and validation error definitions to the correct inputs
 
 # Constructors
 
-@docs toServerSideErrors, toValidationError, toValidationErrors
+@docs toServerSideErrors, toValidationError, toValidationErrors, emptyInputError
 
 
 # Using errors
@@ -45,6 +45,10 @@ type alias InputError validationError =
     }
 
 
+emptyInputError =
+    InputError "" []
+
+
 {-| Represent errors generated from failing validation on the client
 and from server side errors
 -}
@@ -64,30 +68,36 @@ type alias ErrorString =
 {-| Match validation and server errors intended for a given field;
 however when presenting the error, describe the field with another name
 
-    (customInputErrorsFor [ServerSideError "manager_email" ["is already taken"]] "manager_email" "email" [...])
+    [ ValidationError1 ]
+    |> customInputErrorsFor
+        { problems = [ServerSideError "manager_email" ["is already taken"]]
+        , serverFieldName = "manager_email"
+        , visibleName = "email"
+        }
     |> unwrapInputError
         -- Just ["The email is already taken"]}
 
 -}
 customInputErrorsFor :
-    List (Errors validationError)
-    -> String
-    -> String
+    { problems : List (Errors validationError)
+    , serverFieldName : String
+    , visibleName : String
+    }
     -> List validationError
     -> Maybe (InputError validationError)
-customInputErrorsFor formProblems fieldName visibleName validationErrorsToMatch =
+customInputErrorsFor { problems, serverFieldName, visibleName } validationErrorsToMatch =
     let
         possibleValidationErrors =
             validationErrorsToMatch
                 |> List.map (\x -> ValidationError x "")
 
         matchingValidationErrors =
-            formProblems
+            problems
                 |> List.filter (\x -> possibleValidationErrors |> contains x)
 
         matchingServerErrors =
-            formProblems
-                |> List.filter (\x -> [ ServerSideError fieldName [] ] |> contains x)
+            problems
+                |> List.filter (\x -> [ ServerSideError serverFieldName [] ] |> contains x)
 
         allErrors =
             matchingValidationErrors ++ matchingServerErrors
@@ -115,7 +125,12 @@ captionFor :
     -> List validationError
     -> Maybe (InputError validationError)
 captionFor formProblems fieldName errorsToMatch =
-    customInputErrorsFor formProblems fieldName fieldName errorsToMatch
+    customInputErrorsFor
+        { problems = formProblems
+        , serverFieldName = fieldName
+        , visibleName = fieldName
+        }
+        errorsToMatch
 
 
 toValidationError : ( a, String ) -> Errors a

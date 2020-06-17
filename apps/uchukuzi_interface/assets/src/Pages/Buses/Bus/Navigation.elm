@@ -38,4 +38,4 @@ busPageToString page =
                 BusRepairs ->
                     "Maintenance"
     in
-    String.replace " " "_" string
+    string

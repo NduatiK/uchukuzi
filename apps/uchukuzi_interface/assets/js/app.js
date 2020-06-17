@@ -73,7 +73,6 @@ function init() {
 
     app.ports.initializeCustomMap.subscribe(({ clickable, drawable }) => {
         sleep(100).then(() => {
-            console.log("initializeCustomMap")
             if (drawable) {
                 cleanMap()
             }
@@ -112,7 +111,7 @@ function init() {
     })
 
 
-    app.ports.renderChart.subscribe(({x, y, statistics}) => {
+    app.ports.renderChart.subscribe(({ x, y, statistics }) => {
         sleep(200).then(() => {
             renderChart(x, y, statistics)
         })

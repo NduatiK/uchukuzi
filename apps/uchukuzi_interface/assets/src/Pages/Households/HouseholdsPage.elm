@@ -38,6 +38,7 @@ type alias Model =
     { session : Session
     , groupedStudents : WebData ( List GroupedStudents, List Household )
     , selectedGroupedStudents : Maybe GroupedStudents
+    , searchText : String
     , selectedStudent :
         Maybe
             { student : Student
@@ -52,6 +53,7 @@ init session =
       , groupedStudents = Loading
       , selectedGroupedStudents = Nothing
       , selectedStudent = Nothing
+      , searchText = ""
       }
     , fetchHouseholds session
     )
@@ -62,7 +64,7 @@ init session =
 
 
 type Msg
-    = SelectedHousehold
+    = UpdatedSearchText String
     | SelectedStudent (Maybe Student)
     | GenerateCard
     | ReceivedStudentsResponse (WebData ( List GroupedStudents, List Household ))
@@ -79,6 +81,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        UpdatedSearchText text ->
+            ( { model | searchText = text }, Cmd.none )
+
         RegisterStudent ->
             ( model, Navigation.rerouteTo model Navigation.CreateHousehold )
 
@@ -131,9 +136,6 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        SelectedHousehold ->
-            ( model, Cmd.none )
-
         GenerateCard ->
             ( model, Ports.printCard )
 
@@ -157,7 +159,7 @@ view model viewHeight =
         , padding 30
         , inFront (viewOverlay model)
         ]
-        [ viewHeading
+        [ viewHeading model.searchText
         , viewBody model
         ]
 
@@ -279,21 +281,26 @@ viewOverlay { selectedStudent, session } =
         )
 
 
-viewHeading : Element Msg
-viewHeading =
+viewHeading : String -> Element Msg
+viewHeading searchText =
     row [ spacing 16, width fill ]
         [ Style.iconHeader Icons.seat "Students"
-
-        -- , StyledElement.ghostButton [ alignRight ]
-        --     { title = "Add Household"
-        --     , icon = Icons.add
-        --     , onPress = Just RegisterStudent
-        --     }
+        , el [ width fill ] none
+        , StyledElement.textInput [ width fill ]
+            { ariaLabel = "Search"
+            , caption = Nothing
+            , errorCaption = Nothing
+            , icon = Just Icons.search
+            , onChange = UpdatedSearchText
+            , placeholder = Nothing
+            , title = ""
+            , value = searchText
+            }
         ]
 
 
 viewBody : Model -> Element Msg
-viewBody { groupedStudents, selectedGroupedStudents, session } =
+viewBody { groupedStudents, selectedGroupedStudents, session, searchText } =
     WebDataView.view groupedStudents
         (\groups ->
             case groups of
@@ -304,13 +311,34 @@ viewBody { groupedStudents, selectedGroupedStudents, session } =
                         ]
 
                 _ ->
-                    Element.column [ spacing 40 ]
+                    column [ spacing 40 ]
                         [ viewRoutes groups selectedGroupedStudents
                         , case selectedGroupedStudents of
                             Just students ->
-                                Element.column [ spacing 40 ]
-                                    [ viewHouseholdsTable students
-                                    ]
+                                let
+                                    visibleStudents =
+                                        students
+                                            |> Tuple.second
+                                            |> (if String.isEmpty searchText then
+                                                    identity
+
+                                                else
+                                                    List.filter
+                                                        (\s ->
+                                                            s.name
+                                                                |> String.toLower
+                                                                |> String.contains (String.toLower searchText)
+                                                        )
+                                               )
+                                in
+                                if visibleStudents == [] then
+                                    el (centerX :: Style.labelStyle) (text ("No students matching \"" ++ searchText ++ "\"."))
+
+                                else
+                                    visibleStudents
+                                        |> viewHouseholdsTable
+                                        |> List.singleton
+                                        |> column [ spacing 40, width fill, height fill ]
 
                             Nothing ->
                                 none
@@ -358,7 +386,7 @@ viewRoutes groups selectedGroupedStudents =
     wrappedRow [ spacing 8 ] (List.map viewRouteCell (Tuple.first groups))
 
 
-viewHouseholdsTable : GroupedStudents -> Element Msg
+viewHouseholdsTable : List Student -> Element Msg
 viewHouseholdsTable students =
     let
         includesMorningTrip time =
@@ -367,22 +395,22 @@ viewHouseholdsTable students =
         includesEveningTrip time =
             time == Evening || time == TwoWay
 
-        tableHeader text =
-            el Style.tableHeaderStyle (Element.text (String.toUpper text))
+        tableHeader headerText =
+            el Style.tableHeaderStyle (text (String.toUpper headerText))
 
         rowTextStyle =
             width (fill |> minimum 220) :: Style.tableElementStyle
     in
-    Element.table
+    table
         [ spacing 15 ]
-        { data = Tuple.second students
+        { data = students
         , columns =
             [ { header = tableHeader "NAME"
               , width = fill
               , view =
                     \student ->
                         StyledElement.plainButton rowTextStyle
-                            { label = Element.text student.name
+                            { label = text student.name
                             , onPress = Just (SelectedStudent (Just student))
                             }
               }

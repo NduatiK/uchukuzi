@@ -27,7 +27,7 @@ import Html.Attributes exposing (id)
 import Icons
 import Json.Decode exposing (Decoder)
 import Layout
-import Layout.TabBar as TabBar exposing (TabBarItem(..))
+import Layout.TabBar exposing (TabBarItem(..))
 import Models.Bus exposing (Bus, LocationUpdate, busDecoderWithCallback)
 import Navigation
 import Pages.Buses.Bus.AboutBus as About
@@ -69,31 +69,6 @@ type Page
     | FuelHistoryPage FuelHistory.Model
     | BusDevicePage BusDevice.Model
     | BusRepairsPage BusRepairs.Model
-
-
-aboutPage : Bus -> Session -> Maybe LocationUpdate -> ( Page, Cmd Msg )
-aboutPage bus session locationUpdate =
-    Layout.transformToModelMsg AboutPage GotAboutMsg (About.init session bus locationUpdate)
-
-
-routePage : Bus -> Session -> ( Page, Cmd Msg )
-routePage bus session =
-    Layout.transformToModelMsg RouteHistoryPage GotRouteHistoryMsg (RouteHistory.init bus.id session)
-
-
-fuelPage : Bus -> Session -> ( Page, Cmd Msg )
-fuelPage bus session =
-    Layout.transformToModelMsg FuelHistoryPage GotFuelHistoryMsg (FuelHistory.init bus.id session)
-
-
-devicePage : Bus -> Session -> ( Page, Cmd Msg )
-devicePage bus session =
-    Layout.transformToModelMsg BusDevicePage GotBusDeviceMsg (BusDevice.init bus session)
-
-
-repairsPage : Bus -> Session -> ( Page, Cmd Msg )
-repairsPage bus session =
-    Layout.transformToModelMsg BusRepairsPage GotBusRepairsMsg (BusRepairs.init session bus.id bus.repairs (Session.timeZone session))
 
 
 init : Int -> Session -> Maybe LocationUpdate -> BusPage -> ( Model, Cmd Msg )
@@ -336,35 +311,23 @@ viewLoaded busData viewHeight viewWidth =
         columnSpacing =
             8
 
-        ( body, footer, buttons ) =
-            ( viewBody (viewHeight - headerHeight - columnSpacing) viewWidth busData
-            , viewFooter busData (viewWidth - 55)
-            , viewButtons busData
-            )
+        body =
+            viewBody (viewHeight - headerHeight - columnSpacing) viewWidth busData
+
+        footer =
+            busData
+                |> viewFooter (viewWidth - 55)
     in
-    Element.column
+    column
         [ height fill
         , width fill
         , spacing columnSpacing
-
-        -- , Background.color Colors.darkText
         , htmlAttribute (id (pageName busData.currentPage))
-        , case busData.currentPage of
-            FuelHistoryPage _ ->
-                paddingEach { edges | left = 36 }
-
-            AboutPage _ ->
-                paddingEach { edges | left = 36 }
-
-            _ ->
-                paddingXY 36 0
+        , paddingEach { edges | left = 36 }
         , inFront (viewOverlay busData viewHeight)
         ]
-        ([ viewHeading busData buttons
-         , Element.row
-            [ width fill
-            , height fill
-            ]
+        ([ viewHeading busData
+         , row [ width fill, height fill ]
             [ viewSidebar busData
             , el
                 [ case busData.currentPage of
@@ -394,49 +357,31 @@ headerHeight =
     68
 
 
-viewHeading : BusData -> Element msg -> Element msg
-viewHeading busData button =
-    row
-        [ width fill
-        , paddingEach { edges | right = 36 }
-        , height (px headerHeight)
-        ]
-        [ Element.column
-            [ width fill ]
-            [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold, paddingXY 0 12 ])
-                [ el [] (text (pageName busData.currentPage))
-                , text " for "
-                , el
-                    [ Font.color Colors.semiDarkText
-                    , Font.semiBold
-                    , below
-                        (el
-                            [ Background.color (Colors.withAlpha Colors.semiDarkText 0.2)
-                            , width fill
-                            , height (px 2)
-                            ]
-                            none
-                        )
-                    ]
-                    (text busData.bus.numberPlate)
+viewHeading : BusData -> Element msg
+viewHeading busData =
+    column [ width fill, height (px headerHeight) ]
+        [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold, paddingXY 0 12 ])
+            [ el [] (text (pageName busData.currentPage))
+            , text " for "
+            , el
+                [ Font.color Colors.semiDarkText
+                , Font.semiBold
+                , below
+                    (el
+                        [ Background.color (Colors.withAlpha Colors.semiDarkText 0.2)
+                        , width fill
+                        , height (px 2)
+                        ]
+                        none
+                    )
                 ]
-            , case busData.bus.route of
-                Nothing ->
-                    none
-
-                Just route ->
-                    el Style.captionStyle (text route.name)
+                (text busData.bus.numberPlate)
             ]
-        , el [ centerY ] button
         ]
 
 
 viewBody : Int -> Int -> BusData -> Element Msg
 viewBody height width busData =
-    let
-        viewPage pageView toMsg =
-            Element.map toMsg pageView
-    in
     case busData.currentPage of
         AboutPage subPageModel ->
             viewPage (About.view subPageModel height) GotAboutMsg
@@ -454,12 +399,14 @@ viewBody height width busData =
             viewPage (BusRepairs.view subPageModel height) GotBusRepairsMsg
 
 
-viewFooter : BusData -> Int -> Element Msg
-viewFooter busData viewWidth =
-    let
-        viewPage pageView toMsg =
-            Element.map toMsg pageView
+viewPage : Element msg -> (msg -> Msg) -> Element Msg
+viewPage pageView toMsg =
+    Element.map toMsg pageView
 
+
+viewFooter : Int -> BusData -> Element Msg
+viewFooter viewWidth busData =
+    let
         buildFooter footer =
             if footer /= none then
                 el [ width fill, paddingEach { edges | bottom = 24 } ]
@@ -489,46 +436,14 @@ viewFooter busData viewWidth =
 
 viewOverlay : BusData -> Int -> Element Msg
 viewOverlay busData viewHeight =
-    let
-        viewPage pageView toMsg =
-            Element.map toMsg pageView
-    in
     el [ width fill, height fill, Style.clickThrough ]
-        -- el [ width (fill |> maximum viewWidth), height fill ]
         (case busData.currentPage of
-            AboutPage subPageModel ->
-                none
-
             RouteHistoryPage subPageModel ->
                 viewPage (RouteHistory.viewOverlay subPageModel viewHeight) GotRouteHistoryMsg
 
-            -- none
-            FuelHistoryPage subPageModel ->
-                none
-
-            BusDevicePage subPageModel ->
-                none
-
-            BusRepairsPage subPageModel ->
+            _ ->
                 none
         )
-
-
-viewButtons : BusData -> Element Msg
-viewButtons busData =
-    let
-        viewPage pageView toMsg =
-            Element.map toMsg pageView
-    in
-    case busData.currentPage of
-        AboutPage subPageModel ->
-            viewPage (About.viewButtons subPageModel) GotAboutMsg
-
-        FuelHistoryPage subPageModel ->
-            viewPage (FuelHistory.viewButtons subPageModel) GotFuelHistoryMsg
-
-        _ ->
-            none
 
 
 
@@ -545,20 +460,16 @@ viewSidebar busData =
             List.length allPages_
 
         iconize index ( page, _ ) =
-            iconForPage page index (List.length busData.pages - busData.pageIndex - 1)
+            iconForPage page index (pageCount - busData.pageIndex - 1)
     in
     el [ height fill ]
         (column
-            [ Background.color (rgb255 233 233 243)
-
-            -- , Border.innerShadow
-            --     { offset = ( -4, -4 )
-            --     , size = 0
-            --     , blur = 16
-            --     , color = Colors.withAlpha Colors.purple 0.2
-            --     }
+            [ Background.color Colors.backgroundPurple
             , padding 7
+            , alignTop
+            , width fill
             , Border.rounded 100
+            , clip
             , inFront (slider pageCount busData.pageIndex False)
             , behindContent (slider pageCount busData.pageIndex True)
             ]
@@ -576,7 +487,7 @@ slider pageCount pageIndex visible =
             ]
             { onChange = round >> SelectedPage
             , label =
-                Input.labelHidden "Timeline Slider"
+                Input.labelHidden "Page Slider"
             , min = 0
             , max = Basics.toFloat (pageCount - 1)
             , step = Just 1
@@ -588,19 +499,20 @@ slider pageCount pageIndex visible =
                     , height (px 48)
                     , Border.rounded 48
                     , Border.solid
+                    , Border.width 1
+                    , Border.color (Colors.withAlpha Colors.purple 0.4)
                     , paddingXY 0 7
-
-                    -- , Border.shadow
-                    --     { offset = ( 0, 2 )
-                    --     , blur = 5
-                    --     , size = 0
-                    --     , color = rgba255 0 0 0 0.2
-                    --     }
+                    , Border.shadow
+                        { offset = ( 0, 2 )
+                        , blur = 5
+                        , size = 0
+                        , color = rgba255 0 0 0 0.2
+                        }
                     , Border.shadow
                         { offset = ( 0, 0 )
                         , size = 4
                         , blur = 8
-                        , color = rgb255 (255 - ((255 - 233) * 2)) (255 - ((255 - 233) * 2)) (255 - ((255 - 243) * 2))
+                        , color = Colors.purpleShadow
                         }
                     ]
             }
@@ -611,12 +523,7 @@ iconForPage : Page -> Int -> Int -> Element Msg
 iconForPage page pageIndex currentPageIndex =
     let
         iconStyle =
-            [ centerY
-            , centerX
-            , height (px 20)
-            , width (px 20)
-            , alpha 1
-            ]
+            [ height (px 20), width (px 20), alpha 1 ]
 
         icon =
             case page of
@@ -637,25 +544,13 @@ iconForPage page pageIndex currentPageIndex =
 
         iconFillColor =
             if pageIndex == currentPageIndex then
-                [ Colors.fillPurple
-                , alpha 1
-                ]
+                Colors.fillPurple
 
             else
-                [ alpha 0.54 ]
+                alpha 0.54
     in
     el [ Border.rounded 25, centerX, padding 14 ]
-        (el
-            ([ centerY
-             , centerX
-             , height (px 20)
-             , width (px 20)
-             , alpha 1
-             ]
-                ++ iconFillColor
-            )
-            icon
-        )
+        (el [ iconFillColor ] icon)
 
 
 
@@ -674,7 +569,7 @@ busDecoder session currentPage locationUpdate =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         []
 
@@ -698,8 +593,34 @@ pageToBusPage page =
             Pages.Buses.Bus.Navigation.BusRepairs
 
 
+pageName : Page -> String
 pageName =
     pageToBusPage >> busPageToString >> String.replace "_" " "
+
+
+aboutPage : Bus -> Session -> Maybe LocationUpdate -> ( Page, Cmd Msg )
+aboutPage bus session locationUpdate =
+    Layout.transformToModelMsg AboutPage GotAboutMsg (About.init session bus locationUpdate)
+
+
+routePage : Bus -> Session -> ( Page, Cmd Msg )
+routePage bus session =
+    Layout.transformToModelMsg RouteHistoryPage GotRouteHistoryMsg (RouteHistory.init bus.id session)
+
+
+fuelPage : Bus -> Session -> ( Page, Cmd Msg )
+fuelPage bus session =
+    Layout.transformToModelMsg FuelHistoryPage GotFuelHistoryMsg (FuelHistory.init bus.id session)
+
+
+devicePage : Bus -> Session -> ( Page, Cmd Msg )
+devicePage bus session =
+    Layout.transformToModelMsg BusDevicePage GotBusDeviceMsg (BusDevice.init bus session)
+
+
+repairsPage : Bus -> Session -> ( Page, Cmd Msg )
+repairsPage bus session =
+    Layout.transformToModelMsg BusRepairsPage GotBusRepairsMsg (BusRepairs.init session bus.id bus.repairs (Session.timeZone session))
 
 
 allPagesFromSession : Bus -> Session -> Maybe LocationUpdate -> BusPage -> BusData
@@ -719,7 +640,7 @@ allPagesFromSession bus session locationUpdate currentPage =
         ( pageIndex, initialPage ) =
             pages
                 |> List.indexedMap Tuple.pair
-                |> List.filter (\( index, ( page, cmd ) ) -> pageToBusPage page == currentPage)
+                |> List.filter (\( _, ( page, _ ) ) -> pageToBusPage page == currentPage)
                 |> List.head
                 |> Maybe.withDefault
                     ( 0, defaultPage )
@@ -743,21 +664,14 @@ tabBarItems { busData } =
                 RouteHistoryPage model ->
                     RouteHistory.tabBarItems model GotRouteHistoryMsg
 
-                -- Pages.Buses.Bus.Navigation.RouteHistory
                 FuelHistoryPage _ ->
                     FuelHistory.tabBarItems GotFuelHistoryMsg
 
-                -- Pages.Buses.Bus.Navigation.FuelHistory
                 BusDevicePage _ ->
                     []
 
-                -- Pages.Buses.Bus.Navigation.BusDevice
                 BusRepairsPage _ ->
                     BusRepairs.tabBarItems GotBusRepairsMsg
 
         _ ->
             []
-
-
-
--- Pages.Buses.Bus.Navigation.BusRepairs
