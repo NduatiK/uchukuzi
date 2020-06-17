@@ -146,6 +146,7 @@ view model viewHeight =
     column
         [ width fill
         , height (px viewHeight)
+        , scrollbarY
         , spacing 40
         , padding 30
         ]
@@ -160,7 +161,7 @@ viewBody model =
         body =
             WebDataView.view model.buses
                 (\buses ->
-                    column [ width fill ]
+                    column [ width fill, height fill ]
                         [ viewBuses buses model.filterText
                         ]
                 )
@@ -168,6 +169,7 @@ viewBody model =
     Element.column
         [ spacing 40
         , width fill
+        , height fill
         , paddingEach { edges | bottom = 44 }
         ]
         [ -- , viewHeading "All Buses" model.filterText
@@ -198,6 +200,7 @@ viewBuses buses filterText =
     in
     el
         [ width fill
+        , height fill
         ]
         (column [ width fill ]
             [ Style.iconHeader Icons.vehicle "Fleet"

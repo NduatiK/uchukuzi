@@ -333,16 +333,21 @@ view model viewHeight viewWidth =
 viewLoaded : BusData -> Int -> Int -> Element Msg
 viewLoaded busData viewHeight viewWidth =
     let
+        columnSpacing =
+            8
+
         ( body, footer, buttons ) =
-            ( viewBody viewHeight viewWidth busData
-            , el [ width fill, paddingEach { edges | bottom = 24 } ] (viewFooter busData (viewWidth - 55))
+            ( viewBody (viewHeight - headerHeight - columnSpacing) viewWidth busData
+            , viewFooter busData (viewWidth - 55)
             , viewButtons busData
             )
     in
     Element.column
         [ height fill
         , width fill
-        , spacing 8
+        , spacing columnSpacing
+
+        -- , Background.color Colors.darkText
         , htmlAttribute (id (pageName busData.currentPage))
         , case busData.currentPage of
             FuelHistoryPage _ ->
@@ -355,17 +360,38 @@ viewLoaded busData viewHeight viewWidth =
                 paddingXY 36 0
         , inFront (viewOverlay busData viewHeight)
         ]
-        [ viewHeading busData buttons
-        , Element.row
+        ([ viewHeading busData buttons
+         , Element.row
             [ width fill
             , height fill
             ]
             [ viewSidebar busData
-            , el [ paddingXY 26 0, width fill, height fill ] body
+            , el
+                [ case busData.currentPage of
+                    FuelHistoryPage _ ->
+                        paddingEach { edges | left = 26 }
+
+                    _ ->
+                        paddingXY 26 0
+                , width fill
+                , height fill
+                ]
+                body
             ]
-        , el [ height (px 16) ] none
-        , footer
-        ]
+         ]
+            ++ (if footer /= none then
+                    [ el [ height (px 16) ] none
+                    , footer
+                    ]
+
+                else
+                    []
+               )
+        )
+
+
+headerHeight =
+    68
 
 
 viewHeading : BusData -> Element msg -> Element msg
@@ -373,7 +399,7 @@ viewHeading busData button =
     row
         [ width fill
         , paddingEach { edges | right = 36 }
-        , height (px 68)
+        , height (px headerHeight)
         ]
         [ Element.column
             [ width fill ]
@@ -419,7 +445,7 @@ viewBody height width busData =
             viewPage (RouteHistory.view subPageModel width) GotRouteHistoryMsg
 
         FuelHistoryPage subPageModel ->
-            viewPage (FuelHistory.view subPageModel (height - 190)) GotFuelHistoryMsg
+            viewPage (FuelHistory.view subPageModel height) GotFuelHistoryMsg
 
         BusDevicePage subPageModel ->
             viewPage (BusDevice.view subPageModel) GotBusDeviceMsg
@@ -433,8 +459,16 @@ viewFooter busData viewWidth =
     let
         viewPage pageView toMsg =
             Element.map toMsg pageView
+
+        buildFooter footer =
+            if footer /= none then
+                el [ width fill, paddingEach { edges | bottom = 24 } ]
+                    (el [ width (fill |> maximum viewWidth), height fill ] footer)
+
+            else
+                none
     in
-    el [ width (fill |> maximum viewWidth), height fill ]
+    buildFooter
         (case busData.currentPage of
             AboutPage subPageModel ->
                 viewPage (About.viewFooter subPageModel) GotAboutMsg

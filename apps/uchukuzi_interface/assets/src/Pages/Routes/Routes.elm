@@ -120,7 +120,7 @@ viewRoutes model =
             if routes == [] then
                 column (centerX :: spacing 8 :: centerY :: Style.labelStyle)
                     [ el [ centerX ] (text "You have no routes set up.")
-                    , el [ centerX ] (text "Click the + button above to create one.")
+                    , el [ centerX ] (text "Click the + button below to create one.")
                     ]
 
             else

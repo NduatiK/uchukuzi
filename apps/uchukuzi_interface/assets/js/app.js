@@ -4,6 +4,7 @@ import { Socket } from "phoenix"
 import { ElmPhoenixChannels } from './ElmPhoenixChannels';
 import { printCard } from './card'
 import env from './env'
+import { renderChart } from './fuelChart'
 import {
     cleanMap,
     initializeMaps,
@@ -108,6 +109,13 @@ function init() {
             localStorage.setItem(schoolLocationStorageKey, null)
         }
         credentialsUpdated(credentials)
+    })
+
+
+    app.ports.renderChart.subscribe(({x, y, statistics}) => {
+        sleep(200).then(() => {
+            renderChart(x, y, statistics)
+        })
     })
 
     window.addEventListener("storage", (event) => {

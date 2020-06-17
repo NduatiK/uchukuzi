@@ -89,8 +89,14 @@ type ConsumptionRate
 
 consumption : Distance -> Volume -> ConsumptionRate
 consumption (Distance distance1) (Volume volume1) =
-    if volume1 > 0 then
-        ConsumptionRate (round100 (100 * volume1 / (toFloat distance1 / 1000)))
+    let
+        distanceTravelled =
+            toFloat distance1 / 1000
+    in
+    if distanceTravelled > 0 then
+        (100 * volume1 / distanceTravelled)
+            |> round100
+            |> ConsumptionRate
 
     else
         ConsumptionRate 0

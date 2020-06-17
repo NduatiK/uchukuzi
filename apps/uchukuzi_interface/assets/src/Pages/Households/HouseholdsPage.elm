@@ -246,7 +246,7 @@ viewOverlay { selectedStudent, session } =
                                     , el (Style.labelStyle ++ [ padding 0 ]) (text student.route.name)
                                     ]
                                 , row []
-                                    [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Guardian: ")
+                                    [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Guardian Contact: ")
                                     , el Style.labelStyle (text household.guardian.phoneNumber)
                                     ]
                                 ]
@@ -300,7 +300,7 @@ viewBody { groupedStudents, selectedGroupedStudents, session } =
                 ( [], [] ) ->
                     column (centerX :: spacing 8 :: centerY :: Style.labelStyle)
                         [ el [ centerX ] (text "You have not added any students.")
-                        , el [ centerX ] (text "Click the + button above to create one do so.")
+                        , el [ centerX ] (text "Click the + button below to create one.")
                         ]
 
                 _ ->

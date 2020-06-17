@@ -551,7 +551,7 @@ viewSlider model deviationRadius =
                             >> (\x ->
                                     List.drop (x - 1) values
                                )
-                            >> Debug.log "list"
+
                             >> List.head
                             >> Maybe.withDefault 1
                             >> UpdatedDeviationRadius

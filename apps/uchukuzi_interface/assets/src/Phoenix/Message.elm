@@ -206,7 +206,8 @@ subscribe externalAppIncomingPortFn tagger onError =
                     tagWithPayload PushError
 
                 _ ->
-                    onError <| "Received on unexpected message from an external source: " ++ Debug.toString external
+                    onError <| "Received on unexpected message from an external source: "
+                    -- onError <| "Received on unexpected message from an external source: " ++ Debug.toString external
 
 
 decodeWith : Data -> (Event -> msg) -> (String -> msg) -> (Payload -> Event) -> msg

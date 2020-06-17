@@ -121,6 +121,21 @@ port disableClickListeners : () -> Cmd msg
 port insertCircle : { location : Location, radius : Float } -> Cmd msg
 
 
+port renderChart :
+    { x : List Int
+    , y :
+        { consumptionOnDate : List Float
+        , runningAverage : List Float
+        }
+    , statistics :
+        Maybe
+            { stdDev : Float
+            , mean : Float
+            }
+    }
+    -> Cmd msg
+
+
 
 -- INCOMING
 

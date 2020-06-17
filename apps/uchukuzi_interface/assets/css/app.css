@@ -158,6 +158,10 @@ https://codepen.io/studiotwist/pen/KmoOJw/
   }
 }
 
+.apexcharts-yaxis-title-text {
+  font-weight: bold;
+  font-size: 14px;
+}
 
 html {
   --cubic: cubic-bezier(0.455, 0.03, 0.515, 0.955);

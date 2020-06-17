@@ -6,10 +6,10 @@
     "watch": "parcel watch ./js/app.js ./css/app.css --out-dir ../priv/static --no-source-maps"
   },
   "dependencies": {
+    "growl": ">=1.10.0",
     "parcel-bundler": "^1.10.3",
     "phoenix": "file:../../../deps/phoenix",
-    "phoenix_html": "file:../../../deps/phoenix_html",
-    "growl": ">=1.10.0"
+    "phoenix_html": "file:../../../deps/phoenix_html"
   },
   "devDependencies": {
     "elm-hot": "^1.1.4",

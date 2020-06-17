@@ -24,13 +24,13 @@ import Json.Decode as Decode exposing (Decoder, int, list, string)
 import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.FuelReport as FuelReport exposing (ConsumptionRate, Distance, FuelReport, Volume, fuelRecordDecoder)
 import Navigation
+import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Statistics
 import Style exposing (edges)
 import StyledElement
 import StyledElement.Footer as Footer
-import StyledElement.FuelGraph
 import StyledElement.WebDataView as WebDataView
 import Task
 import Time
@@ -42,7 +42,6 @@ type alias Model =
     , busID : Int
     , reports : WebData (List GroupedReports)
     , statistics : Maybe Statistics
-    , chartData : Maybe ChartData
     }
 
 
@@ -60,6 +59,7 @@ type alias ChartData =
             { date : Time.Posix
             , consumptionOnDate : ConsumptionRate
             , runningAverage : ConsumptionRate
+            , distanceSinceLastFueling : Distance
             }
     , month : String
     }
@@ -81,7 +81,6 @@ init busID session =
     ( { session = session
       , busID = busID
       , reports = Loading
-      , chartData = Nothing
       , statistics = Nothing
       }
     , fetchFuelHistory session busID
@@ -94,8 +93,6 @@ init busID session =
 
 type Msg
     = RecordsResponse (WebData ( List AnnotatedReport, List GroupedReports ))
-      -- | Show (GroupedReports)
-    | Show String
     | CreateFuelReport
     | NoOp
 
@@ -109,47 +106,12 @@ update msg model =
         CreateFuelReport ->
             ( model, Navigation.rerouteTo model (Navigation.CreateFuelReport model.busID) )
 
-        Show month ->
-            case model.reports of
-                Success reports ->
-                    let
-                        matching =
-                            List.head (List.filter (Tuple.first >> (\x -> x == month)) reports)
-                    in
-                    case matching of
-                        Just ( month_, reports_ ) ->
-                            ( { model
-                                | chartData =
-                                    Just
-                                        { month = month_
-                                        , data =
-                                            reports_
-                                                |> List.map
-                                                    (\{ report, distanceSinceLastFueling, cumulativeFuelPurchased } ->
-                                                        { date = report.date
-                                                        , consumptionOnDate = FuelReport.consumption distanceSinceLastFueling report.volume
-                                                        , runningAverage = FuelReport.consumption report.totalDistanceCovered cumulativeFuelPurchased
-                                                        }
-                                                    )
-                                        }
-                              }
-                            , Browser.Dom.setViewportOf "view" 0 0
-                                |> Task.onError (\_ -> Task.succeed ())
-                                |> Task.perform (\_ -> NoOp)
-                            )
-
-                        _ ->
-                            ( { model | chartData = Nothing }, Cmd.none )
-
-                _ ->
-                    ( { model | chartData = Nothing }, Cmd.none )
-
         RecordsResponse response ->
             case response of
                 Success ( distanced, grouped ) ->
                     -- Select the head as the default
                     let
-                        ( chartData, statistics ) =
+                        ( statistics, cmd ) =
                             case List.head grouped of
                                 Just ( monthName, reports ) ->
                                     let
@@ -164,39 +126,59 @@ update msg model =
                                         mean =
                                             (fuelConsumptions |> List.foldl (+) 0)
                                                 / toFloat (List.length fuelConsumptions)
-                                    in
-                                    ( Just
-                                        { month = monthName
-                                        , data =
+
+                                        data =
                                             reports
                                                 |> List.map
                                                     (\{ report, distanceSinceLastFueling, cumulativeFuelPurchased } ->
                                                         { date = report.date
+                                                        , distanceSinceLastFueling = distanceSinceLastFueling
                                                         , consumptionOnDate = FuelReport.consumption distanceSinceLastFueling report.volume
                                                         , runningAverage = FuelReport.consumption report.totalDistanceCovered cumulativeFuelPurchased
                                                         }
                                                     )
-                                        }
-                                    , case ( stdDev, mean ) of
-                                        ( Just stdDev_, mean_ ) ->
-                                            Just
-                                                { stdDev = stdDev_
-                                                , mean = mean_
-                                                }
 
-                                        _ ->
-                                            Nothing
+                                        stats =
+                                            case ( stdDev, mean ) of
+                                                ( Just stdDev_, mean_ ) ->
+                                                    Just
+                                                        { stdDev = stdDev_
+                                                        , mean = mean_
+                                                        }
+
+                                                _ ->
+                                                    Nothing
+
+                                        plotData =
+                                            data |> List.filter (\x -> FuelReport.distanceToInt x.distanceSinceLastFueling /= 0)
+                                    in
+                                    ( stats
+                                    , Ports.renderChart
+                                        { x =
+                                            plotData
+                                                |> List.map (.date >> Time.posixToMillis)
+                                        , y =
+                                            { consumptionOnDate =
+                                                plotData
+                                                    |> List.map (.consumptionOnDate >> FuelReport.consumptionToFloat)
+                                            , runningAverage =
+                                                plotData
+                                                    |> List.map (.runningAverage >> FuelReport.consumptionToFloat)
+                                            }
+                                        , statistics =
+                                            stats
+                                        }
                                     )
 
                                 Nothing ->
-                                    ( Nothing, Nothing )
+                                    ( Nothing, Cmd.none )
                     in
                     ( { model
                         | reports = Success grouped
                         , statistics = statistics
-                        , chartData = chartData
                       }
-                    , Cmd.none
+                      -- , Cmd.none
+                    , cmd
                     )
 
                 Failure e ->
@@ -215,10 +197,6 @@ update msg model =
 
 view : Model -> Int -> Element Msg
 view model viewHeight =
-    let
-        totalCost =
-            List.foldl (\x y -> y + totalForGroup (Tuple.second x)) 0
-    in
     column
         [ height (px viewHeight)
         , width fill
@@ -229,16 +207,14 @@ view model viewHeight =
         , htmlAttribute (Html.Attributes.style "scroll-behavior" "smooth")
         , Style.animatesAll
         ]
-        [ viewGraph model
-        , WebDataView.view model.reports
+        [ WebDataView.view model.reports
             (\reports ->
-                column []
-                    [ --     row (Style.header2Style ++ [ alignLeft, width fill, Font.color Colors.black, spacing 30 ])
-                      --     [ text "Total Paid"
-                      --     , el [ Font.size 21, Font.color Colors.darkGreen ] (text ("KES. " ++ String.fromInt (totalCost reports)))
-                      --     ]
-                      -- ,
-                      viewGroupedReports model reports
+                row [ width fill, height fill ]
+                    [ column [ width fill, height fill ]
+                        [ viewGraph model
+                        , viewGroupedReports model reports
+                        ]
+                    , el [ width (px 36) ] none
                     ]
             )
         ]
@@ -246,42 +222,12 @@ view model viewHeight =
 
 viewGraph : Model -> Element msg
 viewGraph model =
-    case model.chartData of
-        Just chartData ->
-            el
-                [ width (fill |> maximum 900)
-                , moveRight 20
-                , inFront
-                    (el (centerX :: Style.header2Style)
-                        (text ("Fuel Consumption (km/l) for " ++ chartData.month))
-                    )
-                , behindContent
-                    (el [ alignRight, alignBottom, moveDown 5 ] (text "Date"))
-                , inFront
-                    (el
-                        [ centerY, width (px 1), height (px 1), rotate (-pi / 2), moveDown 60, moveLeft 10 ]
-                        (text "Fuel Consumption (km/l)")
-                    )
-                ]
-                (StyledElement.FuelGraph.view
-                    chartData.data
-                    model.statistics
-                    (Session.timeZone model.session)
-                )
-
-        Nothing ->
-            el [ height (px 300), width fill ]
-                (el [ centerX, centerY ]
-                    (text "No fuel data available")
-                )
+    el [ width fill, height (px 350), Style.id "chart" ] none
 
 
 viewGroupedReports : Model -> List GroupedReports -> Element Msg
 viewGroupedReports model groupedReports =
     let
-        selectedMonth =
-            model.chartData |> Maybe.map .month
-
         timezone =
             Session.timeZone model.session
 
@@ -297,25 +243,18 @@ viewGroupedReports model groupedReports =
 
         viewGroup : ( String, List AnnotatedReport ) -> Element Msg
         viewGroup ( month, reportsForDate ) =
-            column [ spacing 12, height fill ]
+            column [ spacing 12, height fill, centerX ]
                 [ el
-                    [ paddingXY 10 4
-                    , centerX
-                    , Border.widthEach { edges | bottom = 1 }
-                    , Border.color (Colors.withAlpha Colors.darkness 0.2)
-                    ]
-                    (row [ spacing 10 ]
-                        [ el (Style.header2Style ++ [ padding 0, centerX ]) (text month)
-                        , if selectedMonth /= Just month then
-                            StyledElement.plainButton []
-                                { label = Icons.show [ mouseOver [ alpha 1 ], alpha 0.5 ]
-                                , onPress = Just (Show month)
-                                }
-
-                          else
-                            none
-                        ]
+                    (Style.header2Style
+                        ++ [ padding 0
+                           , centerX
+                           , paddingXY 10 4
+                           , centerX
+                           , Border.widthEach { edges | bottom = 1 }
+                           , Border.color (Colors.withAlpha Colors.darkness 0.2)
+                           ]
                     )
+                    (text month)
                 , table [ spacingXY 30 15 ]
                     { data = reportsForDate
                     , columns =
@@ -329,27 +268,16 @@ viewGroupedReports model groupedReports =
                                     in
                                     el rowTextStyle (text dateText)
                           }
-                        , { header = tableHeader [ "FUEL CONSUMPTION", "(KM/L)" ] [ alignRight ]
+                        , { header = tableHeader [ "FUEL VOLUME", "(L)" ] [ alignRight ]
                           , width = fill
                           , view =
                                 \x ->
                                     let
                                         consumptionText =
-                                            FuelReport.consumption x.distanceSinceLastFueling x.report.volume
-                                                |> FuelReport.consumptionToFloat
+                                            x.report.volume
+                                                |> FuelReport.volumeToFloat
                                                 |> String.fromFloat
-                                                |> (\c ->
-                                                        case List.head (String.indexes "." c) of
-                                                            Nothing ->
-                                                                c ++ ".00"
-
-                                                            Just location ->
-                                                                let
-                                                                    length =
-                                                                        String.length c
-                                                                in
-                                                                String.padRight (length + (2 - (length - location - 1))) '0' c
-                                                   )
+                                                |> roundString100
                                     in
                                     el (rowTextStyle ++ [ Font.alignRight ]) (text consumptionText)
                           }
@@ -370,6 +298,26 @@ viewGroupedReports model groupedReports =
                                                 "-"
                                     in
                                     el (width fill :: Font.alignRight :: rowTextStyle) (text distanceText)
+                          }
+                        , { header = tableHeader [ "FUEL CONSUMPTION", "(L/100KM)" ] [ alignRight ]
+                          , width = fill
+                          , view =
+                                \x ->
+                                    let
+                                        consumption =
+                                            FuelReport.consumption x.distanceSinceLastFueling x.report.volume
+                                                |> FuelReport.consumptionToFloat
+
+                                        consumptionText =
+                                            if consumption > 0 then
+                                                consumption
+                                                    |> String.fromFloat
+                                                    |> roundString100
+
+                                            else
+                                                "-"
+                                    in
+                                    el (rowTextStyle ++ [ Font.alignRight ]) (text consumptionText)
                           }
                         , { header = tableHeader [ "FUEL COST", "(KES)" ] [ alignRight ]
                           , width = fill
@@ -402,10 +350,14 @@ viewButtons model =
 
 viewFooter : Model -> Element Msg
 viewFooter _ =
-    Footer.coloredView ()
-        (always "Summary")
-        [ { page = (), body = "", action = NoOp, highlightColor = Colors.darkGreen }
-        ]
+    none
+
+
+
+-- Footer.coloredView ()
+--     (always "Summary")
+--     [ { page = (), body = "", action = NoOp, highlightColor = Colors.darkGreen }
+--     ]
 
 
 fetchFuelHistory : Session -> Int -> Cmd Msg
@@ -510,3 +462,17 @@ tabBarItems mapper =
         , onPress = CreateFuelReport |> mapper
         }
     ]
+
+
+roundString100 =
+    \c ->
+        case List.head (String.indexes "." c) of
+            Nothing ->
+                c ++ ".00"
+
+            Just location ->
+                let
+                    length =
+                        String.length c
+                in
+                String.padRight (length + (2 - (length - location - 1))) '0' c

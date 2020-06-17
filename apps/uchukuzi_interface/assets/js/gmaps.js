@@ -196,6 +196,7 @@ function disableClickListeners(time = 300) {
         if (MapLibraryInstance) {
             google.maps.event.clearInstanceListeners(MapLibraryInstance, "click")
             homeMarkerMapClickListener = null
+            homeMarkerDragListener = null
             circleClickListener = null
             mapClickListener = null
         }
@@ -478,6 +479,8 @@ function initializeSearch(app) {
             })
     })
 }
+
+var homeMarkerDragListener
 
 function setupHomeMarker(app, map) {
     if (homeMarker) {
