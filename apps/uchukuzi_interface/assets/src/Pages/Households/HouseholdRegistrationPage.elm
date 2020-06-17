@@ -10,12 +10,11 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
-import Errors exposing (Errors, InputError)
+import Errors exposing (Errors)
 import Html.Attributes exposing (id)
 import Html.Events exposing (..)
 import Icons
 import Json.Decode as Decode exposing (Decoder, field, float, int, list, string)
-import Json.Decode.Pipeline exposing (hardcoded)
 import Json.Encode as Encode
 import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.Household exposing (Guardian, Household, TravelTime(..))
@@ -432,6 +431,7 @@ update msg model =
                     ( newModel, Cmd.none )
 
 
+prepareMap : Model -> Cmd Msg
 prepareMap model =
     case model.routeRequestState of
         Success routes ->
@@ -478,12 +478,13 @@ updateStatus model webData =
         NotAsked ->
             ( model, Cmd.none )
 
-        Success creds ->
+        Success _ ->
             ( model
             , Navigation.rerouteTo model Navigation.HouseholdList
             )
 
 
+updateField : Field -> Model -> ( Model, Cmd Msg )
 updateField field model =
     let
         form =
@@ -635,6 +636,7 @@ view model viewHeight =
         ]
 
 
+viewFormWrapper : Model -> Element Msg
 viewFormWrapper model =
     WebDataView.view model.routeRequestState
         (\_ ->
@@ -744,8 +746,6 @@ viewForm model =
 
         -- , viewDivider
         , el Style.header2Style (text "Students")
-
-        -- , viewLocationInput household.home_location
         , viewStudentsInput model.form
         , viewDivider
         , el Style.header2Style
@@ -755,35 +755,7 @@ viewForm model =
             [ viewEmailInput model.form.problems household.guardian.email
             , viewPhoneInput model.form.problems household.guardian.phoneNumber
             ]
-
-        -- , viewShareLocationInput model.form.canTrack
-        , viewButton model
         ]
-
-
-
--- Element.column
---     [ width fill, spacing 26 ]
---     [ wrappedRow [ width fill ]
---         [ column [ spacing 26, alignTop, width fill ]
---             [ el [ width (fill |> maximum 300) ] (Dropdown.viewFromModel model routeDropDown )
---             , el Style.header2Style (text "Students")
---             , viewStudentsInput model.form
---             ]
---         , viewVerticalDivider
---         , column [ spacing 26, alignTop, width fill ]
---             [ el Style.header2Style
---                 (text "Guardian's contacts")
---             , viewGuardianNameInput model.form.problems household.guardian.name
---             , wrappedRow [ spacing 24 ]
---                 [ viewEmailInput model.form.problems household.guardian.email
---                 , viewPhoneInput model.form.problems household.guardian.phoneNumber
---                 ]
---             ]
---         ]
---     -- , viewShareLocationInput model.form.canTrack
---     , viewButton model
---     ]
 
 
 viewStudentsInput : Form -> Element Msg
@@ -838,12 +810,6 @@ viewStudentsInput { students, problems, currentStudent, editingStudent, deletedS
                 , title = "Student Name"
                 , value = currentStudent
                 }
-
-            -- , StyledElement.ghostButton [ Border.width 1 ]
-            --     { title = "Add"
-            --     , icon = Icons.add
-            --     , onPress = Just SaveStudentPressed
-            --     }
             , StyledElement.iconButton [ padding 8, centerY, Background.color Colors.purple, Border.rounded 8 ]
                 { icon = Icons.add
                 , iconAttrs = [ Colors.fillWhite ]
@@ -854,6 +820,7 @@ viewStudentsInput { students, problems, currentStudent, editingStudent, deletedS
         ]
 
 
+viewStudentsTable : Set.Set Int -> Maybe Student -> List Student -> Element Msg
 viewStudentsTable deletedStudents editingStudent students =
     let
         includesMorningTrip time =
@@ -958,25 +925,6 @@ viewStudentsTable deletedStudents editingStudent students =
         }
 
 
-viewLocationInput : Location -> Element Msg
-viewLocationInput home =
-    StyledElement.textInput
-        [ width
-            (fill
-                |> maximum 300
-            )
-        ]
-        { ariaLabel = "Home Location"
-        , caption = Just "You can use the map to select the location"
-        , errorCaption = Nothing
-        , icon = Nothing
-        , onChange = CurrentStudentName >> Changed
-        , placeholder = Nothing
-        , title = "Home Location"
-        , value = "home.name"
-        }
-
-
 viewPhoneInput : List (Errors Problem) -> String -> Element Msg
 viewPhoneInput problems phone_number =
     StyledElement.textInput
@@ -1035,18 +983,6 @@ viewEmailInput problems email =
         }
 
 
-viewShareLocationInput : Bool -> Element Msg
-viewShareLocationInput can_track =
-    Input.checkbox []
-        { onChange = CanTrack >> Changed
-        , icon = StyledElement.checkboxIcon
-        , checked = can_track
-        , label =
-            Input.labelRight Style.labelStyle
-                (text "Allow parent to track vehicle?")
-        }
-
-
 viewDivider : Element Msg
 viewDivider =
     el
@@ -1098,11 +1034,6 @@ routeDropDown model =
                        )
         , isLoading = False
         }
-
-
-viewButton : Model -> Element Msg
-viewButton model =
-    none
 
 
 submitNew : Session -> ValidForm -> Cmd Msg
@@ -1289,6 +1220,7 @@ fetchHousehold session id =
         |> Cmd.map ReceivedExistingHouseholdResponse
 
 
+tabBarItems : Model -> List (TabBarItem Msg)
 tabBarItems { requestState } =
     case requestState of
         Failure _ ->
