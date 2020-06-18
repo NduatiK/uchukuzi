@@ -569,9 +569,18 @@ busDecoder session currentPage locationUpdate =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        []
+subscriptions model =
+    case model.busData of
+        Success busData ->
+            case busData.currentPage of
+                RouteHistoryPage subPageModel ->
+                    Sub.map GotRouteHistoryMsg (RouteHistory.subscriptions subPageModel)
+
+                _ ->
+                    Sub.none
+
+        _ ->
+            Sub.none
 
 
 pageToBusPage : Page -> BusPage

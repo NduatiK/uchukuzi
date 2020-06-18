@@ -4,6 +4,7 @@ module Pages.Buses.Bus.TripsHistoryPage exposing
     , init
     , ongoingTripEnded
     , ongoingTripUpdated
+    , subscriptions
     , tabBarItems
     , update
     , view
@@ -67,6 +68,7 @@ type alias Model =
     , needRefreshOngoingTrip : Bool
     , requestedTrip : Maybe Int
     , createRouteForm : Maybe CreateRouteForm
+    , isPlaying : Bool
     }
 
 
@@ -136,6 +138,7 @@ init busID session =
             , ongoingTrip = RemoteData.Loading
             , needRefreshOngoingTrip = False
             , createRouteForm = Nothing
+            , isPlaying = False
             }
     in
     ( model
@@ -173,6 +176,10 @@ type Msg
     | CancelRouteCreation
     | OngoingTripUpdated Json.Decode.Value
     | OngoingTripEnded
+      ------
+    | AdvanceTrip
+    | StartPlaying
+    | StopPlaying
       ------
     | UpdatedRouteName String
     | SetSaveToRoute UpdateRoute
@@ -576,6 +583,25 @@ update msg model =
             , Cmd.none
             )
 
+        AdvanceTrip ->
+            if model.isPlaying then
+                ( model
+                , Task.succeed (AdjustedValue (model.sliderValue + 1)) |> Task.perform identity
+                )
+
+            else
+                ( model, Cmd.none )
+
+        StartPlaying ->
+            ( { model | isPlaying = True }
+            , Cmd.none
+            )
+
+        StopPlaying ->
+            ( { model | isPlaying = False }
+            , Cmd.none
+            )
+
 
 selectOngoingTrip : Model -> ( Model, Cmd Msg )
 selectOngoingTrip model =
@@ -691,18 +717,44 @@ viewMap model viewWidth =
                                         none
 
                                     Just point ->
-                                        el
+                                        row
                                             [ paddingXY 16 8
                                             , centerX
                                             , moveDown 20
-                                            , Background.color (Colors.withAlpha Colors.white 0.5)
-                                            , Style.blurredStyle
+                                            , Background.color Colors.white
+
+                                            -- , Background.color (Colors.withAlpha Colors.white 0.5)
+                                            -- , Style.blurredStyle
                                             , Border.rounded 4
-                                            , Border.color Colors.sassyGrey
-                                            , Border.width 1
+                                            , Border.color Colors.sassyGreyDark
+                                            , Border.width 2
                                             , Style.elevated2
+                                            , spacing 8
                                             ]
-                                            (el (moveDown 1 :: centerX :: Style.labelStyle ++ [ Font.size 15, Font.semiBold, Font.color Colors.purple ]) (text (String.fromFloat point.speed ++ " km/h")))
+                                            [ el
+                                                (Style.labelStyle
+                                                    ++ [ moveDown 1
+                                                       , centerX
+                                                       , Font.size 15
+                                                       , Font.semiBold
+                                                       , Font.color Colors.purple
+                                                       ]
+                                                )
+                                                (text (String.fromFloat point.speed ++ " km/h"))
+                                            , el
+                                                [ width (px 2)
+                                                , height fill
+                                                , Background.color (Colors.withAlpha Colors.darkness 0.6)
+                                                ]
+                                                none
+                                            , if model.isPlaying then
+                                                el [ pointer, Events.onClick StopPlaying ]
+                                                    (Icons.stop [ Colors.fillDarkness, alpha 0.87 ])
+
+                                              else
+                                                el [ pointer, Events.onClick StartPlaying ]
+                                                    (Icons.play [ Colors.fillDarkness, alpha 0.87 ])
+                                            ]
                         )
                     ]
                 , case model.selectedTrip of
@@ -792,13 +844,6 @@ viewStudentActivities activities timezone =
         (List.map viewActivity activities)
 
 
-
--- (el [ Background.color Colors.backgroundGreen, height (px 34) ] (el [ centerX, centerY ] (text "Student Movement"))
--- (el [ Background.color Colors.backgroundGreen, height (px 34) ] (text "Student Movement")
--- :: List.map viewActivity activities
--- )
-
-
 viewMapOptions :
     { a
         | showDeviations : Bool
@@ -807,15 +852,7 @@ viewMapOptions :
     -> Element Msg
 viewMapOptions { showDeviations, showSpeed } =
     row [ paddingXY 10 0, spacing 110 ]
-        [ -- [ Input.checkbox []
-          --     { onChange = ToggledShowStops
-          --     , icon = StyledElement.checkboxIcon
-          --     , checked = mapVisuals.showStops
-          --     , label =
-          --         Input.labelRight Style.labelStyle
-          --             (text "Show Stops")
-          --     }
-          Input.checkbox []
+        [ Input.checkbox []
             { onChange = ToggledShowSpeed
             , icon = StyledElement.checkboxIcon
             , checked = showSpeed
@@ -895,8 +932,6 @@ viewTrip selectedTrip timezone trip =
                 (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone trip.startTime)))
             , el (alignRight :: timeStyle)
                 (text (String.toUpper (Utils.DateFormatter.timeFormatter timezone trip.endTime)))
-
-            -- , el routeStyle (text trip.route)
             ]
         , el [ width (px 3), height fill, Background.color Colors.darkGreen ] none
         , column [ spacing 8 ]
@@ -1307,3 +1342,13 @@ tabBarItems model mapper =
                     , onPress = ShowCurrentTrip |> mapper
                     }
                 ]
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    if model.isPlaying then
+
+        Time.every 500 (always AdvanceTrip)
+
+    else
+        Sub.none

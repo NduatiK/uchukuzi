@@ -44,8 +44,9 @@ defmodule Uchukuzi.School.Route do
     put_change(changeset, :expected_tiles, expected_tiles)
   end
 
-  def calculate_expected_tiles(path) do
+  def calculate_expected_tiles(path) when is_list(path) do
     path
+    |> IO.inspect()
     |> Enum.reduce({nil, []}, fn location, {last_location, tiles} ->
       if last_location == nil do
         {location, [Uchukuzi.World.Tile.new(location)]}
@@ -67,5 +68,9 @@ defmodule Uchukuzi.School.Route do
     end)
     |> (fn {_, tiles} -> tiles end).()
     |> Enum.reverse()
+  end
+
+  def calculate_expected_tiles(changeset) do
+    changeset
   end
 end

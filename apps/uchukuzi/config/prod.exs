@@ -6,11 +6,11 @@ config :uchukuzi, Uchukuzi.Repo,
   pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
   ssl: true
 
-# config :uchukuzi, Uchukuzi.Repo,
-#   database: "uchukuzi_repo",
-#   username: "postgres",
-#   password: "postgres",
-#   hostname: "localhost"
+config :uchukuzi, Uchukuzi.Repo,
+  database: "uchukuzi_repo",
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost"
 
 
 # config :a, AWeb.Endpoint,

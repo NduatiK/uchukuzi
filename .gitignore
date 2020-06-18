@@ -35,3 +35,4 @@ exports/
 logs/
 trip_data_archive/
 trip_data_testing/
+.VSCodeCounter/

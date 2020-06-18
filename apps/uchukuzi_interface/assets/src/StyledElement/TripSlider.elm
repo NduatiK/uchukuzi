@@ -42,8 +42,8 @@ view :
 view { sliderValue, zone, trip, onAdjustValue, viewWidth, showSpeed } =
     let
         annotatedReports =
-            -- Debug.log "annotatedReports"
-            Trip.annotatedReports trip
+            Debug.log "annotatedReports"
+                (Trip.buildAnnotatedReports trip)
 
         max : Int
         max =
@@ -188,16 +188,6 @@ yScaleBuilder max h =
     Scale.linear ( h, 0 ) ( max * 1.5, 0 )
 
 
-xAxis : ContinuousScale Float -> Svg msg
-xAxis xScale =
-    Axis.bottom [] xScale
-
-
-yAxis : ContinuousScale Float -> Svg msg
-yAxis yScale =
-    Axis.left [ Axis.tickCount 5 ] yScale
-
-
 transformToLineData : ContinuousScale Float -> ContinuousScale Float -> ( Float, Float ) -> Maybe ( Float, Float )
 transformToLineData xScale yScale ( x, y ) =
     Just ( Scale.convert xScale x, Scale.convert yScale y )
@@ -260,11 +250,6 @@ viewGraph reports viewWidth =
                                 Colors.toSVGColor Colors.darkGreen
                         , strokeWidth 2
                         , TypedSvg.Attributes.fill <| Reference "linGradientDuoVert"
-
-                        -- , TypedSvg.Attributes.fill
-                        --     (Paint <|
-                        --         Colors.toSVGColor Colors.purple
-                        --     )
                         ]
                     ]
 
@@ -274,6 +259,7 @@ viewGraph reports viewWidth =
         )
 
 
+gradient : Svg msg
 gradient =
     TypedSvg.linearGradient
         [ id "linGradientDuoVert"
@@ -285,8 +271,3 @@ gradient =
         [ stop [ offset "0%", stopColor "#61A591", stopOpacity <| Opacity 1.0 ] []
         , stop [ offset "100%", stopColor "#ffffff", stopOpacity <| Opacity 1.0 ] []
         ]
-
-
-round100 : Float -> Float
-round100 float =
-    toFloat (round (float * 100)) / 100

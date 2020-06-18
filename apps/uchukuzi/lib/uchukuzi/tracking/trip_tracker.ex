@@ -95,20 +95,18 @@ defmodule Uchukuzi.Tracking.TripTracker do
         |> insert_report(report)
         |> set_state(@ongoing)
 
-      if Trip.students_onboard(data.trip) != [] do
-        PubSub.publish(
-          :trip_started,
-          %{
-            event: :trip_started,
-            route_id: data.route_id,
-            bus_id: data.bus_id,
-            bus: data.bus,
-            students_onboard: Trip.students_onboard(data.trip),
-            number_plate: data.bus.number_plate,
-            school_id: data.school.id
-          }
-        )
-      end
+      PubSub.publish(
+        :trip_started,
+        %{
+          event: :trip_started,
+          route_id: data.route_id,
+          bus_id: data.bus_id,
+          bus: data.bus,
+          students_onboard: Trip.students_onboard(data.trip),
+          number_plate: data.bus.number_plate,
+          school_id: data.school.id
+        }
+      )
 
       {:reply, :ok, data, @message_timeout}
     end
@@ -223,7 +221,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
     data = %{data | trip_path: trip_path}
 
     last_notified_tile = data.last_notified_tile
-
+# Prevent repeat approach alerts
     data =
       case data.trip_path.eta do
         [] ->

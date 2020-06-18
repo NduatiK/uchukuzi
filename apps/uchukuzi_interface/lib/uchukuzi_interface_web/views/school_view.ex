@@ -26,27 +26,6 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     render_bus(bus, Map.get(params, :last_seen), Map.get(bus, :performed_repairs))
   end
 
-  def render_bus(bus, last_seen \\ nil, performed_repairs \\ nil)
-
-  def render_bus(nil, _, _) do
-    nil
-  end
-
-  def render_bus(bus, last_seen, performed_repairs) do
-    %{
-      id: bus.id,
-      number_plate: bus.number_plate,
-      vehicle_type: bus.vehicle_type,
-      fuel_type: bus.fuel_type,
-      stated_milage: bus.stated_milage,
-      seats_available: bus.seats_available,
-      device: render_device(bus.device),
-      route: render_bus_route(Map.get(bus, :route)),
-      # route: bus.route,
-      last_seen: UchukuziInterfaceWeb.TrackingView.render_report(last_seen),
-      performed_repairs: render_performed_repairs(performed_repairs)
-    }
-  end
 
   def render("route_for_assistant.json", %{
         data: %{
@@ -134,6 +113,27 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     }
   end
 
+  def render_bus(bus, last_seen \\ nil, performed_repairs \\ nil)
+
+  def render_bus(nil, _, _) do
+    nil
+  end
+
+  def render_bus(bus, last_seen, performed_repairs) do
+    %{
+      id: bus.id,
+      number_plate: bus.number_plate,
+      vehicle_type: bus.vehicle_type,
+      fuel_type: bus.fuel_type,
+      stated_milage: bus.stated_milage,
+      seats_available: bus.seats_available,
+      device: render_device(bus.device),
+      route: render_bus_route(Map.get(bus, :route)),
+      # route: bus.route,
+      last_seen: UchukuziInterfaceWeb.TrackingView.render_report(last_seen),
+      performed_repairs: render_performed_repairs(performed_repairs)
+    }
+  end
   def render_bus_route(nil), do: nil
   def render_bus_route(%Ecto.Association.NotLoaded{}), do: nil
 

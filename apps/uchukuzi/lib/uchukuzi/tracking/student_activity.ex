@@ -94,5 +94,6 @@ defmodule Uchukuzi.Tracking.StudentActivity do
   end
 
   def is_boarding?(%StudentActivity{activity: :boarded_vehicle}), do: true
+  def is_boarding?(%StudentActivity{activity: "boarded_vehicle"}), do: true
   def is_boarding?(%StudentActivity{}), do: false
 end

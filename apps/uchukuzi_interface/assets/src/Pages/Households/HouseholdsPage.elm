@@ -66,7 +66,7 @@ init session =
 type Msg
     = UpdatedSearchText String
     | SelectedStudent (Maybe Student)
-    | GenerateCard
+    | GenerateCard Student
     | ReceivedStudentsResponse (WebData ( List GroupedStudents, List Household ))
     | RegisterStudent
     | SelectedRoute GroupedStudents
@@ -136,8 +136,8 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        GenerateCard ->
-            ( model, Ports.printCard )
+        GenerateCard student ->
+            ( model, Ports.printCardForStudent student.name )
 
         EditHousehold household ->
             ( model, Navigation.rerouteTo model (Navigation.EditHousehold household.id) )
@@ -215,6 +215,7 @@ viewOverlay { selectedStudent, session } =
                 el
                     [ Background.color Colors.white
                     , Border.rounded 5
+                    , Style.id "card"
                     , Style.elevated2
                     , centerX
                     , centerY
@@ -225,7 +226,7 @@ viewOverlay { selectedStudent, session } =
                             [ StyledElement.hoverButton []
                                 { title = "Print Card"
                                 , icon = Just Icons.print
-                                , onPress = Just GenerateCard
+                                , onPress = Just (GenerateCard student)
                                 }
                             , StyledElement.hoverButton [ alignRight ]
                                 { title = "Edit details"
@@ -240,7 +241,7 @@ viewOverlay { selectedStudent, session } =
                             [ el [ height (px 12) ] none
                             , el (Style.header2Style ++ [ padding 0 ]) (text student.name)
                             ]
-                        , row [ spacing 12, paddingXY 28 0 ]
+                        , row [ spacing 12, paddingXY 28 0, height fill ]
                             [ el [ Background.color Colors.darkGreen, height fill, width (px 2) ] none
                             , column [ paddingXY 0 4, spacing 12 ]
                                 [ row []

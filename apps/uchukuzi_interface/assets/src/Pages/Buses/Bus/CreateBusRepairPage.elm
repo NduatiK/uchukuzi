@@ -223,13 +223,10 @@ view model viewHeight =
         [ paddingXY 40 10
         , width fill
         , height (px viewHeight)
-        , spacing 10
         ]
         [ el Style.headerStyle (text "Create Repair Record")
-        , row
-            [ height (px (viewHeight - 80))
-            , width fill
-            ]
+        , el [ height (px 10) ] none
+        , row [ height (px (viewHeight - 90)), width fill ]
             [ viewRecords model
             , el [ width (fillPortion 1) ] none
             , viewVehicle model
@@ -360,18 +357,20 @@ viewVehicle model =
             List.map .part model.repairs
 
         viewImage part =
-            if model.pickedUpItem /= Just (Part part) && not (List.member part visibleParts) then
-                inFront
-                    (imageForPart part
-                        (draggable
-                            { onDragStart = StartedDragging (Part part)
-                            , onDragEnd = StoppedDragging
-                            }
-                        )
-                    )
+            inFront
+                (imageForPart part
+                    (draggable
+                        { onDragStart = StartedDragging (Part part)
+                        , onDragEnd = StoppedDragging
+                        }
+                        ++ (if model.pickedUpItem /= Just (Part part) && not (List.member part visibleParts) then
+                                []
 
-            else
-                moveUp 0
+                            else
+                                [ transparent True, Style.clickThrough ]
+                           )
+                    )
+                )
     in
     column
         ([ height fill, width (fillPortion 2), paddingXY 0 30 ]

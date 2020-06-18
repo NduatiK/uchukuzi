@@ -167,7 +167,5 @@ defmodule Uchukuzi.Tracking.Trip do
       end
     end)
     |> MapSet.to_list()
-
-    [1]
   end
 end

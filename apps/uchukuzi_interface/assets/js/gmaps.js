@@ -635,12 +635,14 @@ function setupMapPorts(app) {
     })
 
 
-    app.ports.showHomeLocation.subscribe(({location, draggable}) => {
+    app.ports.showHomeLocation.subscribe(({ location, draggable }) => {
         initializeMaps(app)
             .then((map) => {
-                setupHomeMarker(app, map, draggable)
-                homeMarker.setPosition(location)
-                fitBoundsMap(map, [schoolMarker, homeMarker])
+                sleep(200).then(() => {
+                    setupHomeMarker(app, map, draggable)
+                    homeMarker.setPosition(location)
+                    fitBoundsMap(map, [schoolMarker, homeMarker])
+                })
             })
     })
 

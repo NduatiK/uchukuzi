@@ -73,12 +73,9 @@ port updateBusMap : LocationUpdate -> Cmd msg
 port bulkUpdateBusMap : List LocationUpdate -> Cmd msg
 
 
-printCard : Cmd msg
-printCard =
-    printCardPort ()
+port printCardForStudent :String -> Cmd msg
 
 
-port printCardPort : () -> Cmd msg
 
 
 drawEditableRoute : Route -> Cmd msg

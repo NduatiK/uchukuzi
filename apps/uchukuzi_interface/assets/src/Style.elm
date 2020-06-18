@@ -70,14 +70,13 @@ iconHeader icon title =
 
 headerStyle : List (Attribute msg)
 headerStyle =
-    [ Region.heading 1
-    , Font.size 31
+    [ Font.size 31
     , Font.family
         [ Font.typeface "SF Pro Display"
         , Font.sansSerif
         ]
-    , paddingXY 0 10
     , Font.bold
+    , paddingXY 0 10
     ]
 
 

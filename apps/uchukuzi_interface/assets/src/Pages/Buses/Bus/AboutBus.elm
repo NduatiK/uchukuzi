@@ -22,6 +22,7 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement exposing (textStack, textStackWithSpacing)
 import StyledElement.Footer as Footer
+import Task
 
 
 type alias Model =
@@ -232,11 +233,11 @@ viewStudentsPage model viewHeight =
                 highlightAttrs =
                     [ Background.color Colors.darkGreen, Font.color Colors.white ]
             in
-            Input.button [ width fill, paddingXY 2 0 ]
+            Input.button [ width fill ]
                 { label =
                     paragraph
                         (Style.header2Style
-                            ++ [ paddingXY 4 10, Font.size 16, width fill, mouseOver highlightAttrs, Style.animatesAll ]
+                            ++ [ paddingXY 8 10, Font.size 16, width fill, mouseOver highlightAttrs, Style.animatesAll ]
                             ++ (if selected then
                                     highlightAttrs
 
@@ -259,26 +260,26 @@ viewStudentsPage model viewHeight =
                     none
                 )
     in
-    row [ width fill, height (fill |> maximum viewHeight), spacing 24 ]
-        [ viewGMAP
-        , case model.studentsOnboard of
-            Failure _ ->
+    case model.studentsOnboard of
+        Failure _ ->
+            column [ centerX, centerY, spacing 20 ]
+                [ paragraph [] [ text "Unable to load students" ]
+                , StyledElement.failureButton [ centerX ]
+                    { title = "Try Again"
+                    , onPress = Just FetchStudentsOnboard
+                    }
+                ]
+
+        Success students ->
+            if students == [] then
                 column [ centerX, centerY, spacing 20 ]
-                    [ paragraph [] [ text "Unable to load students" ]
-                    , StyledElement.failureButton [ centerX ]
-                        { title = "Try Again"
-                        , onPress = Just FetchStudentsOnboard
-                        }
+                    [ paragraph [] [ text "0 students currently onboard" ]
                     ]
 
-            Success students ->
-                if students == [] then
-                    column [ centerX, centerY, spacing 20 ]
-                        [ paragraph [] [ text "0 students currently onboard" ]
-                        ]
-
-                else
-                    el
+            else
+                row [ width fill, height (fill |> maximum viewHeight), spacing 24 ]
+                    [ viewGMAP
+                    , el
                         [ alignTop
                         , width fill
                         , height (shrink |> maximum viewHeight)
@@ -304,10 +305,10 @@ viewStudentsPage model viewHeight =
                                    )
                             )
                         )
+                    ]
 
-            _ ->
-                el [ centerX, centerY ] (Icons.loading [])
-        ]
+        _ ->
+            el [ centerX, centerY ] (Icons.loading [])
 
 
 viewCrewPage : Model -> Element Msg

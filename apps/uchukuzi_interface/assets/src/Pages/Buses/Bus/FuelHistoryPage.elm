@@ -88,69 +88,71 @@ update msg model =
         RecordsResponse response ->
             case response of
                 Success grouped ->
-                    -- Select the head as the default
                     let
-                        ( statistics, cmd ) =
-                            case List.head grouped of
-                                Just ( _, reports ) ->
-                                    let
-                                        fuelConsumptions =
-                                            reports
-                                                |> List.map (\x -> FuelReport.consumption x.distanceSinceLastFueling x.report.volume)
-                                                |> List.map FuelReport.consumptionToFloat
+                        reports =
+                            grouped
+                                |> List.map
+                                    (Tuple.second
+                                        >> List.reverse
+                                    )
+                                |> List.reverse
+                                |> List.concat
 
-                                        stdDev =
-                                            Statistics.deviation fuelConsumptions
+                        fuelConsumptions =
+                            reports
+                                |> List.map (\x -> FuelReport.consumption x.distanceSinceLastFueling x.report.volume)
+                                |> List.map FuelReport.consumptionToFloat
 
-                                        mean =
-                                            (fuelConsumptions |> List.foldl (+) 0)
-                                                / toFloat (List.length fuelConsumptions)
+                        stdDev =
+                            Statistics.deviation fuelConsumptions
 
-                                        data =
-                                            reports
-                                                |> List.map
-                                                    (\{ report, distanceSinceLastFueling, cumulativeFuelPurchased } ->
-                                                        { date = report.date
-                                                        , distanceSinceLastFueling = distanceSinceLastFueling
-                                                        , consumptionOnDate = FuelReport.consumption distanceSinceLastFueling report.volume
-                                                        , runningAverage = FuelReport.consumption report.totalDistanceCovered cumulativeFuelPurchased
-                                                        }
-                                                    )
+                        mean =
+                            (fuelConsumptions |> List.foldl (+) 0)
+                                / toFloat (List.length fuelConsumptions)
 
-                                        stats =
-                                            case ( stdDev, mean ) of
-                                                ( Just stdDev_, mean_ ) ->
-                                                    Just
-                                                        { stdDev = stdDev_
-                                                        , mean = mean_
-                                                        }
-
-                                                _ ->
-                                                    Nothing
-
-                                        plotData =
-                                            data |> List.filter (\x -> FuelReport.distanceToInt x.distanceSinceLastFueling /= 0)
-                                    in
-                                    ( stats
-                                    , Ports.renderChart
-                                        { x =
-                                            plotData
-                                                |> List.map (.date >> Time.posixToMillis)
-                                        , y =
-                                            { consumptionOnDate =
-                                                plotData
-                                                    |> List.map (.consumptionOnDate >> FuelReport.consumptionToFloat)
-                                            , runningAverage =
-                                                plotData
-                                                    |> List.map (.runningAverage >> FuelReport.consumptionToFloat)
-                                            }
-                                        , statistics =
-                                            stats
+                        data =
+                            reports
+                                |> List.map
+                                    (\{ report, distanceSinceLastFueling, cumulativeFuelPurchased } ->
+                                        { date = report.date
+                                        , distanceSinceLastFueling = distanceSinceLastFueling
+                                        , consumptionOnDate = FuelReport.consumption distanceSinceLastFueling report.volume
+                                        , runningAverage = FuelReport.consumption report.totalDistanceCovered cumulativeFuelPurchased
                                         }
                                     )
 
-                                Nothing ->
-                                    ( Nothing, Cmd.none )
+                        stats =
+                            case ( stdDev, mean ) of
+                                ( Just stdDev_, mean_ ) ->
+                                    Just
+                                        { stdDev = stdDev_
+                                        , mean = mean_
+                                        }
+
+                                _ ->
+                                    Nothing
+
+                        plotData =
+                            data |> List.filter (\x -> FuelReport.distanceToInt x.distanceSinceLastFueling /= 0)
+
+                        ( statistics, cmd ) =
+                            ( stats
+                            , Ports.renderChart
+                                { x =
+                                    plotData
+                                        |> List.map (.date >> Time.posixToMillis)
+                                , y =
+                                    { consumptionOnDate =
+                                        plotData
+                                            |> List.map (.consumptionOnDate >> FuelReport.consumptionToFloat)
+                                    , runningAverage =
+                                        plotData
+                                            |> List.map (.runningAverage >> FuelReport.consumptionToFloat)
+                                    }
+                                , statistics =
+                                    stats
+                                }
+                            )
                     in
                     ( { model
                         | reports = Success grouped
@@ -375,8 +377,9 @@ groupReports timezone reports_ =
                     |> Utils.GroupBy.attr
                         { groupBy = .report >> .date >> Date.fromPosix timezone >> Date.format "yyyy MM"
                         , nameAs = .report >> .date >> Date.fromPosix timezone >> Date.format "MMM yyyy"
-                        , reverse = False
+                        , reverse = True
                         }
+                    |> List.reverse
                 )
 
         Failure error ->

@@ -3,7 +3,7 @@ module Models.Trip exposing
     , OngoingTrip
     , StudentActivity
     , Trip
-    , annotatedReports
+    , buildAnnotatedReports
     , ongoingToTrip
     , ongoingTripDecoder
     , pointAt
@@ -16,7 +16,7 @@ import Iso8601
 import Json.Decode as Decode exposing (Decoder, float, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (optional, required, resolve)
 import Models.Location exposing (Location, Report, locationDecoder, reportDecoder)
-import Models.Tile as Tile
+import Models.Tile as Tile exposing (Tile)
 import Time
 
 
@@ -201,60 +201,53 @@ pointAt index trip =
     List.head (List.drop index trip.reports)
 
 
-annotatedReports : Trip -> List { report : Report, deviated : Bool }
-annotatedReports trip =
+buildAnnotatedReports : Trip -> List { report : Report, deviated : Bool }
+buildAnnotatedReports trip =
     let
         indexedTiles_ =
             trip.crossedTiles
                 |> List.map Tile.newTile
                 |> List.indexedMap Tuple.pair
-
-        emptyList : List { report : Report, deviated : Bool }
-        emptyList =
-            []
     in
     trip.reports
         |> List.foldl
-            (\report ( indexedTiles, annotatedReports_ ) ->
-                case List.head indexedTiles of
-                    Just ( index, tile ) ->
-                        if Tile.contains report.location tile then
-                            ( indexedTiles
-                            , { report = report, deviated = List.member index trip.deviations }
-                                :: annotatedReports_
-                            )
-
-                        else
-                            let
-                                tail =
-                                    List.drop 1 indexedTiles
-                            in
-                            case List.head tail of
-                                Just ( idx, headOfTail ) ->
-                                    if Tile.contains report.location headOfTail then
-                                        ( tail
-                                        , { report = report, deviated = List.member idx trip.deviations }
-                                            :: annotatedReports_
-                                        )
-
-                                    else
-                                        ( tail
-                                        , { report = report, deviated = False }
-                                            :: annotatedReports_
-                                        )
-
-                                Nothing ->
-                                    ( tail
-                                    , { report = report, deviated = False }
-                                        :: annotatedReports_
-                                    )
+            (\report ( indexedTiles, annotatedReports ) ->
+                --     Should we loop until we find tile that contains the report
+                case findMatchingTile report indexedTiles of
+                    Just ( ( index, _ ), remainingTiles ) ->
+                        ( remainingTiles
+                        , { report = report, deviated = List.member index trip.deviations }
+                            :: annotatedReports
+                        )
 
                     Nothing ->
-                        ( []
+                        let
+                            _ =
+                                Debug.log "afsasfa" ""
+                        in
+                        ( indexedTiles
                         , { report = report, deviated = False }
-                            :: annotatedReports_
+                            :: annotatedReports
                         )
             )
-            ( indexedTiles_, emptyList )
+            ( indexedTiles_, [] )
         |> Tuple.second
         |> List.reverse
+
+
+findMatchingTile : Report -> List ( Int, Tile ) -> Maybe ( ( Int, Tile ), List ( Int, Tile ) )
+findMatchingTile report tiles =
+    tiles
+        |> List.head
+        |> Maybe.andThen
+            (\( index, tile ) ->
+                if Tile.contains report.location tile then
+                    -- If we match, keep the all the tiles for later searches
+                    -- Who knows? A future report might be in the first tile
+                    Just ( ( index, tile ), tiles )
+
+                else
+                    tiles
+                        |> List.drop 1
+                        |> findMatchingTile report
+            )

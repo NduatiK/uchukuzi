@@ -46,8 +46,7 @@ defmodule Uchukuzi.World do
             previous_tile,
             crossed_tiles,
             current_tile
-            )
-
+          )
 
         # Let the previous tile know that the bus has left it
         TileSupervisor.leave(bus_server, previous_tile, exit_time)
@@ -66,11 +65,11 @@ defmodule Uchukuzi.World do
           bus_server,
           current_tile,
           entry_time
-          )
+        )
 
         # Return the information that the previous tile was exited and
         # that intermediate tiles were crossed
-        [previous_tile] ++ crossed_tiles
+        [previous_tile | crossed_tiles]
       end
     end
   end
@@ -91,6 +90,7 @@ defmodule Uchukuzi.World do
   def crossed_tiles(%Report{} = previous_report, %Report{} = current_report) do
     crossed_tiles(previous_report.location, current_report.location)
   end
+
   def crossed_tiles(previous_location, current_location) do
     start_tile = Tile.new(previous_location)
     end_tile = Tile.new(current_location)
@@ -121,7 +121,6 @@ defmodule Uchukuzi.World do
   end
 
   defp calculate_time(previous_report, current_report, previous_tile, crossed_tiles, current_tile) do
-
     # Get the distance travelled assuming a straight line
     total_distance =
       Distance.distance(
@@ -165,8 +164,7 @@ defmodule Uchukuzi.World do
         time_exiting = distance_exiting / average_speed
         time_entering = distance_entering / average_speed
 
-        {DateTime.add(previous_report.time, round(time_exiting), :second),
-         average_time,
+        {DateTime.add(previous_report.time, round(time_exiting), :second), average_time,
          DateTime.add(current_report.time, round(-time_entering), :second)}
     end
   end

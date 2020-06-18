@@ -28,11 +28,11 @@ defmodule UchukuziInterfaceWeb.TrackingController do
         for report <- reports do
           Tracking.move(bus, report)
 
-          :timer.sleep(100)
+          # :timer.sleep(100)
 
-          bus
-          |> Tracking.status_of()
-          |> broadcast_location_update(bus, bus.school_id)
+          # bus
+          # |> Tracking.status_of()
+          # |> broadcast_location_update(bus, bus.school_id)
         end
 
         bus

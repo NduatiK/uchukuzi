@@ -260,7 +260,7 @@ viewSideBarSection viewWidth currentRoute (SideBarOption item) =
                 Just aRoute ->
                     item.navPage /= toNavigationPage aRoute
     in
-    el [ width fill, paddingXY 8 0, alignRight ]
+    el [ width fill, paddingXY 8 0, alignRight, height (px 34) ]
         (link
             [ paddingEach { edges | left = 8, top = 4, bottom = 4, right = 24 }
             , alignLeft

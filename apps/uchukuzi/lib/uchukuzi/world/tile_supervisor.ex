@@ -15,8 +15,8 @@ defmodule Uchukuzi.World.TileSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
-  @spec tile_for(%{__struct__: Uchukuzi.Common.Location | Uchukuzi.World.Tile}) :: any
-  def tile_for(%Location{} = location) do
+  @spec tile_for(Uchukuzi.Common.Location.t()) :: any
+  defp tile_for(%Location{} = location) do
     with nil <- GenServer.whereis(TileServer.via_tuple(location)) do
       with {:ok, child} <-
              DynamicSupervisor.start_child(
@@ -31,16 +31,13 @@ defmodule Uchukuzi.World.TileSupervisor do
     end
   end
 
-  def tile_for(%Tile{} = tile),
-    do: tile_for(tile.coordinate)
-
   def enter(pid, tile, entry_time),
     do: call_cell(tile, {:enter, pid, entry_time})
 
   def leave(pid, tile, exit_time),
     do: call_cell(tile, {:leave, pid, exit_time})
 
-  defp call_cell(tile, arguments) do
+  defp call_cell(%Tile{} = tile, arguments) do
     tile.coordinate
     |> tile_for()
     |> GenServer.call(arguments)

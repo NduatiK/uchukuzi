@@ -64,8 +64,8 @@ function init() {
     app.ports.setOpenState.subscribe((state) => {
         localStorage.setItem(sideBarStateKey, state)
     })
-    app.ports.printCardPort.subscribe(() => {
-        printCard("")
+    app.ports.printCardForStudent.subscribe((studentName) => {
+        printCard(studentName)
     })
     app.ports.initializeSearchPort.subscribe(() => {
         initializeSearch(app)

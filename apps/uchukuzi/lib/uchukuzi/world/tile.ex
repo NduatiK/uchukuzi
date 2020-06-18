@@ -128,26 +128,22 @@ defmodule Uchukuzi.World.Tile do
         end).()
   end
 
-  @doc """
-  Converts a polygon into its set of constituent lines
-  """
+  # Converts a polygon into its set of constituent lines
   defp to_paths(%Geo.Polygon{coordinates: coordinates}) do
     coordinates
     |> hd
-    |> Enum.reduce({[], nil}, fn x, acc ->
+    |> Enum.reduce({[], nil}, fn curr, acc ->
       case acc do
-        {paths, nil} -> {paths, x}
-        {paths, prev} -> {[%Geo.LineString{coordinates: [prev, x]} | paths], x}
+        {paths, nil} -> {paths, curr}
+        {paths, prev} -> {[%Geo.LineString{coordinates: [prev, curr]} | paths], curr}
       end
     end)
     |> (fn {paths, _} -> paths end).()
   end
 
-  @doc """
-  Given a list of paths and a path A,
-  this finds the paths that intersect with A and returns
-  the distance covered before or after the intersection happened
-  """
+  # Given a list of paths and a path A,
+  # this finds the paths that intersect with A and returns
+  # the distance covered before or after the intersection happened
   defp distances_for_intersecting_paths(
          paths,
          %Geo.LineString{coordinates: [start, finish]},
@@ -206,6 +202,30 @@ defmodule Uchukuzi.World.Tile do
           Tile.new(location, size)
         end
       end
+
+    #  # TODO - Handle special case at -90/90° boundary
+    #  size = get_size(size)
+
+    #  vertical = round((end_tile.coordinate.lat - start_tile.coordinate.lat) / size)
+
+    #  horizontal =      round((end_tile.coordinate.lng - start_tile.coordinate.lng) / size)
+
+    #  grouped_tiles =
+    #    for lat <- 0..vertical do
+    #      for lng <- 0..horizontal do
+    #        {:ok, location} =
+    #          Location.new(
+    #            Float.round(start_tile.coordinate.lng + lng * size, 4),
+    #            Float.round(start_tile.coordinate.lat + lat * size, 4)
+    #          )
+
+    #          Tile.new(location, size)
+    #      end
+    #    end
+
+    # grouped_tiles
+    # |> Enum.flat_map(& &1)
+    # |> Enum.reject(&(&1 == start_tile || &1 == end_tile))
 
     grouped_tiles
     |> Enum.flat_map(& &1)

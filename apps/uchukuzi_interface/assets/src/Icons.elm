@@ -253,3 +253,13 @@ notificationsFilled =
 notificationsEmpty : List (Attribute msg) -> Element msg
 notificationsEmpty =
     iconNamed "images/alarm_outlined.svg"
+
+
+play : List (Attribute msg) -> Element msg
+play =
+    iconNamed "images/play.svg"
+
+
+stop : List (Attribute msg) -> Element msg
+stop =
+    iconNamed "images/stop.svg"

@@ -63,17 +63,6 @@ defmodule UchukuziInterfaceWeb.RolesView do
     render_crew_member(crew_member)
   end
 
-  def render_crew_member(crew_member) do
-    %{
-      "id" => crew_member.id,
-      "name" => crew_member.name,
-      "email" => crew_member.email,
-      "phone_number" => crew_member.phone_number,
-      "role" => crew_member.role,
-      "bus_id" => crew_member.bus_id
-    }
-  end
-
   def render("guardians.json", %{guardians: guardians}) do
     guardians
     |> render_many(__MODULE__, "guardian.json", as: :guardian)
@@ -91,6 +80,17 @@ defmodule UchukuziInterfaceWeb.RolesView do
 
   def render("students.json", %{students: students}) do
     render_students(students)
+  end
+
+  def render_crew_member(crew_member) do
+    %{
+      "id" => crew_member.id,
+      "name" => crew_member.name,
+      "email" => crew_member.email,
+      "phone_number" => crew_member.phone_number,
+      "role" => crew_member.role,
+      "bus_id" => crew_member.bus_id
+    }
   end
 
   def render_students(%Ecto.Association.NotLoaded{}), do: nil

@@ -8,7 +8,6 @@ defmodule Uchukuzi.Tracking.BusServer do
   alias Uchukuzi.Tracking.BusesSupervisor
   alias Uchukuzi.Tracking.TripTracker
 
-  alias __MODULE__
 
   defmodule State do
     alias __MODULE__

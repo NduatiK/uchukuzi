@@ -4,9 +4,11 @@ defmodule UchukuziInterfaceWeb.EmailView do
   if Mix.env() == :dev do
     # @website "http://10.0.2.2:4000"
     @website "http://localhost:4000"
+    @assistant_website "http://192.168.42.220:4000"
     # @website "http://192.168.42.220:4000"
   else
-    @website "https://uchukuzi.herokuapp.com"
+    @website "http://localhost:4000"
+    @assistant_website "http://192.168.42.220:4000"
   end
 
   def render_manager_signup("html", %Uchukuzi.Roles.Manager{} = manager, token) do
@@ -39,7 +41,7 @@ defmodule UchukuziInterfaceWeb.EmailView do
   end
 
   def render_assistant_login("html", %Uchukuzi.Roles.CrewMember{} = assistant, token) do
-    link = "#{@website}/assistant_login?token=#{token}"
+    link = "#{@assistant_website}/assistant_login?token=#{token}"
 
     subline = "Use this link to login. The link is only valid for 1 hours."
 
@@ -49,16 +51,11 @@ defmodule UchukuziInterfaceWeb.EmailView do
     <strong>This link is only valid for the next 1 hour.</strong>
     """
 
-    renderHTML(
-      assistant.name,
-      subline,
-      body,
-      link
-    )
+    renderHTML(assistant.name, subline, body, link)
   end
 
   def render_assistant_login("text", %Uchukuzi.Roles.CrewMember{} = assistant, token) do
-    link = "#{@website}/assistant_login?token=#{token}"
+    link = "#{@assistant_website}/assistant_login?token=#{token}"
     subline = "Use this link to login. The link is only valid for 1 hours."
 
     body = """

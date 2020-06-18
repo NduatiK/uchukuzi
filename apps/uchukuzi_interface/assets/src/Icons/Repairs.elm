@@ -52,7 +52,7 @@ engineRepair attrs =
 
 frontCrossAxisRepair : List (Attribute msg) -> Element msg
 frontCrossAxisRepair attrs =
-    iconNamed "images/repairs/repair/front_cross_axis_repair.svg" (centerX :: alignTop :: attrs)
+    iconNamed "images/repairs/repair/front_cross_axis_repair.svg" (centerX :: attrs)
 
 
 rearCrossAxisRepair : List (Attribute msg) -> Element msg

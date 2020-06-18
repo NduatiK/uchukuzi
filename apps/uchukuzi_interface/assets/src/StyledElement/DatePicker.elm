@@ -8,6 +8,7 @@ import Html
 import Html.Attributes
 import Icons exposing (IconBuilder)
 import StyledElement exposing (wrappedInput)
+import Utils.DateParser as DateParser
 
 
 config : DatePicker.Settings
@@ -17,9 +18,9 @@ config =
             DatePicker.defaultSettings
     in
     { default
-        | dateFormatter = Date.format "yyyy-MM-dd"
-        , placeholder = "Select a date eg 2020-12-31"
-        , parser = Date.fromIsoString
+        | dateFormatter = Date.format "dd-MM-yyyy"
+        , placeholder = "Select a date eg 31-12-2020"
+        , parser = DateParser.fromDateString
     }
 
 

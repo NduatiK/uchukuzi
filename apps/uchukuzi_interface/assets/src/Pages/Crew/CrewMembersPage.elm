@@ -360,7 +360,6 @@ viewBus editedData edits inEditingMode bus =
                , alignTop
                , alignLeft
                , spacing 24
-               , height fill
                ]
         )
         [ row [ spacing 10 ]

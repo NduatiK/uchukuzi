@@ -456,9 +456,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     conn
     |> render("simple_routes.json", routes: routes)
   end
-
-  @spec route_for_assistant(%{query_params: map}, map, any) ::
-          {:error, :not_found} | Plug.Conn.t()
+ 
   def route_for_assistant(
         %{query_params: %{"travel_time" => travel_time}} = conn,
         _,

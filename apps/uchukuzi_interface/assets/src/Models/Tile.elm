@@ -23,7 +23,9 @@ type alias Tile =
 
 
 newTile location =
-    Tile location (offset location)
+    Tile
+        location
+        (offset <| location)
 
 
 
@@ -60,8 +62,8 @@ offset origin =
 
 contains : Location -> Tile -> Bool
 contains location tile =
-    ((tile.bottomLeft.lng < location.lng) && (location.lng < tile.topRight.lng))
-        && ((tile.bottomLeft.lat < location.lat) && (location.lat < tile.topRight.lat))
+    ((tile.bottomLeft.lng <= location.lng) && (location.lng < tile.topRight.lng))
+        && ((tile.bottomLeft.lat <= location.lat) && (location.lat < tile.topRight.lat))
 
 
 round10000 : Float -> Float
