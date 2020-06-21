@@ -30,8 +30,8 @@ defmodule Uchukuzi.Tracking do
 
     previous_report = BusServer.last_seen_status(bus_server)
 
-    # Update the bus location, speed, beaering...
-    BusServer.move(bus_server, report)
+    # Update the bus location, speed, bearing...
+    report = BusServer.move(bus_server, report)
 
     # Simulate the bus moving through the world
     # Return the tiles it crossed through

@@ -333,6 +333,7 @@ viewProfileIcon clickAttr =
     Input.button
         [ height (px 48)
         , alignTop
+        , Border.rounded 24
         , alignRight
         , clickAttr
         ]

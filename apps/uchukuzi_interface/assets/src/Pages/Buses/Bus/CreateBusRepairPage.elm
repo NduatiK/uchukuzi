@@ -51,19 +51,8 @@ type alias ValidRepair =
     }
 
 
-type Msg
-    = Submit
-    | ReceivedCreateResponse (WebData ())
-    | NoOp
-      --------
-    | StartedDragging Draggable
-    | StoppedDragging
-    | DropOn
-    | DraggedOver
-      --------
-    | Delete Int
-    | ChangedDescription Int String
-    | ChangedCost Int String
+maximumDescriptionLength =
+    500
 
 
 init : Int -> Session -> ( Model, Cmd Msg )
@@ -83,6 +72,21 @@ init bus session =
 
 
 -- UPDATE
+
+
+type Msg
+    = Submit
+    | ReceivedCreateResponse (WebData ())
+    | NoOp
+      --------
+    | StartedDragging Draggable
+    | StoppedDragging
+    | DropOn
+    | DraggedOver
+      --------
+    | Delete Int
+    | ChangedDescription Int String
+    | ChangedCost Int String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -144,7 +148,7 @@ update msg model =
                 repairs =
                     List.map
                         (\report ->
-                            if report.id == reportID && String.length description <= 600 then
+                            if report.id == reportID && String.length description <= maximumDescriptionLength then
                                 { report | description = description }
 
                             else
@@ -315,11 +319,11 @@ viewRecord problems repair =
             , column [ width fill, height fill, spacing 16 ]
                 [ row [ width fill ]
                     [ el [ Font.variant Font.smallCaps, Font.medium, alignTop ] (text (titleForPart repair.part))
-                    , el [ alignRight ] (StyledElement.plainButton [] { onPress = Just (Delete repair.id), label = Icons.trash [ Colors.fillErrorRed, alpha 1 ] })
+                    , el [ alignRight, moveUp 6 ] (StyledElement.plainButton [] { onPress = Just (Delete repair.id), label = Icons.trash [ Colors.fillErrorRed, alpha 1 ] })
                     ]
-                , column [ width fill, height fill ]
+                , column [ width fill, height fill, spacing 4 ]
                     [ el (alignRight :: Style.captionStyle)
-                        (text (String.fromInt (String.length repair.description) ++ "/500"))
+                        (text (String.fromInt (String.length repair.description) ++ "/" ++ String.fromInt maximumDescriptionLength))
                     , StyledElement.multilineInput [ width fill, height fill ]
                         { ariaLabel = "Description of repair"
                         , caption = Just "Description of repair"

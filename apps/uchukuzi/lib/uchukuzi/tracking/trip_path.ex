@@ -4,6 +4,16 @@ defmodule Uchukuzi.Tracking.TripPath do
   alias Uchukuzi.World.Tile
   alias Uchukuzi.World.ETA
 
+  @moduledoc """
+  Keeps track of the world and provides the following fuctionality:
+
+  * Route Learning
+  Learns the sequence of tiles followed by a bus on a given `Route`
+
+
+  * ETA Prediction
+  Given a stop along a route, predicts the time it will take to arrive
+  """
   defstruct [
     # Tiles we predict on
     :anticipated_tile_locs,
@@ -22,11 +32,9 @@ defmodule Uchukuzi.Tracking.TripPath do
     }
   end
 
-
   def new(anticipated_tile_locs, deviation_radius) do
     %TripPath{
-      anticipated_tile_locs:
-        anticipated_tile_locs,
+      anticipated_tile_locs: anticipated_tile_locs,
       deviation_radius: deviation_radius
     }
   end

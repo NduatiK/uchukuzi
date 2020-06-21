@@ -9,14 +9,6 @@ defmodule Uchukuzi.World.WorldManager do
   * Tile History
   Receives information on the time taken to cross a `Tile` for
   later use in making ETA predictions
-
-
-  * Route Learning
-  Learns the sequence of tiles followed by a bus on a given `Route`
-
-
-  * ETA Prediction
-  Given a stop along a route, predicts the time it will take to arrive
   """
   @name __MODULE__
 

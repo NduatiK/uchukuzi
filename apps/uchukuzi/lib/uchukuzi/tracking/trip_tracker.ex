@@ -221,7 +221,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
     data = %{data | trip_path: trip_path}
 
     last_notified_tile = data.last_notified_tile
-# Prevent repeat approach alerts
+    # Prevent repeat approach alerts
     data =
       case data.trip_path.eta do
         [] ->
@@ -319,6 +319,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
         school_tile = Tile.new(data.school.perimeter.center).coordinate
 
         expected_tiles
+        |> Enum.drop_while(fn x -> x == school_tile end)
         |> Enum.filter(&(&1 != school_tile))
         |> TripPath.new(deviation_radius)
         |> TripPath.update_predictions(report)

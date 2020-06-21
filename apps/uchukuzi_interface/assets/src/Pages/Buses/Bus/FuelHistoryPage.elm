@@ -190,13 +190,20 @@ view model viewHeight =
         ]
         [ WebDataView.view model.reports
             (\reports ->
-                row [ width fill, height fill ]
-                    [ column [ width fill, height fill ]
-                        [ viewGraph
-                        , viewGroupedReports model reports
+                if reports == [] then
+                    column [ width fill, centerX, centerY, spacing 4 ]
+                        [ text "No fuel data available"
+                        , text "Click the button below ↓ to start tracking fuel purchases"
                         ]
-                    , el [ width (px 36) ] none
-                    ]
+
+                else
+                    row [ width fill, height fill ]
+                        [ column [ width fill, height fill ]
+                            [ viewGraph
+                            , viewGroupedReports model reports
+                            ]
+                        , el [ width (px 36) ] none
+                        ]
             )
         ]
 

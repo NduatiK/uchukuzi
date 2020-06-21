@@ -159,10 +159,31 @@ defmodule Uchukuzi.World.Tile do
             [Distance.distance(finish, {x, y})]
           end
 
+        # cond do
+        #   distance_before and Distance.distance(start, {x, y}) > 0 ->
+        #     [Distance.distance(start, {x, y})]
+
+        #   not distance_before and Distance.distance(finish, {x, y}) > 0 ->
+        #     [Distance.distance(finish, {x, y})]
+
+        #   true ->
+        #     []
         _ ->
           []
       end
     end)
+    # |> IO.inspect
+    |> (fn list ->
+          case list do
+            [x, x] ->
+              # Crossed through the same point on two lines
+              # ie only touched one vertex
+              []
+
+            _ ->
+              list
+          end
+        end).()
   end
 
   @doc """
@@ -199,7 +220,9 @@ defmodule Uchukuzi.World.Tile do
               left_tile.coordinate.lat + lat * size
             )
 
-          Tile.new(location, size)
+            location
+          |> rounded()
+          |> Tile.new(size)
         end
       end
 

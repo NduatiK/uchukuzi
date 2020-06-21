@@ -12,7 +12,7 @@ defmodule Uchukuzi.School.School do
     has_many(:buses, Bus)
     has_many(:routes, Route)
 
-    field(:deviation_radius, :integer, default: 1)
+    field(:deviation_radius, :integer, default: 2)
   end
 
   def new(name, perimeter) do

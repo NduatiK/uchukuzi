@@ -18,8 +18,8 @@ defmodule Uchukuzi.World do
       # so return an empty list
       []
     else
-      current_report = Report.to_report(current_report)
-      previous_report = Report.to_report(previous_report)
+      current_report = current_report
+      previous_report = previous_report
 
       # This is where the bus was the last time it reported
       previous_tile = tile_for(previous_report)
@@ -52,7 +52,7 @@ defmodule Uchukuzi.World do
         TileSupervisor.leave(bus_server, previous_tile, exit_time)
 
         # Let each of the intermediate tiles know that they were crossed
-        # and that the crossing took on average x second
+        # and that the crossing took on average x seconds
         WorldManager.crossed_tiles(
           crossed_tiles,
           bus_server,

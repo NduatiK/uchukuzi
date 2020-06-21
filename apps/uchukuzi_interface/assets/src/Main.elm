@@ -6,6 +6,7 @@ import Api
 import Browser
 import Browser.Events
 import Browser.Navigation as Nav
+import Colors
 import Dict exposing (Dict)
 import Element exposing (..)
 import Json.Decode as Json exposing (Value)
@@ -827,6 +828,14 @@ view appModel =
                     { borderColor = Nothing
                     , backgroundColor = Nothing
                     , shadow = Nothing
+
+                    -- Just
+                    --     { color =
+                    --         Colors.purple
+                    --     , offset = ( 0, 0 )
+                    --     , blur = 0
+                    --     , size = 3
+                    --     }
                     }
                 ]
             }

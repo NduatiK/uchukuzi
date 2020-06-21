@@ -263,7 +263,7 @@ viewTable buses =
                                     }
 
                             Nothing ->
-                                none
+                                text "-"
               }
             ]
         }

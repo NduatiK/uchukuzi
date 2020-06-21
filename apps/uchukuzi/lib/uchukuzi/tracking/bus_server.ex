@@ -13,7 +13,7 @@ defmodule Uchukuzi.Tracking.BusServer do
     alias __MODULE__
     defstruct [:bus, :school, :report]
 
-    def set_location(%State{} = state, %Report{} = report) do
+    def update_state(%State{} = state, %Report{} = report) do
       # with prev_report when not is_nil(prev_report) <- state.report,
       #      comparison when comparison in [:gt, :eq] <-
       #        DateTime.compare(report.time, prev_report.time) do
@@ -36,7 +36,7 @@ defmodule Uchukuzi.Tracking.BusServer do
           | report: %Report{report | speed: s, bearing: bearing}
         }
       else
-        nil -> %{state | report: %{report | speed: 0, bearing: 0}}
+        nil -> %{state | report: %Report{report | speed: 0, bearing: 0}}
         :lt -> state
       end
     end
@@ -89,39 +89,20 @@ defmodule Uchukuzi.Tracking.BusServer do
     {:ok, state}
   end
 
-  # *************************** CLIENT ***************************#
 
-  def bus(bus_server),
-    do: GenServer.cast(bus_server, {:bus})
-
-  def move(bus_server, %Report{} = report),
-    do: GenServer.call(bus_server, {:move, report})
-
-  def last_seen_location(bus_server),
-    do: GenServer.call(bus_server, :last_seen).location
-
-  def last_seen_status(bus_server),
-    do: GenServer.call(bus_server, :last_seen)
-
-  def broadcast_location_data(bus_server),
-    do: GenServer.call(bus_server, :broadcast_location_data)
-
-  def in_school?(bus_server),
-    do: GenServer.call(bus_server, :in_school?)
-
-  # *************************** SERVER ***************************#
+  ##################### SERVER #####################
 
   @impl true
   def handle_call({:move, report}, _from, state) do
-    state = State.set_location(state, report)
+    state = State.update_state(state, report)
 
     # Add that report to the trip tracker
     TripTracker.add_report(state.bus, State.last_seen(state))
 
     if State.in_school?(state) do
-      {:reply, state, state, :hibernate}
+      {:reply, State.last_seen(state), state, :hibernate}
     else
-      {:reply, state, state}
+      {:reply, State.last_seen(state), state}
     end
   end
 
@@ -140,4 +121,25 @@ defmodule Uchukuzi.Tracking.BusServer do
   def handle_call(:in_school?, _from, state) do
     {:reply, State.in_school?(state), state}
   end
+
+
+  ##################### CLIENT#####################
+
+  def bus(bus_server),
+    do: GenServer.cast(bus_server, {:bus})
+
+  def move(bus_server, %Report{} = report),
+    do: GenServer.call(bus_server, {:move, report})
+
+  def last_seen_location(bus_server),
+    do: GenServer.call(bus_server, :last_seen).location
+
+  def last_seen_status(bus_server),
+    do: GenServer.call(bus_server, :last_seen)
+
+  def broadcast_location_data(bus_server),
+    do: GenServer.call(bus_server, :broadcast_location_data)
+
+  def in_school?(bus_server),
+    do: GenServer.call(bus_server, :in_school?)
 end
