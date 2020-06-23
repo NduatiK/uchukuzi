@@ -61,7 +61,7 @@ defmodule UchukuziInterfaceWeb.CustomerSocket.PredictionsChannel do
     )
   end
 
-  intercept ["approaching", "update"]
+  # intercept ["approaching", "update"]
 
   defp authorized_to_receive?(socket, msg) do
     case socket.assigns.student_ids
