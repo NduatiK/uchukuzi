@@ -10,7 +10,6 @@ defmodule Uchukuzi.Common.Location do
     field(:lng, :float)
   end
 
-
   @spec new(any, any) :: :error | {:ok, Uchukuzi.Common.Location.t()}
   def new(lng, lat) do
     if lng >= -180 and lng <= 180 and lat >= -90 and lat <= 90 do
@@ -37,12 +36,19 @@ defmodule Uchukuzi.Common.Location do
     changeset
     |> validate_number(:lng, greater_than_or_equal_to: -180, less_than_or_equal_to: 180)
   end
+
   @doc """
   The distance between two locations in meters
   """
+
   def distance_between(%Location{} = loc1, %Location{} = loc2) do
     [loc1, loc2]
     |> Enum.map(&to_coord/1)
+    |> Distance.GreatCircle.distance()
+  end
+
+  def distance_between({_, _} = loc1, {_, _} = loc2) do
+    [loc1, loc2]
     |> Distance.GreatCircle.distance()
   end
 

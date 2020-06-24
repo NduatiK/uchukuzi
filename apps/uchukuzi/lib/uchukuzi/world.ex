@@ -1,4 +1,18 @@
 defmodule Uchukuzi.World do
+  @moduledoc """
+  The World module modules the real-world by maintaining a map of the world
+  and keeping track of where each bus is in relation with world.any()
+
+  The world is represented by a grid of `Uchukuzi.World.Tile`s that contain
+  information about the time when each bus entered the grid and the amount of
+  time it took to cross the tile.
+
+  When a bus exits a tile, information about the cross-time is forwarded
+  to the `Uchukuzi.World.ETA` module. The module stores this information and
+  later performs learning on it. The models built by the `Uchukuzi.World.ETA`
+  module are later used to predict the time taken to cross through a sequence
+  of tiles when making a trip.
+  """
   alias Uchukuzi.Common.Report
   alias Uchukuzi.Common.Location
   alias Uchukuzi.World.WorldManager
@@ -107,7 +121,7 @@ defmodule Uchukuzi.World do
     # Filter out non intersecting
     # `Tile.distance_inside` returns {:ok, distance} only if the tile is
     # crossed by the line
-    |> Enum.map(&{&1, Tile.distance_inside(&1, path)})
+    |> Enum.map(&{&1, Tile.crossed_by?(&1, path)})
     |> Enum.flat_map(fn {tile, result} ->
       case result do
         {:ok, distance} -> [{tile, distance}]
@@ -123,7 +137,7 @@ defmodule Uchukuzi.World do
   defp calculate_time(previous_report, current_report, previous_tile, crossed_tiles, current_tile) do
     # Get the distance travelled assuming a straight line
     total_distance =
-      Distance.distance(
+      Uchukuzi.Common.Location.distance_between(
         Report.to_coord(previous_report),
         Report.to_coord(current_report)
       )

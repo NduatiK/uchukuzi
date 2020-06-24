@@ -250,7 +250,7 @@ defmodule UchukuziInterfaceWeb.AuthController do
     def update_password(conn, %{"old_password" => old_password, "new_password" => new_password},manager) do
       with {:ok, manager} <- Roles.login_manager(manager.email, old_password),
       true <- manager.email_verified,
-      {:ok, manager} <- Roles.update_manager_password(manager, new_password)do
+      {:ok, _manager} <- Roles.update_manager_password(manager, new_password)do
         conn
         |> resp(200, "{}")
       else

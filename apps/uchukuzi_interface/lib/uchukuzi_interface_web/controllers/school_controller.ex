@@ -393,7 +393,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   end
 
   def create_route(conn, params, school_id) do
-    with {:ok, route} <- School.create_route(school_id, params) do
+    with {:ok, _route} <- School.create_route(school_id, params) do
       conn
       |> resp(200, "{}")
     end
@@ -426,7 +426,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
-  def delete_route(conn, %{"route_id" => route_id} = params, school_id) do
+  def delete_route(conn, %{"route_id" => route_id}, school_id) do
     with {:ok, _route} <-
            School.delete_route(school_id, route_id) do
       conn
@@ -434,7 +434,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     end
   end
 
-  def copy_trip(conn, %{"route_id" => route_id, "trip_id" => trip_id} = params, school_id) do
+  def copy_trip(conn, %{"route_id" => route_id, "trip_id" => trip_id}, school_id) do
     with {:ok, _route} <-
            School.update_route_from_trip(school_id, route_id, trip_id) do
       conn
@@ -456,7 +456,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
     conn
     |> render("simple_routes.json", routes: routes)
   end
- 
+
   def route_for_assistant(
         %{query_params: %{"travel_time" => travel_time}} = conn,
         _,

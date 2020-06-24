@@ -47,17 +47,20 @@ defmodule Uchukuzi.World.Tile do
     |> to_polygon()
     |> to_paths
     |> distances_for_intersecting_paths(path, is_leaving)
-    |> Enum.sort(&>=/2)
-    |> (fn
-          x ->
-            case x do
-              [head | _] ->
-                {:ok, head}
+    |> Enum.map(fn {_intersection_point, x} -> {:ok, x} end)
+    |> Enum.max_by(
+      fn {_, val} -> val end,
+      fn -> :no_intersections end
+    )
+  end
 
-              [] ->
-                :error
-            end
-        end).()
+  def crossed_by?(tile, %Geo.LineString{} = path, is_leaving \\ false) do
+    tile
+    |> to_polygon()
+    |> to_paths
+    |> distances_for_intersecting_paths(path, is_leaving)
+    |> remove_false_crosses()
+    |> (&(Enum.count(&1) > 0)).()
   end
 
   @doc """
@@ -127,9 +130,9 @@ defmodule Uchukuzi.World.Tile do
   end
 
   defp get_opposite_coordinate(%Tile{
-        coordinate: %Uchukuzi.Common.Location{lat: origin_lat, lng: origin_lng}
-      })
-      when origin_lat + @default_tile_size < 90 and origin_lng + @default_tile_size < 180 do
+         coordinate: %Uchukuzi.Common.Location{lat: origin_lat, lng: origin_lng}
+       })
+       when origin_lat + @default_tile_size < 90 and origin_lng + @default_tile_size < 180 do
     %Location{
       lng: origin_lng + @default_tile_size,
       lat: origin_lat + @default_tile_size
@@ -172,33 +175,53 @@ defmodule Uchukuzi.World.Tile do
   defp distances_for_intersecting_paths(
          paths,
          %Geo.LineString{coordinates: [start, finish]},
-         distance_before
+         is_leaving = true
+       ) do
+    distances_for_intersecting_paths(
+      paths,
+      %Geo.LineString{coordinates: [finish, start]},
+      is_leaving
+    )
+  end
+
+  defp distances_for_intersecting_paths(
+         paths,
+         %Geo.LineString{coordinates: [start, finish]},
+         _is_leaving
        ) do
     paths
-    |> Enum.flat_map(fn %Geo.LineString{coordinates: [q1, q2]} ->
-      case SegSeg.intersection(start, finish, q1, q2) do
-        {true, _, {x, y}} ->
-          if distance_before do
-            [Distance.distance(start, {x, y})]
-          else
-            [Distance.distance(finish, {x, y})]
-          end
-
+    |> Enum.map(fn %Geo.LineString{coordinates: [q1, q2]} ->
+      with {true, intersection_type, point} <-
+             SegSeg.intersection(start, finish, q1, q2) do
+        [{intersection_type, Uchukuzi.Common.Location.distance_between(start, point)}]
+      else
         _ ->
           []
       end
     end)
-    # |> IO.inspect
-    |> (fn list ->
-          case list do
-            [x, x] ->
-              # Crossed through the same point on two lines
-              # ie only touched one vertex
-              []
+    |> Enum.flat_map(& &1)
+    |> IO.inspect()
+  end
 
+  # Remove distances that
+  defp remove_false_crosses(distance_data) do
+    distance_data
+    |> Enum.group_by(
+      fn {intersection_position, _} -> intersection_position end,
+      fn {_, val} -> val end
+    )
+    |> (fn map ->
+          with 1 <- Kernel.map_size(map),
+               %{vertex: [x, x]} <- map do
+            # Crossed through the same point on two lines
+            # ie only touched one vertex
+            %{}
+          else
             _ ->
-              list
+              map
           end
         end).()
+    |> Map.values()
+    |> Enum.flat_map(& &1)
   end
 end
