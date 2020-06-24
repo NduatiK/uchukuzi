@@ -15,15 +15,16 @@ defmodule Uchukuzi.Roles.Manager do
     timestamps()
   end
 
-  def new(name, email, password) do
-    %Manager{}
-    |> registration_changeset(%{name: name, email: email, password: password})
-  end
+  # def new(name, email, password) do
+  #   %Manager{}
+  #   |> registration_changeset(%{name: name, email: email, password: password})
+  # end
 
   def changeset(schema, params) do
     schema
     |> cast(params, [:password | __MODULE__.__schema__(:fields)])
     |> validate_required([:name, :email, :password])
+    |> Model.downcase_email()
     |> Validation.validate_email()
     |> unique_constraint(:email)
   end
@@ -32,6 +33,6 @@ defmodule Uchukuzi.Roles.Manager do
     model
     |> changeset(params)
     |> validate_length(:password, min: 6, max: 100)
-    |> put_pass_hash()
+    |> Model.put_pass_hash()
   end
 end

@@ -4,6 +4,7 @@ defmodule Uchukuzi.Roles.Guardian do
   """
   use Uchukuzi.Roles.Model
 
+
   schema "guardians" do
     field(:name, :string)
     field(:email, :string)
@@ -14,26 +15,13 @@ defmodule Uchukuzi.Roles.Guardian do
     timestamps()
   end
 
-  def new(name, email) do
-    %Guardian{}
-    |> changeset(%{name: name, email: email})
-  end
-
   def changeset(schema, params) do
     changeset =
       schema
       |> cast(params, __MODULE__.__schema__(:fields))
       |> validate_required([:name, :email])
-      |> update_change(:email, &String.downcase/1)
+      |> Model.downcase_email()
       |> Validation.validate_email()
-
-    case changeset do
-      %Ecto.Changeset{valid?: true, changes: %{email: _}} ->
-        changeset
-        |> unique_constraint(:email)
-
-      _ ->
-        changeset
-    end
+      |> unique_constraint(:email)
   end
 end

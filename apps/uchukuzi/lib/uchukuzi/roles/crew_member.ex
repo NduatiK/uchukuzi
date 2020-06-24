@@ -24,6 +24,7 @@ defmodule Uchukuzi.Roles.CrewMember do
     |> cast(params, __MODULE__.__schema__(:fields))
     |> validate_required([:name, :email, :phone_number, :role])
     |> validate_inclusion(:role, @roles)
+    |> Model.downcase_email()
     |> Validation.validate_email()
     |> Validation.validate_phone_number()
     |> unique_constraint(:email)

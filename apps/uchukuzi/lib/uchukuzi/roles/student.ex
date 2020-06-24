@@ -45,6 +45,7 @@ defmodule Uchukuzi.Roles.Student do
     |> cast(params, [:name, :email, :school_id, :route_id, :guardian_id, :travel_time])
     |> validate_required([:name, :travel_time])
     |> cast_embed(:home_location, with: &Location.changeset/2)
+    |> Model.downcase_email()
     |> Validation.validate_email()
     |> unique_constraint(:email)
   end
