@@ -1,12 +1,9 @@
 defmodule Uchukuzi.World.Tile do
-  # ~ 555m
-  # @default_tile_size_metres 111_111 / 100 / 2
-  # @default_tile_size @default_tile_size_metres / 111_111
   @default_tile_size_metres 111_111 / 100 / 2 / 2
   @default_tile_size 0.0025
 
   @moduledoc """
-  A square on the world's geographical
+  A square representing a region in the world
 
   The `coordinate` is the location of the bottom left most
   part of the grid tile.
@@ -35,84 +32,19 @@ defmodule Uchukuzi.World.Tile do
   alias __MODULE__
   alias Uchukuzi.Common.Location
 
-  @enforce_keys [:coordinate, :opposite_coordinate]
-  defstruct [:coordinate, :opposite_coordinate, :polygon]
+  @enforce_keys [:coordinate]
+  defstruct [:coordinate]
 
-  defp get_size(size) do
-    @default_tile_size
-  end
-
-  def new(%Location{} = location, size \\ nil) do
-    size = get_size(size)
-
-    coordinate =
-      location
-      |> origin_of_tile(size)
-
-    opposite_coordinate =
-      coordinate
-      |> offset(size)
-
-    polygon = %Geo.Polygon{
-      coordinates: [
-        [
-          {coordinate.lng, coordinate.lat},
-          {opposite_coordinate.lng, coordinate.lat},
-          {opposite_coordinate.lng, opposite_coordinate.lat},
-          {coordinate.lng, opposite_coordinate.lat},
-          {coordinate.lng, coordinate.lat}
-        ]
-      ]
-    }
-
-    %Tile{coordinate: coordinate, opposite_coordinate: opposite_coordinate, polygon: polygon}
-  end
-
-  defp offset(%Location{} = origin, offset) do
-    lat =
-      if origin.lat + offset > 90 do
-        90
-      else
-        origin.lat + offset
-      end
-
-    lng =
-      if origin.lng + offset > 180 do
-        180
-      else
-        origin.lng + offset
-      end
-
-    {:ok, location} = Location.new(lng, lat)
-    location |> rounded()
-  end
-
-  @doc """
-  Returns the origin of the grid tile that the point should be in
-  """
-  def origin_of_tile(%Location{} = point, size \\ nil) do
-    size = get_size(size)
-
-    # Use floor so as to always move down and left,
-    # even on negative coordinates
-    {:ok, location} =
-      Location.new(
-        :math.floor(point.lng / size) * size,
-        :math.floor(point.lat / size) * size
-      )
-
-    location |> rounded()
-  end
-
-  def rounded(%Location{lat: lat, lng: lng}) do
-    %Location{lat: Float.round(lat, 4), lng: Float.round(lng, 4)}
+  def new(%Location{} = location) do
+    %Tile{coordinate: to_origin(location)}
   end
 
   @doc """
   Determines the distance covered by a vehicle as it was moving into or out of a Tile
   """
   def distance_inside(tile, %Geo.LineString{} = path, is_leaving \\ false) do
-    tile.polygon
+    tile
+    |> to_polygon()
     |> to_paths
     |> distances_for_intersecting_paths(path, is_leaving)
     |> Enum.sort(&>=/2)
@@ -128,17 +60,110 @@ defmodule Uchukuzi.World.Tile do
         end).()
   end
 
+  @doc """
+  Given two tiles, calculate all the tiles through which a straight line connecting
+  the two *could* pass through.
+  """
+  def tiles_between(%Tile{} = start_tile, %Tile{} = end_tile) do
+    start_lng = start_tile.coordinate.lng
+    start_lat = start_tile.coordinate.lat
+
+    lat_diff = round((end_tile.coordinate.lat - start_tile.coordinate.lat) / @default_tile_size)
+    lng_diff = round((end_tile.coordinate.lng - start_tile.coordinate.lng) / @default_tile_size)
+
+    for lat <- 0..lat_diff, lng <- 0..lng_diff do
+      Location.new(
+        Float.round(start_lng + lng * @default_tile_size, 4),
+        Float.round(start_lat + lat * @default_tile_size, 4)
+      )
+    end
+    |> Enum.reject(&(&1 == :error))
+    |> Enum.map(fn {:ok, location} -> location end)
+    |> Enum.reject(&(&1 == start_tile || &1 == end_tile || &1 == nil))
+  end
+
+  def nearby(tile, radius \\ 1) do
+    for lat_offset <- -radius..radius,
+        lng_offset <- -radius..radius,
+        not (lat_offset == 0 and lng_offset == 0) do
+      {:ok, location} =
+        Location.new(
+          tile.coordinate.lng + lng_offset * @default_tile_size,
+          tile.coordinate.lat + lat_offset * @default_tile_size
+        )
+
+      Tile.new(location)
+    end
+  end
+
+  def nearby?(tile1, tile2, radius \\ 1)
+
+  def nearby?(%Tile{} = tile1, %Tile{} = tile2, radius) do
+    nearby?(tile1.coordinate, tile2.coordinate, radius)
+  end
+
+  def nearby?(%Location{} = tile1, %Location{} = tile2, radius) do
+    round(abs(tile1.lat - tile2.lat) / (radius * @default_tile_size)) <= 1 &&
+      round(abs(tile1.lng - tile2.lng) / (radius * @default_tile_size)) <= 1
+  end
+
+  # Returns the origin of the grid tile that the point should be in
+  defp to_origin(%Location{} = point) do
+    size = @default_tile_size
+
+    # Use floor so as to always move down and left,
+    # even on negative coordinates
+    {:ok, location} =
+      Location.new(
+        :math.floor(point.lng / size) * size,
+        :math.floor(point.lat / size) * size
+      )
+
+    location |> rounded()
+  end
+
+  defp rounded(%Location{lat: lat, lng: lng}) do
+    %Location{lat: Float.round(lat, 4), lng: Float.round(lng, 4)}
+  end
+
+  defp get_opposite_coordinate(%Tile{
+        coordinate: %Uchukuzi.Common.Location{lat: origin_lat, lng: origin_lng}
+      })
+      when origin_lat + @default_tile_size < 90 and origin_lng + @default_tile_size < 180 do
+    %Location{
+      lng: origin_lng + @default_tile_size,
+      lat: origin_lat + @default_tile_size
+    }
+    |> rounded()
+  end
+
+  # Converts a tile into a polygon
+  defp to_polygon(%Tile{coordinate: coordinate} = tile) do
+    opposite_coordinate =
+      tile
+      |> get_opposite_coordinate()
+
+    %Geo.Polygon{
+      coordinates: [
+        [
+          {coordinate.lng, coordinate.lat},
+          {opposite_coordinate.lng, coordinate.lat},
+          {opposite_coordinate.lng, opposite_coordinate.lat},
+          {coordinate.lng, opposite_coordinate.lat},
+          {coordinate.lng, coordinate.lat}
+        ]
+      ]
+    }
+  end
+
   # Converts a polygon into its set of constituent lines
-  defp to_paths(%Geo.Polygon{coordinates: coordinates}) do
+  defp to_paths(%Geo.Polygon{coordinates: [coordinates]}) do
     coordinates
-    |> hd
-    |> Enum.reduce({[], nil}, fn curr, acc ->
-      case acc do
-        {paths, nil} -> {paths, curr}
-        {paths, prev} -> {[%Geo.LineString{coordinates: [prev, curr]} | paths], curr}
-      end
+    # Join each point to the next point
+    |> Enum.zip(coordinates |> Enum.drop(1))
+    |> Enum.map(fn {point1, point2} ->
+      %Geo.LineString{coordinates: [point1, point2]}
     end)
-    |> (fn {paths, _} -> paths end).()
   end
 
   # Given a list of paths and a path A,
@@ -159,15 +184,6 @@ defmodule Uchukuzi.World.Tile do
             [Distance.distance(finish, {x, y})]
           end
 
-        # cond do
-        #   distance_before and Distance.distance(start, {x, y}) > 0 ->
-        #     [Distance.distance(start, {x, y})]
-
-        #   not distance_before and Distance.distance(finish, {x, y}) > 0 ->
-        #     [Distance.distance(finish, {x, y})]
-
-        #   true ->
-        #     []
         _ ->
           []
       end
@@ -184,110 +200,5 @@ defmodule Uchukuzi.World.Tile do
               list
           end
         end).()
-  end
-
-  @doc """
-  Given two tiles, calculate all the tiles through which a straight line connecting
-  the two *could* pass through.
-  """
-  def tiles_between(%Tile{} = start_tile, %Tile{} = end_tile, size \\ nil) do
-    size = get_size(size)
-
-    {left_tile, right_tile} =
-      if start_tile.coordinate.lat <= end_tile.coordinate.lat do
-        {start_tile, end_tile}
-      else
-        {end_tile, start_tile}
-      end
-
-    {top_tile, bottom_tile} =
-      if start_tile.coordinate.lng >= end_tile.coordinate.lng do
-        {start_tile, end_tile}
-      else
-        {end_tile, start_tile}
-      end
-
-    horizontal = round((right_tile.coordinate.lat - left_tile.coordinate.lat) / size)
-
-    vertical = round((top_tile.coordinate.lng - bottom_tile.coordinate.lng) / size)
-
-    grouped_tiles =
-      for lat <- 0..horizontal do
-        for lng <- 0..vertical do
-          {:ok, location} =
-            Location.new(
-              bottom_tile.coordinate.lng + lng * size,
-              left_tile.coordinate.lat + lat * size
-            )
-
-            location
-          |> rounded()
-          |> Tile.new(size)
-        end
-      end
-
-    #  # TODO - Handle special case at -90/90° boundary
-    #  size = get_size(size)
-
-    #  vertical = round((end_tile.coordinate.lat - start_tile.coordinate.lat) / size)
-
-    #  horizontal =      round((end_tile.coordinate.lng - start_tile.coordinate.lng) / size)
-
-    #  grouped_tiles =
-    #    for lat <- 0..vertical do
-    #      for lng <- 0..horizontal do
-    #        {:ok, location} =
-    #          Location.new(
-    #            Float.round(start_tile.coordinate.lng + lng * size, 4),
-    #            Float.round(start_tile.coordinate.lat + lat * size, 4)
-    #          )
-
-    #          Tile.new(location, size)
-    #      end
-    #    end
-
-    # grouped_tiles
-    # |> Enum.flat_map(& &1)
-    # |> Enum.reject(&(&1 == start_tile || &1 == end_tile))
-
-    grouped_tiles
-    |> Enum.flat_map(& &1)
-    |> Enum.reject(&(&1 == start_tile || &1 == end_tile))
-  end
-
-  @doc """
-  Generates a unique tuple for a tile
-  """
-  def name(%Tile{} = tile), do: tile.coordinate
-
-  def nearby(tile, radius \\ 1) do
-    for lat <- -radius..radius do
-      for lng <- -radius..radius do
-        if lat == 0 and lng == 0 do
-          nil
-        else
-          {:ok, location} =
-            Location.new(
-              tile.coordinate.lng + lng * @default_tile_size,
-              tile.coordinate.lat + lat * @default_tile_size
-            )
-
-          Tile.new(location, @default_tile_size)
-        end
-      end
-    end
-    |> Enum.flat_map(& &1)
-    |> Enum.filter(fn x -> x != nil end)
-  end
-
-  def nearby?(tile1, tile2, radius \\ 1)
-
-  def nearby?(%Tile{} = tile1, %Tile{} = tile2, radius) do
-    nearby?(tile1.coordinate, tile2.coordinate, radius)
-  end
-
-  def nearby?(%Location{} = tile1, %Location{} = tile2, radius) do
-    round(abs(tile1.lat - tile2.lat) / (radius * @default_tile_size)) <= 1 &&
-      round(abs(tile1.lng - tile2.lng) / (radius * @default_tile_size)) <= 1
   end
 end
