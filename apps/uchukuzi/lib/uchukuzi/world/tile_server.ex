@@ -2,11 +2,13 @@ defmodule Uchukuzi.World.TileServer do
   use GenServer, restart: :transient
 
   @moduledoc """
-  A `TileServer` is a process that keeps track of geographical regions
-  in the real world as they relate to the location of vehicles
+  This module keeps track of which vehicles are in a specific `Tile`
+  and, once the bus leaves, reports on how long it took to cross the tile.
+
+  The tile is born when a bus crosses into its region and
+  dies when it no longer hosts any buses.
   """
 
-  # alias __MODULE__
   alias Uchukuzi.Common.Location
   alias Uchukuzi.World.Tile
   alias Uchukuzi.World.WorldManager
@@ -17,6 +19,8 @@ defmodule Uchukuzi.World.TileServer do
 
   @impl true
   def init(%Tile{} = tile) do
+    # pids here refers to the bus servers that have
+    # reported that their bus is in the tile
     state = %{
       tile: tile,
       pids: %{}
@@ -26,7 +30,7 @@ defmodule Uchukuzi.World.TileServer do
   end
 
   def via_tuple(%Location{} = location),
-    do: Uchukuzi.service_name({__MODULE__, location |> Tile.origin_of_tile()})
+    do: Uchukuzi.service_name({__MODULE__, location |> Tile.new() |> (& &1.coordinate).()})
 
   @impl true
   def handle_call({:enter, pid, entry_time}, _from, state) do
@@ -35,24 +39,21 @@ defmodule Uchukuzi.World.TileServer do
       ref: Process.monitor(pid)
     }
 
-    {:reply, :ok, put_in(state, [:pids, pid], record)}
+    updated_state =
+      state
+      |> put_in([:pids, pid], record)
+
+    {:reply, :ok, updated_state}
   end
 
   @impl true
   def handle_call({:leave, pid, exit_time}, _from, state) do
-    state =
-      if state.pids[pid] != nil do
-        WorldManager.crossed_tile(
-          state.tile,
-          pid,
-          DateTime.diff(exit_time, state.pids[pid].entry_time),
-          state.pids[pid].entry_time
-        )
+    cross_time = DateTime.diff(exit_time, state.pids[pid].entry_time)
 
-        remove(state, pid)
-      else
-        state
-      end
+    updated_state =
+      state
+      |> report_cross_time(pid, cross_time)
+      |> remove(pid)
 
     if state.pids == %{} do
       {:stop, :normal, :ok, state}
@@ -63,7 +64,12 @@ defmodule Uchukuzi.World.TileServer do
 
   @impl true
   def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
+    # If the bus server dies somehow, stop monitoring it.
     {:noreply, remove(state, pid)}
+  end
+
+  def handle_info(_, _) do
+    # Handle other info messages
   end
 
   defp remove(state, pid) do
@@ -72,5 +78,18 @@ defmodule Uchukuzi.World.TileServer do
     end
 
     %{state | pids: Map.delete(state.pids, pid)}
+  end
+
+  defp report_cross_time(state, pid, cross_time) do
+    if state.pids[pid] != nil do
+      WorldManager.crossed_tile(
+        state.tile,
+        pid,
+        cross_time,
+        state.pids[pid].entry_time
+      )
+    end
+
+    state
   end
 end
