@@ -1,12 +1,8 @@
 defmodule Uchukuzi.Common.Geofence do
   use Uchukuzi.School.Model
 
-  import Uchukuzi.Common.Location, only: [is_location: 1]
-
   @types ["school", "stay_inside", "never_enter"]
 
-  # @enforce_keys [:type]
-  # defstruct [:type, :perimeter, :center, :radius]
   @primary_key false
   embedded_schema do
     field(:type, :string)
@@ -18,66 +14,55 @@ defmodule Uchukuzi.Common.Geofence do
   def school_changeset(schema \\ %__MODULE__{}, params),
     do: changeset(schema, Map.put(params, :type, "school"))
 
-  def changeset(schema \\ %__MODULE__{}, params)
+  defp changeset(schema \\ %__MODULE__{}, params)
 
-  def changeset(schema, %{type: _type, radius: _radius, center: _center} = params) do
+  defp changeset(schema, %{type: _type, radius: _radius, center: _center} = params) do
     schema
     |> cast(params, [:type, :radius])
     |> validate_required([:type, :radius])
     |> cast_embed(:center, with: &Location.changeset/2)
   end
 
-  def changeset(schema, %{type: _type, perimeter: _perimeter} = params) do
+  defp changeset(schema, %{type: _type, perimeter: _perimeter} = params) do
     schema
     |> cast(params, [:type])
     |> validate_required([:type])
     |> cast_embed(:perimeter, with: &Location.changeset/2)
   end
 
-  def new_school_fence(%{lat: _lat, lng: _lng} = center, radius)
-      when is_number(radius) do
-    %Geofence{}
-    |> changeset(%{type: "school", center: center, radius: radius})
-  end
-
-  def new_inside(perimeter), do: new("stay_inside", perimeter)
-
-  def new_stay_outside(perimeter), do: new("never_enter", perimeter)
-
   defp new(type, perimeter) when is_list(perimeter) when type in @types do
     %Geofence{}
     |> changeset(%{type: type, perimeter: perimeter})
     end
 
+  @spec contains_point?(Uchukuzi.Common.Geofence.t(), Uchukuzi.Common.Location.t()) :: boolean
   def contains_point?(%Geofence{type: "school"} = geofence, %Location{} = location) do
-    # The school radius is magnified to capture points as early as possible
+    # The school radius is extended to capture arrival points as early as possible
     Location.distance_between(geofence.center, location) <= (geofence.radius + 10)
   end
 
-  @spec contains_point?(Uchukuzi.Common.Geofence.t(), Uchukuzi.Common.Location.t()) :: boolean
   def contains_point?(%Geofence{} = geofence, %Location{} = location) do
-    perimeter_points =
+    perimeter =
       geofence.perimeter
-      |> Enum.map(fn point ->
-        Location.to_coord(point)
-      end)
+      |> Enum.map(&Location.to_coord\1)
+      |> to_polygon()
 
-    perimeter = %Geo.Polygon{coordinates: [perimeter_points]}
-
-    perimeter_env =
-      perimeter
-      |> Envelope.from_geo()
-
-    location = %Geo.Point{coordinates: {location.lng, location.lat}}
+    location = location
+      |> to_geo_point
 
     location_env =
-      location
-      |> Envelope.from_geo()
+      location |> Envelope.from_geo()
 
-    if Envelope.intersects?(perimeter_env, location_env) do
+    perimeter_env =
+        perimeter |> Envelope.from_geo()
+
+    if Envelope.intersects?(perimeter_env , location_env) do
       Topo.intersects?(perimeter, location)
     else
       false
     end
   end
+
+  defp to_polygon(points), do %Geo.Polygon{coordinates: [points]}
+  defp to_geo_point(Location{} = location), do %Geo.Point{coordinates: {location.lng, location.lat}}
 end

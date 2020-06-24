@@ -10,11 +10,8 @@ defmodule Uchukuzi.Common.Location do
     field(:lng, :float)
   end
 
-  # def new_ecto(lng, lat) do
-  #   %Location{}
-  #   |> changeset(%{lng: lng, lat: lat})
-  # end
 
+  @spec new(any, any) :: :error | {:ok, Uchukuzi.Common.Location.t()}
   def new(lng, lat) do
     if lng >= -180 and lng <= 180 and lat >= -90 and lat <= 90 do
       {:ok, %Location{lng: lng, lat: lat}}
@@ -40,16 +37,12 @@ defmodule Uchukuzi.Common.Location do
     changeset
     |> validate_number(:lng, greater_than_or_equal_to: -180, less_than_or_equal_to: 180)
   end
-
-  def is_location(%Location{}), do: true
-  def is_location(_), do: false
-
   @doc """
   The distance between two locations in meters
   """
   def distance_between(%Location{} = loc1, %Location{} = loc2) do
     [loc1, loc2]
-    |> Enum.map(&{&1.lng, &1.lat})
+    |> Enum.map(&to_coord/1)
     |> Distance.GreatCircle.distance()
   end
 
@@ -58,7 +51,9 @@ defmodule Uchukuzi.Common.Location do
   end
 
   @doc """
-  Adapted from  https://github.com/yltsrc/geocalc and https://www.igismap.com/formula-to-find-bearing-or-heading-angle-between-two-points-latitude-longitude/
+  Reference:
+  Adapted from  https://github.com/yltsrc/geocalc and
+  https://www.igismap.com/formula-to-find-bearing-or-heading-angle-between-two-points-latitude-longitude/
   """
   @pi :math.pi()
 
@@ -79,7 +74,7 @@ defmodule Uchukuzi.Common.Location do
     :math.atan2(x, y) * 180 / @pi
   end
 
-  def degrees_to_radians(degrees) do
+  defp degrees_to_radians(degrees) do
     normalize_degrees(degrees) * @pi / 180
   end
 
