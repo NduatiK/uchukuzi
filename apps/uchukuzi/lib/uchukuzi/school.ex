@@ -176,7 +176,7 @@ defmodule Uchukuzi.School do
   # ********* Devices *********
   def register_device(bus, imei) do
     %{imei: imei, bus_id: bus.id}
-    |> Device.new()
+    |> Device.changeset()
     |> Repo.insert()
   end
 

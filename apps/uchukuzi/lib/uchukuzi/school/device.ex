@@ -11,10 +11,6 @@ defmodule Uchukuzi.School.Device do
     timestamps()
   end
 
-  def new(params) do
-    changeset(params)
-  end
-
   def changeset(schema \\ %__MODULE__{}, params) do
     schema
     |> cast(params, [:imei, :bus_id])
@@ -51,7 +47,7 @@ defmodule Uchukuzi.School.Device do
   false
   """
   @imei_lengths [15, 17]
-  def is_valid_imei(imei) do
+  defp is_valid_imei(imei) do
     is_valid_length = fn imei -> String.length(imei) in @imei_lengths end
 
     with {imei_number, ""} <- Integer.parse(imei),
@@ -93,8 +89,8 @@ defmodule Uchukuzi.School.Device do
       0
 
   """
-  def luhns_sum(int) when is_integer(int), do: Integer.digits(int) |> _luhns_sum(0, true)
-  def luhns_sum(int_list) when is_list(int_list), do: _luhns_sum(int_list, 0, true)
+  defp luhns_sum(int) when is_integer(int), do: Integer.digits(int) |> _luhns_sum(0, true)
+  defp luhns_sum(int_list) when is_list(int_list), do: _luhns_sum(int_list, 0, true)
 
   defp _luhns_sum([], sum, _), do: sum
 
@@ -106,7 +102,7 @@ defmodule Uchukuzi.School.Device do
     _luhns_sum(tail, sum + sum_of_double(head),  not oddPosition)
   end
 
-  def sum_of_double(x) do
+  defp sum_of_double(x) do
     (x * 2)
     |> Integer.digits()
     |> Enum.sum()
