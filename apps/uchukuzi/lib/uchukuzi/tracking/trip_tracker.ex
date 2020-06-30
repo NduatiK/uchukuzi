@@ -158,8 +158,8 @@ defmodule Uchukuzi.Tracking.TripTracker do
     {:noreply, data, @message_timeout}
   end
 
-  # provided `tiles` are in LRF order here
-  # they are stored in MRF order
+  # provided `tiles` are in least recent to most recent here
+  # they are stored most recent to least recent
   def handle_cast({:crossed_tiles, []}, data) do
     {:noreply, data, @message_timeout}
   end

@@ -46,15 +46,14 @@ defmodule Uchukuzi.School.Route do
 
   def calculate_expected_tiles(path) when is_list(path) do
     path
-    |> IO.inspect()
     |> Enum.reduce({nil, []}, fn location, {last_location, tiles} ->
-      if last_location == nil do
-        {location, [Uchukuzi.World.Tile.new(location)]}
-      else
-        new_tile = Uchukuzi.World.Tile.new(location)
+      current_tile = Uchukuzi.World.Tile.new(location)
 
+      if last_location == nil do
+        {location, [current_tile]}
+      else
         # Between tiles other than start and end_tiles
-        # Order from location to last location
+        # Order from current location to last location
         crossed =
           Uchukuzi.World.crossed_tiles(last_location, location)
           |> Enum.reverse()
@@ -63,7 +62,7 @@ defmodule Uchukuzi.School.Route do
         # the current_tile
         # ++ the tiles crossed between the current and previous tile
         # ++ all tiles from the previous tile to the first tile
-        {location, [new_tile | crossed] ++ tiles}
+        {location, [current_tile | crossed] ++ tiles}
       end
     end)
     |> (fn {_, tiles} -> tiles end).()

@@ -25,11 +25,7 @@ defmodule Uchukuzi.Tracking do
     TripTracker.student_boarded(bus, student_activity)
   end
 
-  def move(%Bus{} = bus, %Report{} = report) do
-    bus_server = BusServer.pid_from(bus)
-
-    previous_report = BusServer.last_seen_status(bus_server)
-
+  defp move(bus_server, bus, %Report{} = report, previous_report) do
     # Update the bus location, speed, bearing...
     report = BusServer.move(bus_server, report)
 
@@ -40,6 +36,53 @@ defmodule Uchukuzi.Tracking do
     # And let it know which tiles have been crossed so far so
     # that it can try to predict the future
     TripTracker.crossed_tiles(bus, tiles |> Enum.map(fn x -> x.coordinate end))
+
+    report
+  end
+
+  def move(%Bus{} = bus, reports) do
+    bus_server = BusServer.pid_from(bus)
+    previous_report = BusServer.last_seen_status(bus_server)
+
+    Task.async(fn ->
+      reports
+      |> Enum.reduce(previous_report, fn report, previous_report ->
+        report = move(bus_server, bus, report, previous_report)
+
+        # :timer.sleep(100)
+
+        # bus
+        # |> Tracking.status_of()
+        # |> broadcast_location_update(bus, bus.school_id)
+
+        report
+      end)
+
+      bus
+      |> Tracking.status_of()
+      |> broadcast_location_update(bus, bus.school_id)
+    end)
+  end
+
+  def broadcast_location_update(nil, _bus_id, _school_id) do
+  end
+
+  def broadcast_location_update(report, bus, school_id) do
+    bus_id = bus.id
+
+    students_onboard = Tracking.students_onboard(bus)
+
+    output =
+      report
+      |> UchukuziInterfaceWeb.TrackingView.render_report()
+      |> Map.put(:bus, bus_id)
+      |> Map.put(:students_onboard, students_onboard)
+
+    UchukuziInterfaceWeb.Endpoint.broadcast("school:#{school_id}", "bus_moved", output)
+
+    if bus.route_id != nil do
+      UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_location(bus.route_id, output)
+    end
   end
 
   def status_of(%Bus{} = bus) do

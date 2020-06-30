@@ -20,6 +20,11 @@ defmodule Uchukuzi.World do
   alias Uchukuzi.World.TileSupervisor
   alias Uchukuzi.World.Tile
 
+  @doc """
+  Update all necessary tile servers and
+  return a list of tiles that have finished being crossed
+  """
+  @spec update(any, any, map) :: [Tile.t()]
   def update(bus_server, previous_report, current_report) do
     current_tile = tile_for(current_report)
 
@@ -119,13 +124,13 @@ defmodule Uchukuzi.World do
     # Get all possible tiles that could be crossed
     Tile.tiles_between(start_tile, end_tile)
     # Filter out non intersecting
-    # `Tile.distance_inside` returns {:ok, distance} only if the tile is
+    # `Tile.cross_distance` returns a distance only if the tile is
     # crossed by the line
-    |> Enum.map(&{&1, Tile.crossed_by?(&1, path)})
+    |> Enum.map(&{&1, Tile.cross_distance(&1, path)})
     |> Enum.flat_map(fn {tile, result} ->
       case result do
-        {:ok, distance} -> [{tile, distance}]
-        _ -> []
+        :does_not_cross -> []
+        distance -> [{tile, distance}]
       end
     end)
     # Sort first to last
@@ -157,9 +162,9 @@ defmodule Uchukuzi.World do
       total_time ->
         average_speed = total_distance / total_time
 
-        {:ok, distance_exiting} = Tile.distance_inside(previous_tile, path, true)
+        distance_exiting = Tile.distance_inside(previous_tile, path, false)
 
-        {:ok, distance_entering} = Tile.distance_inside(current_tile, path, false)
+        distance_entering = Tile.distance_inside(current_tile, path, true)
 
         tiles_crossed =
           crossed_tiles

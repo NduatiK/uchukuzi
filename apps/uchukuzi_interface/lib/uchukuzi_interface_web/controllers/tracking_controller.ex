@@ -24,27 +24,13 @@ defmodule UchukuziInterfaceWeb.TrackingController do
 
       reports = Enum.sort(reports, &(DateTime.compare(&2.time, &1.time) != :lt))
 
-      Task.async(fn ->
-        for report <- reports do
-          Tracking.move(bus, report)
-
-          # :timer.sleep(100)
-
-          # bus
-          # |> Tracking.status_of()
-          # |> broadcast_location_update(bus, bus.school_id)
-        end
-
-        bus
-        |> Tracking.status_of()
-        |> broadcast_location_update(bus, bus.school_id)
-      end)
+      Tracking.move(bus, reports)
 
       bus = Repo.preload(bus, :school)
 
       last_point =
         reports
-        |> Enum.drop(Enum.count(reports) - 1)
+        |> Enum.reverse()
         |> hd()
 
       if last_point && School.School.contains_point?(bus.school, last_point.location) do
@@ -54,27 +40,6 @@ defmodule UchukuziInterfaceWeb.TrackingController do
         conn
         |> resp(200, "Outside")
       end
-    end
-  end
-
-  def broadcast_location_update(nil, _bus_id, _school_id) do
-  end
-
-  def broadcast_location_update(report, bus, school_id) do
-    bus_id = bus.id
-
-    students_onboard = Tracking.students_onboard(bus)
-
-    output =
-      report
-      |> UchukuziInterfaceWeb.TrackingView.render_report()
-      |> Map.put(:bus, bus_id)
-      |> Map.put(:students_onboard, students_onboard)
-
-    UchukuziInterfaceWeb.Endpoint.broadcast("school:#{school_id}", "bus_moved", output)
-
-    if bus.route_id != nil do
-      UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_location(bus.route_id, output)
     end
   end
 end

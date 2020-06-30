@@ -36,7 +36,7 @@ defmodule Uchukuzi.World.TileSupervisor do
   defp call_cell(%Tile{} = tile, arguments) do
     tile.coordinate
     |> tile_for()
-    |> GenServer.call(arguments)
+    |> GenServer.cast(arguments)
   end
 
   ################ CLIENT ################

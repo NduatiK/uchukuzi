@@ -58,7 +58,10 @@ defmodule Uchukuzi.MixProject do
       {:exprof, "~> 0.2.0"},
 
       # ----- DOCS --------
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+
+      # ----- TESTS --------
+      {:propcheck, "~> 1.1", only: [:test, :dev]}
     ]
   end
 

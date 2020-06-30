@@ -204,33 +204,33 @@ pointAt index trip =
 buildAnnotatedReports : Trip -> List { report : Report, deviated : Bool }
 buildAnnotatedReports trip =
     let
-        indexedTiles_ =
+        indexedTiles =
             trip.crossedTiles
                 |> List.map Tile.newTile
+                |> List.reverse
                 |> List.indexedMap Tuple.pair
     in
     trip.reports
         |> List.foldl
-            (\report ( indexedTiles, annotatedReports ) ->
-                --     Should we loop until we find tile that contains the report
-                case findMatchingTile report indexedTiles of
-                    Just ( ( index, _ ), remainingTiles ) ->
-                        ( remainingTiles
-                        , { report = report, deviated = List.member index trip.deviations }
-                            :: annotatedReports
-                        )
-
-                    Nothing ->
-                        let
-                            _ =
-                                Debug.log "afsasfa" ""
-                        in
-                        ( indexedTiles
-                        , { report = report, deviated = False }
-                            :: annotatedReports
-                        )
+            (\report ( searchTiles, annotatedReports ) ->
+                -- case findMatchingTile report searchTiles of
+                --     Just ( ( index, _ ), remainingTiles ) ->
+                --         ( remainingTiles
+                --         , { report = report, deviated = List.member (index) trip.deviations }
+                --             :: annotatedReports
+                --         )
+                --     Nothing ->
+                --         ( searchTiles
+                --         , { report = report, deviated = False }
+                --             :: annotatedReports
+                --         )
+                ( searchTiles
+                , { report = report, deviated = False }
+                    :: annotatedReports
+                )
             )
-            ( indexedTiles_, [] )
+            -- ( indexedTiles, [] )
+            ( [], [] )
         |> Tuple.second
         |> List.reverse
 

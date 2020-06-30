@@ -19,6 +19,10 @@ defmodule Uchukuzi.World.ETA do
     insert(tile, dateToHourValue(date), cross_time)
   end
 
+  def insert(%Location{} = location, time_value, cross_time) do
+    insert(%{coordinate: location}, time_value, cross_time)
+  end
+
   def insert(tile, time_value, cross_time) do
     with {:ok, dataset} <- DiskDB.get(tile.coordinate, __MODULE__) do
       [[time_value, cross_time] | dataset]

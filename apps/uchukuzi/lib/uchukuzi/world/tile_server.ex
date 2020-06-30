@@ -33,7 +33,7 @@ defmodule Uchukuzi.World.TileServer do
     do: Uchukuzi.service_name({__MODULE__, location |> Tile.new() |> (& &1.coordinate).()})
 
   @impl true
-  def handle_call({:enter, pid, entry_time}, _from, state) do
+  def handle_cast({:enter, pid, entry_time}, state) do
     record = %{
       entry_time: entry_time,
       ref: Process.monitor(pid)
@@ -43,22 +43,26 @@ defmodule Uchukuzi.World.TileServer do
       state
       |> put_in([:pids, pid], record)
 
-    {:reply, :ok, updated_state}
+    {:noreply, updated_state}
   end
 
   @impl true
-  def handle_call({:leave, pid, exit_time}, _from, state) do
-    cross_time = DateTime.diff(exit_time, state.pids[pid].entry_time)
-
+  def handle_cast({:leave, pid, exit_time}, state) do
     updated_state =
-      state
-      |> report_cross_time(pid, cross_time)
-      |> remove(pid)
+      if state.pids[pid] != nil do
+        cross_time = DateTime.diff(exit_time, state.pids[pid].entry_time)
 
-    if state.pids == %{} do
-      {:stop, :normal, :ok, state}
+        state
+        |> report_cross_time(pid, cross_time)
+        |> remove(pid)
+      else
+        state
+      end
+
+    if updated_state.pids == %{} do
+      {:stop, :normal, updated_state}
     else
-      {:reply, :ok, state}
+      {:noreply, updated_state}
     end
   end
 

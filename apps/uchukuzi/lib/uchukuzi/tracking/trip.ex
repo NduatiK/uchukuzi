@@ -76,20 +76,23 @@ defmodule Uchukuzi.Tracking.Trip do
   end
 
   def set_deviation_positions(%Trip{} = trip, positions) do
-    count = Enum.count(trip.report_collection.crossed_tiles)
-
-    deviation_positions =
-      positions
-      |> Enum.map(&(count - &1 - 1))
-
     %Trip{
       trip
-      | report_collection: %{trip.report_collection | deviation_positions: deviation_positions}
+      | report_collection: %{
+          trip.report_collection
+          | deviation_positions: positions
+        }
     }
   end
 
   def add_crossed_tiles(%Trip{} = trip, crossed_tiles) do
-    %Trip{trip | report_collection: %{trip.report_collection | crossed_tiles: crossed_tiles}}
+    %Trip{
+      trip
+      | report_collection: %{
+          trip.report_collection
+          | crossed_tiles: crossed_tiles |> Enum.reverse()
+        }
+    }
   end
 
   @doc """
