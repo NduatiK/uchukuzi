@@ -27,6 +27,7 @@ type alias FuelReport =
 
     -- The total distance covered by the bus since the start of time
     , totalDistanceCovered : Distance
+    , tripsMade : Int
     , date : Time.Posix
     }
 
@@ -34,7 +35,7 @@ type alias FuelReport =
 fuelRecordDecoder : Decoder FuelReport
 fuelRecordDecoder =
     let
-        decoder id cost volume_ distance_covered dateTimeString =
+        decoder id cost volume_ distance_covered dateTimeString tripsMade =
             case Iso8601.toTime dateTimeString of
                 Result.Ok dateTime ->
                     Decode.succeed
@@ -43,6 +44,7 @@ fuelRecordDecoder =
                         , volume = Volume volume_
                         , totalDistanceCovered = Distance distance_covered
                         , date = dateTime
+                        , tripsMade = tripsMade
                         }
 
                 Result.Err _ ->
@@ -54,6 +56,7 @@ fuelRecordDecoder =
         |> required "volume" float
         |> required "distance_travelled" int
         |> required "date" string
+        |> required "trips_made" int
         |> resolve
 
 

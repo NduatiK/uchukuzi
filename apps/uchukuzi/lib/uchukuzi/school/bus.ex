@@ -42,29 +42,13 @@ defmodule Uchukuzi.School.Bus do
   def trim_number_plate(changeset) do
     case changeset do
       %Ecto.Changeset{changes: %{number_plate: number_plate}} ->
-        put_change(changeset, :number_plate, String.replace(number_plate, ~r/\s/, ""))
+        changeset
+        |> put_change(:number_plate, String.replace(number_plate, ~r/\s/, ""))
 
       _ ->
         changeset
     end
   end
-
-  # def distance_travelled(bus) do
-  #   result =
-  #     Repo.all(
-  #       from(b in Bus,
-  #         left_join: t in assoc(b, :trips),
-  #         where: b.id == ^bus.id,
-  #         select: type(sum(t.distance_covered), :float)
-  #       )
-  #     )
-
-
-  #   case result do
-  #     [nil] -> 0
-  #     [value] -> round(value)
-  #   end
-  # end
 
   def distance_travelled_before(bus, date) do
     date = NaiveDateTime.to_date(date)
@@ -74,14 +58,14 @@ defmodule Uchukuzi.School.Bus do
         from(b in Bus,
           left_join: t in assoc(b, :trips),
           where: fragment("?::date", t.end_time) <= ^date and b.id == ^bus.id,
-          select: type(sum(t.distance_covered), :float)
+          select: {type(sum(t.distance_covered), :float), count(t)}
         )
       )
 
 
     case result do
-      [nil] -> 0
-      [value] -> round(value)
+      [{nil, trips}] -> {0, trips}
+      [{value, trips}] -> {round(value), trips}
     end
   end
 end

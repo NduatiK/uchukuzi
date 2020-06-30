@@ -19,7 +19,7 @@ view remoteData successView =
             successView data
 
         Failure error ->
-            text (Errors.errorToString error)
+            el [ centerX, centerY ] (text (Errors.errorToString error))
 
         _ ->
             Icons.loading [ centerX, centerY, width (px 46), height (px 46) ]

@@ -107,9 +107,9 @@ defmodule Uchukuzi.School do
     )
   end
 
-  def bus_for(school_id, bus_id) do
+  def bus_for(school_id, bus_id, preload \\ []) do
     with bus when not is_nil(bus) <- Repo.get_by(Bus, school_id: school_id, id: bus_id) do
-      {:ok, Repo.preload(bus, [:performed_repairs])}
+      {:ok, Repo.preload(bus, [:performed_repairs] ++ preload)}
     else
       nil -> {:error, :not_found}
     end
@@ -153,12 +153,13 @@ defmodule Uchukuzi.School do
 
   def create_fuel_report(school_id, bus_id, params) do
     with {:ok, bus} <- bus_for(school_id, bus_id) do
-      distance_travelled =
+      {distance_travelled, trips_made} =
         bus
         |> Bus.distance_travelled_before(params["date"])
 
       params
       |> Map.put("distance_travelled", distance_travelled)
+      |> Map.put("trips_made", trips_made)
       |> FuelReport.changeset()
       |> Repo.insert()
     end
@@ -531,5 +532,13 @@ defmodule Uchukuzi.School do
     Student
     |> where(school_id: ^school_id, id: ^student_id)
     |> Repo.one()
+  end
+
+  def student_count_for_bus(school_id, route_id) do
+    Student
+    |> where(school_id: ^school_id, route_id: ^route_id)
+    |> select([s], count(s))
+    |> Repo.all()
+    |> hd()
   end
 end

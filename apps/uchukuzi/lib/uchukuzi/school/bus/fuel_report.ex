@@ -4,6 +4,7 @@ defmodule Uchukuzi.School.Bus.FuelReport do
 
   schema "fuel_records" do
     field(:volume, :float)
+    field(:trips_made, :integer)
     field(:cost, :integer)
     field(:date, :naive_datetime)
     field(:distance_travelled, :integer)
@@ -13,7 +14,7 @@ defmodule Uchukuzi.School.Bus.FuelReport do
   def changeset(schema \\ %__MODULE__{}, params) do
 
     schema
-    |> cast(params, [:cost, :volume, :bus_id, :date, :distance_travelled])
-    |> validate_required([:cost, :volume, :bus_id, :date,:distance_travelled])
+    |> cast(params, [:cost, :volume, :bus_id, :date, :distance_travelled, :trips_made])
+    |> validate_required([:cost, :volume, :bus_id, :date,:distance_travelled, :trips_made])
   end
 end

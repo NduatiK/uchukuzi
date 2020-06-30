@@ -282,10 +282,15 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   end
 
   def list_fuel_reports(conn, %{"bus_id" => bus_id}, school_id) do
-    fuel_reports = School.fuel_reports(school_id, bus_id)
+    with {:ok, bus} <- School.bus_for(school_id, bus_id, [:fuel_reports])    do
+      fuel_reports = bus.fuel_reports
+      numberOfStudents =
+        school_id |> School.student_count_for_bus(bus.route_id)
 
-    conn
-    |> render("fuel_reports.json", fuel_reports: fuel_reports)
+        conn
+        |> render("fuel_reports.json", fuel_reports: fuel_reports, numberOfStudents: numberOfStudents)
+        end
+
   end
 
   # * Devices

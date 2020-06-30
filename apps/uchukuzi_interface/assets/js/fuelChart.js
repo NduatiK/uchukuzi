@@ -34,17 +34,18 @@ function renderChart(dates, y, statistics) {
 
             for (var i = 0; i < dateCount; i++) {
                 if (i != dateCount - 1) {
+                    if (statistics) {
+                        allTimeAverage.push([dates[i], statistics.mean])
+                    }
                     runningAverageSeries.push([dates[i], runningAverage[i]])
                 } else {
+                    if (statistics) {
+                        allTimeAverage.push([dates[i], null])
+                    }
                     runningAverageSeries.push([dates[i], null])
                 }
 
                 consumptionOnDateSeries.push([dates[i], consumptionOnDate[i]])
-
-                if (statistics) {
-                    allTimeAverage.push([dates[i], statistics.mean])
-                }
-
             }
 
 
@@ -110,7 +111,7 @@ function renderChart(dates, y, statistics) {
                 },
                 markers: {
                     size: [5, 0, 5],
-                    
+
                     hover: {
                         size: 7
                     }

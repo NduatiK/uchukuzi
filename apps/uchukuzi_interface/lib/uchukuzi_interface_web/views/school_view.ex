@@ -98,9 +98,11 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     }
   end
 
-  def render("fuel_reports.json", %{fuel_reports: fuel_reports}) do
-    fuel_reports
-    |> render_many(__MODULE__, "fuel_report.json", as: :fuel_report)
+  def render("fuel_reports.json", %{fuel_reports: fuel_reports, numberOfStudents: numberOfStudents}) do
+    %{
+      reports: fuel_reports |> render_many(__MODULE__, "fuel_report.json", as: :fuel_report),
+      students: numberOfStudents
+    }
   end
 
   def render("fuel_report.json", %{fuel_report: fuel_report}) do
@@ -109,7 +111,8 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       cost: fuel_report.cost,
       volume: fuel_report.volume,
       date: fuel_report.date,
-      distance_travelled: fuel_report.distance_travelled
+      distance_travelled: fuel_report.distance_travelled,
+      trips_made: fuel_report.trips_made
     }
   end
 
