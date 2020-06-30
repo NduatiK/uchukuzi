@@ -245,13 +245,10 @@ update msg model =
                                 Cmd.none
 
                             Just trip ->
-                                drawPath trip sliderValue model.mapVisuals.showDeviations
+                                drawPath trip sliderValue model.mapVisuals.showGeofence model.mapVisuals.showDeviations
                         , scrollToStudentActivity
                         ]
                     )
-
-        ToggledShowGeofence show ->
-            ( { model | mapVisuals = { mapVisuals | showGeofence = show } }, Cmd.none )
 
         ToggledShowStops show ->
             ( { model | mapVisuals = { mapVisuals | showStops = show } }, Cmd.none )
@@ -259,9 +256,20 @@ update msg model =
         ToggledShowSpeed show ->
             ( { model | mapVisuals = { mapVisuals | showSpeed = show } }, Cmd.none )
 
+        ToggledShowGeofence show ->
+            ( { model | mapVisuals = { mapVisuals | showGeofence = show } }
+            , Ports.setDeviationTileVisible
+                { correctVisible = show
+                , deviationVisible = model.mapVisuals.showDeviations
+                }
+            )
+
         ToggledShowDeviation show ->
             ( { model | mapVisuals = { mapVisuals | showDeviations = show } }
-            , Ports.setDeviationTileVisible show
+            , Ports.setDeviationTileVisible
+                { correctVisible = model.mapVisuals.showGeofence
+                , deviationVisible = show
+                }
             )
 
         ReceivedTripsResponse response ->
@@ -336,7 +344,7 @@ update msg model =
                                         { location = report.location
                                         , bearing = report.bearing
                                         }
-                            , drawPath loadedTrip 0 model.mapVisuals.showDeviations
+                            , drawPath loadedTrip 0 model.mapVisuals.showGeofence model.mapVisuals.showDeviations
                             , Ports.cleanMap ()
                             , Ports.fitBounds
                             ]
@@ -637,7 +645,7 @@ selectOngoingTrip model =
                             { location = report.location
                             , bearing = bearing
                             }
-                , drawPath (ongoingToTrip trip) sliderValue model.mapVisuals.showDeviations
+                , drawPath (ongoingToTrip trip) sliderValue model.mapVisuals.showGeofence model.mapVisuals.showDeviations
                 , Ports.cleanMap ()
                 ]
             )
@@ -848,11 +856,12 @@ viewMapOptions :
     { a
         | showDeviations : Bool
         , showSpeed : Bool
+        , showGeofence : Bool
     }
     -> Element Msg
-viewMapOptions { showDeviations, showSpeed } =
+viewMapOptions { showDeviations, showSpeed, showGeofence } =
     row [ paddingXY 10 0, spacing 110 ]
-        [ Input.checkbox []
+        (Input.checkbox []
             { onChange = ToggledShowSpeed
             , icon = StyledElement.checkboxIcon
             , checked = showSpeed
@@ -860,15 +869,37 @@ viewMapOptions { showDeviations, showSpeed } =
                 Input.labelRight Style.labelStyle
                     (text "Show Speed Graph")
             }
-        , Input.checkbox []
-            { onChange = ToggledShowDeviation
-            , icon = StyledElement.checkboxIcon
-            , checked = showDeviations
-            , label =
-                Input.labelRight Style.labelStyle
-                    (text "Show Deviations")
-            }
-        ]
+            :: (if not (showGeofence || showDeviations) then
+                    [ Input.checkbox []
+                        { onChange = ToggledShowDeviation
+                        , icon = StyledElement.checkboxIcon
+                        , checked = showDeviations
+                        , label =
+                            Input.labelRight Style.labelStyle
+                                (text "Show Tiles")
+                        }
+                    ]
+
+                else
+                    [ Input.checkbox []
+                        { onChange = ToggledShowDeviation
+                        , icon = StyledElement.checkboxIcon
+                        , checked = showDeviations
+                        , label =
+                            Input.labelRight Style.labelStyle
+                                (text "Show Deviations")
+                        }
+                    , Input.checkbox []
+                        { onChange = ToggledShowGeofence
+                        , icon = StyledElement.checkboxIcon
+                        , checked = showGeofence
+                        , label =
+                            Input.labelRight Style.labelStyle
+                                (text "Show Non-deviations")
+                        }
+                    ]
+               )
+        )
 
 
 viewTrips : Model -> Element Msg
@@ -1233,11 +1264,12 @@ drawPath :
     Trip
     -> Int
     -> Bool
+    -> Bool
     -> Cmd Msg
-drawPath trip sliderValue deviationsVisible =
+drawPath trip sliderValue correctVisible deviationsVisible =
     let
         tiles =
-            tilesForDeviation trip
+            tilesForDeviation trip correctVisible deviationsVisible
     in
     Cmd.batch
         [ Ports.bulkDrawPath
@@ -1256,25 +1288,55 @@ drawPath trip sliderValue deviationsVisible =
               , highlighted = False
               }
             ]
-        , Ports.drawDeviationTiles { tiles | visible = deviationsVisible }
+        , Ports.drawDeviationTiles tiles
         ]
+
+
+type alias VisibleValues a =
+    { values : List a
+    , visible : Bool
+    }
 
 
 tilesForDeviation :
     Trip
-    -> { correct : List Tile, deviation : List Tile, visible : Bool }
-tilesForDeviation trip =
+    -> Bool
+    -> Bool
+    -> { correct : VisibleValues Tile, deviation : VisibleValues Tile }
+tilesForDeviation trip correctVisible deviationsVisible =
     trip.crossedTiles
         |> List.indexedMap Tuple.pair
         |> List.foldl
             (\( index, location ) acc ->
                 if List.member index trip.deviations then
-                    { acc | deviation = acc.deviation ++ [ newTile location ] }
+                    let
+                        deviation =
+                            acc.deviation
+
+                        devValues =
+                            deviation.values
+                    in
+                    { acc | deviation = { deviation | values = devValues ++ [ newTile location ] } }
 
                 else
-                    { acc | correct = acc.correct ++ [ newTile location ] }
+                    let
+                        correct =
+                            acc.correct
+
+                        correctValues =
+                            correct.values
+                    in
+                    { acc | correct = { correct | values = correctValues ++ [ newTile location ] } }
             )
-            { correct = [], deviation = [], visible = True }
+            { correct =
+                { values = []
+                , visible = correctVisible
+                }
+            , deviation =
+                { values = []
+                , visible = deviationsVisible
+                }
+            }
 
 
 tabBarItems model mapper =
@@ -1347,7 +1409,6 @@ tabBarItems model mapper =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     if model.isPlaying then
-
         Time.every 500 (always AdvanceTrip)
 
     else

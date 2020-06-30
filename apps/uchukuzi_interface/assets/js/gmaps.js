@@ -117,7 +117,8 @@ function createMapDom() {
 }
 
 let markers = []
-let tiles = []
+let correctTiles = []
+let deviationTiles = []
 let drawingManager = null
 let schoolCircle = null
 
@@ -162,10 +163,8 @@ function cleanMap() {
     })
     markers = []
 
-    tiles.forEach((x) => {
-        x.setMap(null)
-    })
-    tiles = []
+
+    cleanGrid()
 
     if (schoolCircle) {
         schoolCircle.setMap(null)
@@ -185,10 +184,15 @@ function cleanMap() {
 
 
 function cleanGrid() {
-    tiles.forEach((x) => {
+    correctTiles.forEach((x) => {
         x.setMap(null)
     })
-    tiles = []
+    correctTiles = []
+    
+    deviationTiles.forEach((x) => {
+        x.setMap(null)
+    })
+    deviationTiles = []
 }
 
 function disableClickListeners(time = 300) {
@@ -536,7 +540,8 @@ function fitBoundsMap(map, objects) {
     if (!objects) {
         polylines.forEach(extendBounds)
         markers.forEach(extendBounds)
-        tiles.forEach(extendBounds)
+        correctTiles.forEach(extendBounds)
+        deviationTiles.forEach(extendBounds)
         polylineMarkers.forEach(extendBounds)
         extendBounds(schoolMarker)
     } else {
@@ -757,24 +762,31 @@ function setupMapPorts(app) {
             })
     })
 
-    function setTilesVisibility(map, visible) {
+    function setTilesVisibility(map, correctVisible, deviationVisible) {
+        console.log(correctVisible, deviationVisible)
         const setMap = (mapValue) => (tile) => {
             tile.setMap(mapValue)
         }
-        if (visible) {
-            tiles.forEach(setMap(map))
+        if (deviationVisible) {
+            deviationTiles.forEach(setMap(map))
         } else {
-            tiles.forEach(setMap(null))
+            deviationTiles.forEach(setMap(null))
+        }
+
+        if (correctVisible) {
+            correctTiles.forEach(setMap(map))
+        } else {
+            correctTiles.forEach(setMap(null))
         }
     }
 
-    app.ports.drawDeviationTiles.subscribe(({ correct, deviation, visible }) => {
+    app.ports.drawDeviationTiles.subscribe(({ correct, deviation }) => {
         initializeMaps(app)
             .then((map) => {
 
                 cleanGrid()
 
-                const drawTile = (color, strokeWeight) => (tile) => {
+                const drawTile = (color, strokeWeight, isCorrect) => (tile) => {
                     var rectangle = new google.maps.Rectangle({
                         strokeColor: color,
                         strokeOpacity: 0.8,
@@ -790,20 +802,24 @@ function setupMapPorts(app) {
                         }
                     })
 
-                    tiles.push(rectangle)
+                    if (isCorrect) {
+                        correctTiles.push(rectangle)
+                    } else {
+                        deviationTiles.push(rectangle)
+                    }
                 }
 
-                correct.forEach(drawTile(darkGreen, 3))
-                deviation.forEach(drawTile(errorRed, 2))
+                correct.values.forEach(drawTile(darkGreen, 3, true))
+                deviation.values.forEach(drawTile(errorRed, 2, false))
 
-                setTilesVisibility(map, visible)
+                setTilesVisibility(map, correct.visible, deviation.visible)
             })
     })
 
-    app.ports.setDeviationTileVisible.subscribe((visible) => {
+    app.ports.setDeviationTileVisible.subscribe(({correctVisible, deviationVisible}) => {
         initializeMaps(app)
             .then((map) => {
-                setTilesVisibility(map, visible)
+                setTilesVisibility(map, correctVisible, deviationVisible)
             })
     })
 }

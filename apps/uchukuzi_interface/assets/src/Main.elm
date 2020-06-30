@@ -558,7 +558,7 @@ initializePhoenix credentials =
                 (Socket.init "/socket/manager"
                     |> Socket.withParams (Encode.object [ ( "token", Encode.string credentials.token ) ])
                     |> Socket.onOpen (SocketOpened credentials.school_id)
-                    |> Socket.withDebug
+                 -- |> Socket.withDebug
                 )
                 toPhoenix
     in

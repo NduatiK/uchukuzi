@@ -228,7 +228,6 @@ decodeFormErrors error =
             Decode.at [ "errors", "detail" ] (dict (list string))
 
         decodeField response =
-            -- Debug.log ""
             response.body
                 |> decodeString fieldDecoder
     in

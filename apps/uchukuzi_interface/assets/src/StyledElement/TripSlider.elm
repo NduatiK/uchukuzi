@@ -42,8 +42,7 @@ view :
 view { sliderValue, zone, trip, onAdjustValue, viewWidth, showSpeed } =
     let
         annotatedReports =
-            Debug.log "annotatedReports"
-                (Trip.buildAnnotatedReports trip)
+            Trip.buildAnnotatedReports trip
 
         max : Int
         max =

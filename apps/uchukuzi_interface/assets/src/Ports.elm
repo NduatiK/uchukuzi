@@ -30,13 +30,22 @@ fitBounds =
     fitBoundsMap ()
 
 
-port setDeviationTileVisible : Bool -> Cmd msg
+port setDeviationTileVisible :
+    { correctVisible : Bool
+    , deviationVisible : Bool
+    }
+    -> Cmd msg
 
 
 port drawDeviationTiles :
-    { correct : List Tile
-    , deviation : List Tile
-    , visible : Bool
+    { correct :
+        { values : List Tile
+        , visible : Bool
+        }
+    , deviation :
+        { values : List Tile
+        , visible : Bool
+        }
     }
     -> Cmd msg
 
@@ -73,9 +82,7 @@ port updateBusMap : LocationUpdate -> Cmd msg
 port bulkUpdateBusMap : List LocationUpdate -> Cmd msg
 
 
-port printCardForStudent :String -> Cmd msg
-
-
+port printCardForStudent : String -> Cmd msg
 
 
 drawEditableRoute : Route -> Cmd msg
