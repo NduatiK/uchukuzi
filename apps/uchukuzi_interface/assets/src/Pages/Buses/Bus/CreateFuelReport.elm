@@ -24,9 +24,6 @@ import Session exposing (Session)
 import Style
 import StyledElement
 import StyledElement.DatePicker
-import Task
-import Time
-import Views.DragAndDrop exposing (draggable, droppable)
 
 
 type alias Model =
@@ -34,7 +31,10 @@ type alias Model =
     , bus : Int
     , form : Form
     , requestState : WebData ()
-    , datePickerState : DatePicker.DatePicker
+    , datePicker :
+        { state : DatePicker.DatePicker
+        , hasFailedInput : Bool
+        }
     , problems : List (Errors.Errors Problem)
     }
 
@@ -69,7 +69,7 @@ init bus session =
             , volumeEndsWithDecimal = False
             }
       , requestState = NotAsked
-      , datePickerState = datePicker
+      , datePicker = { state = datePicker, hasFailedInput = False }
       , problems = []
       }
     , Cmd.map DatePickerUpdated datePickerCmd
@@ -86,19 +86,6 @@ type Msg
     | DatePickerUpdated DatePicker.Msg
     | ChangedCost String
     | ChangedVolume String
-
-
-
--- | NoOp
---   --------
--- | StartedDragging Draggable
--- | StoppedDragging
--- | DropOn
--- | DraggedOver
---   --------
--- | Delete Int
--- | ChangedDescription Int String
--- | ChangedCost Int String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -153,8 +140,25 @@ update msg model =
 
         DatePickerUpdated datePickerMsg ->
             let
+                oldState =
+                    model.datePicker
+
                 ( newDatePickerState, event ) =
-                    StyledElement.DatePicker.update datePickerMsg model.datePickerState
+                    StyledElement.DatePicker.update datePickerMsg model.datePicker.state
+
+                _ =
+                    Debug.log "event" event
+
+                hasFailedInput =
+                    case event of
+                        DatePicker.FailedInput (DatePicker.Invalid _) ->
+                            True
+
+                        DatePicker.Picked _ ->
+                            False
+
+                        _ ->
+                            oldState.hasFailedInput
 
                 date =
                     case event of
@@ -163,11 +167,13 @@ update msg model =
 
                         _ ->
                             model.form.date
-
-                -- model.date
             in
             ( { model
-                | datePickerState = newDatePickerState
+                | datePicker =
+                    { oldState
+                        | state = newDatePickerState
+                        , hasFailedInput = hasFailedInput
+                    }
                 , form = { form | date = date }
               }
             , Cmd.none
@@ -265,7 +271,8 @@ viewDatePicker model =
             , icon = Nothing
             , onChange = DatePickerUpdated
             , value = model.form.date
-            , state = model.datePickerState
+            , state = model.datePicker.state
+            , hasFailedInput = model.datePicker.hasFailedInput
             }
         )
 
