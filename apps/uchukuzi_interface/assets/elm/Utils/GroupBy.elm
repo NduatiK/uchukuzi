@@ -9,11 +9,11 @@ date :
     -> (a -> Time.Posix)
     -> List a
     -> List ( String, List a )
-date  timezone getTime list =
+date timezone getTime list =
     attr
         { groupBy = getTime >> Time.posixToMillis
         , nameAs = getTime >> Utils.DateFormatter.dateFormatter timezone
-        , reverse = False
+        , ascending = True
         }
         list
 
@@ -21,11 +21,11 @@ date  timezone getTime list =
 attr :
     { groupBy : a -> comparable
     , nameAs : a -> String
-    , reverse : Bool
+    , ascending : Bool
     }
     -> List a
     -> List ( String, List a )
-attr { groupBy, nameAs, reverse } list =
+attr { groupBy, nameAs, ascending } list =
     let
         listWithAttr : List ( String, a )
         listWithAttr =
@@ -33,11 +33,11 @@ attr { groupBy, nameAs, reverse } list =
 
         orderedList : List ( String, a )
         orderedList =
-            if reverse then
-                List.reverse (List.sortBy (\t -> groupBy (Tuple.second t)) listWithAttr)
+            if ascending then
+                List.sortBy (\t -> groupBy (Tuple.second t)) listWithAttr
 
             else
-                List.sortBy (\t -> groupBy (Tuple.second t)) listWithAttr
+                List.reverse (List.sortBy (\t -> groupBy (Tuple.second t)) listWithAttr)
 
         groupListByAttr : List ( String, List a ) -> List ( String, a ) -> List ( String, List a )
         groupListByAttr grouped ungrouped =

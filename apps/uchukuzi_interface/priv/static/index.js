@@ -13097,7 +13097,7 @@ var $author$project$Utils$GroupBy$attr = F2(
 	function (_v0, list) {
 		var groupBy = _v0.groupBy;
 		var nameAs = _v0.nameAs;
-		var reverse = _v0.reverse;
+		var ascending = _v0.ascending;
 		var listWithAttr = A2(
 			$elm$core$List$map,
 			function (t) {
@@ -13106,18 +13106,18 @@ var $author$project$Utils$GroupBy$attr = F2(
 					t);
 			},
 			list);
-		var orderedList = reverse ? $elm$core$List$reverse(
+		var orderedList = ascending ? A2(
+			$elm$core$List$sortBy,
+			function (t) {
+				return groupBy(t.b);
+			},
+			listWithAttr) : $elm$core$List$reverse(
 			A2(
 				$elm$core$List$sortBy,
 				function (t) {
 					return groupBy(t.b);
 				},
-				listWithAttr)) : A2(
-			$elm$core$List$sortBy,
-			function (t) {
-				return groupBy(t.b);
-			},
-			listWithAttr);
+				listWithAttr));
 		var groupListByAttr = F2(
 			function (grouped, ungrouped) {
 				groupListByAttr:
@@ -13235,6 +13235,58 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$compareReports = F2(
 				return x;
 		}
 	});
+var $author$project$Models$FuelReport$ConsumptionRate = function (a) {
+	return {$: 'ConsumptionRate', a: a};
+};
+var $author$project$Models$FuelReport$round100 = function (_float) {
+	return $elm$core$Basics$round(_float * 100) / 100;
+};
+var $author$project$Models$FuelReport$consumption = F2(
+	function (_v0, _v1) {
+		var distance1 = _v0.a;
+		var volume1 = _v1.a;
+		var distanceTravelled = distance1 / 1000;
+		return (distanceTravelled > 0) ? $author$project$Models$FuelReport$ConsumptionRate(
+			$author$project$Models$FuelReport$round100((100 * volume1) / distanceTravelled)) : $author$project$Models$FuelReport$ConsumptionRate(0);
+	});
+var $author$project$Models$FuelReport$consumptionToFloat = function (_v0) {
+	var value = _v0.a;
+	return value;
+};
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm$core$Basics$sqrt = _Basics_sqrt;
+var $gampleman$elm_visualization$Statistics$variance = function (nums) {
+	var compute = F2(
+		function (value, _v1) {
+			var mean = _v1.a;
+			var i = _v1.b;
+			var sm = _v1.c;
+			var delta = value - mean;
+			var newMean = mean + (delta / (i + 1));
+			return _Utils_Tuple3(newMean, i + 1, sm + (delta * (value - newMean)));
+		});
+	var _v0 = A3(
+		$elm$core$List$foldr,
+		compute,
+		_Utils_Tuple3(0, 0, 0),
+		nums);
+	var length = _v0.b;
+	var sum = _v0.c;
+	return (length > 1) ? $elm$core$Maybe$Just(sum / (length - 1)) : $elm$core$Maybe$Nothing;
+};
+var $gampleman$elm_visualization$Statistics$deviation = A2(
+	$elm$core$Basics$composeR,
+	$gampleman$elm_visualization$Statistics$variance,
+	$elm$core$Maybe$map($elm$core$Basics$sqrt));
 var $author$project$Models$FuelReport$distance = $author$project$Models$FuelReport$Distance;
 var $author$project$Models$FuelReport$distanceDifference = F2(
 	function (_v0, _v1) {
@@ -13996,6 +14048,60 @@ var $elm$core$List$maximum = function (list) {
 		return $elm$core$Maybe$Nothing;
 	}
 };
+var $elm$core$Maybe$destruct = F3(
+	function (_default, func, maybe) {
+		if (maybe.$ === 'Just') {
+			var a = maybe.a;
+			return func(a);
+		} else {
+			return _default;
+		}
+	});
+var $author$project$Ports$renderChart = _Platform_outgoingPort(
+	'renderChart',
+	function ($) {
+		return $elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					'statistics',
+					function ($) {
+						return A3(
+							$elm$core$Maybe$destruct,
+							$elm$json$Json$Encode$null,
+							function ($) {
+								return $elm$json$Json$Encode$object(
+									_List_fromArray(
+										[
+											_Utils_Tuple2(
+											'mean',
+											$elm$json$Json$Encode$float($.mean)),
+											_Utils_Tuple2(
+											'stdDev',
+											$elm$json$Json$Encode$float($.stdDev))
+										]));
+							},
+							$);
+					}($.statistics)),
+					_Utils_Tuple2(
+					'x',
+					$elm$json$Json$Encode$list($elm$json$Json$Encode$int)($.x)),
+					_Utils_Tuple2(
+					'y',
+					function ($) {
+						return $elm$json$Json$Encode$object(
+							_List_fromArray(
+								[
+									_Utils_Tuple2(
+									'consumptionOnDate',
+									$elm$json$Json$Encode$list($elm$json$Json$Encode$float)($.consumptionOnDate)),
+									_Utils_Tuple2(
+									'runningAverage',
+									$elm$json$Json$Encode$list($elm$json$Json$Encode$float)($.runningAverage))
+								]));
+					}($.y))
+				]));
+	});
 var $elm$core$List$sortWith = _List_sortWith;
 var $author$project$Models$FuelReport$volume = $author$project$Models$FuelReport$Volume;
 var $author$project$Models$FuelReport$volumeSum = F2(
@@ -14016,22 +14122,39 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$groupReports = F3(
 						return $.tripsMade;
 					},
 					reports)));
+		var takeLast = function (list) {
+			return $elm$core$List$head(
+				A2(
+					$elm$core$List$drop,
+					$elm$core$List$length(list) - 1,
+					list));
+		};
 		var sortedReports = A2($elm$core$List$sortWith, $author$project$Pages$Buses$Bus$FuelHistoryPage$compareReports, reports);
+		var runningAverage = function (report) {
+			return A2($author$project$Models$FuelReport$consumption, report.cumulative.distance, report.cumulative.volume);
+		};
 		var distancedReports = A3(
 			$elm$core$List$foldl,
 			F2(
-				function (report, _v0) {
-					var _v1 = _v0.a;
-					var totalDistance = _v1.a;
-					var cumulativeFuel = _v1.b;
-					var acc = _v0.b;
+				function (report, _v1) {
+					var _v2 = _v1.a;
+					var totalDistance = _v2.a;
+					var cumulativeFuel = _v2.b;
+					var acc = _v1.b;
 					var totalFuelConsumed = A2($author$project$Models$FuelReport$volumeSum, cumulativeFuel, report.volume);
 					var distanceSinceLastFueling = A2($author$project$Models$FuelReport$distanceDifference, report.totalDistanceCovered, totalDistance);
 					return _Utils_Tuple2(
 						_Utils_Tuple2(report.totalDistanceCovered, totalFuelConsumed),
 						A2(
 							$elm$core$List$cons,
-							{cumulativeFuelPurchased: totalFuelConsumed, distanceSinceLastFueling: distanceSinceLastFueling, report: report},
+							{
+								cost: report.cost,
+								cumulative: {distance: report.totalDistanceCovered, volume: totalFuelConsumed},
+								date: report.date,
+								id: report.id,
+								sinceLastReport: {distance: distanceSinceLastFueling},
+								volume: report.volume
+							},
 							acc));
 				}),
 			_Utils_Tuple2(
@@ -14040,45 +14163,94 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$groupReports = F3(
 					$author$project$Models$FuelReport$volume(0)),
 				_List_Nil),
 			sortedReports).b;
-		return {
-			groupedReports: $elm$core$List$reverse(
-				A2(
-					$author$project$Utils$GroupBy$attr,
-					{
-						groupBy: A2(
+		var groupedReports = $elm$core$List$reverse(
+			A2(
+				$author$project$Utils$GroupBy$attr,
+				{
+					ascending: false,
+					groupBy: A2(
+						$elm$core$Basics$composeR,
+						function ($) {
+							return $.date;
+						},
+						A2(
 							$elm$core$Basics$composeR,
-							function ($) {
-								return $.report;
-							},
-							A2(
-								$elm$core$Basics$composeR,
-								function ($) {
-									return $.date;
-								},
-								A2(
-									$elm$core$Basics$composeR,
-									$justinmimbs$date$Date$fromPosix(timezone),
-									$justinmimbs$date$Date$format('yyyy MM')))),
-						nameAs: A2(
+							$justinmimbs$date$Date$fromPosix(timezone),
+							$justinmimbs$date$Date$format('yyyy MM'))),
+					nameAs: A2(
+						$elm$core$Basics$composeR,
+						function ($) {
+							return $.date;
+						},
+						A2(
 							$elm$core$Basics$composeR,
-							function ($) {
-								return $.report;
-							},
-							A2(
-								$elm$core$Basics$composeR,
-								function ($) {
-									return $.date;
-								},
-								A2(
-									$elm$core$Basics$composeR,
-									$justinmimbs$date$Date$fromPosix(timezone),
-									$justinmimbs$date$Date$format('MMM yyyy')))),
-						reverse: true
-					},
-					distancedReports)),
-			numberOfStudents: students,
-			tripsMade: tripsMade
+							$justinmimbs$date$Date$fromPosix(timezone),
+							$justinmimbs$date$Date$format('MMM yyyy')))
+				},
+				distancedReports));
+		var plotData = A2(
+			$elm$core$List$filter,
+			function (x) {
+				return !(!$author$project$Models$FuelReport$distanceToInt(x.sinceLastReport.distance));
+			},
+			distancedReports);
+		var consumptionOnDate = function (report) {
+			return A2($author$project$Models$FuelReport$consumption, report.sinceLastReport.distance, report.volume);
 		};
+		var statistics = function () {
+			var stdDev = $gampleman$elm_visualization$Statistics$deviation(
+				A2(
+					$elm$core$List$filter,
+					function (x) {
+						return !(!x);
+					},
+					A2(
+						$elm$core$List$map,
+						$author$project$Models$FuelReport$consumptionToFloat,
+						A2($elm$core$List$map, consumptionOnDate, distancedReports))));
+			var mean = A2(
+				$elm$core$Maybe$map,
+				$author$project$Models$FuelReport$consumptionToFloat,
+				A2(
+					$elm$core$Maybe$map,
+					runningAverage,
+					takeLast(distancedReports)));
+			var _v0 = _Utils_Tuple2(stdDev, mean);
+			if ((_v0.a.$ === 'Just') && (_v0.b.$ === 'Just')) {
+				var stdDev_ = _v0.a.a;
+				var mean_ = _v0.b.a;
+				return $elm$core$Maybe$Just(
+					{mean: mean_, stdDev: stdDev_});
+			} else {
+				return $elm$core$Maybe$Nothing;
+			}
+		}();
+		var cmd = $author$project$Ports$renderChart(
+			{
+				statistics: statistics,
+				x: A2(
+					$elm$core$List$map,
+					A2(
+						$elm$core$Basics$composeR,
+						function ($) {
+							return $.date;
+						},
+						$elm$time$Time$posixToMillis),
+					plotData),
+				y: {
+					consumptionOnDate: A2(
+						$elm$core$List$map,
+						A2($elm$core$Basics$composeR, consumptionOnDate, $author$project$Models$FuelReport$consumptionToFloat),
+						plotData),
+					runningAverage: A2(
+						$elm$core$List$map,
+						A2($elm$core$Basics$composeR, runningAverage, $author$project$Models$FuelReport$consumptionToFloat),
+						plotData)
+				}
+			});
+		return _Utils_Tuple2(
+			{groupedReports: groupedReports, numberOfStudents: students, statistics: statistics, tripsMade: tripsMade},
+			cmd);
 	});
 var $author$project$Session$timeZone = function (session) {
 	if (session.$ === 'LoggedIn') {
@@ -14134,7 +14306,7 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$fetchFuelHistory = F2(
 var $author$project$Pages$Buses$Bus$FuelHistoryPage$init = F2(
 	function (busID, session) {
 		return _Utils_Tuple2(
-			{busID: busID, data: $krisajenkins$remotedata$RemoteData$Loading, session: session, statistics: $elm$core$Maybe$Nothing},
+			{busID: busID, data: $krisajenkins$remotedata$RemoteData$Loading, inEditMode: false, session: session, statistics: $elm$core$Maybe$Nothing},
 			A2($author$project$Pages$Buses$Bus$FuelHistoryPage$fetchFuelHistory, session, busID));
 	});
 var $author$project$Pages$Buses$BusPage$fuelPage = F2(
@@ -14812,12 +14984,12 @@ var $author$project$Utils$GroupBy$date = F3(
 		return A2(
 			$author$project$Utils$GroupBy$attr,
 			{
+				ascending: true,
 				groupBy: A2($elm$core$Basics$composeR, getTime, $elm$time$Time$posixToMillis),
 				nameAs: A2(
 					$elm$core$Basics$composeR,
 					getTime,
-					$author$project$Utils$DateFormatter$dateFormatter(timezone)),
-				reverse: false
+					$author$project$Utils$DateFormatter$dateFormatter(timezone))
 			},
 			list);
 	});
@@ -15189,16 +15361,6 @@ var $author$project$Models$Bus$locationUpdateDecoder = A3(
 				'bus',
 				$elm$json$Json$Decode$int,
 				$elm$json$Json$Decode$succeed($author$project$Models$Bus$LocationUpdate)))));
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
 var $author$project$Models$Bus$Engine = {$: 'Engine'};
 var $author$project$Models$Bus$FrontCrossAxis = {$: 'FrontCrossAxis'};
 var $author$project$Models$Bus$FrontLeftTire = {$: 'FrontLeftTire'};
@@ -15952,6 +16114,7 @@ var $author$project$Models$Household$studentByRouteDecoder = function () {
 				A2(
 					$author$project$Utils$GroupBy$attr,
 					{
+						ascending: true,
 						groupBy: A2(
 							$elm$core$Basics$composeR,
 							function ($) {
@@ -15967,8 +16130,7 @@ var $author$project$Models$Household$studentByRouteDecoder = function () {
 							},
 							function ($) {
 								return $.name;
-							}),
-						reverse: false
+							})
 					},
 					students),
 				households));
@@ -18784,15 +18946,6 @@ var $author$project$Layout$NavBar$internals = function (model) {
 	var i = model.a;
 	return i;
 };
-var $elm$core$Maybe$destruct = F3(
-	function (_default, func, maybe) {
-		if (maybe.$ === 'Just') {
-			var a = maybe.a;
-			return func(a);
-		} else {
-			return _default;
-		}
-	});
 var $author$project$Models$Location$setSchoolLocation = _Platform_outgoingPort(
 	'setSchoolLocation',
 	function ($) {
@@ -19087,7 +19240,6 @@ var $author$project$Layout$SideBar$percentCollapsed = function (width) {
 	return (width - $author$project$Layout$SideBar$minSideBarWidth) / ($author$project$Layout$SideBar$maxSideBarWidth - $author$project$Layout$SideBar$minSideBarWidth);
 };
 var $author$project$Layout$SideBar$setOpenState = _Platform_outgoingPort('setOpenState', $elm$json$Json$Encode$bool);
-var $elm$core$Basics$sqrt = _Basics_sqrt;
 var $author$project$Layout$SideBar$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
@@ -20908,239 +21060,55 @@ var $author$project$Pages$Buses$Bus$DevicePage$update = F2(
 				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 		}
 	});
-var $author$project$Models$FuelReport$ConsumptionRate = function (a) {
-	return {$: 'ConsumptionRate', a: a};
-};
-var $author$project$Models$FuelReport$round100 = function (_float) {
-	return $elm$core$Basics$round(_float * 100) / 100;
-};
-var $author$project$Models$FuelReport$consumption = F2(
-	function (_v0, _v1) {
-		var distance1 = _v0.a;
-		var volume1 = _v1.a;
-		var distanceTravelled = distance1 / 1000;
-		return (distanceTravelled > 0) ? $author$project$Models$FuelReport$ConsumptionRate(
-			$author$project$Models$FuelReport$round100((100 * volume1) / distanceTravelled)) : $author$project$Models$FuelReport$ConsumptionRate(0);
-	});
-var $author$project$Models$FuelReport$consumptionToFloat = function (_v0) {
-	var value = _v0.a;
-	return value;
-};
-var $gampleman$elm_visualization$Statistics$variance = function (nums) {
-	var compute = F2(
-		function (value, _v1) {
-			var mean = _v1.a;
-			var i = _v1.b;
-			var sm = _v1.c;
-			var delta = value - mean;
-			var newMean = mean + (delta / (i + 1));
-			return _Utils_Tuple3(newMean, i + 1, sm + (delta * (value - newMean)));
-		});
-	var _v0 = A3(
-		$elm$core$List$foldr,
-		compute,
-		_Utils_Tuple3(0, 0, 0),
-		nums);
-	var length = _v0.b;
-	var sum = _v0.c;
-	return (length > 1) ? $elm$core$Maybe$Just(sum / (length - 1)) : $elm$core$Maybe$Nothing;
-};
-var $gampleman$elm_visualization$Statistics$deviation = A2(
-	$elm$core$Basics$composeR,
-	$gampleman$elm_visualization$Statistics$variance,
-	$elm$core$Maybe$map($elm$core$Basics$sqrt));
-var $author$project$Ports$renderChart = _Platform_outgoingPort(
-	'renderChart',
-	function ($) {
-		return $elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'statistics',
-					function ($) {
-						return A3(
-							$elm$core$Maybe$destruct,
-							$elm$json$Json$Encode$null,
-							function ($) {
-								return $elm$json$Json$Encode$object(
-									_List_fromArray(
-										[
-											_Utils_Tuple2(
-											'mean',
-											$elm$json$Json$Encode$float($.mean)),
-											_Utils_Tuple2(
-											'stdDev',
-											$elm$json$Json$Encode$float($.stdDev))
-										]));
-							},
-							$);
-					}($.statistics)),
-					_Utils_Tuple2(
-					'x',
-					$elm$json$Json$Encode$list($elm$json$Json$Encode$int)($.x)),
-					_Utils_Tuple2(
-					'y',
-					function ($) {
-						return $elm$json$Json$Encode$object(
-							_List_fromArray(
-								[
-									_Utils_Tuple2(
-									'consumptionOnDate',
-									$elm$json$Json$Encode$list($elm$json$Json$Encode$float)($.consumptionOnDate)),
-									_Utils_Tuple2(
-									'runningAverage',
-									$elm$json$Json$Encode$list($elm$json$Json$Encode$float)($.runningAverage))
-								]));
-					}($.y))
-				]));
-	});
 var $author$project$Pages$Buses$Bus$FuelHistoryPage$update = F2(
 	function (msg, model) {
-		if (msg.$ === 'CreateFuelReport') {
-			return _Utils_Tuple2(
-				model,
-				A2(
-					$author$project$Navigation$rerouteTo,
+		switch (msg.$) {
+			case 'CreateFuelReport':
+				return _Utils_Tuple2(
 					model,
-					$author$project$Navigation$CreateFuelReport(model.busID)));
-		} else {
-			var response = msg.a;
-			switch (response.$) {
-				case 'Success':
-					var groupedReports = response.a.groupedReports;
-					var numberOfStudents = response.a.numberOfStudents;
-					var tripsMade = response.a.tripsMade;
-					var reports = $elm$core$List$concat(
-						$elm$core$List$reverse(
-							A2(
-								$elm$core$List$map,
-								A2($elm$core$Basics$composeR, $elm$core$Tuple$second, $elm$core$List$reverse),
-								groupedReports)));
-					var fuelConsumptions = A2(
-						$elm$core$List$map,
-						$author$project$Models$FuelReport$consumptionToFloat,
-						A2(
-							$elm$core$List$map,
-							function (x) {
-								return A2($author$project$Models$FuelReport$consumption, x.distanceSinceLastFueling, x.report.volume);
-							},
-							reports));
-					var stdDev = $gampleman$elm_visualization$Statistics$deviation(
-						A2(
-							$elm$core$List$filter,
-							function (x) {
-								return !(!x);
-							},
-							fuelConsumptions));
-					var data = A2(
-						$elm$core$List$map,
-						function (_v4) {
-							var report = _v4.report;
-							var distanceSinceLastFueling = _v4.distanceSinceLastFueling;
-							var cumulativeFuelPurchased = _v4.cumulativeFuelPurchased;
-							return {
-								consumptionOnDate: A2($author$project$Models$FuelReport$consumption, distanceSinceLastFueling, report.volume),
-								date: report.date,
-								distanceSinceLastFueling: distanceSinceLastFueling,
-								runningAverage: A2($author$project$Models$FuelReport$consumption, report.totalDistanceCovered, cumulativeFuelPurchased)
-							};
-						},
-						reports);
-					var mean = A2(
-						$elm$core$Maybe$map,
-						function (x) {
-							return $author$project$Models$FuelReport$consumptionToFloat(x.runningAverage);
-						},
-						$elm$core$List$head(
-							A2(
-								$elm$core$List$drop,
-								$elm$core$List$length(data) - 1,
-								data)));
-					var stats = function () {
-						var _v3 = _Utils_Tuple2(stdDev, mean);
-						if ((_v3.a.$ === 'Just') && (_v3.b.$ === 'Just')) {
-							var stdDev_ = _v3.a.a;
-							var mean_ = _v3.b.a;
-							return $elm$core$Maybe$Just(
-								{mean: mean_, stdDev: stdDev_});
-						} else {
-							return $elm$core$Maybe$Nothing;
-						}
-					}();
-					var plotData = A2(
-						$elm$core$List$filter,
-						function (x) {
-							return !(!$author$project$Models$FuelReport$distanceToInt(x.distanceSinceLastFueling));
-						},
-						data);
-					var _v2 = _Utils_Tuple2(
-						stats,
-						$author$project$Ports$renderChart(
-							{
-								statistics: stats,
-								x: A2(
-									$elm$core$List$map,
-									A2(
-										$elm$core$Basics$composeR,
-										function ($) {
-											return $.date;
-										},
-										$elm$time$Time$posixToMillis),
-									plotData),
-								y: {
-									consumptionOnDate: A2(
-										$elm$core$List$map,
-										A2(
-											$elm$core$Basics$composeR,
-											function ($) {
-												return $.consumptionOnDate;
-											},
-											$author$project$Models$FuelReport$consumptionToFloat),
-										plotData),
-									runningAverage: A2(
-										$elm$core$List$map,
-										A2(
-											$elm$core$Basics$composeR,
-											function ($) {
-												return $.runningAverage;
-											},
-											$author$project$Models$FuelReport$consumptionToFloat),
-										plotData)
-								}
-							}));
-					var statistics = _v2.a;
-					var cmd = _v2.b;
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								data: $krisajenkins$remotedata$RemoteData$Success(
-									{groupedReports: groupedReports, numberOfStudents: numberOfStudents, tripsMade: tripsMade}),
-								statistics: statistics
-							}),
-						cmd);
-				case 'Failure':
-					var e = response.a;
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								data: $krisajenkins$remotedata$RemoteData$Failure(e)
-							}),
-						$elm$core$Platform$Cmd$none);
-				case 'Loading':
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{data: $krisajenkins$remotedata$RemoteData$Loading}),
-						$elm$core$Platform$Cmd$none);
-				default:
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{data: $krisajenkins$remotedata$RemoteData$NotAsked}),
-						$elm$core$Platform$Cmd$none);
-			}
+					A2(
+						$author$project$Navigation$rerouteTo,
+						model,
+						$author$project$Navigation$CreateFuelReport(model.busID)));
+			case 'RecordsResponse':
+				var response = msg.a;
+				switch (response.$) {
+					case 'Success':
+						var _v2 = response.a;
+						var data = _v2.a;
+						var cmd = _v2.b;
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									data: $krisajenkins$remotedata$RemoteData$Success(data)
+								}),
+							cmd);
+					case 'Failure':
+						var e = response.a;
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									data: $krisajenkins$remotedata$RemoteData$Failure(e)
+								}),
+							$elm$core$Platform$Cmd$none);
+					case 'Loading':
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{data: $krisajenkins$remotedata$RemoteData$Loading}),
+							$elm$core$Platform$Cmd$none);
+					default:
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{data: $krisajenkins$remotedata$RemoteData$NotAsked}),
+							$elm$core$Platform$Cmd$none);
+				}
+			default:
+				var id_ = msg.a;
+				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 		}
 	});
 var $author$project$Pages$Buses$Bus$RepairsPage$Summary = {$: 'Summary'};
@@ -40277,32 +40245,10 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewGraph = A2(
 			A2($mdgriffith$elm_ui$Element$paddingXY, 20, 0)
 		]),
 	$mdgriffith$elm_ui$Element$none);
-var $mdgriffith$elm_ui$Element$Font$alignLeft = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$fontAlignment, $mdgriffith$elm_ui$Internal$Style$classes.textLeft);
-var $mdgriffith$elm_ui$Element$Font$alignRight = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$fontAlignment, $mdgriffith$elm_ui$Internal$Style$classes.textRight);
-var $elm$core$String$padRight = F3(
-	function (n, _char, string) {
-		return _Utils_ap(
-			string,
-			A2(
-				$elm$core$String$repeat,
-				n - $elm$core$String$length(string),
-				$elm$core$String$fromChar(_char)));
-	});
-var $author$project$Pages$Buses$Bus$FuelHistoryPage$roundString100 = function (c) {
-	var _v0 = $elm$core$List$head(
-		A2($elm$core$String$indexes, '.', c));
-	if (_v0.$ === 'Nothing') {
-		return c + '.00';
-	} else {
-		var location = _v0.a;
-		var length = $elm$core$String$length(c);
-		return A3(
-			$elm$core$String$padRight,
-			length + (2 - ((length - location) - 1)),
-			_Utils_chr('0'),
-			c);
-	}
+var $author$project$Pages$Buses$Bus$FuelHistoryPage$Delete = function (a) {
+	return {$: 'Delete', a: a};
 };
+var $author$project$Colors$fillErrorRedHover = $author$project$Colors$class('fillErrorRedOnHover');
 var $mdgriffith$elm_ui$Element$spacingXY = F2(
 	function (x, y) {
 		return A2(
@@ -40517,16 +40463,6 @@ var $mdgriffith$elm_ui$Element$table = F2(
 				data: config.data
 			});
 	});
-var $author$project$Style$tableElementStyle = _Utils_ap(
-	_List_fromArray(
-		[
-			$mdgriffith$elm_ui$Element$Region$heading(4),
-			$mdgriffith$elm_ui$Element$Font$size(18),
-			$mdgriffith$elm_ui$Element$Font$color(
-			A3($mdgriffith$elm_ui$Element$rgb255, 96, 96, 96)),
-			$mdgriffith$elm_ui$Element$alignLeft
-		]),
-	$author$project$Style$defaultFontFace);
 var $mdgriffith$elm_ui$Internal$Flag$letterSpacing = $mdgriffith$elm_ui$Internal$Flag$flag(16);
 var $mdgriffith$elm_ui$Element$Font$letterSpacing = function (offset) {
 	return A2(
@@ -40549,12 +40485,127 @@ var $author$project$Style$tableHeaderStyle = _Utils_ap(
 			$mdgriffith$elm_ui$Element$alignLeft
 		]),
 	$author$project$Style$defaultFontFace);
+var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewEditOptions = function (reportsForDate) {
+	var tableHeader = F2(
+		function (strings, attr) {
+			return A2(
+				$mdgriffith$elm_ui$Element$column,
+				A2(
+					$elm$core$List$cons,
+					$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$fill),
+					$author$project$Style$tableHeaderStyle),
+				A2(
+					$elm$core$List$map,
+					function (x) {
+						return A2(
+							$mdgriffith$elm_ui$Element$el,
+							attr,
+							$mdgriffith$elm_ui$Element$text(
+								$elm$core$String$toUpper(x)));
+					},
+					strings));
+		});
+	return A2(
+		$mdgriffith$elm_ui$Element$column,
+		_List_fromArray(
+			[
+				$mdgriffith$elm_ui$Element$spacing(12),
+				$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$fill)
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$mdgriffith$elm_ui$Element$table,
+				_List_fromArray(
+					[
+						A2($mdgriffith$elm_ui$Element$spacingXY, 30, 15),
+						A2($mdgriffith$elm_ui$Element$paddingXY, 10, 0),
+						$mdgriffith$elm_ui$Element$Background$color($author$project$Colors$transparent)
+					]),
+				{
+					columns: _List_fromArray(
+						[
+							{
+							header: A2(
+								tableHeader,
+								_List_fromArray(
+									[' ', ' ']),
+								_List_fromArray(
+									[$mdgriffith$elm_ui$Element$alignRight])),
+							view: function (report) {
+								return A2(
+									$author$project$StyledElement$iconButton,
+									_List_fromArray(
+										[
+											$mdgriffith$elm_ui$Element$padding(0),
+											$mdgriffith$elm_ui$Element$Background$color($author$project$Colors$transparent),
+											$author$project$Colors$fillErrorRedHover,
+											$mdgriffith$elm_ui$Element$alpha(0.54),
+											$mdgriffith$elm_ui$Element$mouseOver(
+											_List_fromArray(
+												[
+													$mdgriffith$elm_ui$Element$alpha(1)
+												]))
+										]),
+									{
+										icon: $author$project$Icons$trash,
+										iconAttrs: _List_fromArray(
+											[
+												$mdgriffith$elm_ui$Element$alpha(1)
+											]),
+										onPress: $elm$core$Maybe$Just(
+											$author$project$Pages$Buses$Bus$FuelHistoryPage$Delete(report.id))
+									});
+							},
+							width: $mdgriffith$elm_ui$Element$px(24)
+						}
+						]),
+					data: reportsForDate
+				})
+			]));
+};
+var $mdgriffith$elm_ui$Element$Font$alignLeft = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$fontAlignment, $mdgriffith$elm_ui$Internal$Style$classes.textLeft);
+var $mdgriffith$elm_ui$Element$Font$alignRight = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$fontAlignment, $mdgriffith$elm_ui$Internal$Style$classes.textRight);
+var $elm$core$String$padRight = F3(
+	function (n, _char, string) {
+		return _Utils_ap(
+			string,
+			A2(
+				$elm$core$String$repeat,
+				n - $elm$core$String$length(string),
+				$elm$core$String$fromChar(_char)));
+	});
+var $author$project$Pages$Buses$Bus$FuelHistoryPage$roundString100 = function (c) {
+	var _v0 = $elm$core$List$head(
+		A2($elm$core$String$indexes, '.', c));
+	if (_v0.$ === 'Nothing') {
+		return c + '.00';
+	} else {
+		var location = _v0.a;
+		var length = $elm$core$String$length(c);
+		return A3(
+			$elm$core$String$padRight,
+			length + (2 - ((length - location) - 1)),
+			_Utils_chr('0'),
+			c);
+	}
+};
+var $author$project$Style$tableElementStyle = _Utils_ap(
+	_List_fromArray(
+		[
+			$mdgriffith$elm_ui$Element$Region$heading(4),
+			$mdgriffith$elm_ui$Element$Font$size(18),
+			$mdgriffith$elm_ui$Element$Font$color(
+			A3($mdgriffith$elm_ui$Element$rgb255, 96, 96, 96)),
+			$mdgriffith$elm_ui$Element$alignLeft
+		]),
+	$author$project$Style$defaultFontFace);
 var $author$project$Pages$Buses$Bus$FuelHistoryPage$totalForGroup = function (reports) {
 	return A3(
 		$elm$core$List$foldl,
 		F2(
 			function (x, acc) {
-				return acc + x.report.cost;
+				return acc + x.cost;
 			}),
 		0,
 		reports);
@@ -40563,9 +40614,8 @@ var $author$project$Models$FuelReport$volumeToFloat = function (_v0) {
 	var value = _v0.a;
 	return value;
 };
-var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewGroupedReports = F2(
-	function (model, groupedReports) {
-		var timezone = $author$project$Session$timeZone(model.session);
+var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewFuelTable = F2(
+	function (reportsForDate, timezone) {
 		var tableHeader = F2(
 			function (strings, attr) {
 				return A2(
@@ -40603,7 +40653,7 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewGroupedReports = F2(
 		var rowText = rowTextAlign(
 			_List_fromArray(
 				[$mdgriffith$elm_ui$Element$Font$alignRight, $mdgriffith$elm_ui$Element$alignRight]));
-		var hoverEl = function (_v1) {
+		var hoverEl = function (_v0) {
 			return A2(
 				$mdgriffith$elm_ui$Element$el,
 				_List_fromArray(
@@ -40621,6 +40671,165 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewGroupedReports = F2(
 					]),
 				$mdgriffith$elm_ui$Element$none);
 		};
+		return A2(
+			$mdgriffith$elm_ui$Element$column,
+			_List_fromArray(
+				[
+					$mdgriffith$elm_ui$Element$spacing(12),
+					$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$fill),
+					$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$mdgriffith$elm_ui$Element$table,
+					_List_fromArray(
+						[
+							A2($mdgriffith$elm_ui$Element$spacingXY, 30, 15),
+							$mdgriffith$elm_ui$Element$paddingEach(
+							_Utils_update(
+								$author$project$Style$edges,
+								{left: 10})),
+							$mdgriffith$elm_ui$Element$Background$color($author$project$Colors$transparent),
+							$mdgriffith$elm_ui$Element$inFront(
+							A2(
+								$mdgriffith$elm_ui$Element$column,
+								_List_fromArray(
+									[
+										$mdgriffith$elm_ui$Element$paddingEach(
+										_Utils_update(
+											$author$project$Style$edges,
+											{top: 36})),
+										A2($mdgriffith$elm_ui$Element$spacingXY, 30, 0),
+										$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
+									]),
+								A2(
+									$elm$core$List$map,
+									hoverEl,
+									A2(
+										$elm$core$List$range,
+										0,
+										$elm$core$List$length(reportsForDate) - 1))))
+						]),
+					{
+						columns: _List_fromArray(
+							[
+								{
+								header: A2(
+									tableHeader,
+									_List_fromArray(
+										['DATE']),
+									_List_fromArray(
+										[$mdgriffith$elm_ui$Element$alignBottom])),
+								view: function (x) {
+									var dateText = A2(
+										$justinmimbs$date$Date$format,
+										'MMM ddd',
+										A2($justinmimbs$date$Date$fromPosix, timezone, x.date));
+									return A2(
+										rowTextAlign,
+										_List_fromArray(
+											[$mdgriffith$elm_ui$Element$Font$alignLeft, $mdgriffith$elm_ui$Element$alignLeft]),
+										dateText);
+								},
+								width: A2($mdgriffith$elm_ui$Element$maximum, 100, $mdgriffith$elm_ui$Element$fill)
+							},
+								{
+								header: A2(
+									tableHeader,
+									_List_fromArray(
+										['FUEL VOLUME', '(L)']),
+									_List_fromArray(
+										[$mdgriffith$elm_ui$Element$alignRight])),
+								view: function (report) {
+									var consumptionText = $author$project$Pages$Buses$Bus$FuelHistoryPage$roundString100(
+										$elm$core$String$fromFloat(
+											$author$project$Models$FuelReport$volumeToFloat(report.volume)));
+									return rowText(consumptionText);
+								},
+								width: $mdgriffith$elm_ui$Element$fill
+							},
+								{
+								header: A2(
+									tableHeader,
+									_List_fromArray(
+										['DISTANCE ', 'TRAVELLED (KM)']),
+									_List_fromArray(
+										[$mdgriffith$elm_ui$Element$alignRight])),
+								view: function (report) {
+									var distanceText = ($author$project$Models$FuelReport$distanceToInt(report.sinceLastReport.distance) > 0) ? $elm$core$String$fromInt(
+										($author$project$Models$FuelReport$distanceToInt(report.sinceLastReport.distance) / 1000) | 0) : '-';
+									return rowText(distanceText);
+								},
+								width: $mdgriffith$elm_ui$Element$fill
+							},
+								{
+								header: A2(
+									tableHeader,
+									_List_fromArray(
+										['FUEL CONSUMPTION', '(L/100KM)']),
+									_List_fromArray(
+										[$mdgriffith$elm_ui$Element$alignRight])),
+								view: function (report) {
+									var consumption = $author$project$Models$FuelReport$consumptionToFloat(
+										A2($author$project$Models$FuelReport$consumption, report.sinceLastReport.distance, report.volume));
+									var consumptionText = (consumption > 0) ? $author$project$Pages$Buses$Bus$FuelHistoryPage$roundString100(
+										$elm$core$String$fromFloat(consumption)) : '-';
+									return rowText(consumptionText);
+								},
+								width: $mdgriffith$elm_ui$Element$fill
+							},
+								{
+								header: A2(
+									tableHeader,
+									_List_fromArray(
+										['FUEL COST', '(KES)']),
+									_List_fromArray(
+										[$mdgriffith$elm_ui$Element$alignRight])),
+								view: function (report) {
+									return rowText(
+										$elm$core$String$fromInt(report.cost));
+								},
+								width: $mdgriffith$elm_ui$Element$fill
+							}
+							]),
+						data: reportsForDate
+					}),
+					A2(
+					$mdgriffith$elm_ui$Element$column,
+					_List_fromArray(
+						[
+							$mdgriffith$elm_ui$Element$alignRight,
+							$mdgriffith$elm_ui$Element$spacing(4)
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$mdgriffith$elm_ui$Element$el,
+							_List_fromArray(
+								[
+									$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
+									$mdgriffith$elm_ui$Element$height(
+									$mdgriffith$elm_ui$Element$px(2)),
+									$mdgriffith$elm_ui$Element$Background$color(
+									A3($mdgriffith$elm_ui$Element$rgb255, 96, 96, 96))
+								]),
+							$mdgriffith$elm_ui$Element$none),
+							A2(
+							$mdgriffith$elm_ui$Element$el,
+							A2(
+								$elm$core$List$cons,
+								$mdgriffith$elm_ui$Element$Font$alignRight,
+								A2($elm$core$List$cons, $mdgriffith$elm_ui$Element$Font$bold, $author$project$Style$tableElementStyle)),
+							$mdgriffith$elm_ui$Element$text(
+								'KES. ' + $elm$core$String$fromInt(
+									$author$project$Pages$Buses$Bus$FuelHistoryPage$totalForGroup(reportsForDate))))
+						]))
+				]));
+	});
+var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewGroupedReports = F2(
+	function (model, groupedReports) {
+		var timezone = $author$project$Session$timeZone(model.session);
 		var viewGroup = function (_v0) {
 			var month = _v0.a;
 			var reportsForDate = _v0.b;
@@ -40655,146 +40864,18 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewGroupedReports = F2(
 								])),
 						$mdgriffith$elm_ui$Element$text(month)),
 						A2(
-						$mdgriffith$elm_ui$Element$table,
+						$mdgriffith$elm_ui$Element$row,
 						_List_fromArray(
 							[
-								A2($mdgriffith$elm_ui$Element$spacingXY, 30, 15),
-								A2($mdgriffith$elm_ui$Element$paddingXY, 10, 0),
-								$mdgriffith$elm_ui$Element$Background$color($author$project$Colors$transparent),
-								$mdgriffith$elm_ui$Element$inFront(
-								A2(
-									$mdgriffith$elm_ui$Element$column,
-									_List_fromArray(
-										[
-											$mdgriffith$elm_ui$Element$paddingEach(
-											_Utils_update(
-												$author$project$Style$edges,
-												{top: 36})),
-											A2($mdgriffith$elm_ui$Element$spacingXY, 30, 0),
-											$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
-										]),
-									A2(
-										$elm$core$List$map,
-										hoverEl,
-										A2(
-											$elm$core$List$range,
-											0,
-											$elm$core$List$length(reportsForDate) - 1))))
+								$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
 							]),
-						{
-							columns: _List_fromArray(
-								[
-									{
-									header: A2(
-										tableHeader,
-										_List_fromArray(
-											['DATE']),
-										_List_fromArray(
-											[$mdgriffith$elm_ui$Element$alignBottom])),
-									view: function (x) {
-										var dateText = A2(
-											$justinmimbs$date$Date$format,
-											'MMM ddd',
-											A2($justinmimbs$date$Date$fromPosix, timezone, x.report.date));
-										return A2(
-											rowTextAlign,
-											_List_fromArray(
-												[$mdgriffith$elm_ui$Element$Font$alignLeft, $mdgriffith$elm_ui$Element$alignLeft]),
-											dateText);
-									},
-									width: A2($mdgriffith$elm_ui$Element$maximum, 100, $mdgriffith$elm_ui$Element$fill)
-								},
-									{
-									header: A2(
-										tableHeader,
-										_List_fromArray(
-											['FUEL VOLUME', '(L)']),
-										_List_fromArray(
-											[$mdgriffith$elm_ui$Element$alignRight])),
-									view: function (x) {
-										var consumptionText = $author$project$Pages$Buses$Bus$FuelHistoryPage$roundString100(
-											$elm$core$String$fromFloat(
-												$author$project$Models$FuelReport$volumeToFloat(x.report.volume)));
-										return rowText(consumptionText);
-									},
-									width: $mdgriffith$elm_ui$Element$fill
-								},
-									{
-									header: A2(
-										tableHeader,
-										_List_fromArray(
-											['DISTANCE ', 'TRAVELLED (KM)']),
-										_List_fromArray(
-											[$mdgriffith$elm_ui$Element$alignRight])),
-									view: function (x) {
-										var distanceText = ($author$project$Models$FuelReport$distanceToInt(x.distanceSinceLastFueling) > 0) ? $elm$core$String$fromInt(
-											($author$project$Models$FuelReport$distanceToInt(x.distanceSinceLastFueling) / 1000) | 0) : '-';
-										return rowText(distanceText);
-									},
-									width: $mdgriffith$elm_ui$Element$fill
-								},
-									{
-									header: A2(
-										tableHeader,
-										_List_fromArray(
-											['FUEL CONSUMPTION', '(L/100KM)']),
-										_List_fromArray(
-											[$mdgriffith$elm_ui$Element$alignRight])),
-									view: function (x) {
-										var consumption = $author$project$Models$FuelReport$consumptionToFloat(
-											A2($author$project$Models$FuelReport$consumption, x.distanceSinceLastFueling, x.report.volume));
-										var consumptionText = (consumption > 0) ? $author$project$Pages$Buses$Bus$FuelHistoryPage$roundString100(
-											$elm$core$String$fromFloat(consumption)) : '-';
-										return rowText(consumptionText);
-									},
-									width: $mdgriffith$elm_ui$Element$fill
-								},
-									{
-									header: A2(
-										tableHeader,
-										_List_fromArray(
-											['FUEL COST', '(KES)']),
-										_List_fromArray(
-											[$mdgriffith$elm_ui$Element$alignRight])),
-									view: function (x) {
-										return rowText(
-											$elm$core$String$fromInt(x.report.cost));
-									},
-									width: $mdgriffith$elm_ui$Element$fill
-								}
-								]),
-							data: reportsForDate
-						}),
 						A2(
-						$mdgriffith$elm_ui$Element$column,
-						_List_fromArray(
-							[
-								$mdgriffith$elm_ui$Element$alignRight,
-								$mdgriffith$elm_ui$Element$spacing(4)
-							]),
-						_List_fromArray(
-							[
-								A2(
-								$mdgriffith$elm_ui$Element$el,
-								_List_fromArray(
-									[
-										$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
-										$mdgriffith$elm_ui$Element$height(
-										$mdgriffith$elm_ui$Element$px(2)),
-										$mdgriffith$elm_ui$Element$Background$color(
-										A3($mdgriffith$elm_ui$Element$rgb255, 96, 96, 96))
-									]),
-								$mdgriffith$elm_ui$Element$none),
-								A2(
-								$mdgriffith$elm_ui$Element$el,
-								A2(
-									$elm$core$List$cons,
-									$mdgriffith$elm_ui$Element$Font$alignRight,
-									A2($elm$core$List$cons, $mdgriffith$elm_ui$Element$Font$bold, $author$project$Style$tableElementStyle)),
-								$mdgriffith$elm_ui$Element$text(
-									'KES. ' + $elm$core$String$fromInt(
-										$author$project$Pages$Buses$Bus$FuelHistoryPage$totalForGroup(reportsForDate))))
-							]))
+							$elm$core$List$cons,
+							A2($author$project$Pages$Buses$Bus$FuelHistoryPage$viewFuelTable, reportsForDate, timezone),
+							model.inEditMode ? _List_fromArray(
+								[
+									$author$project$Pages$Buses$Bus$FuelHistoryPage$viewEditOptions(reportsForDate)
+								]) : _List_Nil))
 					]));
 		};
 		return A2($elm$core$List$map, viewGroup, groupedReports);
@@ -40810,14 +40891,9 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewStats = function (data) 
 	var cost = $elm$core$List$sum(
 		A2(
 			$elm$core$List$map,
-			A2(
-				$elm$core$Basics$composeR,
-				function ($) {
-					return $.report;
-				},
-				function ($) {
-					return $.cost;
-				}),
+			function ($) {
+				return $.cost;
+			},
 			$elm$core$List$concat(
 				A2($elm$core$List$map, $elm$core$Tuple$second, data.groupedReports))));
 	var tripCost = function (_v0) {
@@ -51294,7 +51370,7 @@ _Platform_export({'Main':{'init':$author$project$Main$main(
 									A2($elm$json$Json$Decode$field, 'height', $elm$json$Json$Decode$int));
 							},
 							A2($elm$json$Json$Decode$field, 'width', $elm$json$Json$Decode$int)))))
-			])))({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{"Session.Credentials":{"args":[],"type":"{ name : String.String, email : String.String, token : String.String, school_id : Basics.Int }"},"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"},"Json.Decode.Value":{"args":[],"type":"Json.Encode.Value"},"Models.Bus.Bus":{"args":[],"type":"{ id : Basics.Int, numberPlate : String.String, seatsAvailable : Basics.Int, vehicleClass : Models.Bus.VehicleClass, statedMilage : Basics.Float, route : Maybe.Maybe Models.Bus.SimpleRoute, device : Maybe.Maybe Models.Bus.Device, repairs : List.List Models.Bus.Repair, lastSeen : Maybe.Maybe Models.Bus.LocationUpdate }"},"Pages.Buses.BusPage.BusData":{"args":[],"type":"{ bus : Models.Bus.Bus, currentPage : Pages.Buses.BusPage.Page, pages : List.List ( Pages.Buses.BusPage.Page, Platform.Cmd.Cmd Pages.Buses.BusPage.Msg ), pageIndex : Basics.Int, pendingAction : Platform.Cmd.Cmd Pages.Buses.BusPage.Msg }"},"Models.CrewMember.CrewMember":{"args":[],"type":"{ id : Basics.Int, name : String.String, role : Models.CrewMember.Role, email : String.String, phoneNumber : String.String, bus : Maybe.Maybe Basics.Int }"},"Pages.Crew.CrewMembersPage.Data":{"args":[],"type":"{ crew : List.List Models.CrewMember.CrewMember, buses : List.List Models.Bus.Bus }"},"Models.Bus.Device":{"args":[],"type":"String.String"},"Time.Era":{"args":[],"type":"{ start : Basics.Int, offset : Basics.Int }"},"Pages.Buses.CreateBusPage.Form":{"args":[],"type":"{ vehicleClass : Models.Bus.VehicleClass, numberPlate : String.String, seatsAvailable : Basics.Int, routeId : Maybe.Maybe Basics.Int, consumptionType : Pages.Buses.CreateBusPage.ConsumptionType, consumptionAmount : StyledElement.FloatInput.FloatInput, problems : List.List (Errors.Errors Pages.Buses.CreateBusPage.Problem) }"},"Pages.Households.HouseholdsPage.GroupedStudents":{"args":[],"type":"( String.String, List.List Models.Household.Student )"},"Models.Household.Guardian":{"args":[],"type":"{ id : Basics.Int, name : String.String, phoneNumber : String.String, email : String.String }"},"Models.Household.Household":{"args":[],"type":"{ id : Basics.Int, route : Basics.Int, guardian : Models.Household.Guardian, homeLocation : Models.Household.Location, students : List.List Models.Household.Student }"},"Models.Household.Location":{"args":[],"type":"{ lng : Basics.Float, lat : Basics.Float }"},"Models.Location.Location":{"args":[],"type":"{ lng : Basics.Float, lat : Basics.Float }"},"Models.Bus.LocationUpdate":{"args":[],"type":"{ bus : Basics.Int, location : Models.Location.Location, speed : Basics.Float, bearing : Basics.Float }"},"Phoenix.Payload.Payload":{"args":[],"type":"{ topic : String.String, message : String.String, payload : Json.Decode.Value }"},"Models.Bus.Repair":{"args":[],"type":"{ id : Basics.Int, part : Models.Bus.Part, description : String.String, cost : Basics.Int, dateTime : Time.Posix }"},"Models.Route.Route":{"args":[],"type":"{ id : Basics.Int, name : String.String, path : List.List Models.Location.Location, bus : Maybe.Maybe Models.Route.SimpleBus }"},"Models.School.School":{"args":[],"type":"{ location : Models.Location.Location, radius : Basics.Float, name : String.String, deviationRadius : Basics.Int }"},"Models.Route.SimpleBus":{"args":[],"type":"{ id : Basics.Int, numberPlate : String.String, seats : Basics.Int, occupied : Basics.Int }"},"Models.Bus.SimpleRoute":{"args":[],"type":"{ id : Basics.Int, name : String.String, busID : Maybe.Maybe Basics.Int }"},"Models.Household.Student":{"args":[],"type":"{ id : Basics.Int, name : String.String, travelTime : Models.Household.TravelTime, homeLocation : Models.Household.Location, route : Models.Bus.SimpleRoute }"},"Pages.Households.HouseholdRegistrationPage.Student":{"args":[],"type":"{ id : Basics.Int, name : String.String, time : Models.Household.TravelTime }"},"Api.SuccessfulLogin":{"args":[],"type":"{ location : Models.Location.Location, creds : Session.Credentials }"},"Pages.Devices.DeviceRegistrationPage.ValidForm":{"args":[],"type":"{ serial : String.String, bus_id : Basics.Int }"},"RemoteData.WebData":{"args":["a"],"type":"RemoteData.RemoteData Http.Error a"},"Pages.Buses.Bus.FuelHistoryPage.AnnotatedReport":{"args":[],"type":"{ report : Models.FuelReport.FuelReport, cumulativeFuelPurchased : Models.FuelReport.Volume, distanceSinceLastFueling : Models.FuelReport.Distance }"},"Pages.Buses.Bus.TripsHistoryPage.CreateRouteForm":{"args":[],"type":"{ path : List.List Models.Location.Location, tripID : Basics.Int, routes : RemoteData.WebData (List.List Models.Route.Route), selectedRoute : Pages.Buses.Bus.TripsHistoryPage.UpdateRoute, routeDropdownState : StyledElement.DropDown.State Models.Route.Route, problems : List.List (Errors.Errors Pages.Buses.Bus.TripsHistoryPage.Problem), update : RemoteData.WebData () }"},"Pages.Buses.Bus.FuelHistoryPage.Data":{"args":[],"type":"{ groupedReports : List.List Pages.Buses.Bus.FuelHistoryPage.GroupedReports, numberOfStudents : Basics.Int, tripsMade : Basics.Int }"},"Errors.ErrorString":{"args":[],"type":"String.String"},"Errors.FieldName":{"args":[],"type":"String.String"},"Models.FuelReport.FuelReport":{"args":[],"type":"{ id : Basics.Int, cost : Basics.Int, volume : Models.FuelReport.Volume, totalDistanceCovered : Models.FuelReport.Distance, tripsMade : Basics.Int, date : Time.Posix }"},"Pages.Buses.Bus.RepairsPage.GroupedRepairs":{"args":[],"type":"( String.String, List.List Models.Bus.Repair )"},"Pages.Buses.Bus.FuelHistoryPage.GroupedReports":{"args":[],"type":"( String.String, List.List Pages.Buses.Bus.FuelHistoryPage.AnnotatedReport )"},"Pages.Buses.Bus.TripsHistoryPage.GroupedTrips":{"args":[],"type":"( String.String, List.List Models.Trip.LightWeightTrip )"},"Models.Trip.LightWeightTrip":{"args":[],"type":"{ id : Basics.Int, startTime : Time.Posix, endTime : Time.Posix, travelTime : String.String, studentActivities : List.List Models.Trip.StudentActivity, distanceCovered : Basics.Float }"},"Pages.Buses.Bus.AboutBus.Model":{"args":[],"type":"{ bus : Models.Bus.Bus, route : RemoteData.WebData (Maybe.Maybe Models.Route.Route), crew : RemoteData.WebData (List.List Models.CrewMember.CrewMember), studentsOnboard : RemoteData.WebData (List.List Models.Household.Student), session : Session.Session, currentPage : Pages.Buses.Bus.AboutBus.Page }"},"Pages.Buses.Bus.DevicePage.Model":{"args":[],"type":"{ currentPage : Pages.Buses.Bus.DevicePage.Page, session : Session.Session, bus : Models.Bus.Bus }"},"Pages.Buses.Bus.FuelHistoryPage.Model":{"args":[],"type":"{ session : Session.Session, busID : Basics.Int, data : RemoteData.WebData Pages.Buses.Bus.FuelHistoryPage.Data, statistics : Maybe.Maybe Pages.Buses.Bus.FuelHistoryPage.Statistics }"},"Pages.Buses.Bus.RepairsPage.Model":{"args":[],"type":"{ busID : Basics.Int, session : Session.Session, repairs : List.List Models.Bus.Repair, timezone : Time.Zone, groupedRepairs : List.List Pages.Buses.Bus.RepairsPage.GroupedRepairs, currentPage : Pages.Buses.Bus.RepairsPage.Page, highlightedRepair : Maybe.Maybe Models.Bus.Repair }"},"Pages.Buses.Bus.TripsHistoryPage.Model":{"args":[],"type":"{ busID : Basics.Int, sliderValue : Basics.Int, mapVisuals : { showDeviations : Basics.Bool, showGeofence : Basics.Bool, showStops : Basics.Bool, showSpeed : Basics.Bool }, showingOngoingTrip : Basics.Bool, historicalTrips : RemoteData.WebData (List.List Models.Trip.LightWeightTrip), groupedTrips : List.List Pages.Buses.Bus.TripsHistoryPage.GroupedTrips, selectedGroup : Maybe.Maybe Pages.Buses.Bus.TripsHistoryPage.GroupedTrips, selectedTrip : Maybe.Maybe Models.Trip.Trip, session : Session.Session, loadedTrips : Dict.Dict Basics.Int Models.Trip.Trip, loadingTrip : RemoteData.WebData Models.Trip.Trip, ongoingTrip : RemoteData.WebData (Maybe.Maybe Models.Trip.OngoingTrip), needRefreshOngoingTrip : Basics.Bool, requestedTrip : Maybe.Maybe Basics.Int, createRouteForm : Maybe.Maybe Pages.Buses.Bus.TripsHistoryPage.CreateRouteForm, isPlaying : Basics.Bool }"},"Models.Trip.OngoingTrip":{"args":[],"type":"{ startTime : Time.Posix, reports : List.List Models.Location.Report, studentActivities : List.List Models.Trip.StudentActivity, crossedTiles : List.List Models.Location.Location, deviations : List.List Basics.Int }"},"Models.Location.Report":{"args":[],"type":"{ location : Models.Location.Location, time : Time.Posix, speed : Basics.Float, bearing : Basics.Float }"},"Http.Response":{"args":["body"],"type":"{ url : String.String, status : { code : Basics.Int, message : String.String }, headers : Dict.Dict String.String String.String, body : body }"},"Pages.Buses.Bus.FuelHistoryPage.Statistics":{"args":[],"type":"{ stdDev : Basics.Float, mean : Basics.Float }"},"Models.Trip.StudentActivity":{"args":[],"type":"{ location : Models.Location.Location, time : Time.Posix, activity : String.String, student : Basics.Int, studentName : String.String }"},"Models.Trip.Trip":{"args":[],"type":"{ id : Basics.Int, startTime : Time.Posix, endTime : Time.Posix, travelTime : String.String, reports : List.List Models.Location.Report, studentActivities : List.List Models.Trip.StudentActivity, distanceCovered : Basics.Float, crossedTiles : List.List Models.Location.Location, deviations : List.List Basics.Int }"},"StyledElement.DropDown.InternalState":{"args":["item"],"type":"{ id : String.String, isOpen : Basics.Bool, selectedItem : Maybe.Maybe item, filterText : String.String, focusedIndex : Basics.Int }"},"Date.RataDie":{"args":[],"type":"Basics.Int"}},"unions":{"Main.Msg":{"args":[],"tags":{"UrlRequested":["Browser.UrlRequest"],"UrlChanged":["Url.Url"],"ReceivedCreds":["Maybe.Maybe Session.Credentials"],"UpdatedTimeZone":["Time.Zone"],"WindowResized":["Basics.Int","Basics.Int"],"GotNavBarMsg":["Layout.NavBar.Msg"],"GotSideBarMsg":["Layout.SideBar.Msg"],"GotHouseholdListMsg":["Pages.Households.HouseholdsPage.Msg"],"GotHomeMsg":["()"],"GotLoginMsg":["Pages.Login.Msg"],"GotSettingsMsg":["Pages.Settings.Msg"],"GotActivateMsg":["Pages.Activate.Msg"],"GotLogoutMsg":["()"],"GotSignupMsg":["Pages.Signup.Msg"],"GotRoutesListMsg":["Pages.Routes.Routes.Msg"],"GotCreateRouteMsg":["Pages.Routes.CreateRoutePage.Msg"],"GotBusesListMsg":["Pages.Buses.BusesPage.Msg"],"GotBusDetailsPageMsg":["Pages.Buses.BusPage.Msg"],"GotBusRegistrationMsg":["Pages.Buses.CreateBusPage.Msg"],"GotCreateBusRepairMsg":["Pages.Buses.Bus.CreateBusRepairPage.Msg"],"GotCreateFuelReportMsg":["Pages.Buses.Bus.CreateFuelReport.Msg"],"GotStudentRegistrationMsg":["Pages.Households.HouseholdRegistrationPage.Msg"],"GotDeviceRegistrationMsg":["Pages.Devices.DeviceRegistrationPage.Msg"],"GotCrewMembersMsg":["Pages.Crew.CrewMembersPage.Msg"],"GotCrewMemberRegistrationMsg":["Pages.Crew.CrewMemberRegistrationPage.Msg"],"PhoenixMessage":["Phoenix.Message.Event"],"SocketOpened":["Basics.Int"],"OutsideError":["String.String"],"ReceivedNotification":["Json.Decode.Value"],"BusMoved":["Json.Decode.Value"],"OngoingTripStarted":["Json.Decode.Value"],"OngoingTripUpdated":["Json.Decode.Value"],"OngoingTripEnded":["Json.Decode.Value"]}},"Phoenix.Message.Event":{"args":[],"tags":{"SocketClosed":[],"SocketErrored":["Phoenix.Payload.Payload"],"SocketOpened":[],"ChannelJoined":["Phoenix.Payload.Payload"],"ChannelJoinError":["Phoenix.Payload.Payload"],"ChannelJoinTimeout":["Phoenix.Payload.Payload"],"ChannelMessageReceived":["Phoenix.Payload.Payload"],"ChannelLeft":["Phoenix.Payload.Payload"],"ChannelLeaveError":["Phoenix.Payload.Payload"],"PushOk":["Phoenix.Payload.Payload"],"PushError":["Phoenix.Payload.Payload"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Layout.NavBar.Msg":{"args":[],"tags":{"NoOp":[],"Logout":[],"OpenSettings":[],"RedirectTo":["String.String"],"ToggleAccountDropDown":[],"ToggleNotificationsDropDown":[],"HideDropDown":[],"ClearNotifications":[]}},"Layout.SideBar.Msg":{"args":[],"tags":{"StartResize":[],"StopResize":[],"MovedSidebar":["Basics.Int"]}},"Pages.Activate.Msg":{"args":[],"tags":{"ReceivedActivationResponse":["RemoteData.WebData Api.SuccessfulLogin"],"RequestActivate":[]}},"Pages.Buses.Bus.CreateBusRepairPage.Msg":{"args":[],"tags":{"Submit":[],"ReceivedCreateResponse":["RemoteData.WebData ()"],"NoOp":[],"StartedDragging":["Pages.Buses.Bus.CreateBusRepairPage.Draggable"],"StoppedDragging":[],"DropOn":[],"DraggedOver":[],"Delete":["Basics.Int"],"ChangedDescription":["Basics.Int","String.String"],"ChangedCost":["Basics.Int","String.String"]}},"Pages.Buses.Bus.CreateFuelReport.Msg":{"args":[],"tags":{"Submit":[],"ReceivedCreateResponse":["RemoteData.WebData ()"],"DatePickerUpdated":["DatePicker.Msg"],"ChangedCost":["String.String"],"ChangedVolume":["String.String"]}},"Pages.Buses.BusPage.Msg":{"args":[],"tags":{"GotAboutMsg":["Pages.Buses.Bus.AboutBus.Msg"],"GotRouteHistoryMsg":["Pages.Buses.Bus.TripsHistoryPage.Msg"],"GotFuelHistoryMsg":["Pages.Buses.Bus.FuelHistoryPage.Msg"],"GotBusDeviceMsg":["Pages.Buses.Bus.DevicePage.Msg"],"GotBusRepairsMsg":["Pages.Buses.Bus.RepairsPage.Msg"],"SelectedPage":["Basics.Int"],"ReceivedBusResponse":["RemoteData.WebData Pages.Buses.BusPage.BusData"],"LocationUpdate":["Models.Bus.LocationUpdate"]}},"Pages.Buses.BusesPage.Msg":{"args":[],"tags":{"SelectedBus":["Models.Bus.Bus"],"CreateBusPage":[],"ChangedFilterText":["String.String"],"ReceivedBusesResponse":["RemoteData.WebData (List.List Models.Bus.Bus)"],"LocationUpdate":["Dict.Dict Basics.Int Models.Bus.LocationUpdate"],"PreviewBus":["Maybe.Maybe Models.Bus.Bus"]}},"Pages.Buses.CreateBusPage.Msg":{"args":[],"tags":{"Changed":["Pages.Buses.CreateBusPage.Field"],"SubmitButtonMsg":[],"ReceivedCreateResponse":["RemoteData.WebData Basics.Int"],"ReceivedRouteResponse":["RemoteData.WebData (List.List Models.Bus.SimpleRoute)"],"ReceivedEditResponse":["RemoteData.WebData ( Pages.Buses.CreateBusPage.Form, Platform.Cmd.Cmd Pages.Buses.CreateBusPage.Msg )"],"RouteDropdownMsg":["StyledElement.DropDown.Msg Models.Bus.SimpleRoute"],"FuelDropdownMsg":["StyledElement.DropDown.Msg Models.Bus.FuelType"],"ConsumptionDropdownMsg":["StyledElement.DropDown.Msg Pages.Buses.CreateBusPage.ConsumptionType"],"ReturnToBusList":[],"NoOp":[]}},"Pages.Crew.CrewMemberRegistrationPage.Msg":{"args":[],"tags":{"Changed":["Pages.Crew.CrewMemberRegistrationPage.Field"],"SubmitButtonMsg":[],"ReceivedCreateResponse":["RemoteData.WebData ()"],"ReceivedExistingCrewMemberResponse":["RemoteData.WebData Models.CrewMember.CrewMember"],"RoleDropdownMsg":["StyledElement.DropDown.Msg Models.CrewMember.Role"],"ReturnToCrewList":[]}},"Pages.Crew.CrewMembersPage.Msg":{"args":[],"tags":{"ReceivedCrewMembersResponse":["RemoteData.WebData Pages.Crew.CrewMembersPage.Data"],"StartEditing":[],"CancelEdits":[],"SaveChanges":[],"SelectedCrewMember":["Maybe.Maybe Models.CrewMember.CrewMember"],"EditCrewMember":["Models.CrewMember.CrewMember"],"StartedDragging":["Models.CrewMember.CrewMember"],"StoppedDragging":["Models.CrewMember.CrewMember"],"DroppedCrewMemberOnto":["Models.Bus.Bus"],"DraggedCrewMemberAbove":["Basics.Int"],"DroppedCrewMemberOntoUnassigned":[],"DraggedCrewMemberAboveUnassigned":[],"RegisterCrewMembers":[],"NoOp":[]}},"Pages.Devices.DeviceRegistrationPage.Msg":{"args":[],"tags":{"ChangedDeviceSerial":["String.String"],"SubmitButtonMsg":[],"RegisterResponse":["RemoteData.WebData Pages.Devices.DeviceRegistrationPage.ValidForm"],"ToggleCamera":[],"CameraOpened":["Basics.Bool"],"GotCameraNotFoundError":[],"ReceivedCode":["String.String"]}},"Pages.Households.HouseholdRegistrationPage.Msg":{"args":[],"tags":{"NoOp":[],"Changed":["Pages.Households.HouseholdRegistrationPage.Field"],"DropdownMsg":["StyledElement.DropDown.Msg Models.Route.Route"],"SaveStudentPressed":[],"SelectedStudent":["Maybe.Maybe Pages.Households.HouseholdRegistrationPage.Student"],"DeselectedStudent":["Pages.Households.HouseholdRegistrationPage.Student"],"UpdatedSelectedStudentName":["String.String"],"DeletedStudent":["Pages.Households.HouseholdRegistrationPage.Student"],"SubmitButtonPressed":[],"SearchTextChanged":["String.String"],"AutocompleteError":[],"ReceivedMapLocation":["Models.Location.Location"],"ReturnToRegistrationList":[],"ReceivedCreateResponse":["RemoteData.WebData ()"],"ReceivedRoutesResponse":["RemoteData.WebData (List.List Models.Route.Route)"],"ReceivedExistingHouseholdResponse":["RemoteData.WebData Models.Household.Household"]}},"Pages.Households.HouseholdsPage.Msg":{"args":[],"tags":{"UpdatedSearchText":["String.String"],"SelectedStudent":["Maybe.Maybe Models.Household.Student"],"GenerateCard":["Models.Household.Student"],"ReceivedStudentsResponse":["RemoteData.WebData ( List.List Pages.Households.HouseholdsPage.GroupedStudents, List.List Models.Household.Household )"],"RegisterStudent":[],"SelectedRoute":["Pages.Households.HouseholdsPage.GroupedStudents"],"EditHousehold":["Models.Household.Household"],"NoOp":[]}},"Pages.Login.Msg":{"args":[],"tags":{"UpdatedEmail":["String.String"],"UpdatedPassword":["String.String"],"SubmitForm":[],"ReceivedLoginResponse":["RemoteData.WebData Api.SuccessfulLogin"]}},"Pages.Routes.CreateRoutePage.Msg":{"args":[],"tags":{"RouteNameChanged":["String.String"],"DeleteRoute":["Basics.Int"],"SubmitButtonMsg":[],"MapPathUpdated":["List.List Models.Location.Location"],"ReceivedCreateResponse":["RemoteData.WebData ()"],"ReceivedExistingRouteResponse":["RemoteData.WebData Models.Route.Route"],"ReceivedDeleteResponse":["RemoteData.WebData ()"],"ReturnToRouteList":[]}},"Pages.Routes.Routes.Msg":{"args":[],"tags":{"CreateRoute":[],"EditRoute":["Models.Route.Route"],"UpdatedSearchText":["String.String"],"ReceivedRoutesResponse":["RemoteData.WebData (List.List Models.Route.Route)"],"HoverOver":["Models.Route.Route"],"HoverLeft":["Models.Route.Route"]}},"Pages.Settings.Msg":{"args":[],"tags":{"NoOp":[],"Logout":[],"SetOverlay":["Maybe.Maybe Pages.Settings.OverlayType"],"ReceivedSchoolDetails":["RemoteData.WebData Models.School.School"],"SubmitNewPassword":[],"ReceivedUpdatePasswordResponse":["RemoteData.WebData ()"],"UpdatedOldPassword":["String.String"],"UpdatedNewPassword":["String.String"],"UpdatedDeviationRadius":["Basics.Int"],"ReceivedUpdateDeviationRadiusResponse":["RemoteData.WebData Basics.Int"],"UpdateSchool":[],"ReceivedUpdateSchoolResponse":["RemoteData.WebData Models.School.School"],"UpdatedSchoolName":["String.String"],"UpdatedSchoolLocation":["{ location : Models.Location.Location, radius : Basics.Float }"]}},"Pages.Signup.Msg":{"args":[],"tags":{"UpdatedFirstName":["Pages.Signup.Name"],"UpdatedLastName":["Pages.Signup.Name"],"UpdatedSchoolName":["Pages.Signup.Name"],"UpdatedEmail":["Pages.Signup.Email"],"UpdatedPassword":["Pages.Signup.Password"],"RequestGeoLocation":[],"LocationSelected":["Maybe.Maybe { lat : Basics.Float, lng : Basics.Float, radius : Basics.Float }"],"ToManagerForm":[],"ToSchoolForm":[],"NoOp":[],"SubmittedForm":[],"ReceivedSignupResponse":["RemoteData.WebData Api.SuccessfulLogin"]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}},"Json.Encode.Value":{"args":[],"tags":{"Value":[]}},"Time.Zone":{"args":[],"tags":{"Zone":["Basics.Int","List.List Time.Era"]}},"Basics.Bool":{"args":[],"tags":{"True":[],"False":[]}},"Platform.Cmd.Cmd":{"args":["msg"],"tags":{"Cmd":[]}},"Pages.Buses.CreateBusPage.ConsumptionType":{"args":[],"tags":{"Custom":[],"Default":[]}},"Dict.Dict":{"args":["k","v"],"tags":{"RBNode_elm_builtin":["Dict.NColor","k","v","Dict.Dict k v","Dict.Dict k v"],"RBEmpty_elm_builtin":[]}},"Pages.Buses.Bus.CreateBusRepairPage.Draggable":{"args":[],"tags":{"Part":["Models.Bus.Part"],"Record":["Basics.Int"]}},"Pages.Signup.Email":{"args":[],"tags":{"Email":["String.String"]}},"Http.Error":{"args":[],"tags":{"BadUrl":["String.String"],"Timeout":[],"NetworkError":[],"BadStatus":["Http.Response String.String"],"BadPayload":["String.String","Http.Response String.String"]}},"Errors.Errors":{"args":["validationError"],"tags":{"ValidationError":["validationError","Errors.ErrorString"],"ServerSideError":["Errors.FieldName","List.List Errors.ErrorString"]}},"Pages.Buses.CreateBusPage.Field":{"args":[],"tags":{"VehicleType":["Models.Bus.VehicleType"],"FuelType":["Models.Bus.FuelType"],"NumberPlate":["String.String"],"SeatsAvailable":["Basics.Int"],"Route":["Maybe.Maybe Basics.Int"],"FuelConsumptionType":["Pages.Buses.CreateBusPage.ConsumptionType"],"FuelConsumptionAmount":["StyledElement.FloatInput.FloatInput"]}},"Pages.Crew.CrewMemberRegistrationPage.Field":{"args":[],"tags":{"Name":["String.String"],"Email":["String.String"],"PhoneNumber":["String.String"],"Role":["Maybe.Maybe Models.CrewMember.Role"]}},"Pages.Households.HouseholdRegistrationPage.Field":{"args":[],"tags":{"CurrentStudentName":["String.String"],"GuardianName":["String.String"],"HomeLocation":["Maybe.Maybe Models.Location.Location"],"Email":["String.String"],"PhoneNumber":["String.String"],"Route":["Maybe.Maybe Basics.Int"],"CanTrack":["Basics.Bool"],"TravelTime":["Pages.Households.HouseholdRegistrationPage.Student","Models.Household.TravelTime","Basics.Bool"]}},"Basics.Float":{"args":[],"tags":{"Float":[]}},"StyledElement.FloatInput.FloatInput":{"args":[],"tags":{"FloatInput":["Basics.Float","String.String"]}},"Models.Bus.FuelType":{"args":[],"tags":{"Gasoline":[],"Diesel":[]}},"List.List":{"args":["a"],"tags":{}},"DatePicker.Msg":{"args":[],"tags":{"CurrentDate":["Date.Date"],"ChangeFocus":["Date.Date"],"Pick":["Date.Date"],"Text":["String.String"],"SubmitText":[],"Focus":[],"Blur":[],"MouseDown":[],"MouseUp":[]}},"Pages.Buses.Bus.AboutBus.Msg":{"args":[],"tags":{"ClickedStatisticsPage":[],"ClickedStudentsPage":[],"FetchStudentsOnboard":[],"ReceivedStudentsOnboardResponse":["RemoteData.WebData (List.List Models.Household.Student)"],"SelectedStudent":["Models.Household.Student"],"ClickedCrewPage":[],"ReceivedCrewMembersResponse":["RemoteData.WebData (List.List Models.CrewMember.CrewMember)"],"ReceivedRouteResponse":["RemoteData.WebData (Maybe.Maybe Models.Route.Route)"],"LocationUpdate":["Models.Bus.LocationUpdate"],"EditDetails":[]}},"Pages.Buses.Bus.DevicePage.Msg":{"args":[],"tags":{"AddDevice":[],"RemoveDevice":[],"ClickedAboutPage":[],"ClickedFeaturesPage":[]}},"Pages.Buses.Bus.FuelHistoryPage.Msg":{"args":[],"tags":{"RecordsResponse":["RemoteData.WebData Pages.Buses.Bus.FuelHistoryPage.Data"],"CreateFuelReport":[]}},"Pages.Buses.Bus.RepairsPage.Msg":{"args":[],"tags":{"ClickedSummaryPage":[],"ClickedPastRepairsPage":[],"HoveredOver":["Maybe.Maybe Models.Bus.Repair"],"CreateRepair":[]}},"Pages.Buses.Bus.TripsHistoryPage.Msg":{"args":[],"tags":{"AdjustedValue":["Basics.Int"],"ReceivedTripsResponse":["RemoteData.WebData (List.List Models.Trip.LightWeightTrip)"],"ReceivedOngoingTripResponse":["RemoteData.WebData (Maybe.Maybe Models.Trip.OngoingTrip)"],"ReceivedTripDetailsResponse":["RemoteData.WebData Models.Trip.Trip"],"ClickedOn":["Basics.Int"],"SelectedGroup":["Pages.Buses.Bus.TripsHistoryPage.GroupedTrips"],"ToggledShowGeofence":["Basics.Bool"],"ToggledShowStops":["Basics.Bool"],"ToggledShowSpeed":["Basics.Bool"],"ToggledShowDeviation":["Basics.Bool"],"ShowHistoricalTrips":[],"ShowCurrentTrip":[],"CreateRouteFromTrip":[],"CancelRouteCreation":[],"OngoingTripUpdated":["Json.Decode.Value"],"OngoingTripEnded":[],"AdvanceTrip":[],"StartPlaying":[],"StopPlaying":[],"UpdatedRouteName":["String.String"],"SetSaveToRoute":["Pages.Buses.Bus.TripsHistoryPage.UpdateRoute"],"ReceivedRoutesResponse":["RemoteData.WebData (List.List Models.Route.Route)"],"RouteDropdownMsg":["StyledElement.DropDown.Msg Models.Route.Route"],"SubmitUpdate":[],"ReceivedUpdateResponse":["RemoteData.WebData ()"]}},"StyledElement.DropDown.Msg":{"args":["item"],"tags":{"NoOp":[],"OnBlur":[],"OnClickPrompt":[],"OnSelect":["item"],"OnFilterTyped":["String.String"],"OnKeyDown":["StyledElement.DropDown.Key"]}},"Pages.Signup.Name":{"args":[],"tags":{"Name":["String.String"]}},"Pages.Settings.OverlayType":{"args":[],"tags":{"Password":[],"School":[]}},"Pages.Buses.BusPage.Page":{"args":[],"tags":{"AboutPage":["Pages.Buses.Bus.AboutBus.Model"],"RouteHistoryPage":["Pages.Buses.Bus.TripsHistoryPage.Model"],"FuelHistoryPage":["Pages.Buses.Bus.FuelHistoryPage.Model"],"BusDevicePage":["Pages.Buses.Bus.DevicePage.Model"],"BusRepairsPage":["Pages.Buses.Bus.RepairsPage.Model"]}},"Models.Bus.Part":{"args":[],"tags":{"FrontLeftTire":[],"FrontRightTire":[],"RearLeftTire":[],"RearRightTire":[],"Engine":[],"FrontCrossAxis":[],"RearCrossAxis":[],"VerticalAxis":[]}},"Pages.Signup.Password":{"args":[],"tags":{"Password":["String.String"]}},"Time.Posix":{"args":[],"tags":{"Posix":["Basics.Int"]}},"Pages.Buses.CreateBusPage.Problem":{"args":[],"tags":{"InvalidNumberPlate":[],"EmptyRoute":[]}},"RemoteData.RemoteData":{"args":["e","a"],"tags":{"NotAsked":[],"Loading":[],"Failure":["e"],"Success":["a"]}},"Models.CrewMember.Role":{"args":[],"tags":{"Driver":[],"Assistant":[]}},"Models.Household.TravelTime":{"args":[],"tags":{"TwoWay":[],"Morning":[],"Evening":[]}},"Models.Bus.VehicleClass":{"args":[],"tags":{"VehicleClass":["Models.Bus.VehicleType","Models.Bus.FuelType"]}},"Date.Date":{"args":[],"tags":{"RD":["Date.RataDie"]}},"Models.FuelReport.Distance":{"args":[],"tags":{"Distance":["Basics.Int"]}},"StyledElement.DropDown.Key":{"args":[],"tags":{"ArrowDown":[],"ArrowUp":[],"Enter":[],"Esc":[]}},"Dict.NColor":{"args":[],"tags":{"Red":[],"Black":[]}},"Pages.Buses.Bus.AboutBus.Page":{"args":[],"tags":{"Statistics":[],"Students":["Maybe.Maybe Models.Household.Student"],"Crew":[]}},"Pages.Buses.Bus.DevicePage.Page":{"args":[],"tags":{"About":[],"Features":[]}},"Pages.Buses.Bus.RepairsPage.Page":{"args":[],"tags":{"Summary":[],"PastRepairs":[]}},"Pages.Buses.Bus.TripsHistoryPage.Problem":{"args":[],"tags":{"EmptyRoute":[],"EmptyRouteName":[]}},"Session.Session":{"args":[],"tags":{"LoggedIn":["Browser.Navigation.Key","Time.Zone","Session.Credentials"],"Guest":["Browser.Navigation.Key","Time.Zone"]}},"StyledElement.DropDown.State":{"args":["item"],"tags":{"State":["StyledElement.DropDown.InternalState item"]}},"Pages.Buses.Bus.TripsHistoryPage.UpdateRoute":{"args":[],"tags":{"NewRoute":["String.String"],"ExistingRoute":["Maybe.Maybe Models.Route.Route"]}},"Models.Bus.VehicleType":{"args":[],"tags":{"Van":[],"Shuttle":[],"SchoolBus":[]}},"Models.FuelReport.Volume":{"args":[],"tags":{"Volume":["Basics.Float"]}},"Browser.Navigation.Key":{"args":[],"tags":{"Key":[]}}}}})}});
+			])))({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{"Session.Credentials":{"args":[],"type":"{ name : String.String, email : String.String, token : String.String, school_id : Basics.Int }"},"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"},"Json.Decode.Value":{"args":[],"type":"Json.Encode.Value"},"Models.Bus.Bus":{"args":[],"type":"{ id : Basics.Int, numberPlate : String.String, seatsAvailable : Basics.Int, vehicleClass : Models.Bus.VehicleClass, statedMilage : Basics.Float, route : Maybe.Maybe Models.Bus.SimpleRoute, device : Maybe.Maybe Models.Bus.Device, repairs : List.List Models.Bus.Repair, lastSeen : Maybe.Maybe Models.Bus.LocationUpdate }"},"Pages.Buses.BusPage.BusData":{"args":[],"type":"{ bus : Models.Bus.Bus, currentPage : Pages.Buses.BusPage.Page, pages : List.List ( Pages.Buses.BusPage.Page, Platform.Cmd.Cmd Pages.Buses.BusPage.Msg ), pageIndex : Basics.Int, pendingAction : Platform.Cmd.Cmd Pages.Buses.BusPage.Msg }"},"Models.CrewMember.CrewMember":{"args":[],"type":"{ id : Basics.Int, name : String.String, role : Models.CrewMember.Role, email : String.String, phoneNumber : String.String, bus : Maybe.Maybe Basics.Int }"},"Pages.Crew.CrewMembersPage.Data":{"args":[],"type":"{ crew : List.List Models.CrewMember.CrewMember, buses : List.List Models.Bus.Bus }"},"Models.Bus.Device":{"args":[],"type":"String.String"},"Time.Era":{"args":[],"type":"{ start : Basics.Int, offset : Basics.Int }"},"Pages.Buses.CreateBusPage.Form":{"args":[],"type":"{ vehicleClass : Models.Bus.VehicleClass, numberPlate : String.String, seatsAvailable : Basics.Int, routeId : Maybe.Maybe Basics.Int, consumptionType : Pages.Buses.CreateBusPage.ConsumptionType, consumptionAmount : StyledElement.FloatInput.FloatInput, problems : List.List (Errors.Errors Pages.Buses.CreateBusPage.Problem) }"},"Pages.Households.HouseholdsPage.GroupedStudents":{"args":[],"type":"( String.String, List.List Models.Household.Student )"},"Models.Household.Guardian":{"args":[],"type":"{ id : Basics.Int, name : String.String, phoneNumber : String.String, email : String.String }"},"Models.Household.Household":{"args":[],"type":"{ id : Basics.Int, route : Basics.Int, guardian : Models.Household.Guardian, homeLocation : Models.Household.Location, students : List.List Models.Household.Student }"},"Models.Household.Location":{"args":[],"type":"{ lng : Basics.Float, lat : Basics.Float }"},"Models.Location.Location":{"args":[],"type":"{ lng : Basics.Float, lat : Basics.Float }"},"Models.Bus.LocationUpdate":{"args":[],"type":"{ bus : Basics.Int, location : Models.Location.Location, speed : Basics.Float, bearing : Basics.Float }"},"Phoenix.Payload.Payload":{"args":[],"type":"{ topic : String.String, message : String.String, payload : Json.Decode.Value }"},"Models.Bus.Repair":{"args":[],"type":"{ id : Basics.Int, part : Models.Bus.Part, description : String.String, cost : Basics.Int, dateTime : Time.Posix }"},"Models.Route.Route":{"args":[],"type":"{ id : Basics.Int, name : String.String, path : List.List Models.Location.Location, bus : Maybe.Maybe Models.Route.SimpleBus }"},"Models.School.School":{"args":[],"type":"{ location : Models.Location.Location, radius : Basics.Float, name : String.String, deviationRadius : Basics.Int }"},"Models.Route.SimpleBus":{"args":[],"type":"{ id : Basics.Int, numberPlate : String.String, seats : Basics.Int, occupied : Basics.Int }"},"Models.Bus.SimpleRoute":{"args":[],"type":"{ id : Basics.Int, name : String.String, busID : Maybe.Maybe Basics.Int }"},"Models.Household.Student":{"args":[],"type":"{ id : Basics.Int, name : String.String, travelTime : Models.Household.TravelTime, homeLocation : Models.Household.Location, route : Models.Bus.SimpleRoute }"},"Pages.Households.HouseholdRegistrationPage.Student":{"args":[],"type":"{ id : Basics.Int, name : String.String, time : Models.Household.TravelTime }"},"Api.SuccessfulLogin":{"args":[],"type":"{ location : Models.Location.Location, creds : Session.Credentials }"},"Pages.Devices.DeviceRegistrationPage.ValidForm":{"args":[],"type":"{ serial : String.String, bus_id : Basics.Int }"},"RemoteData.WebData":{"args":["a"],"type":"RemoteData.RemoteData Http.Error a"},"Pages.Buses.Bus.FuelHistoryPage.AnnotatedReport":{"args":[],"type":"{ id : Basics.Int, cost : Basics.Int, date : Time.Posix, volume : Models.FuelReport.Volume, cumulative : { distance : Models.FuelReport.Distance, volume : Models.FuelReport.Volume }, sinceLastReport : { distance : Models.FuelReport.Distance } }"},"Pages.Buses.Bus.TripsHistoryPage.CreateRouteForm":{"args":[],"type":"{ path : List.List Models.Location.Location, tripID : Basics.Int, routes : RemoteData.WebData (List.List Models.Route.Route), selectedRoute : Pages.Buses.Bus.TripsHistoryPage.UpdateRoute, routeDropdownState : StyledElement.DropDown.State Models.Route.Route, problems : List.List (Errors.Errors Pages.Buses.Bus.TripsHistoryPage.Problem), update : RemoteData.WebData () }"},"Pages.Buses.Bus.FuelHistoryPage.Data":{"args":[],"type":"{ groupedReports : List.List Pages.Buses.Bus.FuelHistoryPage.GroupedReports, numberOfStudents : Basics.Int, tripsMade : Basics.Int, statistics : Maybe.Maybe Pages.Buses.Bus.FuelHistoryPage.Statistics }"},"Errors.ErrorString":{"args":[],"type":"String.String"},"Errors.FieldName":{"args":[],"type":"String.String"},"Pages.Buses.Bus.RepairsPage.GroupedRepairs":{"args":[],"type":"( String.String, List.List Models.Bus.Repair )"},"Pages.Buses.Bus.FuelHistoryPage.GroupedReports":{"args":[],"type":"( String.String, List.List Pages.Buses.Bus.FuelHistoryPage.AnnotatedReport )"},"Pages.Buses.Bus.TripsHistoryPage.GroupedTrips":{"args":[],"type":"( String.String, List.List Models.Trip.LightWeightTrip )"},"Models.Trip.LightWeightTrip":{"args":[],"type":"{ id : Basics.Int, startTime : Time.Posix, endTime : Time.Posix, travelTime : String.String, studentActivities : List.List Models.Trip.StudentActivity, distanceCovered : Basics.Float }"},"Pages.Buses.Bus.AboutBus.Model":{"args":[],"type":"{ bus : Models.Bus.Bus, route : RemoteData.WebData (Maybe.Maybe Models.Route.Route), crew : RemoteData.WebData (List.List Models.CrewMember.CrewMember), studentsOnboard : RemoteData.WebData (List.List Models.Household.Student), session : Session.Session, currentPage : Pages.Buses.Bus.AboutBus.Page }"},"Pages.Buses.Bus.DevicePage.Model":{"args":[],"type":"{ currentPage : Pages.Buses.Bus.DevicePage.Page, session : Session.Session, bus : Models.Bus.Bus }"},"Pages.Buses.Bus.FuelHistoryPage.Model":{"args":[],"type":"{ session : Session.Session, busID : Basics.Int, inEditMode : Basics.Bool, data : RemoteData.WebData Pages.Buses.Bus.FuelHistoryPage.Data, statistics : Maybe.Maybe Pages.Buses.Bus.FuelHistoryPage.Statistics }"},"Pages.Buses.Bus.RepairsPage.Model":{"args":[],"type":"{ busID : Basics.Int, session : Session.Session, repairs : List.List Models.Bus.Repair, timezone : Time.Zone, groupedRepairs : List.List Pages.Buses.Bus.RepairsPage.GroupedRepairs, currentPage : Pages.Buses.Bus.RepairsPage.Page, highlightedRepair : Maybe.Maybe Models.Bus.Repair }"},"Pages.Buses.Bus.TripsHistoryPage.Model":{"args":[],"type":"{ busID : Basics.Int, sliderValue : Basics.Int, mapVisuals : { showDeviations : Basics.Bool, showGeofence : Basics.Bool, showStops : Basics.Bool, showSpeed : Basics.Bool }, showingOngoingTrip : Basics.Bool, historicalTrips : RemoteData.WebData (List.List Models.Trip.LightWeightTrip), groupedTrips : List.List Pages.Buses.Bus.TripsHistoryPage.GroupedTrips, selectedGroup : Maybe.Maybe Pages.Buses.Bus.TripsHistoryPage.GroupedTrips, selectedTrip : Maybe.Maybe Models.Trip.Trip, session : Session.Session, loadedTrips : Dict.Dict Basics.Int Models.Trip.Trip, loadingTrip : RemoteData.WebData Models.Trip.Trip, ongoingTrip : RemoteData.WebData (Maybe.Maybe Models.Trip.OngoingTrip), needRefreshOngoingTrip : Basics.Bool, requestedTrip : Maybe.Maybe Basics.Int, createRouteForm : Maybe.Maybe Pages.Buses.Bus.TripsHistoryPage.CreateRouteForm, isPlaying : Basics.Bool }"},"Models.Trip.OngoingTrip":{"args":[],"type":"{ startTime : Time.Posix, reports : List.List Models.Location.Report, studentActivities : List.List Models.Trip.StudentActivity, crossedTiles : List.List Models.Location.Location, deviations : List.List Basics.Int }"},"Models.Location.Report":{"args":[],"type":"{ location : Models.Location.Location, time : Time.Posix, speed : Basics.Float, bearing : Basics.Float }"},"Http.Response":{"args":["body"],"type":"{ url : String.String, status : { code : Basics.Int, message : String.String }, headers : Dict.Dict String.String String.String, body : body }"},"Pages.Buses.Bus.FuelHistoryPage.Statistics":{"args":[],"type":"{ stdDev : Basics.Float, mean : Basics.Float }"},"Models.Trip.StudentActivity":{"args":[],"type":"{ location : Models.Location.Location, time : Time.Posix, activity : String.String, student : Basics.Int, studentName : String.String }"},"Models.Trip.Trip":{"args":[],"type":"{ id : Basics.Int, startTime : Time.Posix, endTime : Time.Posix, travelTime : String.String, reports : List.List Models.Location.Report, studentActivities : List.List Models.Trip.StudentActivity, distanceCovered : Basics.Float, crossedTiles : List.List Models.Location.Location, deviations : List.List Basics.Int }"},"StyledElement.DropDown.InternalState":{"args":["item"],"type":"{ id : String.String, isOpen : Basics.Bool, selectedItem : Maybe.Maybe item, filterText : String.String, focusedIndex : Basics.Int }"},"Date.RataDie":{"args":[],"type":"Basics.Int"}},"unions":{"Main.Msg":{"args":[],"tags":{"UrlRequested":["Browser.UrlRequest"],"UrlChanged":["Url.Url"],"ReceivedCreds":["Maybe.Maybe Session.Credentials"],"UpdatedTimeZone":["Time.Zone"],"WindowResized":["Basics.Int","Basics.Int"],"GotNavBarMsg":["Layout.NavBar.Msg"],"GotSideBarMsg":["Layout.SideBar.Msg"],"GotHouseholdListMsg":["Pages.Households.HouseholdsPage.Msg"],"GotHomeMsg":["()"],"GotLoginMsg":["Pages.Login.Msg"],"GotSettingsMsg":["Pages.Settings.Msg"],"GotActivateMsg":["Pages.Activate.Msg"],"GotLogoutMsg":["()"],"GotSignupMsg":["Pages.Signup.Msg"],"GotRoutesListMsg":["Pages.Routes.Routes.Msg"],"GotCreateRouteMsg":["Pages.Routes.CreateRoutePage.Msg"],"GotBusesListMsg":["Pages.Buses.BusesPage.Msg"],"GotBusDetailsPageMsg":["Pages.Buses.BusPage.Msg"],"GotBusRegistrationMsg":["Pages.Buses.CreateBusPage.Msg"],"GotCreateBusRepairMsg":["Pages.Buses.Bus.CreateBusRepairPage.Msg"],"GotCreateFuelReportMsg":["Pages.Buses.Bus.CreateFuelReport.Msg"],"GotStudentRegistrationMsg":["Pages.Households.HouseholdRegistrationPage.Msg"],"GotDeviceRegistrationMsg":["Pages.Devices.DeviceRegistrationPage.Msg"],"GotCrewMembersMsg":["Pages.Crew.CrewMembersPage.Msg"],"GotCrewMemberRegistrationMsg":["Pages.Crew.CrewMemberRegistrationPage.Msg"],"PhoenixMessage":["Phoenix.Message.Event"],"SocketOpened":["Basics.Int"],"OutsideError":["String.String"],"ReceivedNotification":["Json.Decode.Value"],"BusMoved":["Json.Decode.Value"],"OngoingTripStarted":["Json.Decode.Value"],"OngoingTripUpdated":["Json.Decode.Value"],"OngoingTripEnded":["Json.Decode.Value"]}},"Phoenix.Message.Event":{"args":[],"tags":{"SocketClosed":[],"SocketErrored":["Phoenix.Payload.Payload"],"SocketOpened":[],"ChannelJoined":["Phoenix.Payload.Payload"],"ChannelJoinError":["Phoenix.Payload.Payload"],"ChannelJoinTimeout":["Phoenix.Payload.Payload"],"ChannelMessageReceived":["Phoenix.Payload.Payload"],"ChannelLeft":["Phoenix.Payload.Payload"],"ChannelLeaveError":["Phoenix.Payload.Payload"],"PushOk":["Phoenix.Payload.Payload"],"PushError":["Phoenix.Payload.Payload"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Layout.NavBar.Msg":{"args":[],"tags":{"NoOp":[],"Logout":[],"OpenSettings":[],"RedirectTo":["String.String"],"ToggleAccountDropDown":[],"ToggleNotificationsDropDown":[],"HideDropDown":[],"ClearNotifications":[]}},"Layout.SideBar.Msg":{"args":[],"tags":{"StartResize":[],"StopResize":[],"MovedSidebar":["Basics.Int"]}},"Pages.Activate.Msg":{"args":[],"tags":{"ReceivedActivationResponse":["RemoteData.WebData Api.SuccessfulLogin"],"RequestActivate":[]}},"Pages.Buses.Bus.CreateBusRepairPage.Msg":{"args":[],"tags":{"Submit":[],"ReceivedCreateResponse":["RemoteData.WebData ()"],"NoOp":[],"StartedDragging":["Pages.Buses.Bus.CreateBusRepairPage.Draggable"],"StoppedDragging":[],"DropOn":[],"DraggedOver":[],"Delete":["Basics.Int"],"ChangedDescription":["Basics.Int","String.String"],"ChangedCost":["Basics.Int","String.String"]}},"Pages.Buses.Bus.CreateFuelReport.Msg":{"args":[],"tags":{"Submit":[],"ReceivedCreateResponse":["RemoteData.WebData ()"],"DatePickerUpdated":["DatePicker.Msg"],"ChangedCost":["String.String"],"ChangedVolume":["String.String"]}},"Pages.Buses.BusPage.Msg":{"args":[],"tags":{"GotAboutMsg":["Pages.Buses.Bus.AboutBus.Msg"],"GotRouteHistoryMsg":["Pages.Buses.Bus.TripsHistoryPage.Msg"],"GotFuelHistoryMsg":["Pages.Buses.Bus.FuelHistoryPage.Msg"],"GotBusDeviceMsg":["Pages.Buses.Bus.DevicePage.Msg"],"GotBusRepairsMsg":["Pages.Buses.Bus.RepairsPage.Msg"],"SelectedPage":["Basics.Int"],"ReceivedBusResponse":["RemoteData.WebData Pages.Buses.BusPage.BusData"],"LocationUpdate":["Models.Bus.LocationUpdate"]}},"Pages.Buses.BusesPage.Msg":{"args":[],"tags":{"SelectedBus":["Models.Bus.Bus"],"CreateBusPage":[],"ChangedFilterText":["String.String"],"ReceivedBusesResponse":["RemoteData.WebData (List.List Models.Bus.Bus)"],"LocationUpdate":["Dict.Dict Basics.Int Models.Bus.LocationUpdate"],"PreviewBus":["Maybe.Maybe Models.Bus.Bus"]}},"Pages.Buses.CreateBusPage.Msg":{"args":[],"tags":{"Changed":["Pages.Buses.CreateBusPage.Field"],"SubmitButtonMsg":[],"ReceivedCreateResponse":["RemoteData.WebData Basics.Int"],"ReceivedRouteResponse":["RemoteData.WebData (List.List Models.Bus.SimpleRoute)"],"ReceivedEditResponse":["RemoteData.WebData ( Pages.Buses.CreateBusPage.Form, Platform.Cmd.Cmd Pages.Buses.CreateBusPage.Msg )"],"RouteDropdownMsg":["StyledElement.DropDown.Msg Models.Bus.SimpleRoute"],"FuelDropdownMsg":["StyledElement.DropDown.Msg Models.Bus.FuelType"],"ConsumptionDropdownMsg":["StyledElement.DropDown.Msg Pages.Buses.CreateBusPage.ConsumptionType"],"ReturnToBusList":[],"NoOp":[]}},"Pages.Crew.CrewMemberRegistrationPage.Msg":{"args":[],"tags":{"Changed":["Pages.Crew.CrewMemberRegistrationPage.Field"],"SubmitButtonMsg":[],"ReceivedCreateResponse":["RemoteData.WebData ()"],"ReceivedExistingCrewMemberResponse":["RemoteData.WebData Models.CrewMember.CrewMember"],"RoleDropdownMsg":["StyledElement.DropDown.Msg Models.CrewMember.Role"],"ReturnToCrewList":[]}},"Pages.Crew.CrewMembersPage.Msg":{"args":[],"tags":{"ReceivedCrewMembersResponse":["RemoteData.WebData Pages.Crew.CrewMembersPage.Data"],"StartEditing":[],"CancelEdits":[],"SaveChanges":[],"SelectedCrewMember":["Maybe.Maybe Models.CrewMember.CrewMember"],"EditCrewMember":["Models.CrewMember.CrewMember"],"StartedDragging":["Models.CrewMember.CrewMember"],"StoppedDragging":["Models.CrewMember.CrewMember"],"DroppedCrewMemberOnto":["Models.Bus.Bus"],"DraggedCrewMemberAbove":["Basics.Int"],"DroppedCrewMemberOntoUnassigned":[],"DraggedCrewMemberAboveUnassigned":[],"RegisterCrewMembers":[],"NoOp":[]}},"Pages.Devices.DeviceRegistrationPage.Msg":{"args":[],"tags":{"ChangedDeviceSerial":["String.String"],"SubmitButtonMsg":[],"RegisterResponse":["RemoteData.WebData Pages.Devices.DeviceRegistrationPage.ValidForm"],"ToggleCamera":[],"CameraOpened":["Basics.Bool"],"GotCameraNotFoundError":[],"ReceivedCode":["String.String"]}},"Pages.Households.HouseholdRegistrationPage.Msg":{"args":[],"tags":{"NoOp":[],"Changed":["Pages.Households.HouseholdRegistrationPage.Field"],"DropdownMsg":["StyledElement.DropDown.Msg Models.Route.Route"],"SaveStudentPressed":[],"SelectedStudent":["Maybe.Maybe Pages.Households.HouseholdRegistrationPage.Student"],"DeselectedStudent":["Pages.Households.HouseholdRegistrationPage.Student"],"UpdatedSelectedStudentName":["String.String"],"DeletedStudent":["Pages.Households.HouseholdRegistrationPage.Student"],"SubmitButtonPressed":[],"SearchTextChanged":["String.String"],"AutocompleteError":[],"ReceivedMapLocation":["Models.Location.Location"],"ReturnToRegistrationList":[],"ReceivedCreateResponse":["RemoteData.WebData ()"],"ReceivedRoutesResponse":["RemoteData.WebData (List.List Models.Route.Route)"],"ReceivedExistingHouseholdResponse":["RemoteData.WebData Models.Household.Household"]}},"Pages.Households.HouseholdsPage.Msg":{"args":[],"tags":{"UpdatedSearchText":["String.String"],"SelectedStudent":["Maybe.Maybe Models.Household.Student"],"GenerateCard":["Models.Household.Student"],"ReceivedStudentsResponse":["RemoteData.WebData ( List.List Pages.Households.HouseholdsPage.GroupedStudents, List.List Models.Household.Household )"],"RegisterStudent":[],"SelectedRoute":["Pages.Households.HouseholdsPage.GroupedStudents"],"EditHousehold":["Models.Household.Household"],"NoOp":[]}},"Pages.Login.Msg":{"args":[],"tags":{"UpdatedEmail":["String.String"],"UpdatedPassword":["String.String"],"SubmitForm":[],"ReceivedLoginResponse":["RemoteData.WebData Api.SuccessfulLogin"]}},"Pages.Routes.CreateRoutePage.Msg":{"args":[],"tags":{"RouteNameChanged":["String.String"],"DeleteRoute":["Basics.Int"],"SubmitButtonMsg":[],"MapPathUpdated":["List.List Models.Location.Location"],"ReceivedCreateResponse":["RemoteData.WebData ()"],"ReceivedExistingRouteResponse":["RemoteData.WebData Models.Route.Route"],"ReceivedDeleteResponse":["RemoteData.WebData ()"],"ReturnToRouteList":[]}},"Pages.Routes.Routes.Msg":{"args":[],"tags":{"CreateRoute":[],"EditRoute":["Models.Route.Route"],"UpdatedSearchText":["String.String"],"ReceivedRoutesResponse":["RemoteData.WebData (List.List Models.Route.Route)"],"HoverOver":["Models.Route.Route"],"HoverLeft":["Models.Route.Route"]}},"Pages.Settings.Msg":{"args":[],"tags":{"NoOp":[],"Logout":[],"SetOverlay":["Maybe.Maybe Pages.Settings.OverlayType"],"ReceivedSchoolDetails":["RemoteData.WebData Models.School.School"],"SubmitNewPassword":[],"ReceivedUpdatePasswordResponse":["RemoteData.WebData ()"],"UpdatedOldPassword":["String.String"],"UpdatedNewPassword":["String.String"],"UpdatedDeviationRadius":["Basics.Int"],"ReceivedUpdateDeviationRadiusResponse":["RemoteData.WebData Basics.Int"],"UpdateSchool":[],"ReceivedUpdateSchoolResponse":["RemoteData.WebData Models.School.School"],"UpdatedSchoolName":["String.String"],"UpdatedSchoolLocation":["{ location : Models.Location.Location, radius : Basics.Float }"]}},"Pages.Signup.Msg":{"args":[],"tags":{"UpdatedFirstName":["Pages.Signup.Name"],"UpdatedLastName":["Pages.Signup.Name"],"UpdatedSchoolName":["Pages.Signup.Name"],"UpdatedEmail":["Pages.Signup.Email"],"UpdatedPassword":["Pages.Signup.Password"],"RequestGeoLocation":[],"LocationSelected":["Maybe.Maybe { lat : Basics.Float, lng : Basics.Float, radius : Basics.Float }"],"ToManagerForm":[],"ToSchoolForm":[],"NoOp":[],"SubmittedForm":[],"ReceivedSignupResponse":["RemoteData.WebData Api.SuccessfulLogin"]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}},"Json.Encode.Value":{"args":[],"tags":{"Value":[]}},"Time.Zone":{"args":[],"tags":{"Zone":["Basics.Int","List.List Time.Era"]}},"Basics.Bool":{"args":[],"tags":{"True":[],"False":[]}},"Platform.Cmd.Cmd":{"args":["msg"],"tags":{"Cmd":[]}},"Pages.Buses.CreateBusPage.ConsumptionType":{"args":[],"tags":{"Custom":[],"Default":[]}},"Dict.Dict":{"args":["k","v"],"tags":{"RBNode_elm_builtin":["Dict.NColor","k","v","Dict.Dict k v","Dict.Dict k v"],"RBEmpty_elm_builtin":[]}},"Pages.Buses.Bus.CreateBusRepairPage.Draggable":{"args":[],"tags":{"Part":["Models.Bus.Part"],"Record":["Basics.Int"]}},"Pages.Signup.Email":{"args":[],"tags":{"Email":["String.String"]}},"Http.Error":{"args":[],"tags":{"BadUrl":["String.String"],"Timeout":[],"NetworkError":[],"BadStatus":["Http.Response String.String"],"BadPayload":["String.String","Http.Response String.String"]}},"Errors.Errors":{"args":["validationError"],"tags":{"ValidationError":["validationError","Errors.ErrorString"],"ServerSideError":["Errors.FieldName","List.List Errors.ErrorString"]}},"Pages.Buses.CreateBusPage.Field":{"args":[],"tags":{"VehicleType":["Models.Bus.VehicleType"],"FuelType":["Models.Bus.FuelType"],"NumberPlate":["String.String"],"SeatsAvailable":["Basics.Int"],"Route":["Maybe.Maybe Basics.Int"],"FuelConsumptionType":["Pages.Buses.CreateBusPage.ConsumptionType"],"FuelConsumptionAmount":["StyledElement.FloatInput.FloatInput"]}},"Pages.Crew.CrewMemberRegistrationPage.Field":{"args":[],"tags":{"Name":["String.String"],"Email":["String.String"],"PhoneNumber":["String.String"],"Role":["Maybe.Maybe Models.CrewMember.Role"]}},"Pages.Households.HouseholdRegistrationPage.Field":{"args":[],"tags":{"CurrentStudentName":["String.String"],"GuardianName":["String.String"],"HomeLocation":["Maybe.Maybe Models.Location.Location"],"Email":["String.String"],"PhoneNumber":["String.String"],"Route":["Maybe.Maybe Basics.Int"],"CanTrack":["Basics.Bool"],"TravelTime":["Pages.Households.HouseholdRegistrationPage.Student","Models.Household.TravelTime","Basics.Bool"]}},"Basics.Float":{"args":[],"tags":{"Float":[]}},"StyledElement.FloatInput.FloatInput":{"args":[],"tags":{"FloatInput":["Basics.Float","String.String"]}},"Models.Bus.FuelType":{"args":[],"tags":{"Gasoline":[],"Diesel":[]}},"List.List":{"args":["a"],"tags":{}},"DatePicker.Msg":{"args":[],"tags":{"CurrentDate":["Date.Date"],"ChangeFocus":["Date.Date"],"Pick":["Date.Date"],"Text":["String.String"],"SubmitText":[],"Focus":[],"Blur":[],"MouseDown":[],"MouseUp":[]}},"Pages.Buses.Bus.AboutBus.Msg":{"args":[],"tags":{"ClickedStatisticsPage":[],"ClickedStudentsPage":[],"FetchStudentsOnboard":[],"ReceivedStudentsOnboardResponse":["RemoteData.WebData (List.List Models.Household.Student)"],"SelectedStudent":["Models.Household.Student"],"ClickedCrewPage":[],"ReceivedCrewMembersResponse":["RemoteData.WebData (List.List Models.CrewMember.CrewMember)"],"ReceivedRouteResponse":["RemoteData.WebData (Maybe.Maybe Models.Route.Route)"],"LocationUpdate":["Models.Bus.LocationUpdate"],"EditDetails":[]}},"Pages.Buses.Bus.DevicePage.Msg":{"args":[],"tags":{"AddDevice":[],"RemoveDevice":[],"ClickedAboutPage":[],"ClickedFeaturesPage":[]}},"Pages.Buses.Bus.FuelHistoryPage.Msg":{"args":[],"tags":{"RecordsResponse":["RemoteData.WebData ( Pages.Buses.Bus.FuelHistoryPage.Data, Platform.Cmd.Cmd Pages.Buses.Bus.FuelHistoryPage.Msg )"],"CreateFuelReport":[],"Delete":["Basics.Int"]}},"Pages.Buses.Bus.RepairsPage.Msg":{"args":[],"tags":{"ClickedSummaryPage":[],"ClickedPastRepairsPage":[],"HoveredOver":["Maybe.Maybe Models.Bus.Repair"],"CreateRepair":[]}},"Pages.Buses.Bus.TripsHistoryPage.Msg":{"args":[],"tags":{"AdjustedValue":["Basics.Int"],"ReceivedTripsResponse":["RemoteData.WebData (List.List Models.Trip.LightWeightTrip)"],"ReceivedOngoingTripResponse":["RemoteData.WebData (Maybe.Maybe Models.Trip.OngoingTrip)"],"ReceivedTripDetailsResponse":["RemoteData.WebData Models.Trip.Trip"],"ClickedOn":["Basics.Int"],"SelectedGroup":["Pages.Buses.Bus.TripsHistoryPage.GroupedTrips"],"ToggledShowGeofence":["Basics.Bool"],"ToggledShowStops":["Basics.Bool"],"ToggledShowSpeed":["Basics.Bool"],"ToggledShowDeviation":["Basics.Bool"],"ShowHistoricalTrips":[],"ShowCurrentTrip":[],"CreateRouteFromTrip":[],"CancelRouteCreation":[],"OngoingTripUpdated":["Json.Decode.Value"],"OngoingTripEnded":[],"AdvanceTrip":[],"StartPlaying":[],"StopPlaying":[],"UpdatedRouteName":["String.String"],"SetSaveToRoute":["Pages.Buses.Bus.TripsHistoryPage.UpdateRoute"],"ReceivedRoutesResponse":["RemoteData.WebData (List.List Models.Route.Route)"],"RouteDropdownMsg":["StyledElement.DropDown.Msg Models.Route.Route"],"SubmitUpdate":[],"ReceivedUpdateResponse":["RemoteData.WebData ()"]}},"StyledElement.DropDown.Msg":{"args":["item"],"tags":{"NoOp":[],"OnBlur":[],"OnClickPrompt":[],"OnSelect":["item"],"OnFilterTyped":["String.String"],"OnKeyDown":["StyledElement.DropDown.Key"]}},"Pages.Signup.Name":{"args":[],"tags":{"Name":["String.String"]}},"Pages.Settings.OverlayType":{"args":[],"tags":{"Password":[],"School":[]}},"Pages.Buses.BusPage.Page":{"args":[],"tags":{"AboutPage":["Pages.Buses.Bus.AboutBus.Model"],"RouteHistoryPage":["Pages.Buses.Bus.TripsHistoryPage.Model"],"FuelHistoryPage":["Pages.Buses.Bus.FuelHistoryPage.Model"],"BusDevicePage":["Pages.Buses.Bus.DevicePage.Model"],"BusRepairsPage":["Pages.Buses.Bus.RepairsPage.Model"]}},"Models.Bus.Part":{"args":[],"tags":{"FrontLeftTire":[],"FrontRightTire":[],"RearLeftTire":[],"RearRightTire":[],"Engine":[],"FrontCrossAxis":[],"RearCrossAxis":[],"VerticalAxis":[]}},"Pages.Signup.Password":{"args":[],"tags":{"Password":["String.String"]}},"Time.Posix":{"args":[],"tags":{"Posix":["Basics.Int"]}},"Pages.Buses.CreateBusPage.Problem":{"args":[],"tags":{"InvalidNumberPlate":[],"EmptyRoute":[]}},"RemoteData.RemoteData":{"args":["e","a"],"tags":{"NotAsked":[],"Loading":[],"Failure":["e"],"Success":["a"]}},"Models.CrewMember.Role":{"args":[],"tags":{"Driver":[],"Assistant":[]}},"Models.Household.TravelTime":{"args":[],"tags":{"TwoWay":[],"Morning":[],"Evening":[]}},"Models.Bus.VehicleClass":{"args":[],"tags":{"VehicleClass":["Models.Bus.VehicleType","Models.Bus.FuelType"]}},"Date.Date":{"args":[],"tags":{"RD":["Date.RataDie"]}},"Models.FuelReport.Distance":{"args":[],"tags":{"Distance":["Basics.Int"]}},"StyledElement.DropDown.Key":{"args":[],"tags":{"ArrowDown":[],"ArrowUp":[],"Enter":[],"Esc":[]}},"Dict.NColor":{"args":[],"tags":{"Red":[],"Black":[]}},"Pages.Buses.Bus.AboutBus.Page":{"args":[],"tags":{"Statistics":[],"Students":["Maybe.Maybe Models.Household.Student"],"Crew":[]}},"Pages.Buses.Bus.DevicePage.Page":{"args":[],"tags":{"About":[],"Features":[]}},"Pages.Buses.Bus.RepairsPage.Page":{"args":[],"tags":{"Summary":[],"PastRepairs":[]}},"Pages.Buses.Bus.TripsHistoryPage.Problem":{"args":[],"tags":{"EmptyRoute":[],"EmptyRouteName":[]}},"Session.Session":{"args":[],"tags":{"LoggedIn":["Browser.Navigation.Key","Time.Zone","Session.Credentials"],"Guest":["Browser.Navigation.Key","Time.Zone"]}},"StyledElement.DropDown.State":{"args":["item"],"tags":{"State":["StyledElement.DropDown.InternalState item"]}},"Pages.Buses.Bus.TripsHistoryPage.UpdateRoute":{"args":[],"tags":{"NewRoute":["String.String"],"ExistingRoute":["Maybe.Maybe Models.Route.Route"]}},"Models.Bus.VehicleType":{"args":[],"tags":{"Van":[],"Shuttle":[],"SchoolBus":[]}},"Models.FuelReport.Volume":{"args":[],"tags":{"Volume":["Basics.Float"]}},"Browser.Navigation.Key":{"args":[],"tags":{"Key":[]}}}}})}});
 
 //////////////////// HMR BEGIN ////////////////////
 
@@ -52106,7 +52182,14 @@ exports.clear = exports.setSidebarState = exports.getSidebarState = exports.setS
 var localStorage = window.localStorage;
 
 function getCredentials() {
-  return safeParse(localStorage.getItem("credentials"));
+  var credentials = safeParse(localStorage.getItem("credentials"));
+
+  if (credentials.email && typeof credentials.email == "string" && credentials.token && typeof credentials.token == "string" && credentials.name && typeof credentials.name == "string" && credentials.school_id && typeof credentials.school_id == "number") {
+    return credentials;
+  } else {
+    setCredentials(null);
+    return null;
+  }
 }
 
 exports.getCredentials = getCredentials;
@@ -52124,7 +52207,13 @@ function setCredentials(credentials) {
 exports.setCredentials = setCredentials;
 
 function getSchoolLocation() {
-  return safeParse(localStorage.getItem("schoolLocation"));
+  var location = safeParse(localStorage.getItem("schoolLocation"));
+
+  if ("lat" in location && "lng" in location) {
+    return location;
+  } else {
+    return null;
+  }
 }
 
 exports.getSchoolLocation = getSchoolLocation;
@@ -52137,14 +52226,20 @@ function setSchoolLocation(location) {
 exports.setSchoolLocation = setSchoolLocation;
 
 function getSidebarState() {
-  return safeParse(localStorage.getItem("sideBarState")) || true;
+  var sideBarState = safeParse(localStorage.getItem("sideBarState"));
+
+  if (typeof sideBarState == "boolean") {
+    return sideBarState;
+  } else {
+    setSidebarState(true);
+    return true;
+  }
 }
 
 exports.getSidebarState = getSidebarState;
 
 function setSidebarState(sideBarOpen) {
   return localStorage.setItem("sideBarState", JSON.stringify(sideBarOpen));
-  window.dispatchEvent(new Event('storage'));
 }
 
 exports.setSidebarState = setSidebarState;
@@ -53869,13 +53964,14 @@ function init() {
 exports.init = init;
 
 function createApp() {
+  console.log(Cache.getSidebarState());
   return Main_1.Elm.Main.init({
     node: document.getElementById("elm"),
     flags: {
       creds: Cache.getCredentials(),
       window: windowSize(),
       isLoading: false,
-      sideBarIsOpen: true,
+      sideBarIsOpen: Cache.getSidebarState(),
       hasLoadError: false
     }
   });

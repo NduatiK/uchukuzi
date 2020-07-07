@@ -39,13 +39,14 @@ export function init() {
 }
 
 function createApp() {
+    console.log(Cache.getSidebarState())
     return Elm.Main.init({
         node: document.getElementById("elm"),
         flags: {
             creds: Cache.getCredentials(),
             window: windowSize(),
             isLoading: false,
-            sideBarIsOpen: true,
+            sideBarIsOpen: Cache.getSidebarState(),
             hasLoadError: false
         }
     });

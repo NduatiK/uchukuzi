@@ -1,9 +1,5 @@
 const { localStorage } = window;
 
-// interface PhoenixData {
-//   tag: string;
-//   data: object;
-// }
 interface Credentials {
   email: string;
   token: string;
@@ -12,7 +8,17 @@ interface Credentials {
 }
 
 export function getCredentials(): Credentials | null {
-  return safeParse(localStorage.getItem("credentials"));
+  const credentials = safeParse(localStorage.getItem("credentials"));
+
+  if (credentials.email && typeof credentials.email == "string" &&
+    credentials.token && typeof credentials.token == "string" &&
+    credentials.name && typeof credentials.name == "string" &&
+    credentials.school_id && typeof credentials.school_id == "number") {
+    return credentials
+  } else {
+    setCredentials(null)
+    return null
+  }
 }
 
 export function setCredentials(credentials: Credentials | null) {
@@ -29,7 +35,14 @@ interface Location {
 }
 
 export function getSchoolLocation(): Location | null {
-  return safeParse(localStorage.getItem("schoolLocation"));
+  const location = safeParse(localStorage.getItem("schoolLocation"));
+  if ("lat" in location && "lng" in location) {
+    return location
+  } else {
+    return null
+  }
+
+
 }
 
 export function setSchoolLocation(location: Location | null) {
@@ -38,12 +51,17 @@ export function setSchoolLocation(location: Location | null) {
 }
 
 export function getSidebarState(): boolean {
-  return safeParse(localStorage.getItem("sideBarState")) || true;
+  const sideBarState = safeParse(localStorage.getItem("sideBarState"))
+  if (typeof sideBarState == "boolean") {
+    return sideBarState;
+  } else {
+    setSidebarState(true)
+    return true;
+  }
 }
 
 export function setSidebarState(sideBarOpen: boolean) {
   return localStorage.setItem("sideBarState", JSON.stringify(sideBarOpen));
-  window.dispatchEvent(new Event('storage'))
 }
 
 export function clear() {
