@@ -534,6 +534,9 @@ defmodule Uchukuzi.School do
     |> Repo.one()
   end
 
+  def student_count_for_bus(_, nil) do
+    0
+  end
   def student_count_for_bus(school_id, route_id) do
     Student
     |> where(school_id: ^school_id, route_id: ^route_id)

@@ -1,10 +1,22 @@
 import { Elm } from "../elm/Main"
 
-declare var QrCode: any
 
-// let QrCode: any = undefined
+interface CustomWindow extends Window {
+    jsQR: (imageData: any, width: number, height: number, options: { inversionAttempts: string }) => {
+        data: string, location: {
+            topLeftCorner: Location,
+            topRightCorner: Location,
+            bottomRightCorner: Location,
+            bottomLeftCorner: Location
+        }
+    } | null;
+}
+declare let window: CustomWindow;
 
-// jsQR(imageData: any, width: number, height: number, options: { inversionAttempts: string }): { data: string }| null
+type Location = {
+    x: number,
+    y: number
+}
 
 
 let canvas: CanvasRenderingContext2D | null
@@ -12,7 +24,7 @@ let canvasElement: HTMLCanvasElement | null
 let video: HTMLVideoElement | null
 let freezeFrame = false
 const loadQRLib = () => {
-    if (typeof QrCode !== typeof undefined) {
+    if (typeof window.jsQR !== typeof undefined) {
         return Promise.resolve()
     }
     freezeFrame = false
@@ -69,7 +81,6 @@ const initializeCamera = (app: Elm.Main.App) => () => {
 
                 })
                 .catch((e) => {
-                    console.log(e)
 
                     if (e.message.match("not found")) {
                         app.ports.noCameraFoundError.send(true)
@@ -101,17 +112,20 @@ const initializeCamera = (app: Elm.Main.App) => () => {
                         canvasElement.width,
                         canvasElement.height
                     );
-                    var code = QrCode.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-                    if (code && code.data !== "") {
-                        drawBox(
-                            code.location.topLeftCorner,
-                            code.location.topRightCorner,
-                            code.location.bottomRightCorner,
-                            code.location.bottomLeftCorner,
-                            "#594FEE"
-                        );
-                        freezeFrame = true;
-                        app.ports.scannedDeviceCode.send(code.data)
+                    const jsQR = window.jsQR
+                    if (jsQR) {
+                        var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+                        if (code && code.data !== "") {
+                            drawBox(
+                                code.location.topLeftCorner,
+                                code.location.topRightCorner,
+                                code.location.bottomRightCorner,
+                                code.location.bottomLeftCorner,
+                                "#594FEE"
+                            );
+                            freezeFrame = true;
+                            app.ports.scannedDeviceCode.send(code.data)
+                        }
                     }
                 }
 
@@ -123,10 +137,7 @@ const initializeCamera = (app: Elm.Main.App) => () => {
         })
 }
 
-type Location = {
-    x: number,
-    y: number
-}
+
 
 function drawBox(begin: Location, b: Location, c: Location, d: Location, color: string) {
     if (!canvas) { return }

@@ -158,6 +158,11 @@ https://codepen.io/studiotwist/pen/KmoOJw/
   }
 }
 
+.apexcharts-text[font-size="30"] {
+  font-weight: bold;
+  font-size: 30px;
+}
+
 .apexcharts-yaxis-title-text {
   font-weight: bold;
   font-size: 14px;

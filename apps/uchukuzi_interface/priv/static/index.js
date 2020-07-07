@@ -117,7 +117,7 @@ parcelRequire = (function (modules, cache, entry, globalName) {
   }
 
   return newRequire;
-})({"src/Main.elm":[function(require,module,exports) {
+})({"elm/Main.elm":[function(require,module,exports) {
 (function(scope){
 'use strict';
 
@@ -16427,22 +16427,6 @@ var $author$project$Phoenix$Channel$leaveErrored = function (channel) {
 		channel,
 		{state: $author$project$Phoenix$Internal$EntityState$LeaveErrored});
 };
-var $author$project$Phoenix$maybeTriggerCmdWithPayload = function (maybeCallback) {
-	if (maybeCallback.$ === 'Just') {
-		var fn = maybeCallback.a;
-		return A2(
-			$elm$core$Basics$composeL,
-			A2(
-				$elm$core$Basics$composeL,
-				$elm$core$Task$perform($elm$core$Basics$identity),
-				$elm$core$Task$succeed),
-			fn);
-	} else {
-		return function (_v1) {
-			return $elm$core$Platform$Cmd$none;
-		};
-	}
-};
 var $author$project$Phoenix$maybeTriggerCommand = function (maybeCallback) {
 	if (maybeCallback.$ === 'Just') {
 		var msg_ = maybeCallback.a;
@@ -16464,6 +16448,25 @@ var $author$project$Phoenix$Channel$timedOut = function (channel) {
 	return _Utils_update(
 		channel,
 		{state: $author$project$Phoenix$Internal$EntityState$TimedOut});
+};
+var $author$project$Phoenix$triggerWithPayload = function (maybeCallback) {
+	return A2(
+		$elm$core$Maybe$withDefault,
+		function (_v0) {
+			return $elm$core$Platform$Cmd$none;
+		},
+		A2(
+			$elm$core$Maybe$map,
+			function (fn) {
+				return A2(
+					$elm$core$Basics$composeR,
+					fn,
+					A2(
+						$elm$core$Basics$composeR,
+						$elm$core$Task$succeed,
+						$elm$core$Task$perform($elm$core$Basics$identity)));
+			},
+			maybeCallback));
 };
 var $author$project$Phoenix$updateChannelWith = F3(
 	function (channelFn, topic, model) {
@@ -16499,7 +16502,7 @@ var $author$project$Phoenix$update = F2(
 							{
 								socket: $author$project$Phoenix$Socket$errored(socket)
 							}),
-						A2($author$project$Phoenix$maybeTriggerCmdWithPayload, socket.onError, payload.payload));
+						A2($author$project$Phoenix$triggerWithPayload, socket.onError, payload.payload));
 				case 'SocketOpened':
 					var _v2 = phoenixMessage.a;
 					return _Utils_Tuple2(
@@ -16516,7 +16519,7 @@ var $author$project$Phoenix$update = F2(
 						var channel = _v3.a;
 						return _Utils_Tuple2(
 							A3($author$project$Phoenix$updateChannelWith, $author$project$Phoenix$Channel$joined, channel.topic, model),
-							A2($author$project$Phoenix$maybeTriggerCmdWithPayload, channel.onJoin, payload.payload));
+							A2($author$project$Phoenix$triggerWithPayload, channel.onJoin, payload.payload));
 					} else {
 						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 					}
@@ -16527,7 +16530,7 @@ var $author$project$Phoenix$update = F2(
 						var channel = _v4.a;
 						return _Utils_Tuple2(
 							A3($author$project$Phoenix$updateChannelWith, $author$project$Phoenix$Channel$errored, channel.topic, model),
-							A2($author$project$Phoenix$maybeTriggerCmdWithPayload, channel.onJoinError, payload.payload));
+							A2($author$project$Phoenix$triggerWithPayload, channel.onJoinError, payload.payload));
 					} else {
 						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 					}
@@ -16550,7 +16553,7 @@ var $author$project$Phoenix$update = F2(
 						return _Utils_Tuple2(
 							model,
 							A2(
-								$author$project$Phoenix$maybeTriggerCmdWithPayload,
+								$author$project$Phoenix$triggerWithPayload,
 								A2($elm$core$Dict$get, payload.message, channel.on),
 								payload.payload));
 					} else {
@@ -16563,7 +16566,7 @@ var $author$project$Phoenix$update = F2(
 						var channel = _v7.a;
 						return _Utils_Tuple2(
 							A3($author$project$Phoenix$updateChannelWith, $author$project$Phoenix$Channel$closed, channel.topic, model),
-							A2($author$project$Phoenix$maybeTriggerCmdWithPayload, channel.onLeave, payload.payload));
+							A2($author$project$Phoenix$triggerWithPayload, channel.onLeave, payload.payload));
 					} else {
 						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 					}
@@ -16574,7 +16577,7 @@ var $author$project$Phoenix$update = F2(
 						var channel = _v8.a;
 						return _Utils_Tuple2(
 							A3($author$project$Phoenix$updateChannelWith, $author$project$Phoenix$Channel$leaveErrored, channel.topic, model),
-							A2($author$project$Phoenix$maybeTriggerCmdWithPayload, channel.onLeaveError, payload.payload));
+							A2($author$project$Phoenix$triggerWithPayload, channel.onLeaveError, payload.payload));
 					} else {
 						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 					}
@@ -16585,7 +16588,7 @@ var $author$project$Phoenix$update = F2(
 						var push = _v9.a;
 						return _Utils_Tuple2(
 							model,
-							A2($author$project$Phoenix$maybeTriggerCmdWithPayload, push.onOk, payload.payload));
+							A2($author$project$Phoenix$triggerWithPayload, push.onOk, payload.payload));
 					} else {
 						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 					}
@@ -16596,7 +16599,7 @@ var $author$project$Phoenix$update = F2(
 						var push = _v10.a;
 						return _Utils_Tuple2(
 							model,
-							A2($author$project$Phoenix$maybeTriggerCmdWithPayload, push.onError, payload.payload));
+							A2($author$project$Phoenix$triggerWithPayload, push.onError, payload.payload));
 					} else {
 						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 					}
@@ -40261,6 +40264,8 @@ var $author$project$Pages$Buses$Bus$DevicePage$view = function (model) {
 		return $author$project$Pages$Buses$Bus$DevicePage$viewDeviceRegistration(model);
 	}
 };
+var $mdgriffith$elm_ui$Internal$Flag$fontAlignment = $mdgriffith$elm_ui$Internal$Flag$flag(12);
+var $mdgriffith$elm_ui$Element$Font$center = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$fontAlignment, $mdgriffith$elm_ui$Internal$Style$classes.textCenter);
 var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewGraph = A2(
 	$mdgriffith$elm_ui$Element$el,
 	_List_fromArray(
@@ -40272,7 +40277,6 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$viewGraph = A2(
 			A2($mdgriffith$elm_ui$Element$paddingXY, 20, 0)
 		]),
 	$mdgriffith$elm_ui$Element$none);
-var $mdgriffith$elm_ui$Internal$Flag$fontAlignment = $mdgriffith$elm_ui$Internal$Flag$flag(12);
 var $mdgriffith$elm_ui$Element$Font$alignLeft = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$fontAlignment, $mdgriffith$elm_ui$Internal$Style$classes.textLeft);
 var $mdgriffith$elm_ui$Element$Font$alignRight = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$fontAlignment, $mdgriffith$elm_ui$Internal$Style$classes.textRight);
 var $elm$core$String$padRight = F3(
@@ -40990,15 +40994,23 @@ var $author$project$Pages$Buses$Bus$FuelHistoryPage$view = F2(
 							$mdgriffith$elm_ui$Element$column,
 							_List_fromArray(
 								[
-									$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
+									$mdgriffith$elm_ui$Element$Font$center,
 									$mdgriffith$elm_ui$Element$centerX,
 									$mdgriffith$elm_ui$Element$centerY,
 									$mdgriffith$elm_ui$Element$spacing(4)
 								]),
 							_List_fromArray(
 								[
-									$mdgriffith$elm_ui$Element$text('No fuel data available'),
-									$mdgriffith$elm_ui$Element$text('Click the button below ↓ to start tracking fuel purchases')
+									A2(
+									$mdgriffith$elm_ui$Element$el,
+									_List_fromArray(
+										[$mdgriffith$elm_ui$Element$centerX]),
+									$mdgriffith$elm_ui$Element$text('No fuel data available')),
+									A2(
+									$mdgriffith$elm_ui$Element$el,
+									_List_fromArray(
+										[$mdgriffith$elm_ui$Element$centerX]),
+									$mdgriffith$elm_ui$Element$text('Click the button below ↓ to start tracking fuel purchases'))
 								])) : A2(
 							$mdgriffith$elm_ui$Element$row,
 							_List_fromArray(
@@ -43942,7 +43954,6 @@ var $author$project$Icons$check = function (attrs) {
 			$mdgriffith$elm_ui$Element$alpha(1),
 			attrs));
 };
-var $mdgriffith$elm_ui$Element$Font$center = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$fontAlignment, $mdgriffith$elm_ui$Internal$Style$classes.textCenter);
 var $elm$core$Basics$degrees = function (angleInDegrees) {
 	return (angleInDegrees * $elm$core$Basics$pi) / 180;
 };
@@ -51861,6 +51872,7 @@ function () {
   function ElmPhoenixChannels(ports) {
     var _this = this;
 
+    this.socket = null;
     this.channels = new Map();
     this.toElm = ports.fromPhoenix;
     this.fromElm = ports.toPhoenix;
@@ -51937,11 +51949,11 @@ function () {
         data: {}
       });
     });
-    socket.onError(function (error) {
+    socket.onError(function () {
       return _this.toElm.send({
         tag: TAGS.SOCKET_ERRORED,
         data: {
-          payload: error,
+          payload: {},
           message: TAGS.SOCKET_ERRORED
         }
       });
@@ -51958,10 +51970,17 @@ function () {
   ElmPhoenixChannels.prototype.channelInit = function (_a) {
     var _this = this;
 
+    var _b;
+
     var topic = _a.topic,
         payload = _a.payload,
         messages = _a.messages;
-    var channel = this.socket.channel(topic, payload);
+    var channel = (_b = this.socket) === null || _b === void 0 ? void 0 : _b.channel(topic, payload);
+
+    if (!channel) {
+      return;
+    }
+
     channel.join().receive("ok", function (payload) {
       _this.toElm.send({
         tag: TAGS.CHANNEL_JOINED,
@@ -51991,6 +52010,10 @@ function () {
       });
     });
     messages.forEach(function (message) {
+      if (!channel) {
+        return;
+      }
+
       channel.on(message, function (payload) {
         _this.toElm.send({
           tag: TAGS.CHANNEL_MESSAGE_RECEIVED,
@@ -53304,16 +53327,14 @@ function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "functi
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.setFrameFrozen = exports.stopCamera = exports.initializeCamera = void 0; // let QrCode: any = undefined
-// jsQR(imageData: any, width: number, height: number, options: { inversionAttempts: string }): { data: string }| null
-
+exports.setFrameFrozen = exports.stopCamera = exports.initializeCamera = void 0;
 var canvas;
 var canvasElement;
 var video;
 var freezeFrame = false;
 
 var loadQRLib = function loadQRLib() {
-  if ((typeof QrCode === "undefined" ? "undefined" : _typeof(QrCode)) !== (typeof undefined === "undefined" ? "undefined" : _typeof(undefined))) {
+  if (_typeof(window.jsQR) !== (typeof undefined === "undefined" ? "undefined" : _typeof(undefined))) {
     return Promise.resolve();
   }
 
@@ -53373,8 +53394,6 @@ var initializeCamera = function initializeCamera(app) {
           requestAnimationFrame(tick);
         }
       }).catch(function (e) {
-        console.log(e);
-
         if (e.message.match("not found")) {
           app.ports.noCameraFoundError.send(true);
         }
@@ -53403,14 +53422,18 @@ var initializeCamera = function initializeCamera(app) {
           canvasElement.width = video.videoWidth;
           canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
           var imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-          var code = QrCode.jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'dontInvert'
-          });
+          var jsQR = window.jsQR;
 
-          if (code && code.data !== "") {
-            drawBox(code.location.topLeftCorner, code.location.topRightCorner, code.location.bottomRightCorner, code.location.bottomLeftCorner, "#594FEE");
-            freezeFrame = true;
-            app.ports.scannedDeviceCode.send(code.data);
+          if (jsQR) {
+            var code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'dontInvert'
+            });
+
+            if (code && code.data !== "") {
+              drawBox(code.location.topLeftCorner, code.location.topRightCorner, code.location.bottomRightCorner, code.location.bottomLeftCorner, "#594FEE");
+              freezeFrame = true;
+              app.ports.scannedDeviceCode.send(code.data);
+            }
           }
         }
 
@@ -53506,7 +53529,7 @@ exports.renderChart = void 0;
 var sleep_1 = require("./sleep");
 
 var loadChartLib = function loadChartLib() {
-  if ((typeof ApexCharts === "undefined" ? "undefined" : _typeof(ApexCharts)) !== (typeof undefined === "undefined" ? "undefined" : _typeof(undefined))) {
+  if (_typeof(window.ApexCharts) !== (typeof undefined === "undefined" ? "undefined" : _typeof(undefined))) {
     return Promise.resolve();
   }
 
@@ -53524,16 +53547,21 @@ function renderChart(_a) {
   var x = _a.x,
       y = _a.y,
       statistics = _a.statistics;
+  console.log("renderChart");
   var dates = x;
-
-  if (dates.length == 0) {
-    return;
-  }
-
   var dateCount = dates.length;
   var runningAverage = y.runningAverage,
       consumptionOnDate = y.consumptionOnDate;
   sleep_1.sleep(200).then(loadChartLib).then(function () {
+    var Charts = window.ApexCharts;
+
+    if (!Charts) {
+      return;
+    } // if (dates.length == 0) {
+    //     return
+    // }
+
+
     var runningAverageSeries = [];
     var allTimeAverage = [];
     var consumptionOnDateSeries = [];
@@ -53583,6 +53611,13 @@ function renderChart(_a) {
     }
 
     var options = {
+      noData: {
+        text: "No Chart Data Available",
+        style: {
+          color: '#ddd',
+          fontSize: 30
+        }
+      },
       colors: ["#594FEE", '#333', "#00b2c3"],
       series: [{
         name: 'Consumption Rate',
@@ -53639,7 +53674,7 @@ function renderChart(_a) {
         }
       }
     };
-    var myChart = new ApexCharts(document.querySelector("#chart"), options);
+    var myChart = new Charts(document.querySelector("#chart"), options);
     myChart.render();
     myChart.hideSeries('All time average');
   });
@@ -53791,7 +53826,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.init = void 0;
 
-var Main_1 = require("../src/Main");
+var Main_1 = require("../elm/Main");
 
 var Interop = __importStar(require("./interop"));
 
@@ -53852,7 +53887,7 @@ function windowSize() {
     width: window.innerWidth
   };
 }
-},{"../src/Main":"src/Main.elm","./interop":"ts/interop.ts","./cache":"ts/cache.ts","./gmaps":"ts/gmaps.ts","./sleep":"ts/sleep.ts"}],"index.ts":[function(require,module,exports) {
+},{"../elm/Main":"elm/Main.elm","./interop":"ts/interop.ts","./cache":"ts/cache.ts","./gmaps":"ts/gmaps.ts","./sleep":"ts/sleep.ts"}],"index.ts":[function(require,module,exports) {
 "use strict";
 
 var __createBinding = this && this.__createBinding || (Object.create ? function (o, m, k, k2) {
@@ -53924,7 +53959,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "54762" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "49271" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

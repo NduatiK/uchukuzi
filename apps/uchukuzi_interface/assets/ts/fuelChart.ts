@@ -1,9 +1,15 @@
 import { sleep } from "./sleep"
+import { ApexOptions } from "apexcharts";
 
-declare var ApexCharts: any
+
+
+interface CustomWindow extends Window {
+    ApexCharts: any;
+}
+declare let window: CustomWindow;
 
 const loadChartLib = () => {
-    if (typeof ApexCharts !== typeof undefined) {
+    if (typeof window.ApexCharts !== typeof undefined) {
         return Promise.resolve()
     }
     return new Promise((resolve, reject) => {
@@ -20,10 +26,9 @@ const loadChartLib = () => {
 
 
 function renderChart({ x, y, statistics }: { x: number[]; y: { consumptionOnDate: number[]; runningAverage: number[] }; statistics: { stdDev: number; mean: number } | null }) {
+    console.log("renderChart")
     const dates = x
-    if (dates.length == 0) {
-        return
-    }
+
 
     const dateCount = dates.length
     const { runningAverage, consumptionOnDate } = y
@@ -31,11 +36,15 @@ function renderChart({ x, y, statistics }: { x: number[]; y: { consumptionOnDate
     sleep(200)
         .then(loadChartLib)
         .then(() => {
+            const Charts = window.ApexCharts
+            if (!Charts) { return }
+            // if (dates.length == 0) {
+            //     return
+            // }
 
-
-            var runningAverageSeries = []
-            var allTimeAverage = []
-            var consumptionOnDateSeries = []
+            var runningAverageSeries: [number, (number | null)][] = []
+            var allTimeAverage: [number, (number | null)][] = []
+            var consumptionOnDateSeries: [number, (number | null)][] = []
 
             for (var i = 0; i < dateCount; i++) {
                 if (i != dateCount - 1) {
@@ -81,8 +90,14 @@ function renderChart({ x, y, statistics }: { x: number[]; y: { consumptionOnDate
                 }
             }
 
-
             var options = {
+                noData: {
+                    text: "No Chart Data Available",
+                    style: {
+                        color: '#ddd',
+                        fontSize: 30
+                    }
+                },
                 colors: ["#594FEE", '#333', "#00b2c3"],
                 series: [
                     {
@@ -148,7 +163,7 @@ function renderChart({ x, y, statistics }: { x: number[]; y: { consumptionOnDate
                 // }
             }
 
-            var myChart = new ApexCharts(document.querySelector("#chart"), options)
+            var myChart = new Charts(document.querySelector("#chart"), options)
 
             myChart.render()
 
