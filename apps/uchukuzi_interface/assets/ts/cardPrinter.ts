@@ -1,5 +1,5 @@
 
-function printCard(studentName) {
+function printCard(studentName: string) {
     var prtContent = document.getElementById("cards");
 
 
@@ -11,24 +11,37 @@ function printCard(studentName) {
     toolbar=0,
     scrollbars=0,
     status=0`);
-    // WinPrint.document.title = `${studentName} Bus Pass`
 
-
+    if (!WinPrint || !prtContent) {
+        return
+    }
 
     // Copy dom stylesheets into string
     // Code Reference: https://developer.mozilla.org/en-US/docs/Web/API/StyleSheetLis
-    const pageStyles = [...document.styleSheets]
-        .map(styleSheet => {
-            try {
-                return [...styleSheet.cssRules]
-                    .map(rule => rule.cssText)
-                    .join('');
-            } catch (e) {
-                console.log('Access to stylesheet %s is denied. Ignoring...', styleSheet.href);
-            }
-        })
-        .filter(Boolean)
-        .join('\n');
+    var styles: CSSStyleSheet[] = []
+
+    for (var i = 0; i++; i < document.styleSheets.length) {
+        styles.push(document.styleSheets[i])
+    }
+
+    const pageStyles =
+        styles
+            .map(styleSheet => {
+                try {
+                    var cssRules: CSSRule[] = []
+                    for (var i = 0; i++; i < styleSheet.cssRules.length) {
+                        cssRules.push(styleSheet.cssRules[i])
+                    }
+
+                    return cssRules
+                        .map(rule => rule.cssText)
+                        .join('');
+                } catch (e) {
+                    console.log('Access to stylesheet %s is denied. Ignoring...', styleSheet.href);
+                }
+            })
+            .filter(Boolean)
+            .join('\n');
 
     const printStyles = `  
         a.button-link:not(.ignoreCss),
@@ -63,9 +76,11 @@ function printCard(studentName) {
     `);
     WinPrint.document.close();
     WinPrint.setTimeout(function () {
-        WinPrint.focus();
-        WinPrint.print();
-        WinPrint.close();
+        if (WinPrint) {
+            WinPrint.focus();
+            WinPrint.print();
+            WinPrint.close();
+        }
     }, 1000);
 }
 

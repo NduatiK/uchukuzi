@@ -1,27 +1,39 @@
+
 import mapStyles from "./mapStyles"
-import env from "./env"
+import * as  Cache from "./cache"
+import { Elm } from "../elm/Main"
+import { sleep } from "./sleep"
 
-const schoolLocationStorageKey = "schoolLocation"
 
-const isDevelopment = env.isDevelopment
-
-function parse(string) {
-    try {
-        return string ? JSON.parse(string) : null
-    } catch (e) {
-        localStorage.setItem(schoolLocationStorageKey, null)
-        return null
-    }
+type ElmLatLng = {
+    lng: number;
+    lat: number;
 }
-let schoolLocation = parse(localStorage.getItem(schoolLocationStorageKey))
+
+type ElmPath = {
+    routeID: number;
+    path: ElmLatLng[];
+    highlighted: boolean;
+}
+type ElmTile = {
+    bottomLeft: ElmLatLng;
+    topRight: ElmLatLng;
+}
+
+type ElmTileCollection = {
+    values: ElmTile[];
+    visible: boolean;
+}
+
+
+let schoolLocation = Cache.getSchoolLocation()
 
 window.addEventListener("storage", (event) => {
+    const location = Cache.getSchoolLocation()
 
-    const location = parse(window.localStorage.getItem(schoolLocationStorageKey))
-
-    if (MapLibraryInstance && schoolLocation !== location) {
+    if (Map && schoolLocation !== location) {
         schoolLocation = location
-        pushSchoolOnto(MapLibraryInstance)
+        pushSchoolOnto(Map)
     }
 }, false)
 
@@ -29,7 +41,7 @@ let darkGreen = "#61A591"
 let purple = "#594fee"
 let errorRed = "#ff0000"
 // Prevent duplicate loads
-let runningRequest = null
+let runningRequest: Promise<any> | null = null
 let initializingMapsChain = null
 
 let defaultLocation = { center: { lat: -1.2921, lng: 36.8219 }, zoom: 16 }
@@ -43,11 +55,11 @@ var editable = true
 /**
  * Completely sets up the map for a page
  */
-function initializeMaps(app, clickable = false, drawable = false, sleepTime = 800) {
+function initializeMaps(app: Elm.Main.App, clickable = false, drawable = false, sleepTime = 800) {
     editable = clickable || drawable
     if (schoolLocation) {
         const credentialsStorageKey = "credentials"
-        const storedCredentials = parse(localStorage.getItem(credentialsStorageKey))
+        const storedCredentials = Cache.getCredentials()
         if (storedCredentials) {
             defaultLocation = { center: schoolLocation, zoom: 16 }
         }
@@ -68,29 +80,33 @@ function loadMapAPI() {
     // only load if google has not loaded
     if (typeof google !== typeof undefined) {
         return Promise.resolve(google)
-    }
+    } else if (runningRequest) {
+        return runningRequest
+    } else {
 
-    runningRequest = new Promise((resolve, reject) => {
-        const script = document.createElement("script")
-        script.type = "text/javascript"
-        script.onload = () => { resolve(google) }
-        script.onerror = reject
-        document.getElementsByTagName("head")[0].appendChild(script)
-        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyB6wUhsk2tL7ihoORGBfeqc8UCRA3XRVsw&libraries=drawing,places"
-    })
-    return runningRequest
+
+        runningRequest = new Promise((resolve, reject) => {
+            const script = document.createElement("script")
+            script.type = "text/javascript"
+            script.onload = () => { resolve(google) }
+            script.onerror = reject
+            document.getElementsByTagName("head")[0].appendChild(script)
+            script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyB6wUhsk2tL7ihoORGBfeqc8UCRA3XRVsw&libraries=drawing,places"
+        })
+        return runningRequest
+    }
 }
 
-let MapLibraryInstance = null
-let MapDomElement = null
+let Map: google.maps.Map | null = null
+let MapDomElement: HTMLElement | null = null
 
 /**
  * Creates a GMAPs Library Map instance and its dom element for reuse across the application
  */
 function createMapDom() {
     runningRequest = null
-    if (MapDomElement && MapLibraryInstance) {
-        return Promise.resolve({ dom: MapDomElement, map: MapLibraryInstance })
+    if (MapDomElement && Map) {
+        return Promise.resolve({ dom: MapDomElement, map: Map })
     }
 
     var mapOptions = {
@@ -98,7 +114,7 @@ function createMapDom() {
         zoomControl: true,
         zoomControlOptions: {
             style: google.maps.ZoomControlStyle.SMALL,
-            position: google.maps.ControlPosition.RIGHT
+            position: google.maps.ControlPosition.TOP_RIGHT
         },
         mapTypeControl: false,
         streetViewControl: false,
@@ -110,22 +126,23 @@ function createMapDom() {
     }
 
     const newElement = document.createElement("google-map-cached")
-    MapLibraryInstance = new google.maps.Map(newElement, mapOptions)
+    Map = new google.maps.Map(newElement, mapOptions)
     MapDomElement = newElement
 
-    return Promise.resolve({ dom: MapDomElement, map: MapLibraryInstance })
+    return Promise.resolve({ dom: MapDomElement, map: Map })
 }
 
-let markers = []
-let correctTiles = []
-let deviationTiles = []
+let markers: google.maps.Marker[] = []
+let correctTiles: google.maps.Rectangle[] = []
+let deviationTiles: google.maps.Rectangle[] = []
 let drawingManager = null
-let schoolCircle = null
+let schoolCircle: google.maps.Circle | null = null
+let schoolCircleRadius: google.maps.MapsEventListener | null = null
 
 /**
  * Places the map within a google-map dom element
  */
-const insertMap = (sleepTime) => (data) => {
+const insertMap = (sleepTime: number) => (data: { dom: Element, map: google.maps.Map }) => {
     return sleep(sleepTime).then(() => {
         const { dom, map } = data
 
@@ -134,7 +151,7 @@ const insertMap = (sleepTime) => (data) => {
         if (dom.parentNode) {
             dom.parentNode.removeChild(dom)
         }
-        mapDiv.prepend(dom)
+        mapDiv?.prepend(dom)
         pushSchoolOnto(map)
         return Promise.resolve(map)
     })
@@ -173,8 +190,8 @@ function cleanMap() {
     disableClickListeners(0)
 
     // Reset location
-    if (MapLibraryInstance) {
-        const map = MapLibraryInstance
+    if (Map) {
+        const map = Map
         map.panTo(new google.maps.LatLng(defaultLocation.center))
         map.setZoom(defaultLocation.zoom)
 
@@ -188,7 +205,7 @@ function cleanGrid() {
         x.setMap(null)
     })
     correctTiles = []
-    
+
     deviationTiles.forEach((x) => {
         x.setMap(null)
     })
@@ -198,31 +215,24 @@ function cleanGrid() {
 function disableClickListeners(time = 300) {
     sleep(time).then(() => {
 
-        if (MapLibraryInstance) {
+        if (Map) {
 
-            google.maps.event.clearInstanceListeners(MapLibraryInstance, "click")
+            google.maps.event.clearInstanceListeners(Map)
             homeMarkerMapClickListener = null
             homeMarkerDragListener = null
             circleClickListener = null
             mapClickListener = null
-
-            if (homeMarker) {
-                console.log("disableClickListeners")
-
-                console.log("homeMarker.setDraggable")
-                homeMarker.setDraggable(false)
-            }
-
+            homeMarker?.setDraggable(false)
         }
     })
 }
 
-var schoolMarker = null
+var schoolMarker: google.maps.Marker | null = null
 
 /**
  * Displaces the location of the school on the map
  */
-function pushSchoolOnto(map) {
+function pushSchoolOnto(map: google.maps.Map) {
     if (!schoolLocation) {
         if (schoolMarker) {
             schoolMarker.setMap(null)
@@ -248,17 +258,12 @@ function pushSchoolOnto(map) {
     schoolMarker.setPosition(schoolLocation)
 }
 
-let circleClickListener = null
-const setupMapCallbacks = (app, clickable) => (data) => {
-    const map = data
+let circleClickListener: google.maps.MapsEventListener | null = null
+const setupMapCallbacks = (app: Elm.Main.App, clickable: boolean) => (map: google.maps.Map) => {
     if (clickable) {
-        if (!google.maps.event.hasListeners(map, "click")) {
+        if (!circleClickListener) {
             circleClickListener = google.maps.event.addListener(map, "click", function (args) {
-                const pos = {
-                    lat: args.latLng.lat(),
-                    lng: args.latLng.lng()
-                }
-                insertCircle(pos, app, map)
+                insertCircle(args.latLng, app, map)
             })
         }
     } else {
@@ -267,11 +272,11 @@ const setupMapCallbacks = (app, clickable) => (data) => {
         }
     }
 
-    return Promise.resolve(data)
+    return Promise.resolve(map)
 }
 
 
-function insertCircle(pos, app, map, radius = 50) {
+function insertCircle(pos: google.maps.LatLng, app: Elm.Main.App, map: google.maps.Map, radius = 50) {
 
     if (schoolCircle) {
         radius = schoolCircle.getRadius()
@@ -286,86 +291,102 @@ function insertCircle(pos, app, map, radius = 50) {
         fillOpacity: 0.35,
         map: map,
         draggable: editable,
-        geodesic: true,
         editable: editable,
         center: pos,
         radius: radius // metres
     })
 
-    function sendSchoolCircle(schoolCircle) {
+    function updateSchoolCircle(schoolCircle: google.maps.Circle) {
         app.ports.receivedMapClickLocation.send({
-            lat: schoolCircle.center.lat(),
-            lng: schoolCircle.center.lng(),
+            lat: schoolCircle.getCenter().lat(),
+            lng: schoolCircle.getCenter().lng(),
             radius: schoolCircle.getRadius()
         })
     }
-    if (!google.maps.event.hasListeners(schoolCircle, "radius_changed")) {
-        google.maps.event.addListener(schoolCircle, "radius_changed", function () {
-            sendSchoolCircle(schoolCircle)
+    if (!schoolCircleRadius) {
+        schoolCircleRadius = google.maps.event.addListener(schoolCircle, "radius_changed", function () {
+            if (schoolCircle) {
+                updateSchoolCircle(schoolCircle)
+            }
         })
         google.maps.event.addListener(schoolCircle, "center_changed", function () {
+            if (schoolCircle) {
+                const center = schoolCircle.getCenter()
 
-            if (!schoolMarker) {
-                var image = {
-                    url: `/images/school_marker.svg`,
-                    size: new google.maps.Size(26, 26),
-                    anchor: new google.maps.Point(13, 13),
-                    scaledSize: new google.maps.Size(26, 26)
+                if (!schoolMarker) {
+                    var image = {
+                        url: `/images/school_marker.svg`,
+                        size: new google.maps.Size(26, 26),
+                        anchor: new google.maps.Point(13, 13),
+                        scaledSize: new google.maps.Size(26, 26)
+                    }
+                    schoolMarker = new google.maps.Marker({
+                        icon: image,
+                        map: map,
+                        title: `School [${center.lng}, ${center.lat}]`
+                    })
                 }
-                schoolMarker = new google.maps.Marker({
-                    icon: image,
-                    map: map,
-                    title: `School [${schoolCircle.center.lng}, ${schoolCircle.center.lat}]`
-                })
+                schoolMarker.setPosition(center)
+                updateSchoolCircle(schoolCircle)
             }
-            schoolMarker.setPosition(schoolCircle.center)
-            sendSchoolCircle(schoolCircle)
         })
     }
-
-    map.panTo(schoolCircle.center)
+    if (schoolCircle) {
+        map.panTo(schoolCircle.getCenter())
+    }
     map.setZoom(17)
-    sendSchoolCircle(schoolCircle)
+    updateSchoolCircle(schoolCircle)
 }
 
 
-let polylines = []
-let polylineMarkers = []
+let polylines: google.maps.Polyline[] = []
+let polylineMarkers: (google.maps.Marker | google.maps.Polyline)[] = []
 let markerIdx = 0
 
 function rerenderPolylines() {
-    polylineMarkers.forEach((val, _idx, array) => {
-        const isMarker = _idx % 2 == 0
-        if (!isMarker) {
-            val.setPath([
-                polylineMarkers[_idx - 1].position,
-                polylineMarkers[_idx + 1].position
 
-            ])
+    polylineMarkers.forEach((val, _idx, array) => {
+
+        if (val instanceof google.maps.Polyline) {
+            const shapeBefore = polylineMarkers[_idx - 1]
+            const shapeAfter = polylineMarkers[_idx + 1]
+
+            if (shapeBefore instanceof google.maps.Marker &&
+                shapeAfter instanceof google.maps.Marker) {
+                const positionBefore = shapeBefore.getPosition()
+                const positionAfter = shapeAfter.getPosition()
+
+                if (positionBefore instanceof google.maps.LatLng &&
+                    positionAfter instanceof google.maps.LatLng) {
+
+                    val.setPath([positionBefore, positionAfter])
+                }
+            }
         }
     })
 }
-function updatePolyline(app) {
+function updatePolyline(app: Elm.Main.App) {
     rerenderPolylines()
 
     const locations = polylineMarkers
-        .filter((_1, idx, _2) => {
-            const isMarker = idx % 2 == 0
-            return isMarker
-        }).map((v, _1, _2) => {
-            return {
-                lat: v.position.lat(),
-                lng: v.position.lng()
+        .reduce((results, v) => {
+            if (v instanceof google.maps.Marker) {
+                const pos = v.getPosition()
+                if (pos) {
+                    results.push({
+                        lat: pos.lat(),
+                        lng: pos.lng()
+                    })
+                }
             }
-        })
+            return results
+        }, <ElmLatLng[]>[])
 
     app.ports.updatedPath.send(locations)
 }
 
-let mapClickListener = null
-const addDrawTools = (app, drawable) => (data) => {
-    const map = data
-
+let mapClickListener: google.maps.MapsEventListener | null = null
+const addDrawTools = (app: Elm.Main.App, drawable: boolean) => (map: google.maps.Map) => {
     if (drawable) {
         if (!mapClickListener) {
             mapClickListener = google.maps.event.addListener(map, "click", function (args) {
@@ -374,15 +395,17 @@ const addDrawTools = (app, drawable) => (data) => {
             })
         }
     } else {
-        google.maps.event.removeListener(mapClickListener)
-        mapClickListener = null
+        if (mapClickListener) {
+            google.maps.event.removeListener(mapClickListener)
+            mapClickListener = null
+        }
     }
 
-    return Promise.resolve(data)
+    return Promise.resolve(map)
 }
-function requestGeoLocation(app) {
+const requestGeoLocation = (app: Elm.Main.App) => () => {
 
-    function handleLocationError(error) {
+    function handleLocationError(error: PositionError) {
         switch (error.code) {
             case error.PERMISSION_DENIED:
                 alert("Request for geolocation permissions denied.")
@@ -403,16 +426,17 @@ function requestGeoLocation(app) {
         timeout: 5000
     }
 
-    const success = (data) => {
-        const pos = {
-            lat: data.coords.latitude,
-            lng: data.coords.longitude,
-            radius: 50
+    const success = (position: Position) => {
+        const pos = new google.maps.LatLng({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+        })
+        if (Map) {
+            insertCircle(pos, app, Map, 50)
         }
-        insertCircle(pos, app, MapDomElement)
     }
 
-    const failure = (error) => {
+    const failure = (error: PositionError) => {
         handleLocationError(error)
         app.ports.receivedMapClickLocation.send(null)
     }
@@ -425,18 +449,18 @@ function requestGeoLocation(app) {
     }
 }
 
-let homeMarker
-let homeMarkerMapClickListener
-function initializeSearch(app) {
+let homeMarker: google.maps.Marker | null
+let homeMarkerMapClickListener: google.maps.MapsEventListener | null
+const initializeSearch = (app: Elm.Main.App) => () => {
     sleep(100).then(() => {
 
         const setup = initializeMaps(app)
             .then((map) => {
                 setupHomeMarker(app, map)
 
-                if (!google.maps.event.hasListeners(map, "click")) {
+                if (!homeMarkerMapClickListener) {
                     homeMarkerMapClickListener = google.maps.event.addListener(map, "click", function (args) {
-                        homeMarker.setPosition(args.latLng)
+                        homeMarker?.setPosition(args.latLng)
                         app.ports.receivedMapLocation.send({
                             lat: args.latLng.lat(),
                             lng: args.latLng.lng()
@@ -444,48 +468,51 @@ function initializeSearch(app) {
                     })
                 }
 
-                var input = document.getElementById("search-input")
+                var input = document.getElementById("search-input") as HTMLInputElement
 
-                var autocomplete = new google.maps.places.Autocomplete(input)
+                if (input) {
 
-                autocomplete.bindTo("bounds", map)
+                    var autocomplete = new google.maps.places.Autocomplete(input)
 
-                // Set the data fields to return when the user selects a place.
-                autocomplete.setFields(
-                    ["address_components", "geometry", "name"])
-                autocomplete.addListener("place_changed", function () {
+                    autocomplete.bindTo("bounds", map)
 
-                    homeMarker.setVisible(false)
-                    var place = autocomplete.getPlace()
-                    if (!place.geometry) {
-                        window.alert("No details available for input: " + place.name)
-                        return
-                    }
+                    // Set the data fields to return when the user selects a place.
+                    autocomplete.setFields(
+                        ["address_components", "geometry", "name"])
+                    autocomplete.addListener("place_changed", function () {
 
-                    // If the place has a geometry, then present it on a map.
-                    if (place.geometry.viewport) {
-                        map.fitBounds(place.geometry.viewport)
-                    } else {
-                        map.setCenter(place.geometry.location)
-                        map.setZoom(17)
-                    }
-                    homeMarker.setPosition(place.geometry.location)
-                    homeMarker.setVisible(true)
+                        homeMarker?.setVisible(false)
+                        var place = autocomplete.getPlace()
+                        if (!place.geometry) {
+                            window.alert("No details available for input: " + place.name)
+                            return
+                        }
 
-                    app.ports.receivedMapLocation.send({
-                        lat: place.geometry.location.lat(),
-                        lng: place.geometry.location.lng()
+                        // If the place has a geometry, then present it on a map.
+                        if (place.geometry.viewport) {
+                            map.fitBounds(place.geometry.viewport)
+                        } else {
+                            map.setCenter(place.geometry.location)
+                            map.setZoom(17)
+                        }
+                        homeMarker?.setPosition(place.geometry.location)
+                        homeMarker?.setVisible(true)
+
+                        app.ports.receivedMapLocation.send({
+                            lat: place.geometry.location.lat(),
+                            lng: place.geometry.location.lng()
+                        })
+
+                        var address = ""
+                        if (place.address_components) {
+                            address = [
+                                (place.address_components[0] && place.address_components[0].short_name || ""),
+                                (place.address_components[1] && place.address_components[1].short_name || ""),
+                                (place.address_components[2] && place.address_components[2].short_name || "")
+                            ].join(" ")
+                        }
                     })
-
-                    var address = ""
-                    if (place.address_components) {
-                        address = [
-                            (place.address_components[0] && place.address_components[0].short_name || ""),
-                            (place.address_components[1] && place.address_components[1].short_name || ""),
-                            (place.address_components[2] && place.address_components[2].short_name || "")
-                        ].join(" ")
-                    }
-                })
+                }
             })
             .catch((e) => {
                 console.log(e)
@@ -496,7 +523,7 @@ function initializeSearch(app) {
 
 var homeMarkerDragListener
 
-function setupHomeMarker(app, map, draggable = true) {
+function setupHomeMarker(app: Elm.Main.App, map: google.maps.Map, draggable = true) {
     if (homeMarker) {
         homeMarker.setDraggable(draggable)
         return
@@ -513,25 +540,31 @@ function setupHomeMarker(app, map, draggable = true) {
     })
 
     homeMarkerDragListener = google.maps.event.addListener(homeMarker, "dragend", function () {
-        app.ports.receivedMapLocation.send({
-            lat: homeMarker.getPosition().lat(),
-            lng: homeMarker.getPosition().lng()
-        })
+        const position = homeMarker?.getPosition()
+        if (position) {
+            app.ports.receivedMapLocation.send({
+                lat: position.lat(),
+                lng: position.lng()
+            })
+        }
     })
 }
 
-function fitBoundsMap(map, objects) {
+function fitBoundsMap(map: google.maps.Map, objects?: any) {
 
     var bounds = new google.maps.LatLngBounds()
 
-    const extendBounds = (mapObject) => {
-        if (mapObject.getPath) {
+    const extendBounds = (mapObject: google.maps.Polyline | google.maps.Rectangle | google.maps.Marker | google.maps.LatLng) => {
+        if (mapObject instanceof google.maps.Polyline) {
             mapObject.getPath().getArray().forEach(extendBounds)
-        } else if (mapObject.position) {
-            bounds.extend(mapObject.position)
-        } else if (mapObject.bounds && mapObject.bounds.getNorthEast) {
-            bounds.extend(mapObject.bounds.getNorthEast())
-            bounds.extend(mapObject.bounds.getSouthWest())
+        } else if (mapObject instanceof google.maps.Marker) {
+            const pos = mapObject.getPosition()
+            if (pos instanceof google.maps.LatLng) {
+                bounds.extend(pos)
+            }
+        } else if (mapObject instanceof google.maps.Rectangle) {
+            bounds.extend(mapObject.getBounds().getNorthEast())
+            bounds.extend(mapObject.getBounds().getSouthWest())
         } else {
             bounds.extend(mapObject)
         }
@@ -543,7 +576,9 @@ function fitBoundsMap(map, objects) {
         correctTiles.forEach(extendBounds)
         deviationTiles.forEach(extendBounds)
         polylineMarkers.forEach(extendBounds)
-        extendBounds(schoolMarker)
+        if (schoolMarker) {
+            extendBounds(schoolMarker)
+        }
     } else {
         objects.forEach(extendBounds)
     }
@@ -551,7 +586,7 @@ function fitBoundsMap(map, objects) {
     map.fitBounds(bounds)
 }
 
-function setupMapPorts(app) {
+function setupInterop(app: Elm.Main.App) {
 
     app.ports.cleanMap.subscribe((_) => {
         cleanMap()
@@ -561,31 +596,34 @@ function setupMapPorts(app) {
     })
 
     // One time actions, we don't want too many subscriptions
-    const updateMarker = function ({ location, bearing, markerID, bus }) {
+    const updateMarker = function (data:
+        {
+            bus: number;
+            location: ElmLatLng;
+            bearing: number;
+        }) {
         initializeMaps(app, false, false, 0)
             .then((map) => {
 
+                const { location, bearing, bus } = data
+
                 var id = bus
 
-                if (markerID) {
-                    id = markerID
-                }
-
-
                 var marker = markers.find((value, _indx, _list) => {
-                    return value.id == id
+                    return value.get("id") == id
                 })
 
                 if (marker === undefined) {
 
                     marker = new google.maps.Marker({
-                        id: id,
                         map: map,
                         title: "Bus"
                     })
+
+                    marker.set("id", id)
+
                     markers.push(marker)
                     var image = {
-                        // url: `/images/buses/${getCardinalDirection(bearing)}.svg`,
                         url: `/images/buses/N.svg`,
                         size: new google.maps.Size(90, 90),
                         anchor: new google.maps.Point(45, 45),
@@ -599,11 +637,11 @@ function setupMapPorts(app) {
                 map.panTo(location)
 
                 document.querySelectorAll('img[src="/images/buses/N.svg"]').forEach((node) => {
-                    node.style["transform"] = `rotate(${bearing}deg)`
-                    node.style["webkitTransform"] = `rotate(${bearing}deg)`
-                    node.style["MozTransform"] = `rotate(${bearing}deg)`
-                    node.style["msTransform"] = `rotate(${bearing}deg)`
-                    node.style["OTransform"] = `rotate(${bearing}deg)`
+                    var htmlNode = (node as HTMLElement)
+                    if (htmlNode) {
+                        htmlNode.style["transform"] = `rotate(${bearing}deg)`
+                        htmlNode.style["webkitTransform"] = `rotate(${bearing}deg)`
+                    }
                 })
             })
     }
@@ -635,8 +673,9 @@ function setupMapPorts(app) {
     })
 
     app.ports.selectPoint.subscribe(({ location, bearing }) => {
-        const markerID = "trip"
-        updateMarker({ location: location, bearing: bearing, markerID: markerID })
+        // const markerID = "trip"
+        const markerID = -10
+        updateMarker({ location: location, bearing: bearing, bus: markerID })
     })
 
 
@@ -645,7 +684,7 @@ function setupMapPorts(app) {
             .then((map) => {
                 sleep(200).then(() => {
                     setupHomeMarker(app, map, draggable)
-                    homeMarker.setPosition(location)
+                    homeMarker?.setPosition(location)
                     fitBoundsMap(map, [schoolMarker, homeMarker])
                 })
             })
@@ -655,7 +694,7 @@ function setupMapPorts(app) {
     app.ports.highlightPath.subscribe(({ routeID, highlighted }) => {
         const performHighlighting = () => {
             let polyline = polylines.find((value, _indx, _list) => {
-                return value.id == routeID
+                return value.get("id") == routeID
             })
             if (polyline) {
                 if (highlighted) {
@@ -665,7 +704,7 @@ function setupMapPorts(app) {
                 }
             }
         }
-        if (MapLibraryInstance) {
+        if (Map) {
             performHighlighting()
         } else {
             initializeMaps(app)
@@ -673,26 +712,28 @@ function setupMapPorts(app) {
         }
     })
 
-    const drawPath = (map, editable = false) => ({ routeID, path, highlighted }) => {
+    const drawPath = (map: google.maps.Map, editable = false) => (pathData: ElmPath) => {
+
+        const { routeID, path, highlighted } = pathData
 
         if (editable) {
             addDrawTools(app, true)(map).then((_map) => {
                 path.forEach((position, idx, _array) => {
-                    renderPathPoint(position, map, app, idx)
+                    renderPathPoint(new google.maps.LatLng(position), map, app, idx)
                 })
             })
         } else {
             let polyline = polylines.find((value, _indx, _list) => {
-                return value.id == routeID
+                return value.get("id") == routeID
             })
             if (!polyline) {
 
                 polyline = new google.maps.Polyline({
                     geodesic: false,
                     strokeColor: highlighted ? purple : darkGreen,
-                    editable: editable,
-                    id: routeID
+                    editable: editable
                 })
+                polyline.set("id", routeID)
                 polylines.push(polyline)
             } else {
                 polyline.setMap(null)
@@ -732,23 +773,15 @@ function setupMapPorts(app) {
     app.ports.bulkDrawPath.subscribe((paths) => {
         initializeMaps(app)
             .then((map) => {
-                if (initializingMapsChain) {
-                    initializingMapsChain.then((map) => {
-
-                        pushSchoolOnto(map)
-                        paths.forEach(drawPath(map))
-                    })
-                } else {
-                    pushSchoolOnto(map)
-                    paths.forEach(drawPath(map))
-                }
+                pushSchoolOnto(map)
+                paths.forEach(drawPath(map))
             })
     })
     app.ports.insertCircle.subscribe(({ location, radius }) => {
         initializeMaps(app)
             .then((map) => {
                 sleep(100).then(() => {
-                    insertCircle(location, app, map, radius)
+                    insertCircle(new google.maps.LatLng(location), app, map, radius)
                 })
             })
     })
@@ -762,9 +795,9 @@ function setupMapPorts(app) {
             })
     })
 
-    function setTilesVisibility(map, correctVisible, deviationVisible) {
+    function setTilesVisibility(map: google.maps.Map, correctVisible: boolean, deviationVisible: boolean) {
         console.log(correctVisible, deviationVisible)
-        const setMap = (mapValue) => (tile) => {
+        const setMap = (mapValue: google.maps.Map | null) => (tile: google.maps.Rectangle) => {
             tile.setMap(mapValue)
         }
         if (deviationVisible) {
@@ -786,7 +819,7 @@ function setupMapPorts(app) {
 
                 cleanGrid()
 
-                const drawTile = (color, strokeWeight, isCorrect) => (tile) => {
+                const drawTile = (color: string, strokeWeight: number, isCorrect: boolean) => (tile: ElmTile) => {
                     var rectangle = new google.maps.Rectangle({
                         strokeColor: color,
                         strokeOpacity: 0.8,
@@ -816,7 +849,7 @@ function setupMapPorts(app) {
             })
     })
 
-    app.ports.setDeviationTileVisible.subscribe(({correctVisible, deviationVisible}) => {
+    app.ports.setDeviationTileVisible.subscribe(({ correctVisible, deviationVisible }) => {
         initializeMaps(app)
             .then((map) => {
                 setTilesVisibility(map, correctVisible, deviationVisible)
@@ -824,10 +857,9 @@ function setupMapPorts(app) {
     })
 }
 
-function renderPathPoint(position, map, app, markerIdx) {
-    var marker = new google.maps.Marker({
-        id: markerIdx.toString(),
-        position: position,
+function renderPathPoint(markerPosition: google.maps.LatLng, map: google.maps.Map, app: Elm.Main.App, markerIdx: number) {
+    var marker: google.maps.Marker | null = new google.maps.Marker({
+        position: markerPosition,
         icon: {
             url: "/images/handle.svg",
             size: new google.maps.Size(28, 28),
@@ -838,31 +870,39 @@ function renderPathPoint(position, map, app, markerIdx) {
         map: map,
     })
 
-    let polyline
+    marker.set("id", markerIdx.toString())
+
+    let polyline: google.maps.Polyline | null
 
     if (polylineMarkers.length === 0) {
         polylineMarkers.push(marker)
-    }
-    else {
+    } else {
         const lastMarker = polylineMarkers[polylineMarkers.length - 1]
+        var last
+        if (lastMarker instanceof google.maps.Marker) {
+            last = lastMarker.getPosition() as google.maps.LatLng
+        } else {
+            last = markerPosition
+        }
+
         polyline = new google.maps.Polyline({
-            path: [lastMarker.position, marker.position],
-            map: map,
-            id: markerIdx.toString()
+            path: [last, markerPosition],
+            map: map
         })
+        polyline.set("id", markerIdx)
         polyline.set("strokeColor", darkGreen)
         polylineMarkers.push(polyline)
         polylineMarkers.push(marker)
     }
     google.maps.event.addListener(marker, "click", function (args) {
         polylineMarkers = polylineMarkers.filter((val, _, _2) => {
-            return val.id !== marker.id
+            return val.get("id") !== marker?.get("id")
         })
         if (polyline) {
             polyline.setMap(null)
             polyline = null
         }
-        marker.setMap(null)
+        marker?.setMap(null)
         marker = null
         updatePolyline(app)
     })
@@ -872,16 +912,13 @@ function renderPathPoint(position, map, app, markerIdx) {
     updatePolyline(app)
 }
 
-function sleep(time) {
-    return new Promise((resolve) => setTimeout(resolve, time))
-}
+
 
 export {
     initializeMaps,
     requestGeoLocation,
     initializeSearch,
-    schoolLocationStorageKey,
-    setupMapPorts,
+    setupInterop,
     loadMapAPI,
     cleanMap
 }

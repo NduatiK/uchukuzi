@@ -43,7 +43,7 @@ import Pages.Settings as Settings
 import Pages.Signup as Signup
 import Phoenix
 import Phoenix.Channel as Channel exposing (Channel)
-import Phoenix.Message as PhxMsg exposing (Data, Event(..), Message(..), PhoenixCommand(..))
+import Phoenix.Message as PhxMsg exposing (Event(..), Message(..), PhoenixCommand(..), PhoenixData)
 import Phoenix.Socket as Socket exposing (Socket)
 import Ports
 import Session exposing (Session)
@@ -109,44 +109,32 @@ type PageModel
 
 type alias LocalStorageData =
     { creds : Maybe Session.Credentials
-    , width : Int
-    , height : Int
+    , window :
+        { width : Int
+        , height : Int
+        }
     , isLoading : Bool
     , sideBarIsOpen : Bool
-    , loadError : Bool
+    , hasLoadError : Bool
     }
 
 
-localStorageDataDecoder : Json.Decoder LocalStorageData
-localStorageDataDecoder =
-    Json.succeed LocalStorageData
-        |> optionalAt [ "credentials" ] (Json.nullable Api.credDecoder) Nothing
-        |> optionalAt [ "window", "width" ] Json.int 100
-        |> optionalAt [ "window", "height" ] Json.int 100
-        |> optionalAt [ "loading" ] Json.bool False
-        |> optionalAt [ "sideBarIsOpen" ] Json.bool True
-        |> optionalAt [ "error" ] Json.bool False
-
-
-init : Maybe Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init : Maybe LocalStorageData -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init args url navKey =
     let
-        localStorageData =
+        { creds, isLoading, sideBarIsOpen, window, hasLoadError } =
             args
-                |> Maybe.withDefault (Encode.object [])
-                |> Json.decodeValue localStorageDataDecoder
-                |> Result.toMaybe
-                |> Maybe.withDefault (LocalStorageData Nothing 100 100 False True False)
+                |> Maybe.withDefault (LocalStorageData Nothing { width = 100, height = 100 } False True False)
 
         session =
-            Session.fromCredentials navKey Time.utc localStorageData.creds
+            Session.fromCredentials navKey Time.utc creds
 
         ( phxModel, phxMsg ) =
-            if localStorageData.isLoading then
+            if isLoading then
                 ( Nothing, Cmd.none )
 
             else
-                localStorageData.creds
+                creds
                     |> Maybe.map
                         (\credentials ->
                             initializePhoenix credentials
@@ -158,16 +146,16 @@ init args url navKey =
                 { page = Redirect session
                 , route = Nothing
                 , navigationBarState = NavBar.init
-                , sideBarState = SideBar.init localStorageData.sideBarIsOpen
+                , sideBarState = SideBar.init sideBarIsOpen
                 , windowSize =
-                    { height = localStorageData.height
-                    , width = localStorageData.width
+                    { height = window.height
+                    , width = window.width
                     }
                 , url = url
                 , locationUpdates = Dict.fromList []
                 , allowReroute = True
-                , loading = localStorageData.isLoading
-                , error = localStorageData.loadError
+                , loading = isLoading
+                , error = hasLoadError
                 , phoenix = phxModel
                 , notifications = []
                 }
@@ -558,7 +546,6 @@ initializePhoenix credentials =
                 (Socket.init "/socket/manager"
                     |> Socket.withParams (Encode.object [ ( "token", Encode.string credentials.token ) ])
                     |> Socket.onOpen (SocketOpened credentials.school_id)
-                 -- |> Socket.withDebug
                 )
                 toPhoenix
     in
@@ -953,7 +940,7 @@ subscriptions model_ =
     in
     Sub.batch
         [ matching
-        , Api.onStoreChange (Api.parseCreds >> ReceivedCreds)
+        , Api.credentialsChanged ReceivedCreds
         , Browser.Events.onResize WindowResized
         , if model_.navigationBarState |> NavBar.isVisible then
             Browser.Events.onClick (Json.succeed (NavBar.hideNavBar |> GotNavBarMsg))
@@ -965,13 +952,13 @@ subscriptions model_ =
         ]
 
 
-port toPhoenix : Data -> Cmd msg
+port toPhoenix : PhoenixData -> Cmd msg
 
 
-port fromPhoenix : (Data -> msg) -> Sub msg
+port fromPhoenix : (PhoenixData -> msg) -> Sub msg
 
 
-main : Program (Maybe Value) Model Msg
+main : Program (Maybe LocalStorageData) Model Msg
 main =
     Browser.application
         { init = init

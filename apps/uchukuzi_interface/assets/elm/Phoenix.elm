@@ -12,7 +12,7 @@ were sourced from the internals of an online multi-player scrabble game availabl
 import Dict exposing (Dict)
 import Json.Encode as Encode exposing (Value)
 import Phoenix.Channel as Channel exposing (Channel)
-import Phoenix.Message exposing (Data, Event(..), Message(..), PhoenixCommand(..))
+import Phoenix.Message exposing (Event(..), Message(..), PhoenixCommand(..), PhoenixData)
 import Phoenix.Push as Push exposing (Push)
 import Phoenix.Socket as Socket exposing (Socket)
 import Task
@@ -22,15 +22,15 @@ type alias Model msg =
     { socket : Socket msg
     , channels : Dict String (Channel msg)
     , pushes : Dict String (Push msg)
-    , send : Data -> Cmd msg
+    , send : PhoenixData -> Cmd msg
     }
 
 
 type alias Send msg =
-    Data -> Cmd msg
+    PhoenixData -> Cmd msg
 
 
-initialize : Socket msg -> (Data -> Cmd msg) -> Model msg
+initialize : Socket msg -> (PhoenixData -> Cmd msg) -> Model msg
 initialize socket sendFn =
     { socket = socket
     , channels = Dict.empty
@@ -60,7 +60,7 @@ update phoenixMessage model =
             ( { model | socket = Socket.close socket }, maybeTriggerCommand socket.onClose )
 
         Incoming (SocketErrored payload) ->
-            ( { model | socket = Socket.errored socket }, maybeTriggerCmdWithPayload socket.onError payload.payload )
+            ( { model | socket = Socket.errored socket }, triggerWithPayload socket.onError payload.payload )
 
         Incoming SocketOpened ->
             ( { model | socket = Socket.opened socket }, maybeTriggerCommand socket.onOpen )
@@ -69,7 +69,7 @@ update phoenixMessage model =
             case Dict.get payload.topic model.channels of
                 Just channel ->
                     ( updateChannelWith Channel.joined channel.topic model
-                    , maybeTriggerCmdWithPayload channel.onJoin payload.payload
+                    , triggerWithPayload channel.onJoin payload.payload
                     )
 
                 _ ->
@@ -79,7 +79,7 @@ update phoenixMessage model =
             case Dict.get payload.topic model.channels of
                 Just channel ->
                     ( updateChannelWith Channel.errored channel.topic model
-                    , maybeTriggerCmdWithPayload channel.onJoinError payload.payload
+                    , triggerWithPayload channel.onJoinError payload.payload
                     )
 
                 _ ->
@@ -98,7 +98,7 @@ update phoenixMessage model =
         Incoming (ChannelMessageReceived payload) ->
             case Dict.get payload.topic model.channels of
                 Just channel ->
-                    ( model, maybeTriggerCmdWithPayload (Dict.get payload.message channel.on) payload.payload )
+                    ( model, triggerWithPayload (Dict.get payload.message channel.on) payload.payload )
 
                 _ ->
                     ( model, Cmd.none )
@@ -107,7 +107,7 @@ update phoenixMessage model =
             case Dict.get payload.topic model.channels of
                 Just channel ->
                     ( updateChannelWith Channel.closed channel.topic model
-                    , maybeTriggerCmdWithPayload channel.onLeave payload.payload
+                    , triggerWithPayload channel.onLeave payload.payload
                     )
 
                 _ ->
@@ -117,7 +117,7 @@ update phoenixMessage model =
             case Dict.get payload.topic model.channels of
                 Just channel ->
                     ( updateChannelWith Channel.leaveErrored channel.topic model
-                    , maybeTriggerCmdWithPayload channel.onLeaveError payload.payload
+                    , triggerWithPayload channel.onLeaveError payload.payload
                     )
 
                 _ ->
@@ -126,7 +126,7 @@ update phoenixMessage model =
         Incoming (PushOk payload) ->
             case Dict.get payload.topic model.pushes of
                 Just push ->
-                    ( model, maybeTriggerCmdWithPayload push.onOk payload.payload )
+                    ( model, triggerWithPayload push.onOk payload.payload )
 
                 _ ->
                     ( model, Cmd.none )
@@ -134,7 +134,7 @@ update phoenixMessage model =
         Incoming (PushError payload) ->
             case Dict.get payload.topic model.pushes of
                 Just push ->
-                    ( model, maybeTriggerCmdWithPayload push.onError payload.payload )
+                    ( model, triggerWithPayload push.onError payload.payload )
 
                 _ ->
                     ( model, Cmd.none )
@@ -169,14 +169,11 @@ maybeTriggerCommand maybeCallback =
             Cmd.none
 
 
-maybeTriggerCmdWithPayload : Maybe (Value -> msg) -> (Value -> Cmd msg)
-maybeTriggerCmdWithPayload maybeCallback =
-    case maybeCallback of
-        Just fn ->
-            Task.perform identity << Task.succeed << fn
-
-        Nothing ->
-            \_ -> Cmd.none
+triggerWithPayload : Maybe (Value -> msg) -> (Value -> Cmd msg)
+triggerWithPayload maybeCallback =
+    maybeCallback
+        |> Maybe.map (\fn -> fn >> Task.succeed >> Task.perform identity)
+        |> Maybe.withDefault (\_ -> Cmd.none)
 
 
 

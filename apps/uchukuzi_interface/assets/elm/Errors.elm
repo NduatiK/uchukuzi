@@ -213,7 +213,7 @@ handleError error =
     case error of
         Unauthorized ->
             Cmd.batch
-                [ Api.storeCache Nothing
+                [ Api.setCredentials Nothing
                 ]
 
         _ ->

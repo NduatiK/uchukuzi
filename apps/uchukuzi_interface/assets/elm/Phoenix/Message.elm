@@ -1,8 +1,8 @@
 module Phoenix.Message exposing
-    ( Message(..), Data
+    ( Message(..)
     , createSocket, createChannel, createPush, disconnect, leaveChannel
     , subscribe
-    , Event(..), PhoenixCommand(..), send
+    , Event(..), PhoenixCommand(..), PhoenixData, send
     )
 
 {-| Phoenix.Message defines a set of messages that can be passed between external Phoenix socket/channel data sources and Elm.
@@ -28,7 +28,7 @@ module Phoenix.Message exposing
 
 import Dict
 import Json.Decode as Decode
-import Json.Encode as Encode exposing (Value)
+import Json.Encode
 import Phoenix.Channel as Channel exposing (Channel)
 import Phoenix.Payload as Payload exposing (Payload)
 import Phoenix.Push as Push exposing (Push)
@@ -62,8 +62,10 @@ type PhoenixCommand msg
     | LeaveChannel (Channel msg)
 
 
-type alias Data =
-    { tag : String, data : Value }
+type alias PhoenixData =
+    { tag : String
+    , data : Json.Encode.Value
+    }
 
 
 {-| Creates a PhoenixCommand describing a request to instantiate a socket based on the
@@ -127,7 +129,7 @@ a Cmd msg that calling apps can listen for and respond to appropriately.
     Phoenix.send myOutgoingPort phoenixCommand
 
 -}
-send : (Data -> Cmd msg) -> Message msg -> Cmd msg
+send : (PhoenixData -> Cmd msg) -> Message msg -> Cmd msg
 send externalAppOutgoingPortFn command =
     case command of
         Outgoing cmd ->
@@ -142,7 +144,7 @@ send externalAppOutgoingPortFn command =
                     externalAppOutgoingPortFn { tag = "CreatePush", data = Push.encode push }
 
                 Disconnect ->
-                    externalAppOutgoingPortFn { tag = "Disconnect", data = Encode.null }
+                    externalAppOutgoingPortFn { tag = "Disconnect", data = Json.Encode.null }
 
                 LeaveChannel channel ->
                     externalAppOutgoingPortFn { tag = "LeaveChannel", data = Channel.encode channel }
@@ -163,7 +165,7 @@ to subscribe to events coming in from the JavaScript Phoenix library.
         Sub.batch [ model.someOtherSubscription, Phoenix.subscribe myIncomingPort MyPhoenixTagger PhoenixError  ]
 
 -}
-subscribe : ((Data -> msg) -> Sub msg) -> (Event -> msg) -> (String -> msg) -> Sub msg
+subscribe : ((PhoenixData -> msg) -> Sub msg) -> (Event -> msg) -> (String -> msg) -> Sub msg
 subscribe externalAppIncomingPortFn tagger onError =
     externalAppIncomingPortFn <|
         \external ->
@@ -207,10 +209,13 @@ subscribe externalAppIncomingPortFn tagger onError =
 
                 _ ->
                     onError <| "Received on unexpected message from an external source: "
-                    -- onError <| "Received on unexpected message from an external source: " ++ Debug.toString external
 
 
-decodeWith : Data -> (Event -> msg) -> (String -> msg) -> (Payload -> Event) -> msg
+
+-- onError <| "Received on unexpected message from an external source: " ++ Debug.toString external
+
+
+decodeWith : PhoenixData -> (Event -> msg) -> (String -> msg) -> (Payload -> Event) -> msg
 decodeWith external tagger onError event =
     case Decode.decodeValue Payload.decoder external.data of
         Ok payload ->

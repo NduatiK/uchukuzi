@@ -1,3 +1,6 @@
+import { sleep } from "./sleep"
+
+declare var ApexCharts: any
 
 const loadChartLib = () => {
     if (typeof ApexCharts !== typeof undefined) {
@@ -15,7 +18,9 @@ const loadChartLib = () => {
 }
 
 
-function renderChart(dates, y, statistics) {
+
+function renderChart({ x, y, statistics }: { x: number[]; y: { consumptionOnDate: number[]; runningAverage: number[] }; statistics: { stdDev: number; mean: number } | null }) {
+    const dates = x
     if (dates.length == 0) {
         return
     }
@@ -23,8 +28,8 @@ function renderChart(dates, y, statistics) {
     const dateCount = dates.length
     const { runningAverage, consumptionOnDate } = y
 
-
-    loadChartLib()
+    sleep(200)
+        .then(loadChartLib)
         .then(() => {
 
 
@@ -128,7 +133,7 @@ function renderChart(dates, y, statistics) {
                         text: 'Fuel Consumption (Litres per 100 km)',
                     }
                     , labels: {
-                        formatter: function (val, index) {
+                        formatter: function (val: number, index: number) {
                             if (val) {
                                 return val.toFixed(2);
                             } else {

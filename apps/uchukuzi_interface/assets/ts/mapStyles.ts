@@ -1,8 +1,8 @@
-const mapStyle = [{
+const mapStyle: google.maps.MapTypeStyle[] = [{
     "featureType": "administrative",
     "elementType": "all",
     "stylers": [{
-        "saturation": "-100"
+        "saturation": -100
     }]
 }, {
     "featureType": "administrative.province",
@@ -26,7 +26,7 @@ const mapStyle = [{
     "stylers": [{
         "saturation": -100
     }, {
-        "lightness": "50"
+        "lightness": 50
     }, {
         "visibility": "simplified"
     }]
@@ -34,7 +34,7 @@ const mapStyle = [{
     "featureType": "road",
     "elementType": "all",
     "stylers": [{
-        "saturation": "-100"
+        "saturation": -100
     }]
 }, {
     "featureType": "road.highway",
@@ -46,13 +46,13 @@ const mapStyle = [{
     "featureType": "road.arterial",
     "elementType": "all",
     "stylers": [{
-        "lightness": "30"
+        "lightness": 30
     }]
 }, {
     "featureType": "road.local",
     "elementType": "all",
     "stylers": [{
-        "lightness": "40"
+        "lightness": 40
     }]
 }, {
     "featureType": "transit",

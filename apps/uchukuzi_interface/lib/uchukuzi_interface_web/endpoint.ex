@@ -21,7 +21,7 @@ defmodule UchukuziInterfaceWeb.Endpoint do
     at: "/",
     from: :uchukuzi_interface,
     gzip: false,
-    only: ~w(css fonts images js favicon.ico robots.txt app.js app.css)
+    only: ~w(css fonts images js favicon.ico robots.txt app.js app.css index.js)
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.

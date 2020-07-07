@@ -9,7 +9,7 @@ defmodule Uchukuzi.Common.Geofence do
     field(:radius, :float)
   end
 
-  def school_changeset(schema \\ %__MODULE__{}, %{type: _type, radius: _radius, center: _center} = params) do
+  def school_changeset(schema \\ %__MODULE__{}, %{radius: _radius, center: _center} = params) do
     params = Map.put(params, :type, "school")
     schema
     |> cast(params, [:type, :radius])

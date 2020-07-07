@@ -16,7 +16,7 @@
   <div id="elm" style="width: 100%; height: 100%;">
     <div id="elm-loading" />
   </div>
-  <script src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+  <script src="<%= Routes.static_path(@conn, "/index.js") %>"></script>
 </body>
 
 </html>

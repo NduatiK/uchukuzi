@@ -1,6 +1,15 @@
-let canvas
-let canvasElement
-let video
+import { Elm } from "../elm/Main"
+
+declare var QrCode: any
+
+// let QrCode: any = undefined
+
+// jsQR(imageData: any, width: number, height: number, options: { inversionAttempts: string }): { data: string }| null
+
+
+let canvas: CanvasRenderingContext2D | null
+let canvasElement: HTMLCanvasElement | null
+let video: HTMLVideoElement | null
 let freezeFrame = false
 const loadQRLib = () => {
     if (typeof QrCode !== typeof undefined) {
@@ -20,9 +29,9 @@ const loadQRLib = () => {
 }
 
 
-function initializeCamera(app) {
-
-    loadQRLib()
+const initializeCamera = (app: Elm.Main.App) => () => {
+    sleep(500)
+        .then(loadQRLib)
         .then(() => {
             app.ports.disableCamera.subscribe((after) => {
                 sleep(after).then(() => { stopCamera(app) })
@@ -32,20 +41,31 @@ function initializeCamera(app) {
                 setFrameFrozen(isFrozen)
             })
 
+            const canvasEl = document.getElementById('camera-canvas')
+            if (!(canvasEl instanceof HTMLCanvasElement)) {
+                return
+            }
+            canvasElement = canvasEl
+            const canvasObj = canvasElement.getContext("2d");
+            if (!(canvasObj instanceof CanvasRenderingContext2D)) {
+                return
+            }
+            canvas = canvasObj
             video = document.createElement("video");
-            canvasElement = document.getElementById('camera-canvas')
-            canvas = canvasElement.getContext("2d");
 
             // Use facingMode: environment to attemt to get the front camera on phones
             navigator.mediaDevices
                 .getUserMedia({ video: { facingMode: "environment" } })
                 .then((stream) => {
-                    video.srcObject = stream;
-                    video.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
-                    video.play();
-                    app.ports.receiveCameraActive.send(true)
-                    sleep(20000).then(() => { stopCamera(app) })
-                    requestAnimationFrame(tick);
+                    if (video) {
+
+                        video.srcObject = stream;
+                        video.setAttribute("playsinline", "true"); // required to tell iOS safari we don't want fullscreen
+                        video.play();
+                        app.ports.receiveCameraActive.send(true)
+                        sleep(20000).then(() => { stopCamera(app) })
+                        requestAnimationFrame(tick);
+                    }
 
                 })
                 .catch((e) => {
@@ -68,6 +88,9 @@ function initializeCamera(app) {
                 }
 
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    if (!canvasElement || !canvas) {
+                        return
+                    }
 
                     canvasElement.height = video.videoHeight;
                     canvasElement.width = video.videoWidth;
@@ -78,7 +101,7 @@ function initializeCamera(app) {
                         canvasElement.width,
                         canvasElement.height
                     );
-                    var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+                    var code = QrCode.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
                     if (code && code.data !== "") {
                         drawBox(
                             code.location.topLeftCorner,
@@ -100,7 +123,13 @@ function initializeCamera(app) {
         })
 }
 
-function drawBox(begin, b, c, d, color) {
+type Location = {
+    x: number,
+    y: number
+}
+
+function drawBox(begin: Location, b: Location, c: Location, d: Location, color: string) {
+    if (!canvas) { return }
     canvas.beginPath();
     canvas.moveTo(begin.x, begin.y);
     canvas.lineTo(b.x, b.y);
@@ -112,15 +141,20 @@ function drawBox(begin, b, c, d, color) {
     canvas.stroke();
 }
 
-function stopCamera(app) {
-    if (!video) {
+function stopCamera(app: Elm.Main.App) {
+    if (!video || !canvasElement || !canvas) {
         return
     }
 
+
     var stream = video.srcObject
-    stream.getTracks().forEach(track => {
-        track.stop()
-    })
+    if (stream instanceof MediaStream) {
+
+        stream.getTracks().forEach(track => {
+            track.stop()
+        })
+    }
+
 
     video.srcObject = null
     video.pause()
@@ -136,11 +170,11 @@ function stopCamera(app) {
     video = null
 }
 
-function sleep(time) {
+function sleep(time: number) {
     return new Promise((resolve) => setTimeout(resolve, time))
 }
 
-function setFrameFrozen(isFrozen) {
+function setFrameFrozen(isFrozen: boolean) {
     freezeFrame = isFrozen
 }
 

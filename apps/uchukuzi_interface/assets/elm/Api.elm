@@ -33,10 +33,10 @@ patch session url body decoder =
         decoder
 
 
-port storeCache : Maybe Value -> Cmd msg
+port setCredentials : Maybe Credentials -> Cmd msg
 
 
-port onStoreChange : (Maybe Value -> msg) -> Sub msg
+port credentialsChanged : (Maybe Credentials -> msg) -> Sub msg
 
 
 credDecoder : Decoder Credentials
@@ -67,7 +67,7 @@ type alias SuccessfulLogin =
 logout : Cmd msg
 logout =
     Cmd.batch
-        [ storeCache Nothing
+        [ setCredentials Nothing
         , Models.Location.clearSchoolLocation
         ]
 
@@ -81,7 +81,7 @@ loginDecoder =
 
 storeCredentials : Credentials -> Cmd msg
 storeCredentials cred =
-    storeCache (Just (credEncoder cred))
+    setCredentials (Just cred)
 
 
 parseCreds : Maybe Value -> Maybe Credentials
