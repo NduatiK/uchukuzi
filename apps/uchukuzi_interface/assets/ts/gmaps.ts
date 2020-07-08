@@ -122,7 +122,6 @@ function createMapDom() {
         overviewMapControl: false,
         ...defaultLocation,
         styles: mapStyles,
-        // gestureHandling: "cooperative"
     }
 
     const newElement = document.createElement("google-map-cached")

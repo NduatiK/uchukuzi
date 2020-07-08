@@ -1,12 +1,10 @@
 port module Main exposing (..)
 
--- import Json.Encode exposing (Value)
 
 import Api
 import Browser
 import Browser.Events
 import Browser.Navigation as Nav
-import Colors
 import Dict exposing (Dict)
 import Element exposing (..)
 import Json.Decode as Json exposing (Value)

@@ -1,6 +1,5 @@
 module StyledElement.TripSlider exposing (view, viewHeight)
 
-import Axis
 import Colors
 import Element exposing (..)
 import Element.Background as Background
