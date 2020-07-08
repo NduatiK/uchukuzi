@@ -123,15 +123,12 @@ defmodule Uchukuzi.World do
 
     # Get all possible tiles that could be crossed
     Tile.tiles_between(start_tile, end_tile)
-    # Filter out non intersecting
-    # `Tile.cross_distance` returns a distance only if the tile is
-    # crossed by the line
-    |> Enum.map(&{&1, Tile.cross_distance(&1, path)})
-    |> Enum.flat_map(fn {tile, result} ->
-      case result do
-        :does_not_cross -> []
-        distance -> [{tile, distance}]
-      end
+    # Add the distance at which the tile crossed the path
+    |> Enum.map(&{&1, Tile.distance_from_start(&1, path)})
+    # Reject tiles that were not crossed
+    |> Enum.reject(fn
+      {_, :does_not_cross} -> true
+      _ -> false
     end)
     # Sort first to last
     |> Enum.sort_by(fn {_, distance} -> distance end)

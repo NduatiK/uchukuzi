@@ -15,19 +15,17 @@ defmodule UchukuziTest.TileTest do
   * def tiles_between(%Tile{} = start_tile, %Tile{} = end_tile)
 
   def distance_inside(tile, %Geo.LineString{} = path, is_entering_tile \\ false)
-
-
-  def cross_distance(tile, %Geo.LineString{} = path)
+  def distance_from_start(tile, %Geo.LineString{} = path)
   """
 
   property "a created tile contains the location used to create it" do
-    forall location <- LocationGenerator.location() do
-      tile = Tile.new(location)
+    size = default_tile_size()
 
-      location.lng - tile.coordinate.lng < default_tile_size() and
-        location.lng - tile.coordinate.lng >= 0 and
-        location.lat - tile.coordinate.lat < default_tile_size() and
-        location.lat - tile.coordinate.lat >= 0
+    forall location <- LocationGenerator.location() do
+      tile = Tile.new(location).coordinate
+
+      tile.lng <= location.lng and location.lng < tile.lng + size and
+        tile.lat <= location.lat and location.lat < tile.lat + size
     end
   end
 
@@ -35,8 +33,8 @@ defmodule UchukuziTest.TileTest do
     forall location <- LocationGenerator.location() do
       tile = Tile.new(location)
 
-      floorToGrid(tile.coordinate.lng) == tile.coordinate.lng and
-        floorToGrid(tile.coordinate.lat) == tile.coordinate.lat
+      floor_to_grid(tile.coordinate.lng) == tile.coordinate.lng and
+        floor_to_grid(tile.coordinate.lat) == tile.coordinate.lat
     end
   end
 
@@ -46,13 +44,21 @@ defmodule UchukuziTest.TileTest do
   🔳🔳🔳
   """
   property "a tile returns the correct number of nearby tiles" do
-    forall location <- LocationGenerator.location() do
+    forall location <- LocationGenerator.location(), [:verbose] do
       forall radius <- such_that(n <- integer(), when: 0 <= n and n < 10) do
         tile = Tile.new(location)
 
         square_of_tiles_size = radius * 2 + 1
 
-        Tile.nearby(tile, radius) |> Enum.count() == :math.pow(square_of_tiles_size, 2) - 1
+        nearby_tiles =
+          tile
+          |> Tile.nearby(radius)
+          |> Enum.uniq()
+          |> Enum.count()
+
+        assert expected_tiles = :math.pow(square_of_tiles_size, 2) - 1
+
+        nearby_tiles == expected_tiles
       end
     end
   end
@@ -96,22 +102,19 @@ defmodule UchukuziTest.TileTest do
       naive_lng_distance = abs(tile1.coordinate.lng - tile2.coordinate.lng)
 
       # We need to handle the wrap around
-      shortest_lng_distance =
+      lng_distance =
         if naive_lng_distance > 180 do
           360 - naive_lng_distance
         else
           naive_lng_distance
         end
 
-      shortest_lng_tiles = round(shortest_lng_distance / default_tile_size()) + 1
+      h_tile_count = round(lng_distance / default_tile_size()) + 1
 
-      shortest_lat_distance = abs(tile1.coordinate.lat - tile2.coordinate.lat)
-      shortest_lat_tiles = round(shortest_lat_distance / default_tile_size()) + 1
+      lat_distance = abs(tile1.coordinate.lat - tile2.coordinate.lat)
+      v_tile_count = round(lat_distance / default_tile_size()) + 1
 
-      expectation = shortest_lat_tiles * shortest_lng_tiles - 2
-
-      # IO.inspect({shortest_lng_tiles, shortest_lat_tiles})
-      # IO.inspect({Enum.count(tiles_between), expectation})
+      expectation = v_tile_count * h_tile_count - 2
 
       tiles_between = Tile.tiles_between(tile1, tile2)
 
@@ -119,15 +122,11 @@ defmodule UchukuziTest.TileTest do
     end
   end
 
-  def floorToGrid(float) do
+  def floor_to_grid(float) do
     (float / default_tile_size())
     |> round()
     |> (&(&1 * default_tile_size())).()
     |> round4dp()
-  end
-
-  def boolean(_) do
-    true
   end
 
   def default_tile_size() do

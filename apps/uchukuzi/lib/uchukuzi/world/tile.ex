@@ -54,7 +54,12 @@ defmodule Uchukuzi.World.Tile do
     |> (fn {_, distance} -> distance end).()
   end
 
-  def cross_distance(tile, %Geo.LineString{} = path) do
+  @doc """
+  Given a tile and a path
+  Determines how far from its start that the path crosses the tile
+  Returns `:does_not_cross` if the path does not intersect the tile
+  """
+  def distance_from_start(tile, %Geo.LineString{} = path) do
     tile
     |> to_polygon()
     |> to_paths
@@ -237,7 +242,8 @@ defmodule Uchukuzi.World.Tile do
     |> Enum.flat_map(& &1)
   end
 
-  # Remove distances that
+  # Remove tiles that are only
+  # crossed at the vertex
   defp remove_false_crosses(distance_data) do
     distance_data
     |> Enum.group_by(
