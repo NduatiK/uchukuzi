@@ -3,7 +3,7 @@ defmodule UchukuziInterfaceWeb.TrackingController do
 
   use Uchukuzi.Tracking.Model
   alias Uchukuzi.School.Bus
-  alias UchukuziInterfaceWeb.SchoolView
+
   action_fallback(UchukuziInterfaceWeb.FallbackController)
 
   # Reports should come in the most recent first order

@@ -58,7 +58,7 @@ defmodule Uchukuzi.World.Tile do
     tile
     |> to_polygon()
     |> to_paths
-    |> distances_for_intersecting_paths(path, false)
+    |> distances_for_intersecting_paths(path)
     |> remove_false_crosses()
     |> Enum.max(fn -> :does_not_cross end)
   end
@@ -75,19 +75,42 @@ defmodule Uchukuzi.World.Tile do
     start_lat = start_tile.coordinate.lat
 
     lat_diff = round((end_tile.coordinate.lat - start_tile.coordinate.lat) / @default_tile_size)
-    lng_diff = round((end_tile.coordinate.lng - start_tile.coordinate.lng) / @default_tile_size)
 
-    for lat <- 0..lat_diff, lng <- 0..lng_diff do
-      Location.new(
+    naive_lng_diff = end_tile.coordinate.lng - start_tile.coordinate.lng
+
+    lng_diff =
+      cond do
+        naive_lng_diff > 180 ->
+          # 320 eastward becomes 40 westward
+          # 320 -> -40
+          naive_lng_diff - 360
+
+        naive_lng_diff < -180 ->
+          # 320 westward becomes 40 eastward
+          # -320 -> 40
+          naive_lng_diff + 360
+
+        true ->
+          naive_lng_diff
+      end
+      |> (fn x -> x / @default_tile_size end).()
+      |> round()
+
+    for lat <- 0..lat_diff,
+        lng <- 0..lng_diff do
+      Location.wrapping_new(
         Float.round(start_lng + lng * @default_tile_size, 4),
         Float.round(start_lat + lat * @default_tile_size, 4)
       )
+      |> rounded()
     end
-    |> Enum.reject(&(&1 == :error))
-    |> Enum.map(fn {:ok, location} -> %Tile{coordinate: location} end)
+    |> Enum.map(fn location -> %Tile{coordinate: location} end)
     |> Enum.reject(&(&1 == start_tile || &1 == end_tile || &1 == nil))
   end
 
+  @doc """
+  Return all the tile within `radius` tiles of the provided tile
+  """
   def nearby(tile, radius \\ 1) do
     for lat_offset <- -radius..radius,
         lng_offset <- -radius..radius,
@@ -102,6 +125,9 @@ defmodule Uchukuzi.World.Tile do
     end
   end
 
+  @doc """
+  Determines if tile1 and tile2 are within `radius` tiles of each other
+  """
   def nearby?(tile1, tile2, radius \\ 1)
 
   def nearby?(%Tile{} = tile1, %Tile{} = tile2, radius) do
@@ -109,8 +135,8 @@ defmodule Uchukuzi.World.Tile do
   end
 
   def nearby?(%Location{} = tile1, %Location{} = tile2, radius) do
-    round(abs(tile1.lat - tile2.lat) / (radius * @default_tile_size)) <= 1 &&
-      round(abs(tile1.lng - tile2.lng) / (radius * @default_tile_size)) <= 1
+    round(abs(tile1.lat - tile2.lat) / @default_tile_size) <= radius &&
+      round(abs(tile1.lng - tile2.lng) / @default_tile_size) <= radius
   end
 
   # Returns the origin of the grid tile that the point should be in
@@ -121,11 +147,15 @@ defmodule Uchukuzi.World.Tile do
     # even on negative coordinates
     {:ok, location} =
       Location.new(
-        :math.floor(point.lng / size) * size,
-        :math.floor(point.lat / size) * size
+        :math.floor(rounded(point.lng / size)) * size,
+        :math.floor(rounded(point.lat / size)) * size
       )
 
     location |> rounded()
+  end
+
+  defp rounded(float) when is_float(float) do
+    Float.round(float, 4)
   end
 
   defp rounded(%Location{lat: lat, lng: lng}) do
@@ -175,10 +205,12 @@ defmodule Uchukuzi.World.Tile do
   # Given a list of paths and a path A,
   # this finds the paths that intersect with A and returns
   # the distance covered before or after the intersection happened
+  defp distances_for_intersecting_paths(paths, path, _measure_from_end \\ false)
+
   defp distances_for_intersecting_paths(
          paths,
          %Geo.LineString{coordinates: [start, finish]},
-         _measure_from_end = true
+         true
        ) do
     distances_for_intersecting_paths(
       paths,
@@ -225,5 +257,9 @@ defmodule Uchukuzi.World.Tile do
         end).()
     |> Map.values()
     |> Enum.flat_map(& &1)
+  end
+
+  def default_tile_size do
+    @default_tile_size
   end
 end

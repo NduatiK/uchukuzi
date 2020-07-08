@@ -3,7 +3,8 @@
   "license": "MIT",
   "scripts": {
     "deploy": "elm-typescript-interop && parcel build ./index.ts ./css/app.css --out-dir ../priv/static --no-source-maps",
-    "watch": "elm-typescript-interop && parcel watch ./index.ts ./css/app.css --out-dir ../priv/static --no-source-maps"
+    "watch": "elm-typescript-interop && parcel watch ./index.ts ./css/app.css --out-dir ../priv/static --no-source-maps",
+    "test": "elm-test"
   },
   "dependencies": {
     "@types/googlemaps": "^3.39.8",

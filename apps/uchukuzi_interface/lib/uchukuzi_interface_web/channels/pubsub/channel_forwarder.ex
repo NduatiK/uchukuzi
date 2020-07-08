@@ -11,7 +11,7 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def init(state) do
+  def init(_) do
     PubSub.subscribe(self(), :trip_started)
 
     PubSub.subscribe(self(), :trip_update)
@@ -144,7 +144,7 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
           number_plate: number_plate,
           school_id: school_id,
           bus_id: bus_id,
-          bus: bus
+          bus: _bus
         },
         state
       ) do

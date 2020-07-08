@@ -1,12 +1,14 @@
 defmodule PbtTest do
-   use ExUnit.Case
-    use PropCheck
+  use ExUnit.Case
+  use PropCheck
+
   property "always works" do
-     forall type <- term() do
+    forall type <- term() do
       boolean(type)
+    end
+  end
+
+  def boolean(_) do
+    true
+  end
 end
-end
-def boolean(_) do
-   true
-end
- end

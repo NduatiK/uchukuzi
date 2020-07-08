@@ -19,6 +19,38 @@ defmodule Uchukuzi.Common.Location do
     end
   end
 
+  def wrapping_new(lng, lat) when lng >= -180 and lng <= 180 and lat >= -90 and lat <= 90 do
+    %Location{lng: lng, lat: lat}
+  end
+
+  def wrapping_new(lng, lat) do
+    lng =
+      cond do
+        lng > 180 ->
+          lng - 360
+
+        lng < -180 ->
+          lng + 360
+
+        true ->
+          lng
+      end
+
+    lat =
+      cond do
+        lat > 90 ->
+          180 - lat
+
+        lng < -90 ->
+          -(180 + lat)
+
+        true ->
+          lat
+      end
+
+    wrapping_new(lng, lat)
+  end
+
   def changeset(schema, params) do
     schema
     |> cast(params, [:lat, :lng])

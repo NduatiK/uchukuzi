@@ -18,7 +18,7 @@ import Style exposing (edges)
 import StyledElement
 import TypedSvg exposing (svg)
 import TypedSvg.Attributes exposing (stroke, viewBox)
-import TypedSvg.Types exposing (Paint(..), Transform(..))
+import TypedSvg.Types exposing (Transform(..))
 import Views.NotificationView as NotificationView
 
 
@@ -385,25 +385,24 @@ dropdownTriangle =
         (html <|
             svg [ viewBox 0 0 24 24 ]
                 [ TypedSvg.polygon
-                    [ TypedSvg.Attributes.fill
-                        (Paint <|
-                            Colors.toSVGColor Colors.white
-                        )
+                    [ TypedSvg.Attributes.fill <|
+                        TypedSvg.Types.Fill
+                            (Colors.toSVGColor Colors.white)
                     , TypedSvg.Attributes.points
                         path
                     ]
                     []
                 , TypedSvg.polyline
-                    [ TypedSvg.Attributes.fill
-                        (Paint <|
-                            Colors.toSVGColor Colors.white
-                        )
-                    , TypedSvg.Attributes.stroke <|
-                        Paint <|
-                            (Colors.black
+                    [ TypedSvg.Attributes.fill <|
+                        TypedSvg.Types.Fill
+                            (Colors.white
                                 |> Colors.toSVGColor
-                                |> Colors.svgColorwithAlpha 0.3
                             )
+                    , TypedSvg.Attributes.stroke <|
+                        (Colors.black
+                            |> Colors.toSVGColor
+                            |> Colors.svgColorwithAlpha 0.3
+                        )
                     , TypedSvg.Attributes.points
                         path
                     , TypedSvg.Attributes.strokeLinejoin TypedSvg.Types.StrokeLinejoinRound

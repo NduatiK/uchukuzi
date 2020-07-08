@@ -7,20 +7,18 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes exposing (id)
-import Icons exposing (IconBuilder)
 import Models.Location exposing (Report)
 import Models.Trip as Trip exposing (Trip)
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)
 import Shape
 import Style exposing (edges)
-import StyledElement exposing (wrappedInput)
 import Time
-import TypedSvg exposing (circle, defs, g, linearGradient, pattern, polygon, radialGradient, rect, stop, svg)
-import TypedSvg.Attributes exposing (class, cx, cy, fontFamily, fx, fy, offset, patternUnits, points, r, stopColor, stopOpacity, stroke, transform, viewBox, x1, x2, y1, y2)
-import TypedSvg.Attributes.InPx as InPx exposing (strokeWidth, x, y)
+import TypedSvg exposing (defs, g, linearGradient, stop, svg)
+import TypedSvg.Attributes exposing (class, offset, stopColor, stopOpacity, stroke, viewBox, x1, x2, y1, y2)
+import TypedSvg.Attributes.InPx exposing (strokeWidth)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (Align(..), AlignmentBaseline(..), AnchorAlignment(..), CoordinateSystem(..), Length(..), Opacity(..), Paint(..), Transform(..))
+import TypedSvg.Types exposing (Align(..), AlignmentBaseline(..), AnchorAlignment(..), CoordinateSystem(..), Fill(..), Length(..), Opacity(..), Transform(..))
 import Utils.DateFormatter exposing (timeFormatter)
 
 
@@ -156,6 +154,7 @@ view { sliderValue, zone, trip, onAdjustValue, viewWidth, showSpeed } =
         ]
 
 
+viewSpeedGraph : Trip -> Float -> Bool -> Element msg
 viewSpeedGraph trip viewWidth visible =
     row
         [ width fill
@@ -244,10 +243,10 @@ viewGraph reports viewWidth =
                     ]
                     [ Path.element (line graphValues xScale yScale)
                         [ stroke <|
-                            Paint <|
-                                Colors.toSVGColor Colors.darkGreen
+                            Colors.toSVGColor Colors.darkGreen
                         , strokeWidth 2
-                        , TypedSvg.Attributes.fill <| Reference "linGradientDuoVert"
+
+                        -- , TypedSvg.Attributes.fill <| Reference "linGradientDuoVert"
                         ]
                     ]
 
