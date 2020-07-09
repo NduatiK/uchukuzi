@@ -20,7 +20,7 @@ defmodule Uchukuzi.Tracking.TripPath do
     :deviation_radius,
     # Tiles crossed
     consumed_tile_locs: [],
-    eta: [],
+    etas: [],
     needs_prediction_update: false,
     deviation_positions: []
   ]
@@ -78,7 +78,7 @@ defmodule Uchukuzi.Tracking.TripPath do
 
       %{
         path
-        | eta: predictions |> Enum.reverse(),
+        | etas: predictions |> Enum.reverse(),
           needs_prediction_update: false
       }
     end
@@ -160,5 +160,29 @@ defmodule Uchukuzi.Tracking.TripPath do
       path
       | deviation_positions: [Enum.count(path.consumed_tile_locs) - 1 | path.deviation_positions]
     }
+  end
+
+  def trim_etas(%TripPath{} = path, travel_time) do
+    keep_first = fn list ->
+      list
+      |> Enum.uniq_by(fn {tile, _time} -> tile end)
+    end
+
+    keep_last = fn list ->
+      list
+      |> Enum.reverse()
+      |> keep_first.()
+      |> Enum.reverse()
+    end
+
+    etas = if travel_time == "evening" do
+      path.etas
+      |> keep_first.()
+    else
+      path.etas
+      |> keep_last.()
+    end
+
+    %{path | etas: etas}
   end
 end

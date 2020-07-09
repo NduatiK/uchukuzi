@@ -78,7 +78,8 @@ defmodule Uchukuzi.Tracking.TripTracker do
       trip_id: Ecto.UUID.generate(),
       trip_path: nil,
       state: @new,
-      last_notified_tile: nil
+      last_notified_tile: nil,
+      debouncer: nil
     }
 
     {:ok, data}
@@ -164,66 +165,46 @@ defmodule Uchukuzi.Tracking.TripTracker do
     {:noreply, data, @message_timeout}
   end
 
-  def handle_cast({:crossed_tiles, tiles}, data) do
+  def handle_cast({:crossed_tiles, tiles}, %{debouncer: nil} = data) do
     #  is_in_student_trip = Enum.count(Trip.students_onboard(data.trip)) > 0
     # is_in_student_trip = data.trip.travel_time in Trip.travel_times()
-    is_in_student_trip = true
 
     data =
       data
       |> insert_trip_path_if_needed()
-
-    # with path when not is_nil(path) <- data.trip_path do
-    # Match crossed tiles to historical tiles
-    # • Find out what tiles need to be crossed
-    # • Predict
-    # • Report to tile members
+      |> insert_crossed_tiles(tiles)
 
     trip_path =
-      if is_in_student_trip do
-        trip_path =
+      if data.debouncer == nil do
+        path =
           data.trip_path
-          |> TripPath.crossed_tiles(tiles)
           |> TripPath.update_predictions(data.trip.end_time)
-
-        keep_first = fn list ->
-          list
-          |> Enum.uniq_by(fn {tile, _time} -> tile end)
-        end
-
-        keep_last = fn list ->
-          list
-          |> Enum.reverse()
-          |> keep_first.()
-          |> Enum.reverse()
-        end
-
-        etas =
-          if data.trip.travel_time == "evening" do
-            trip_path.eta
-            |> keep_first.()
-          else
-            trip_path.eta
-            |> keep_last.()
-          end
+          |> TripPath.trim_etas(data.trip.travel_time)
 
         PubSub.publish(
           :eta_prediction_update,
-          {:eta_prediction_update, data.route_id, etas, Trip.students_onboard(data.trip)}
+          {:eta_prediction_update, data.route_id, path.etas, Trip.students_onboard(data.trip)}
         )
 
-        %{trip_path | eta: etas}
+        path
       else
         data.trip_path
-        |> TripPath.crossed_tiles(tiles)
       end
 
     data = %{data | trip_path: trip_path}
+    data =
+    if data.debouncer == nil do
+      # do not update for at least one second
+      debouncer = Process.send_after(self(), :clear_debouncer, 1000)
+      %{data | debouncer: debouncer}
+    else
+      data
+    end
 
     last_notified_tile = data.last_notified_tile
     # Prevent repeat approach alerts
     data =
-      case data.trip_path.eta do
+      case data.trip_path.etas do
         [] ->
           data
 
@@ -243,6 +224,15 @@ defmodule Uchukuzi.Tracking.TripTracker do
     {:noreply, data, @message_timeout}
   end
 
+  def handle_cast({:crossed_tiles, tiles}, data) do
+    data =
+      data
+      |> insert_trip_path_if_needed()
+      |> insert_crossed_tiles(tiles)
+
+    {:noreply, data, @message_timeout}
+  end
+
   def handle_cast(:update_school, data) do
     school = Uchukuzi.Repo.get(Uchukuzi.School.School, data.school.id)
     data = %{data | school: school}
@@ -250,6 +240,16 @@ defmodule Uchukuzi.Tracking.TripTracker do
     {:noreply, data, @message_timeout}
   end
 
+  def clear_debouncer(data) do
+       if data.debouncer != nil do
+        Process.cancel_timer(data.debouncer)
+      end
+      %{data | debouncer: nil}
+   end
+
+  def handle_info(:clear_debouncer, data) do
+    {:noreply, (data) |> clear_debouncer(), @message_timeout}
+  end
   def handle_info(:timeout, data) do
     {:stop, {:shutdown, :timeout}, data}
   end
@@ -259,6 +259,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   def terminate(_reason, %{state: @complete} = data) do
+    data = data |> clear_debouncer()
     PubSub.publish(
       :trip_ended,
       %{
@@ -276,6 +277,8 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   def terminate({:shutdown, :timeout}, %{state: @ongoing} = data) do
+    data = data |> clear_debouncer()
+
     PubSub.publish(
       :trip_ended,
       %{
@@ -293,7 +296,9 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   # if stop when incomplete
-  def terminate(_reason, _data) do
+  def terminate(_reason, data) do
+    data |> clear_debouncer()
+
     # :ets.insert(tableName(), {data.bus_id, data})
   end
 
@@ -331,6 +336,10 @@ defmodule Uchukuzi.Tracking.TripTracker do
   end
 
   def insert_trip_path_if_needed(data, _report), do: data
+
+  def insert_crossed_tiles(data, tiles) do
+    %{data | trip_path: data.trip_path |> TripPath.crossed_tiles(tiles)}
+  end
 
   def insert_report(data, report) do
     trip = data.trip |> Trip.insert_report(report, data.timezone)
