@@ -143,7 +143,7 @@ type Msg
     | UpdatedEmail Email
     | UpdatedPassword Password
     | RequestGeoLocation
-    | LocationSelected (Maybe { lat : Float, lng : Float, radius : Float })
+    | LocationSelected (Maybe { location : Location, radius : Float })
     | ToManagerForm
     | ToSchoolForm
     | NoOp
@@ -202,21 +202,8 @@ update msg model =
             ( { model | loadingGeocode = True }, Ports.requestGeoLocation () )
 
         LocationSelected perimeter ->
-            let
-                updatedPerimeter =
-                    perimeter
-                        |> Maybe.map
-                            (\p ->
-                                { location =
-                                    { lat = p.lat
-                                    , lng = p.lng
-                                    }
-                                , radius = p.radius
-                                }
-                            )
-            in
             ( model
-                |> updateSchool { school | perimeter = updatedPerimeter }
+                |> updateSchool { school | perimeter = perimeter }
                 |> (\m -> { m | loadingGeocode = False })
             , Cmd.none
             )

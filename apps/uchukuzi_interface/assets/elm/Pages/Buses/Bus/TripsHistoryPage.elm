@@ -8,7 +8,6 @@ module Pages.Buses.Bus.TripsHistoryPage exposing
     , tabBarItems
     , update
     , view
-    , viewFooter
     , viewOverlay
     )
 
@@ -39,6 +38,7 @@ import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
 import StyledElement.DropDown as Dropdown
+import StyledElement.OverlayView as OverlayView
 import StyledElement.TripSlider as TripSlider
 import StyledElement.WebDataView as WebDataView
 import Task
@@ -527,7 +527,7 @@ update msg model =
                 , needRefreshOngoingTrip = True
               }
             , if model.showingOngoingTrip then
-                Navigation.Bus model.busID RouteHistory
+                Navigation.Bus model.busID TripHistory
                     |> Navigation.rerouteTo model
 
               else
@@ -658,35 +658,41 @@ selectOngoingTrip model =
 -- VIEW
 
 
-view : Model -> Int -> Element Msg
-view model viewWidth =
+view : Model -> { viewHeight : Int, viewWidth : Int } -> Element Msg
+view model { viewHeight, viewWidth } =
     let
         viewContents =
-            always
-                (column [ width fill, height fill, spacing 16 ]
-                    [ viewMap model viewWidth
-                    , viewMapOptions model.mapVisuals
-                    , if not model.showingOngoingTrip then
-                        viewTrips model
-                        -- viewFooter has the rest
+            \_ ->
+                column [ width (px viewWidth), height (px viewHeight), spacing 16, scrollbarY, paddingEach { edges | right = 26 } ]
+                    ([ viewMap model viewWidth
+                     , viewMapOptions model.mapVisuals
+                     ]
+                        ++ (if not model.showingOngoingTrip then
+                                -- [viewFooter model ,
+                                -- viewTrips model
+                                -- ]
+                                [ viewTrips model
+                                , viewFooter model
+                                ]
 
-                      else
-                        WebDataView.view model.ongoingTrip
-                            (\trip ->
-                                case trip of
-                                    Just _ ->
-                                        none
+                            else
+                                [ WebDataView.view model.ongoingTrip
+                                    (\trip ->
+                                        case trip of
+                                            Just _ ->
+                                                none
 
-                                    Nothing ->
-                                        el [ width fill, height fill ]
-                                            (column [ centerX, centerY ]
-                                                [ el [ centerX ] (text "No trip in progress")
-                                                , el [ centerX ] (text "Click below to see past trips")
-                                                ]
-                                            )
-                            )
-                    ]
-                )
+                                            Nothing ->
+                                                el [ width fill, height (px 100) ]
+                                                    (column [ centerX, centerY, spacing 8 ]
+                                                        [ el [ centerX ] (text "No trip in progress")
+                                                        , el [ centerX ] (text "Click below to see past trips")
+                                                        ]
+                                                    )
+                                    )
+                                ]
+                           )
+                    )
     in
     if model.showingOngoingTrip then
         WebDataView.view model.ongoingTrip viewContents
@@ -910,7 +916,7 @@ viewTrips { selectedGroup, selectedTrip, session, groupedTrips } =
                 el [ centerX, centerY ] (text "No trips available")
 
             else
-                el [ centerX, centerY ] (text "Select a date from below")
+                el [ centerX, height (px 100) ] (el [ centerX, centerY ] (text "Select a date from below"))
 
         Just selectedGroup_ ->
             wrappedRow [ spacing 12, width fill ] (List.map (viewTrip selectedTrip (Session.timeZone session)) (List.reverse (Tuple.second selectedGroup_)))
@@ -1006,34 +1012,27 @@ viewFooter model =
                 , onPress = Just (SelectedGroup group)
                 }
     in
-    if not model.showingOngoingTrip then
-        column
-            [ height fill
-            , width fill
-            , inFront
-                (el
-                    [ Colors.withGradient (pi / 2) Colors.white
-                    , width (fill |> maximum 40)
-                    , height fill
-                    ]
-                    none
-                )
-            ]
-            [ el [ width fill, height (px 2), Background.color Colors.semiDarkText ] none
-            , row ([ width fill, scrollbarX, Style.reverseScrolling ] ++ Style.header2Style ++ [ paddingEach { edges | bottom = 16 } ])
-                (List.map viewScrollTrip model.groupedTrips)
-            ]
-
-    else
-        none
+    column
+        [ width fill
+        , alignBottom
+        , inFront
+            (el
+                [ Colors.withGradient (pi / 2) Colors.white
+                , width (fill |> maximum 40)
+                , height fill
+                ]
+                none
+            )
+        ]
+        [ el [ width fill, height (px 2), Background.color Colors.semiDarkText ] none
+        , row ([ width fill, scrollbarX, Style.reverseScrolling ] ++ Style.header2Style ++ [ paddingEach { edges | bottom = 16 } ])
+            (List.map viewScrollTrip model.groupedTrips)
+        ]
 
 
 viewOverlay : Model -> Int -> Element Msg
 viewOverlay model viewHeight =
     let
-        showOverlay =
-            model.createRouteForm /= Nothing
-
         isCreateRoute a =
             case a of
                 NewRoute _ ->
@@ -1054,31 +1053,12 @@ viewOverlay model viewHeight =
             else
                 ( Colors.white, Colors.backgroundPurple )
     in
-    el
-        (Style.animatesAll
-            :: width fill
-            :: height fill
-            :: paddingXY 40 30
-            :: behindContent
-                (Input.button
-                    [ width fill
-                    , height fill
-                    , Background.color (Colors.withAlpha Colors.black 0.6)
-                    , Style.blurredStyle
-                    , Style.clickThrough
-                    ]
-                    { onPress = Maybe.Nothing
-                    , label = none
-                    }
-                )
-            :: (if showOverlay then
-                    [ alpha 1, Style.nonClickThrough ]
-
-                else
-                    [ alpha 0, Style.clickThrough ]
-               )
-        )
-        (if showOverlay then
+    OverlayView.view
+        { shouldShowOverlay = model.createRouteForm /= Nothing
+        , hideOverlayMsg = CancelRouteCreation
+        , height = px viewHeight
+        }
+        (\_ ->
             el [ Style.nonClickThrough, scrollbarY, centerX, centerY, Background.color Colors.white, Style.elevated2, Border.rounded 5 ]
                 (column [ spacing 20, padding 40 ]
                     ([ el Style.header2Style (text "Save trip to route")
@@ -1129,9 +1109,6 @@ viewOverlay model viewHeight =
                            )
                     )
                 )
-
-         else
-            none
         )
 
 
@@ -1370,7 +1347,7 @@ tabBarItems model mapper =
                             Failure _ ->
                                 [ TabBar.Button
                                     { title = "Cancel"
-                                    , icon = Icons.close
+                                    , icon = Icons.cancel
                                     , onPress = CancelRouteCreation |> mapper
                                     }
                                 , TabBar.ErrorButton
@@ -1387,7 +1364,7 @@ tabBarItems model mapper =
                             _ ->
                                 [ TabBar.Button
                                     { title = "Cancel"
-                                    , icon = Icons.close
+                                    , icon = Icons.cancel
                                     , onPress = CancelRouteCreation |> mapper
                                     }
                                 , TabBar.Button

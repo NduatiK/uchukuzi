@@ -23,6 +23,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import StyledElement.OverlayView as OverlayView
 import StyledElement.WebDataView as WebDataView
 
 
@@ -157,129 +158,106 @@ view model viewHeight =
         , height (px viewHeight)
         , spacing 40
         , padding 30
-        , inFront (viewOverlay model)
+        , inFront (viewOverlay model viewHeight)
         ]
         [ viewHeading model.searchText
         , viewBody model
         ]
 
 
-viewOverlay : Model -> Element Msg
-viewOverlay { selectedStudent, session } =
-    el
-        (htmlAttribute (id "cards")
-            :: Style.animatesAll
-            :: width fill
-            :: height fill
-            :: behindContent
-                (Input.button
-                    [ width fill
-                    , height fill
-                    , Background.color (Colors.withAlpha Colors.black 0.6)
-                    , Style.blurredStyle
-                    , if selectedStudent == Nothing then
-                        Style.clickThrough
+viewOverlay : Model -> Int -> Element Msg
+viewOverlay { selectedStudent, session } viewHeight =
+    case selectedStudent of
+        Nothing ->
+            none
 
-                      else
-                        Style.nonClickThrough
-                    ]
-                    { onPress = Just (SelectedStudent Nothing)
-                    , label = none
-                    }
-                )
-            :: (if selectedStudent == Nothing then
-                    [ alpha 0, Style.clickThrough ]
+        Just { student, household } ->
+            let
+                travelTime =
+                    case student.travelTime of
+                        Evening ->
+                            "Evening Only"
 
-                else
-                    [ alpha 1
-                    ]
-               )
-        )
-        (case selectedStudent of
-            Nothing ->
-                none
+                        Morning ->
+                            "Morning Only"
 
-            Just { student, household } ->
-                let
-                    travelTime =
-                        case student.travelTime of
-                            Evening ->
-                                "Evening Only"
-
-                            Morning ->
-                                "Morning Only"
-
-                            _ ->
-                                "Morning and Evening"
-                in
-                el
-                    [ Background.color Colors.white
-                    , Border.rounded 5
-                    , Style.id "card"
-                    , Style.elevated2
-                    , centerX
-                    , centerY
-                    , width (fill |> maximum 600)
-                    , Style.animatesNone
-                    , below
-                        (row [ padding 20, centerX, spacing 20 ]
-                            [ StyledElement.hoverButton []
-                                { title = "Print Card"
-                                , icon = Just Icons.print
-                                , onPress = Just (GenerateCard student)
-                                }
-                            , StyledElement.hoverButton [ alignRight ]
-                                { title = "Edit details"
-                                , icon = Just Icons.edit
-                                , onPress = Just (EditHousehold household)
-                                }
-                            ]
-                        )
-                    ]
-                    (column [ spacing 8, paddingXY 0 0, width (px 600), height (px 310) ]
-                        [ column [ paddingXY 28 20, spacing 8 ]
-                            [ el [ height (px 12) ] none
-                            , el (Style.header2Style ++ [ padding 0 ]) (text student.name)
-                            ]
-                        , row [ spacing 12, paddingXY 28 0, height fill ]
-                            [ el [ Background.color Colors.darkGreen, height fill, width (px 2) ] none
-                            , column [ paddingXY 0 4, spacing 12 ]
-                                [ row []
-                                    [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Route: ")
-                                    , el (Style.labelStyle ++ [ padding 0 ]) (text student.route.name)
+                        _ ->
+                            "Morning and Evening"
+            in
+            OverlayView.view
+                { shouldShowOverlay = selectedStudent /= Nothing
+                , hideOverlayMsg = SelectedStudent Nothing
+                , height = px viewHeight
+                }
+                (\_ ->
+                    el [ Style.id "student-card", centerX, centerY ]
+                        (el
+                            [ Background.color Colors.white
+                            , Border.rounded 5
+                            , Style.elevated2
+                            , Style.id "card"
+                            , width (fill |> maximum 600)
+                            , Style.animatesNone
+                            , below
+                                (row [ padding 20, centerX, spacing 20 ]
+                                    [ StyledElement.hoverButton []
+                                        { title = "Print Card"
+                                        , icon = Just Icons.print
+                                        , onPress = Just (GenerateCard student)
+                                        }
+                                    , StyledElement.hoverButton [ alignRight ]
+                                        { title = "Edit details"
+                                        , icon = Just Icons.edit
+                                        , onPress = Just (EditHousehold household)
+                                        }
                                     ]
-                                , row []
-                                    [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Guardian Contact: ")
-                                    , el Style.labelStyle (text household.guardian.phoneNumber)
+                                )
+                            ]
+                            (column [ spacing 8, paddingXY 0 0, width (px 600), height (px 310) ]
+                                [ column [ paddingXY 28 20, spacing 8 ]
+                                    [ el [ height (px 12) ] none
+                                    , el (Style.header2Style ++ [ padding 0 ]) (text student.name)
+                                    ]
+                                , row [ spacing 12, paddingXY 28 0, height fill ]
+                                    [ el [ Background.color Colors.darkGreen, height fill, width (px 2) ] none
+                                    , column [ paddingXY 0 4, spacing 12 ]
+                                        [ row []
+                                            [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Route: ")
+                                            , el (Style.labelStyle ++ [ padding 0 ]) (text student.route.name)
+                                            ]
+                                        , row []
+                                            [ el (Style.header2Style ++ [ padding 0, Font.size 16 ]) (text "Guardian Contact: ")
+                                            , el Style.labelStyle (text household.guardian.phoneNumber)
+                                            ]
+                                        ]
+                                    ]
+                                , row [ width fill, paddingXY 20 20, alignBottom ]
+                                    [ image [ width (px 100), height (px 100), alignBottom, alignLeft ]
+                                        { src =
+                                            "/api/school/households/"
+                                                ++ String.fromInt student.id
+                                                ++ "/qr_code.svg?token="
+                                                ++ (session
+                                                        |> Session.getCredentials
+                                                        |> Maybe.map .token
+                                                        |> Maybe.withDefault ""
+                                                   )
+                                        , description = ""
+                                        }
+                                    , el
+                                        (Style.labelStyle
+                                            ++ [ Font.color Colors.sassyGreyDark
+                                               , padding 0
+                                               , alignRight
+                                               , alignBottom
+                                               ]
+                                        )
+                                        (text travelTime)
                                     ]
                                 ]
-                            ]
-                        , row [ width fill, paddingXY 20 20, alignBottom ]
-                            [ image [ width (px 100), height (px 100), alignBottom, alignLeft ]
-                                { src =
-                                    "/api/school/households/"
-                                        ++ String.fromInt student.id
-                                        ++ "/qr_code.svg?token="
-                                        ++ (session
-                                                |> Session.getCredentials
-                                                |> Maybe.map .token
-                                                |> Maybe.withDefault ""
-                                           )
-                                , description = ""
-                                }
-                            , el
-                                (Style.labelStyle
-                                    ++ [ Font.color Colors.sassyGreyDark
-                                       , padding 0
-                                       , alignRight
-                                       , alignBottom
-                                       ]
-                                )
-                                (text travelTime)
-                            ]
-                        ]
-                    )
-        )
+                            )
+                        )
+                )
 
 
 viewHeading : String -> Element Msg

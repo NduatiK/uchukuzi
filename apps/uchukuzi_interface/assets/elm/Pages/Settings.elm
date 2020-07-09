@@ -30,6 +30,7 @@ import RemoteData exposing (..)
 import Session exposing (Session)
 import Style exposing (edges)
 import StyledElement
+import StyledElement.OverlayView as OverlayView
 import StyledElement.WebDataView as WebDataView
 
 
@@ -372,9 +373,6 @@ update msg model =
 view : Model -> Int -> Element Msg
 view model viewHeight =
     let
-        schoolName =
-            "schoolName"
-
         email =
             model.session
                 |> Session.getCredentials
@@ -389,14 +387,21 @@ view model viewHeight =
                 ]
     in
     Element.column
-        [ width fill
-        , spacing 40
-        , padding 30
-        , height (px viewHeight)
-        , scrollbarY
-        , inFront (viewOverlay model viewHeight)
-        ]
-        [ Style.iconHeader Icons.settings "Settings"
+        ([ width fill
+         , spacing 40
+         , padding 30
+         , height (px viewHeight)
+         , inFront (viewOverlay model viewHeight)
+         ]
+            ++ (if model.overlayType == Nothing then
+                    [ scrollbarY ]
+
+                else
+                    []
+               )
+        )
+        [ Style.iconHeader Icons.settings
+            "Settings"
         , column
             [ spacing 16, width fill ]
             [ sectionDivider "School Details"
@@ -419,14 +424,17 @@ view model viewHeight =
                                 [ el Style.captionStyle (text "School Name")
                                 , text school.name
                                 ]
-                            , StyledElement.hoverButton
-                                []
-                                { title = "Edit School", onPress = Just (SetOverlay (Just School)), icon = Just Icons.edit }
+                            , StyledElement.hoverButton []
+                                { title = "Edit School"
+                                , onPress = Just (SetOverlay (Just School))
+                                , icon = Just Icons.edit
+                                }
                             ]
                         ]
                 )
             ]
-        , column [ spacing 16, width fill ]
+        , column
+            [ spacing 16, width fill ]
             [ sectionDivider "Your Details"
             , column [ spacing 10, width (fill |> maximum 400) ]
                 [ column [ spacing 8 ]
@@ -548,10 +556,7 @@ viewSlider model deviationRadius =
                     ]
                     { onChange =
                         round
-                            >> (\x ->
-                                    List.drop (x - 1) values
-                               )
-
+                            >> (\x -> List.drop (x - 1) values)
                             >> List.head
                             >> Maybe.withDefault 1
                             >> UpdatedDeviationRadius
@@ -575,13 +580,13 @@ viewSlider model deviationRadius =
                 , el [ centerY ]
                     (case model.requests.updateDeviation.request of
                         Success _ ->
-                            Icons.done [ width (px 24), height (px 24), Colors.fillDarkGreen, alpha 1 ]
+                            el [ width (px 36), height (px 36) ] (Icons.done [ centerX, centerY, width (px 24), height (px 24), Colors.fillDarkGreen, alpha 1 ])
 
                         Loading ->
                             Icons.loading [ width (px 36), height (px 36) ]
 
                         Failure _ ->
-                            Icons.close
+                            Icons.cancel
                                 [ width (px 36)
                                 , height (px 36)
                                 , Colors.fillErrorRed
@@ -615,47 +620,29 @@ viewSlider model deviationRadius =
 
 viewOverlay : Model -> Int -> Element Msg
 viewOverlay model viewHeight =
-    let
-        overlayType =
-            model.overlayType
-    in
-    el
-        (Style.animatesAll
-            :: width fill
-            :: height (px viewHeight)
-            :: paddingXY 40 30
-            :: behindContent
-                (Input.button
-                    [ width fill
-                    , height fill
-                    , Background.color (Colors.withAlpha Colors.black 0.6)
-                    , Style.blurredStyle
-                    , Style.clickThrough
-                    ]
-                    { onPress = Just (SetOverlay Nothing)
-                    , label = none
-                    }
-                )
-            :: (if overlayType == Nothing then
-                    [ alpha 0, Style.clickThrough ]
+    OverlayView.view
+        { shouldShowOverlay = model.overlayType /= Nothing
+        , hideOverlayMsg = SetOverlay Nothing
+        , height = px viewHeight
+        }
+        (\_ ->
+            case model.overlayType of
+                Nothing ->
+                    none
 
-                else
-                    [ alpha 1 ]
-               )
-        )
-        (case overlayType of
-            Nothing ->
-                none
+                Just overlay ->
+                    row [ width fill, Style.clickThrough ]
+                        [ el [ width (fillPortion 1) ] none
+                        , el [ Style.nonClickThrough, scrollbarY, centerX, centerY, Background.color Colors.white, Style.elevated2, Border.rounded 5, width (fillPortion 3) ]
+                            (case overlay of
+                                Password ->
+                                    updatePasswordForm model
 
-            Just overlay ->
-                el [ Style.nonClickThrough, scrollbarY, centerX, centerY, Background.color Colors.white, Style.elevated2, Border.rounded 5 ]
-                    (case overlay of
-                        Password ->
-                            updatePasswordForm model
-
-                        School ->
-                            updateSchoolForm model
-                    )
+                                School ->
+                                    updateSchoolForm model
+                            )
+                        , el [ width (fillPortion 1) ] none
+                        ]
         )
 
 
@@ -698,14 +685,11 @@ updateSchoolForm model =
         problems =
             model.form.problems
     in
-    column [ spacing 20, padding 40 ]
+    column [ spacing 20, padding 40, width fill ]
         [ el Style.header2Style (text "Update School")
         , column [ spacing 20, width fill ]
-            [ if model.overlayType == Just School then
-                el [ width (px 500), height (px 400) ] (StyledElement.googleMap [])
-
-              else
-                none
+            [ -- el [ width (px 500), height (px 400) ] (StyledElement.googleMap [])
+              StyledElement.googleMap [ height (px 500), width fill ]
             , StyledElement.textInput [ width fill ]
                 { title = "School Name"
                 , caption = Nothing
@@ -731,7 +715,7 @@ tabBarItems model =
                 Failure _ ->
                     [ TabBar.Button
                         { title = "Cancel"
-                        , icon = Icons.close
+                        , icon = Icons.cancel
                         , onPress = SetOverlay Nothing
                         }
                     , TabBar.ErrorButton
@@ -748,7 +732,7 @@ tabBarItems model =
                 _ ->
                     [ TabBar.Button
                         { title = "Cancel"
-                        , icon = Icons.close
+                        , icon = Icons.cancel
                         , onPress = SetOverlay Nothing
                         }
                     , TabBar.Button
@@ -763,7 +747,7 @@ tabBarItems model =
                 Failure _ ->
                     [ TabBar.Button
                         { title = "Cancel"
-                        , icon = Icons.close
+                        , icon = Icons.cancel
                         , onPress = SetOverlay Nothing
                         }
                     , TabBar.ErrorButton
@@ -780,7 +764,7 @@ tabBarItems model =
                 _ ->
                     [ TabBar.Button
                         { title = "Cancel"
-                        , icon = Icons.close
+                        , icon = Icons.cancel
                         , onPress = SetOverlay Nothing
                         }
                     , TabBar.Button
@@ -908,12 +892,6 @@ decoder =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Ports.receivedMapClickLocation
-        (\x ->
-            x
-                |> Maybe.map
-                    (\s ->
-                        UpdatedSchoolLocation
-                            { location = Location s.lng s.lat, radius = s.radius }
-                    )
-                |> Maybe.withDefault NoOp
+        (Maybe.map UpdatedSchoolLocation
+            >> Maybe.withDefault NoOp
         )

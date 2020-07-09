@@ -1,6 +1,5 @@
 port module Main exposing (..)
 
-
 import Api
 import Browser
 import Browser.Events
@@ -662,13 +661,13 @@ changeRouteWithUpdatedSessionTo maybeRoute model session =
         channel busID =
             Channel.init ("trip:" ++ String.fromInt busID)
                 |> Channel.onJoin OngoingTripUpdated
-                |> Channel.on "started" OngoingTripStarted
+                -- |> Channel.on "started" OngoingTripStarted
                 |> Channel.on "update" OngoingTripUpdated
                 |> Channel.on "ended" OngoingTripEnded
 
         ( phoenixModel, phxCmd ) =
             case maybeRoute of
-                Just (Navigation.Bus busID RouteHistory) ->
+                Just (Navigation.Bus busID TripHistory) ->
                     case model.phoenix of
                         Just phxModel ->
                             Phoenix.update (PhxMsg.createChannel (channel busID)) phxModel

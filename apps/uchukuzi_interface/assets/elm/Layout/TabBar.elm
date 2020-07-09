@@ -13,7 +13,7 @@ import Style exposing (edges)
 
 maxHeight : Int
 maxHeight =
-    50
+    60
 
 
 type TabBarItem msgA
@@ -48,23 +48,62 @@ view tabBarItems toMsg =
 viewTabItem : TabBarItem msg -> Element msg
 viewTabItem item =
     el
-        ([ paddingXY 56 4
+        ([ paddingXY 56 6
          , width shrink
          , Border.rounded 5
          , Border.width 2
          , centerY
          , centerX
          , Style.overline
-         , Border.color Colors.transparent
+
+         --  , Border.color Colors.transparent
          , Font.color (Colors.withAlpha (rgb255 4 30 37) 0.69)
          ]
             ++ (case item of
                     Button button ->
                         [ Events.onMouseUp button.onPress
-                        , mouseDown [ Background.color Colors.simpleGrey, Border.color (Colors.withAlpha (rgb255 4 30 37) 0.69) ]
-                        , mouseOver [ Border.color (Colors.withAlpha (rgb255 4 30 37) 0.39) ]
+                        , Border.color Colors.sassyGrey
+                        , Style.animatesShadowOnly
+                        , Background.color Colors.white
+                        , mouseDown
+                            [ Border.color Colors.purple
+                            , Background.color Colors.purple
+                            , Font.color Colors.white
+                            ]
+                        , mouseOver
+                            [ Border.color Colors.purple
+                            , Font.color Colors.purple
+
+                            -- , Background.color (Colors.withAlpha Colors.backgroundPurple 0.99)
+                            , moveUp 1
+                            , Border.shadow { offset = ( 2, 4 ), size = 0, blur = 8, color = rgba 0 0 0 0.2 }
+                            ]
+                        , Colors.fillPurpleOnHover
+                        , Colors.fillWhiteOnClick
                         ]
 
+                    -- [ Events.onMouseUp button.onPress
+                    -- , Background.color Colors.backgroundPurple
+                    -- , mouseOver [ Border.color Colors.purple ]
+                    -- , mouseDown [ Border.color Colors.purple, Background.color Colors.white, Font.color Colors.purple ]
+                    -- , Colors.fillPurpleOnClick
+                    -- ]
+                    -- [ Events.onMouseUp button.onPress
+                    -- , mouseDown [ Background.color Colors.simpleGrey, Border.color (Colors.withAlpha (rgb255 4 30 37) 0.69) ]
+                    -- , mouseOver [ Border.color (Colors.withAlpha (rgb255 4 30 37) 0.39) ]
+                    -- ]
+                    -- [ Events.onMouseUp button.onPress
+                    -- , Background.color Colors.backgroundPurple
+                    -- , Border.color (Colors.withAlpha Colors.purple 0.6)
+                    -- , mouseOver [ Border.color Colors.purple ]
+                    -- , mouseDown
+                    --     [ Background.color Colors.purple
+                    --     , Font.color Colors.white
+                    --     ]
+                    -- , Colors.fillWhiteOnClick
+                    -- -- , mouseDown [ Background.color Colors.simpleGrey, Border.color (Colors.withAlpha (rgb255 4 30 37) 0.69) ]
+                    -- -- , mouseOver [ Border.color (Colors.withAlpha (rgb255 4 30 37) 0.39) ]
+                    -- ]
                     ErrorButton button ->
                         [ Events.onMouseUp button.onPress
                         , Border.color Colors.errorRed
@@ -89,7 +128,7 @@ viewTabItem item =
             )
             (case item of
                 Button button ->
-                    [ button.icon [ alignTop, Colors.fillDarkness, alpha 0.69 ]
+                    [ button.icon [ alignTop, Colors.fillDarkness, alpha 0.8 ]
                     , text button.title
                     ]
 

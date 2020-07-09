@@ -6,6 +6,7 @@ module Pages.Buses.Bus.FuelHistoryPage exposing
     , update
     , view
     , viewFooter
+    , viewOverlay
     )
 
 import Api
@@ -29,6 +30,7 @@ import Session exposing (Session)
 import Statistics
 import Style exposing (edges)
 import StyledElement
+import StyledElement.OverlayView as OverlayView
 import StyledElement.WebDataView as WebDataView
 import Time
 import Utils.GroupBy
@@ -38,6 +40,8 @@ type alias Model =
     { session : Session
     , busID : Int
     , inEditMode : Bool
+    , showOverlay : Bool
+    , deletedReports : List Int
     , data : WebData Data
     , statistics : Maybe Statistics
     }
@@ -85,6 +89,8 @@ init busID session =
       , data = Loading
       , statistics = Nothing
       , inEditMode = False
+      , showOverlay = False
+      , deletedReports = []
       }
     , fetchFuelHistory session busID
     )
@@ -97,7 +103,12 @@ init busID session =
 type Msg
     = RecordsResponse (WebData ( Data, Cmd Msg ))
     | CreateFuelReport
+    | EditFuelReports Bool
+    | ShowConfirmDeleteDialog
+    | HideConfirmDeleteDialog
+    | SaveChanges
     | Delete Int
+    | Undelete Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -105,6 +116,9 @@ update msg model =
     case msg of
         CreateFuelReport ->
             ( model, Navigation.rerouteTo model (Navigation.CreateFuelReport model.busID) )
+
+        EditFuelReports inEditMode ->
+            ( { model | inEditMode = inEditMode, showOverlay = False, deletedReports = [] }, Cmd.none )
 
         RecordsResponse response ->
             case response of
@@ -120,8 +134,20 @@ update msg model =
                 NotAsked ->
                     ( { model | data = NotAsked }, Cmd.none )
 
-        Delete id_ ->
+        Delete id ->
+            ( { model | deletedReports = id :: model.deletedReports }, Cmd.none )
+
+        Undelete id ->
+            ( { model | deletedReports = model.deletedReports |> List.filter (\x -> x /= id) }, Cmd.none )
+
+        SaveChanges ->
             ( model, Cmd.none )
+
+        ShowConfirmDeleteDialog ->
+            ( { model | showOverlay = True }, Cmd.none )
+
+        HideConfirmDeleteDialog ->
+            ( { model | showOverlay = False }, Cmd.none )
 
 
 
@@ -224,6 +250,9 @@ viewGroupedReports model groupedReports =
         timezone =
             Session.timeZone model.session
 
+        deletedReports =
+            model.deletedReports
+
         viewGroup : ( String, List AnnotatedReport ) -> Element Msg
         viewGroup ( month, reportsForDate ) =
             column
@@ -245,9 +274,9 @@ viewGroupedReports model groupedReports =
                     )
                     (text month)
                 , row [ width fill ]
-                    (viewFuelTable reportsForDate timezone
+                    (viewFuelTable reportsForDate timezone deletedReports
                         :: (if model.inEditMode then
-                                [ viewEditOptions reportsForDate ]
+                                [ viewEditOptions reportsForDate deletedReports ]
 
                             else
                                 []
@@ -258,8 +287,8 @@ viewGroupedReports model groupedReports =
     List.map viewGroup groupedReports
 
 
-viewFuelTable : List AnnotatedReport -> Time.Zone -> Element Msg
-viewFuelTable reportsForDate timezone =
+viewFuelTable : List AnnotatedReport -> Time.Zone -> List Int -> Element Msg
+viewFuelTable reportsForDate timezone deletedReports =
     let
         tableHeader strings attr =
             column (height fill :: Style.tableHeaderStyle)
@@ -277,15 +306,25 @@ viewFuelTable reportsForDate timezone =
                 >> el (Style.nonClickThrough :: Style.tableElementStyle ++ alignments)
                 >> el [ Style.clickThrough ]
 
-        hoverEl _ =
+        hoverEl report =
             el
                 [ mouseOver [ Background.color Colors.darkGreen ]
                 , height (px 33)
                 , paddingXY 0 4
                 , width fill
+                , transparent (List.member report.id deletedReports)
                 , alpha 0.2
+                , Border.rounded 5
                 ]
                 none
+
+        strikeThroughEl report =
+            el
+                [ height (px 33)
+                , width fill
+                , transparent (not (List.member report.id deletedReports))
+                ]
+                (el [ Background.color Colors.darkness, alpha 0.5, centerY, height (px 2), width fill ] none)
     in
     column
         [ spacing 12
@@ -294,10 +333,12 @@ viewFuelTable reportsForDate timezone =
         ]
         [ table
             [ spacingXY 30 15
-            , paddingEach { edges | left = 10 }
+            , paddingXY 10 0
             , Background.color Colors.transparent
             , inFront
-                (column [ paddingEach { edges | top = 36 }, spacingXY 30 0, width fill ] (List.map hoverEl (List.range 0 (List.length reportsForDate - 1))))
+                (column [ paddingEach { edges | top = 36 }, spacingXY 30 0, width fill ] (List.map strikeThroughEl reportsForDate))
+            , inFront
+                (column [ paddingEach { edges | top = 36 }, spacingXY 30 0, width fill ] (List.map hoverEl reportsForDate))
             ]
             { data = reportsForDate
             , columns =
@@ -374,8 +415,8 @@ viewFuelTable reportsForDate timezone =
         ]
 
 
-viewEditOptions : List AnnotatedReport -> Element Msg
-viewEditOptions reportsForDate =
+viewEditOptions : List AnnotatedReport -> List Int -> Element Msg
+viewEditOptions reportsForDate deletedReports =
     let
         tableHeader strings attr =
             column (height fill :: Style.tableHeaderStyle)
@@ -399,11 +440,42 @@ viewEditOptions reportsForDate =
                   , width = px 24
                   , view =
                         \report ->
-                            StyledElement.iconButton [ padding 0, Background.color Colors.transparent, Colors.fillErrorRedHover, alpha 0.54, mouseOver [ alpha 1 ] ]
-                                { icon = Icons.trash
-                                , iconAttrs = [ alpha 1 ]
-                                , onPress = Just (Delete report.id)
-                                }
+                            if List.member report.id deletedReports then
+                                StyledElement.iconButton
+                                    [ padding 0
+                                    , Background.color Colors.transparent
+                                    , Colors.fillPurpleOnHover
+                                    , alpha 0.54
+                                    , mouseOver [ alpha 1 ]
+
+                                    -- Slash on alarm
+                                    , inFront
+                                        (el
+                                            [ width (px 2)
+                                            , height (px 28)
+                                            , moveUp 4
+                                            , mouseOver [ Background.color Colors.purple ]
+                                            , Background.color Colors.darkness
+                                            , Border.shadow
+                                                { blur = 0, color = Colors.white, offset = ( 2, 0 ), size = 0 }
+                                            , centerX
+                                            , centerY
+                                            , rotate (pi / 4)
+                                            ]
+                                            none
+                                        )
+                                    ]
+                                    { icon = Icons.trash
+                                    , iconAttrs = [ alpha 1 ]
+                                    , onPress = Just (Undelete report.id)
+                                    }
+
+                            else
+                                StyledElement.iconButton [ padding 0, Background.color Colors.transparent, Colors.fillErrorRedHover, alpha 0.54, mouseOver [ alpha 1 ] ]
+                                    { icon = Icons.trash
+                                    , iconAttrs = [ alpha 1 ]
+                                    , onPress = Just (Delete report.id)
+                                    }
                   }
                 ]
             }
@@ -413,6 +485,45 @@ viewEditOptions reportsForDate =
 viewFooter : Model -> Element Msg
 viewFooter _ =
     none
+
+
+viewOverlay : Model -> Int -> Element Msg
+viewOverlay model viewHeight =
+    OverlayView.view
+        { shouldShowOverlay = model.showOverlay
+        , hideOverlayMsg = HideConfirmDeleteDialog
+        , height = px viewHeight
+        }
+        (\_ ->
+            el [ Style.nonClickThrough, scrollbarY, centerX, centerY, Background.color Colors.white, Style.elevated2, Border.rounded 5 ]
+                (column [ spacing 20, padding 40 ]
+                    [ el Style.header2Style (text "Save trip to route")
+                    , el [ width fill, Border.color Colors.purple, Border.width 2, Border.rounded 5 ]
+                        (row [ width fill ]
+                            [ StyledElement.hoverButton [ Background.color Colors.purple, Border.rounded 0, width fill ]
+                                { icon = Just Icons.add
+
+                                -- , onPress = Just (SetSaveToRoute (NewRoute ""))
+                                , onPress = Nothing
+                                , title = "Create Route"
+                                }
+                            , el [ Background.color Colors.purple, width (px 2), height fill ] none
+                            , StyledElement.hoverButton [ Background.color Colors.backgroundPurple, Border.rounded 0, width fill ]
+                                { icon = Just Icons.edit
+
+                                -- , onPress = Just (SetSaveToRoute (ExistingRoute Nothing))
+                                , onPress = Nothing
+                                , title = "Update Route"
+                                }
+                            ]
+                        )
+                    ]
+                )
+        )
+
+
+
+-- HTTP
 
 
 fetchFuelHistory : Session -> Int -> Cmd Msg
@@ -589,26 +700,60 @@ totalForGroup reports =
             0
 
 
-tabBarItems : (Msg -> msg) -> List (TabBarItem msg)
-tabBarItems mapper =
-    [ TabBar.Button
-        { title = "Add Fuel record"
-        , icon = Icons.add
-        , onPress = CreateFuelReport |> mapper
-        }
-    ]
-
-
 roundString100 : String -> String
 roundString100 =
-    \c ->
-        case List.head (String.indexes "." c) of
-            Nothing ->
-                c ++ ".00"
+    \numberString ->
+        numberString
+            |> String.indexes "."
+            |> List.head
+            |> Maybe.map
+                (\x ->
+                    -- 10.1 returns x = 2 we need to pad the string to a
+                    -- length of 5 to get 0.10 ie ('1','0','.','1','0')
+                    -- 2 + 3 = 5
+                    numberString
+                        |> String.padRight (x + 3) '0'
+                )
+            |> Maybe.withDefault (numberString ++ ".00")
 
-            Just location ->
-                let
-                    length =
-                        String.length c
-                in
-                String.padRight (length + (2 - (length - location - 1))) '0' c
+
+tabBarItems : Model -> (Msg -> msg) -> List (TabBarItem msg)
+tabBarItems model mapper =
+    if model.showOverlay then
+        [ TabBar.Button
+            { title = "Cancel"
+            , icon = Icons.cancel
+            , onPress = HideConfirmDeleteDialog |> mapper
+            }
+        , TabBar.Button
+            { title = "Save"
+            , icon = Icons.save
+            , onPress = ShowConfirmDeleteDialog |> mapper
+            }
+        ]
+
+    else if model.inEditMode then
+        [ TabBar.Button
+            { title = "Cancel"
+            , icon = Icons.cancel
+            , onPress = EditFuelReports False |> mapper
+            }
+        , TabBar.Button
+            { title = "Save"
+            , icon = Icons.save
+            , onPress = ShowConfirmDeleteDialog |> mapper
+            }
+        ]
+
+    else
+        [ TabBar.Button
+            { title = "Edit Fuel Records"
+            , icon = Icons.edit
+            , onPress = EditFuelReports True |> mapper
+            }
+        , TabBar.Button
+            { title = "Add Fuel record"
+            , icon = Icons.add
+            , onPress = CreateFuelReport |> mapper
+            }
+        ]

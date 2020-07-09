@@ -1,7 +1,8 @@
 
 function printCard(studentName: string) {
-    var prtContent = document.getElementById("cards");
+    const id = "student-card"
 
+    var prtContent = document.getElementById(id);
 
     var WinPrint = window.open('', '', `
     left=0,
@@ -20,16 +21,18 @@ function printCard(studentName: string) {
     // Code Reference: https://developer.mozilla.org/en-US/docs/Web/API/StyleSheetLis
     var styles: CSSStyleSheet[] = []
 
-    for (var i = 0; i++; i < document.styleSheets.length) {
+    const length = document.styleSheets.length
+
+    for (var i = 0; i < length; i++) {
         styles.push(document.styleSheets[i])
     }
-
+ 
     const pageStyles =
         styles
             .map(styleSheet => {
                 try {
                     var cssRules: CSSRule[] = []
-                    for (var i = 0; i++; i < styleSheet.cssRules.length) {
+                    for (var i = 0; i < styleSheet.cssRules.length; i++) {
                         cssRules.push(styleSheet.cssRules[i])
                     }
 
@@ -37,10 +40,8 @@ function printCard(studentName: string) {
                         .map(rule => rule.cssText)
                         .join('');
                 } catch (e) {
-                    console.log('Access to stylesheet %s is denied. Ignoring...', styleSheet.href);
                 }
             })
-            .filter(Boolean)
             .join('\n');
 
     const printStyles = `  

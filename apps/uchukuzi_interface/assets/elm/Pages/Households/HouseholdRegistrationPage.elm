@@ -1226,7 +1226,7 @@ tabBarItems { requestState } =
         Failure _ ->
             [ TabBar.Button
                 { title = "Cancel"
-                , icon = Icons.close
+                , icon = Icons.cancel
                 , onPress = ReturnToRegistrationList
                 }
             , TabBar.ErrorButton
@@ -1243,7 +1243,7 @@ tabBarItems { requestState } =
         _ ->
             [ TabBar.Button
                 { title = "Cancel"
-                , icon = Icons.close
+                , icon = Icons.cancel
                 , onPress = ReturnToRegistrationList
                 }
             , TabBar.Button

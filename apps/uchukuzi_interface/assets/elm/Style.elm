@@ -4,6 +4,7 @@ module Style exposing
     , animatesAllDelayed
     , animatesNone
     , animatesShadow
+    , animatesShadowOnly
     , blurredStyle
     , captionStyle
     , class
@@ -170,6 +171,11 @@ stickyStyle =
 mobileHidden : Attribute msg
 mobileHidden =
     class "mobileHidden"
+
+
+animatesShadowOnly : Attribute msg
+animatesShadowOnly =
+    class "animatesShadowOnly"
 
 
 animatesShadow : Attribute msg

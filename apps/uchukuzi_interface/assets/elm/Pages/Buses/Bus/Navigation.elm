@@ -3,7 +3,7 @@ module Pages.Buses.Bus.Navigation exposing (BusPage(..), allBusPages, busPageToS
 
 type BusPage
     = About
-    | RouteHistory
+    | TripHistory
     | FuelHistory
     | BusDevice
     | BusRepairs
@@ -11,7 +11,7 @@ type BusPage
 
 allBusPages =
     [ About
-    , RouteHistory
+    , TripHistory
     , FuelHistory
     , BusDevice
     , BusRepairs
@@ -26,7 +26,7 @@ busPageToString page =
                 About ->
                     "Summary"
 
-                RouteHistory ->
+                TripHistory ->
                     "Trips"
 
                 FuelHistory ->

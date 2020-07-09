@@ -163,7 +163,7 @@ port scannedDeviceCode : (String -> msg) -> Sub msg
 port noCameraFoundError : (Bool -> msg) -> Sub msg
 
 
-port receivedMapClickLocation : (Maybe { lat : Float, lng : Float, radius : Float } -> msg) -> Sub msg
+port receivedMapClickLocation : (Maybe { location : Location, radius : Float } -> msg) -> Sub msg
 
 
 port receivedMapLocation : (Location -> msg) -> Sub msg

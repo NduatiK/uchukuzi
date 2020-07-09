@@ -8,7 +8,12 @@ interface Credentials {
 }
 
 export function getCredentials(): Credentials | null {
-  const credentials = safeParse(localStorage.getItem("credentials"));
+  const credentials = nullableParse<Credentials>(localStorage.getItem("credentials"));
+
+  if (!credentials) {
+    setCredentials(null)
+    return null
+  }
 
   if (credentials.email && typeof credentials.email == "string" &&
     credentials.token && typeof credentials.token == "string" &&
@@ -35,7 +40,12 @@ interface Location {
 }
 
 export function getSchoolLocation(): Location | null {
-  const location = safeParse(localStorage.getItem("schoolLocation"));
+  const location = nullableParse<Location>(localStorage.getItem("schoolLocation"));
+
+  if (!location) {
+    return null
+  }
+
   if ("lat" in location && "lng" in location) {
     return location
   } else {
@@ -51,7 +61,7 @@ export function setSchoolLocation(location: Location | null) {
 }
 
 export function getSidebarState(): boolean {
-  const sideBarState = safeParse(localStorage.getItem("sideBarState"))
+  const sideBarState = nullableParse<boolean>(localStorage.getItem("sideBarState"))
   if (typeof sideBarState == "boolean") {
     return sideBarState;
   } else {
@@ -68,7 +78,7 @@ export function clear() {
   localStorage.clear();
 }
 
-function safeParse(jsonString: any) {
+function nullableParse<T>(jsonString: any): T | null {
   try {
     return JSON.parse(jsonString);
   } catch (e) {

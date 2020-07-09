@@ -6,6 +6,23 @@
   filter: var(--white);
 }
 
+.fillPurpleOnHover:hover img {
+  filter: var(--purple);
+}
+
+.fillPurpleOnClick:hover:active img {
+  filter: var(--purple);
+  opacity: 1;
+}
+
+
+.fillWhiteOnClick:hover:active img {
+  filter: var(--white);
+}
+
+.disableIconOpacitySettingsActive:hover:active .ic {
+  opacity: 1;
+}
 
 .fillPurple img {
   filter: var(--purple);

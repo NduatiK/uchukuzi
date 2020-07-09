@@ -103,7 +103,7 @@ export namespace Elm {
           send(data: boolean): void
         }
         receivedMapClickLocation: {
-          send(data: { lat: number; lng: number; radius: number } | null): void
+          send(data: { location: { lng: number; lat: number }; radius: number } | null): void
         }
         receivedMapLocation: {
           send(data: { lng: number; lat: number }): void

@@ -1,15 +1,9 @@
 module StyledElement.WebDataView exposing (view)
 
-import Api
 import Element exposing (Element, centerX, centerY, el, height, paragraph, px, text, width)
 import Errors
 import Icons
 import RemoteData exposing (RemoteData(..), WebData)
-import Style
-
-
-
--- SHORTCUTS
 
 
 view : WebData a -> (a -> Element msg) -> Element msg

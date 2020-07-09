@@ -21,6 +21,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
 import Style
 import StyledElement
+import StyledElement.OverlayView as OverlayView
 import StyledElement.WebDataView as WebDataView
 import Views.DragAndDrop exposing (draggable, droppable)
 
@@ -273,7 +274,7 @@ view model viewHeight =
         , height (px viewHeight)
         , padding 30
         , spacing 40
-        , inFront (viewOverlay model)
+        , inFront (viewOverlay model viewHeight)
         ]
         [ viewHeading model
         , viewBody model viewHeight
@@ -552,63 +553,39 @@ viewUnassignedCrewMembers data windowHeight { inEditingMode, edits } =
         ]
 
 
-viewOverlay : Model -> Element Msg
-viewOverlay { selectedCrewMember } =
-    el
-        (Style.animatesAll
-            :: width fill
-            :: height fill
-            :: behindContent
-                (Input.button
-                    [ width fill
-                    , height fill
-                    , Background.color (Colors.withAlpha Colors.black 0.6)
-                    , Style.blurredStyle
-                    , if selectedCrewMember == Nothing then
-                        Style.clickThrough
+viewOverlay : Model -> Int -> Element Msg
+viewOverlay { selectedCrewMember } viewHeight =
+    OverlayView.view
+        { shouldShowOverlay = selectedCrewMember /= Nothing
+        , hideOverlayMsg = SelectedCrewMember Nothing
+        , height = px viewHeight
+        }
+        (\_ ->
+            case selectedCrewMember of
+                Nothing ->
+                    none
 
-                      else
-                        Style.nonClickThrough
-                    ]
-                    { onPress = Just (SelectedCrewMember Nothing)
-                    , label = none
-                    }
-                )
-            :: (if selectedCrewMember == Nothing then
-                    [ alpha 0
-                    , Style.clickThrough
-                    ]
-
-                else
-                    [ alpha 1
-                    ]
-               )
-        )
-        (case selectedCrewMember of
-            Nothing ->
-                none
-
-            Just crewMember ->
-                el [ Background.color Colors.white, Border.rounded 5, Style.elevated2, centerX, centerY, width (fill |> maximum 600), Style.animatesNone ]
-                    (column [ spacing 8, paddingXY 0 24, width fill ]
-                        [ row [ width fill, paddingXY 8 0 ]
-                            [ column [ paddingXY 20 0, spacing 8 ]
-                                [ el (Style.header2Style ++ [ padding 0 ]) (text crewMember.name)
-                                , el Style.captionStyle (text (roleToString crewMember.role))
+                Just crewMember ->
+                    el [ Background.color Colors.white, Border.rounded 5, Style.elevated2, centerX, centerY, width (fill |> maximum 600), Style.animatesNone ]
+                        (column [ spacing 8, paddingXY 0 24, width fill ]
+                            [ row [ width fill, paddingXY 8 0 ]
+                                [ column [ paddingXY 20 0, spacing 8 ]
+                                    [ el (Style.header2Style ++ [ padding 0 ]) (text crewMember.name)
+                                    , el Style.captionStyle (text (roleToString crewMember.role))
+                                    ]
+                                , StyledElement.hoverButton [ alignRight ]
+                                    { title = "Edit details"
+                                    , icon = Just Icons.edit
+                                    , onPress = Just (EditCrewMember crewMember)
+                                    }
                                 ]
-                            , StyledElement.hoverButton [ alignRight ]
-                                { title = "Edit details"
-                                , icon = Just Icons.edit
-                                , onPress = Just (EditCrewMember crewMember)
-                                }
+                            , el [ width fill, height (px 2), Background.color Colors.darkness ] none
+                            , column [ paddingXY 20 20, spacing 16 ]
+                                [ el Style.labelStyle (text crewMember.phoneNumber)
+                                , el Style.labelStyle (text crewMember.email)
+                                ]
                             ]
-                        , el [ width fill, height (px 2), Background.color Colors.darkness ] none
-                        , column [ paddingXY 20 20, spacing 16 ]
-                            [ el Style.labelStyle (text crewMember.phoneNumber)
-                            , el Style.labelStyle (text crewMember.email)
-                            ]
-                        ]
-                    )
+                        )
         )
 
 
@@ -650,7 +627,7 @@ tabBarItems { data, inEditingMode } =
             Failure _ ->
                 [ TabBar.Button
                     { title = "Cancel"
-                    , icon = Icons.close
+                    , icon = Icons.cancel
                     , onPress = CancelEdits
                     }
                 , TabBar.ErrorButton
@@ -663,7 +640,7 @@ tabBarItems { data, inEditingMode } =
             _ ->
                 [ TabBar.Button
                     { title = "Cancel"
-                    , icon = Icons.close
+                    , icon = Icons.cancel
                     , onPress = CancelEdits
                     }
                 , TabBar.Button

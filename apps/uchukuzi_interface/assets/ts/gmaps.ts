@@ -26,7 +26,7 @@ type ElmTileCollection = {
 }
 
 
-let schoolLocation = Cache.getSchoolLocation()
+let schoolLocation: ElmLatLng | null = Cache.getSchoolLocation()
 
 window.addEventListener("storage", (event) => {
     const location = Cache.getSchoolLocation()
@@ -136,7 +136,7 @@ let correctTiles: google.maps.Rectangle[] = []
 let deviationTiles: google.maps.Rectangle[] = []
 let drawingManager = null
 let schoolCircle: google.maps.Circle | null = null
-let schoolCircleRadius: google.maps.MapsEventListener | null = null
+let schoolCircleRadiusListener: google.maps.MapsEventListener | null = null
 
 /**
  * Places the map within a google-map dom element
@@ -215,12 +215,12 @@ function disableClickListeners(time = 300) {
     sleep(time).then(() => {
 
         if (Map) {
-
             google.maps.event.clearInstanceListeners(Map)
             homeMarkerMapClickListener = null
             homeMarkerDragListener = null
             circleClickListener = null
             mapClickListener = null
+            schoolCircleRadiusListener = null
             homeMarker?.setDraggable(false)
         }
     })
@@ -296,14 +296,21 @@ function insertCircle(pos: google.maps.LatLng, app: Elm.Main.App, map: google.ma
     })
 
     function updateSchoolCircle(schoolCircle: google.maps.Circle) {
+        if (schoolMarker) {
+            schoolMarker.setPosition(schoolCircle.getCenter())
+        }
+
         app.ports.receivedMapClickLocation.send({
-            lat: schoolCircle.getCenter().lat(),
-            lng: schoolCircle.getCenter().lng(),
+            location: {
+                lat: schoolCircle.getCenter().lat(),
+                lng: schoolCircle.getCenter().lng()
+            },
             radius: schoolCircle.getRadius()
         })
     }
-    if (!schoolCircleRadius) {
-        schoolCircleRadius = google.maps.event.addListener(schoolCircle, "radius_changed", function () {
+
+    if (!schoolCircleRadiusListener) {
+        schoolCircleRadiusListener = google.maps.event.addListener(schoolCircle, "radius_changed", function () {
             if (schoolCircle) {
                 updateSchoolCircle(schoolCircle)
             }
@@ -325,7 +332,6 @@ function insertCircle(pos: google.maps.LatLng, app: Elm.Main.App, map: google.ma
                         title: `School [${center.lng}, ${center.lat}]`
                     })
                 }
-                schoolMarker.setPosition(center)
                 updateSchoolCircle(schoolCircle)
             }
         })
@@ -795,7 +801,7 @@ function setupInterop(app: Elm.Main.App) {
     })
 
     function setTilesVisibility(map: google.maps.Map, correctVisible: boolean, deviationVisible: boolean) {
-        console.log(correctVisible, deviationVisible)
+
         const setMap = (mapValue: google.maps.Map | null) => (tile: google.maps.Rectangle) => {
             tile.setMap(mapValue)
         }

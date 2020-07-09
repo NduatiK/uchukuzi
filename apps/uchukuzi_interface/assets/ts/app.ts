@@ -6,18 +6,12 @@ import { sleep } from "./sleep";
 
 export function init() {
     var loadingApp: Elm.Main.App | null = Elm.Main.init({
-        flags: {
-            creds: null,
-            window: windowSize(),
-            isLoading: true,
-            sideBarIsOpen: true,
-            hasLoadError: false
-        },
+        flags: loadingFlags(),
         node: document.getElementById("elm-loading")
     })
-    sleep(200).then(
-        GMaps.loadMapAPI
-    )
+
+    sleep(200)
+        .then(GMaps.loadMapAPI)
         .then(() => {
             loadingApp = null
             const app = createApp();
@@ -26,30 +20,40 @@ export function init() {
         })
         .catch(() => {
             Elm.Main.init({
-                flags: {
-                    creds: null,
-                    window: windowSize(),
-                    isLoading: false,
-                    sideBarIsOpen: Cache.getSidebarState(),
-                    hasLoadError: true
-                },
+                flags: errorFlags(),
                 node: document.getElementById("elm")
             })
         })
 }
 
 function createApp() {
-    console.log(Cache.getSidebarState())
     return Elm.Main.init({
         node: document.getElementById("elm"),
-        flags: {
-            creds: Cache.getCredentials(),
-            window: windowSize(),
-            isLoading: false,
-            sideBarIsOpen: Cache.getSidebarState(),
-            hasLoadError: false
-        }
+        flags: defaultFlags()
     });
+}
+
+function defaultFlags() {
+    return {
+        creds: Cache.getCredentials(),
+        window: windowSize(),
+        isLoading: false,
+        sideBarIsOpen: Cache.getSidebarState(),
+        hasLoadError: false
+    };
+}
+
+function loadingFlags() {
+    return {
+        ...defaultFlags()
+        , isLoading: true
+    }
+}
+function errorFlags() {
+    return {
+        ...defaultFlags()
+        , hasLoadError: true
+    }
 }
 
 function windowSize() {

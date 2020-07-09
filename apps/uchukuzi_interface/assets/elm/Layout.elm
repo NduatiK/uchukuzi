@@ -74,7 +74,7 @@ frame session route { body, bodyMsgToPageMsg } { navBarState, notifications, nav
                     (row [ Style.clickThrough, alpha 0 ]
                         [ Icons.loading []
                         , Icons.refresh []
-                        , Icons.close []
+                        , Icons.cancel []
                         ]
                     )
                 ]

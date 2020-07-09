@@ -245,8 +245,9 @@ viewGraph reports viewWidth =
                         [ stroke <|
                             Colors.toSVGColor Colors.darkGreen
                         , strokeWidth 2
-
-                        -- , TypedSvg.Attributes.fill <| Reference "linGradientDuoVert"
+                        , TypedSvg.Attributes.fill <|
+                            TypedSvg.Types.Fill
+                                (Colors.toSVGColor Colors.darkGreen)
                         ]
                     ]
 

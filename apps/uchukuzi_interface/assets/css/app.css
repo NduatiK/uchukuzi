@@ -37,6 +37,11 @@ div .clickThrough:not(.nonClickThrough) {
   pointer-events: none;
 }
 
+.animatesShadowOnly:not(.animatesNone) {
+  transition: box-shadow, transform 250ms 0ms;
+  transition-timing-function: var(--cubic)
+}
+
 .animatesShadow:not(.animatesNone) {
   transition: box-shadow, transform, border 250ms 50ms;
   transition-timing-function: var(--cubic)

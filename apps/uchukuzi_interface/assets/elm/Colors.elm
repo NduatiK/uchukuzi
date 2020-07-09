@@ -190,6 +190,21 @@ fillWhiteOnHover =
     class "fillWhiteOnHover"
 
 
+fillWhiteOnClick : Attribute msg
+fillWhiteOnClick =
+    class "fillWhiteOnClick disableIconOpacitySettingsActive"
+
+
+fillPurpleOnClick : Attribute msg
+fillPurpleOnClick =
+    class "fillPurpleOnClick disableIconOpacitySettingsActive"
+
+
+fillPurpleOnHover : Attribute msg
+fillPurpleOnHover =
+    class "fillPurpleOnHover disableIconOpacitySettingsActive"
+
+
 class : String -> Attribute msg
 class string =
     htmlAttribute (Html.Attributes.class string)

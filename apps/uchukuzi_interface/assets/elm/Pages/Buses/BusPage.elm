@@ -35,7 +35,7 @@ import Pages.Buses.Bus.DevicePage as BusDevice
 import Pages.Buses.Bus.FuelHistoryPage as FuelHistory
 import Pages.Buses.Bus.Navigation exposing (BusPage(..), busPageToString)
 import Pages.Buses.Bus.RepairsPage as BusRepairs
-import Pages.Buses.Bus.TripsHistoryPage as RouteHistory
+import Pages.Buses.Bus.TripsHistoryPage as TripHistory
 import Ports
 import RemoteData exposing (RemoteData(..), WebData)
 import Session exposing (Session)
@@ -65,7 +65,7 @@ type alias BusData =
 -}
 type Page
     = AboutPage About.Model
-    | RouteHistoryPage RouteHistory.Model
+    | TripHistoryPage TripHistory.Model
     | FuelHistoryPage FuelHistory.Model
     | BusDevicePage BusDevice.Model
     | BusRepairsPage BusRepairs.Model
@@ -91,7 +91,7 @@ init busID session locationUpdate currentPage =
 
 type Msg
     = GotAboutMsg About.Msg
-    | GotRouteHistoryMsg RouteHistory.Msg
+    | GotTripHistoryMsg TripHistory.Msg
     | GotFuelHistoryMsg FuelHistory.Msg
     | GotBusDeviceMsg BusDevice.Msg
     | GotBusRepairsMsg BusRepairs.Msg
@@ -108,7 +108,7 @@ locationUpdateMsg =
 
 ongoingTripUpdated : Json.Decode.Value -> Msg
 ongoingTripUpdated =
-    RouteHistory.ongoingTripUpdated >> GotRouteHistoryMsg
+    TripHistory.ongoingTripUpdated >> GotTripHistoryMsg
 
 
 ongoingTripStarted : Json.Decode.Value -> Msg
@@ -118,7 +118,7 @@ ongoingTripStarted =
 
 ongoingTripEnded : Msg
 ongoingTripEnded =
-    GotRouteHistoryMsg RouteHistory.ongoingTripEnded
+    GotTripHistoryMsg TripHistory.ongoingTripEnded
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -127,7 +127,7 @@ update msg model =
         GotAboutMsg _ ->
             updatePage msg model
 
-        GotRouteHistoryMsg _ ->
+        GotTripHistoryMsg _ ->
             updatePage msg model
 
         GotFuelHistoryMsg _ ->
@@ -231,9 +231,9 @@ updatePage msg fullModel =
                     About.update msg_ model
                         |> mapModel fullModel AboutPage GotAboutMsg
 
-                ( GotRouteHistoryMsg msg_, RouteHistoryPage model ) ->
-                    RouteHistory.update msg_ model
-                        |> mapModel fullModel RouteHistoryPage GotRouteHistoryMsg
+                ( GotTripHistoryMsg msg_, TripHistoryPage model ) ->
+                    TripHistory.update msg_ model
+                        |> mapModel fullModel TripHistoryPage GotTripHistoryMsg
 
                 ( GotFuelHistoryMsg msg_, FuelHistoryPage model ) ->
                     FuelHistory.update msg_ model
@@ -334,6 +334,9 @@ viewLoaded busData viewHeight viewWidth =
                     FuelHistoryPage _ ->
                         paddingEach { edges | left = 26 }
 
+                    TripHistoryPage _ ->
+                        paddingEach { edges | left = 26 }
+
                     _ ->
                         paddingXY 26 0
                 , width fill
@@ -381,13 +384,13 @@ viewHeading busData =
 
 
 viewBody : Int -> Int -> BusData -> Element Msg
-viewBody height width busData =
+viewBody height viewWidth busData =
     case busData.currentPage of
         AboutPage subPageModel ->
             viewPage (About.view subPageModel height) GotAboutMsg
 
-        RouteHistoryPage subPageModel ->
-            viewPage (RouteHistory.view subPageModel width) GotRouteHistoryMsg
+        TripHistoryPage subPageModel ->
+            viewPage (TripHistory.view subPageModel { viewHeight = height, viewWidth = viewWidth - sliderWidth - 36 }) GotTripHistoryMsg
 
         FuelHistoryPage subPageModel ->
             viewPage (FuelHistory.view subPageModel height) GotFuelHistoryMsg
@@ -420,9 +423,10 @@ viewFooter viewWidth busData =
             AboutPage subPageModel ->
                 viewPage (About.viewFooter subPageModel) GotAboutMsg
 
-            RouteHistoryPage subPageModel ->
-                viewPage (RouteHistory.viewFooter subPageModel) GotRouteHistoryMsg
+            TripHistoryPage subPageModel ->
+                none
 
+            -- viewPage (TripHistory.viewFooter subPageModel) GotTripHistoryMsg
             FuelHistoryPage subPageModel ->
                 viewPage (FuelHistory.viewFooter subPageModel) GotFuelHistoryMsg
 
@@ -438,8 +442,11 @@ viewOverlay : BusData -> Int -> Element Msg
 viewOverlay busData viewHeight =
     el [ width fill, height fill, Style.clickThrough ]
         (case busData.currentPage of
-            RouteHistoryPage subPageModel ->
-                viewPage (RouteHistory.viewOverlay subPageModel viewHeight) GotRouteHistoryMsg
+            TripHistoryPage subPageModel ->
+                viewPage (TripHistory.viewOverlay subPageModel viewHeight) GotTripHistoryMsg
+
+            FuelHistoryPage subPageModel ->
+                viewPage (FuelHistory.viewOverlay subPageModel viewHeight) GotFuelHistoryMsg
 
             _ ->
                 none
@@ -477,12 +484,16 @@ viewSidebar busData =
         )
 
 
+sliderWidth =
+    48 + 14
+
+
 slider : Int -> Int -> Bool -> Element Msg
 slider pageCount pageIndex visible =
     el [ paddingXY 0 7, height fill, transparent (not visible) ]
         (Input.slider
             [ height fill
-            , width (px (48 + 14))
+            , width (px sliderWidth)
             , centerY
             ]
             { onChange = round >> SelectedPage
@@ -533,7 +544,7 @@ iconForPage page pageIndex currentPageIndex =
                 AboutPage _ ->
                     Icons.info iconStyle
 
-                RouteHistoryPage _ ->
+                TripHistoryPage _ ->
                     Icons.timeline iconStyle
 
                 BusDevicePage _ ->
@@ -573,8 +584,8 @@ subscriptions model =
     case model.busData of
         Success busData ->
             case busData.currentPage of
-                RouteHistoryPage subPageModel ->
-                    Sub.map GotRouteHistoryMsg (RouteHistory.subscriptions subPageModel)
+                TripHistoryPage subPageModel ->
+                    Sub.map GotTripHistoryMsg (TripHistory.subscriptions subPageModel)
 
                 _ ->
                     Sub.none
@@ -589,8 +600,8 @@ pageToBusPage page =
         AboutPage _ ->
             Pages.Buses.Bus.Navigation.About
 
-        RouteHistoryPage _ ->
-            Pages.Buses.Bus.Navigation.RouteHistory
+        TripHistoryPage _ ->
+            Pages.Buses.Bus.Navigation.TripHistory
 
         FuelHistoryPage _ ->
             Pages.Buses.Bus.Navigation.FuelHistory
@@ -614,7 +625,7 @@ aboutPage bus session locationUpdate =
 
 routePage : Bus -> Session -> ( Page, Cmd Msg )
 routePage bus session =
-    Layout.transformToModelMsg RouteHistoryPage GotRouteHistoryMsg (RouteHistory.init bus.id session)
+    Layout.transformToModelMsg TripHistoryPage GotTripHistoryMsg (TripHistory.init bus.id session)
 
 
 fuelPage : Bus -> Session -> ( Page, Cmd Msg )
@@ -670,11 +681,11 @@ tabBarItems { busData } =
                 AboutPage _ ->
                     About.tabBarItems GotAboutMsg
 
-                RouteHistoryPage model ->
-                    RouteHistory.tabBarItems model GotRouteHistoryMsg
+                TripHistoryPage model ->
+                    TripHistory.tabBarItems model GotTripHistoryMsg
 
-                FuelHistoryPage _ ->
-                    FuelHistory.tabBarItems GotFuelHistoryMsg
+                FuelHistoryPage model ->
+                    FuelHistory.tabBarItems model GotFuelHistoryMsg
 
                 BusDevicePage _ ->
                     []

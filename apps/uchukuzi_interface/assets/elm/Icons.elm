@@ -220,8 +220,8 @@ dashedBox =
     iconNamed "images/dotted_box.svg"
 
 
-close : List (Attribute msg) -> Element msg
-close =
+cancel : List (Attribute msg) -> Element msg
+cancel =
     iconNamed "images/close.svg"
 
 

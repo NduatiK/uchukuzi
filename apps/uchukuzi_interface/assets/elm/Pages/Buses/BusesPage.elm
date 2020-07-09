@@ -299,7 +299,8 @@ googleMap buses bus =
         [ width fill
         , height (fill |> minimum 500)
         , clip
-        , inFront overlay
+
+        -- , inFront overlay
         ]
 
 
