@@ -40,10 +40,12 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
         },
         state
       ) do
-    UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_event(route_id, %{
-      event: "left_school",
-      students_onboard: students_onboard
-    })
+    if route_id != nil do
+      UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_event(route_id, %{
+        event: "left_school",
+        students_onboard: students_onboard
+      })
+    end
 
     UchukuziInterfaceWeb.ManagerSocket.SchoolChannel.send_bus_event(school_id, %{
       event: "left_school",
@@ -52,12 +54,11 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
       bus_id: bus_id
     })
 
-    UchukuziInterfaceWeb.ManagerSocket.TripChannel.send_trip_started(bus)
-
     {:noreply, state}
   end
 
-  def handle_info({:approaching_tile, route_id, tile, travel_time, students_onboard}, state) do
+  def handle_info({:approaching_tile, route_id, tile, travel_time, students_onboard}, state)
+      when route_id != nil do
     tile_hash =
       case tile do
         %Location{} = loc ->
@@ -98,7 +99,8 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
   def handle_info(
         {:eta_prediction_update, route_id, eta_sequence, students_onboard} = _event,
         state
-      ) do
+      )
+      when route_id != nil do
     eta_sequence
     |> Enum.map(fn
       {%Location{} = loc, time} ->
@@ -148,10 +150,12 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
         },
         state
       ) do
-    UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_event(route_id, %{
-      event: "arrived_at_school",
-      students_onboard: students_onboard
-    })
+    if route_id != nil do
+      UchukuziInterfaceWeb.CustomerSocket.BusChannel.send_bus_event(route_id, %{
+        event: "arrived_at_school",
+        students_onboard: students_onboard
+      })
+    end
 
     UchukuziInterfaceWeb.ManagerSocket.TripChannel.send_trip_ended(bus_id)
 

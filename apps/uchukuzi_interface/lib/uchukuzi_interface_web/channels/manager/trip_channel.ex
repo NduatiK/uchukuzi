@@ -50,16 +50,6 @@ defmodule UchukuziInterfaceWeb.ManagerSocket.TripChannel do
     )
   end
 
-  def send_trip_started(bus) do
-    UchukuziInterfaceWeb.Endpoint.broadcast(
-      "trip:" <> Integer.to_string(bus.id),
-      "started",
-      bus
-      |> Tracking.TripTracker.ongoing_trip()
-      |> (fn trip -> UchukuziInterfaceWeb.TrackingView.render("trip.json", %{trip: trip}) end).()
-    )
-  end
-
   def send_trip_ended(bus_id) do
     UchukuziInterfaceWeb.Endpoint.broadcast(
       "trip:" <> Integer.to_string(bus_id),
