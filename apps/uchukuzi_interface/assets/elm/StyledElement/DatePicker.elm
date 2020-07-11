@@ -42,10 +42,10 @@ view :
         , onChange : DatePicker.Msg -> msg
         , value : Maybe Date.Date
         , state : DatePicker.DatePicker
-        , hasFailedInput : Bool
+        , hasInvalidInput : Bool
         }
     -> Element msg
-view attributes { title, caption, errorCaption, value, onChange, state, icon, hasFailedInput } =
+view attributes { title, caption, errorCaption, value, onChange, state, icon, hasInvalidInput } =
     let
         input =
             el [ paddingXY 12 0, width fill, htmlAttribute (Html.Attributes.class "focus-within") ]
@@ -58,7 +58,7 @@ view attributes { title, caption, errorCaption, value, onChange, state, icon, ha
         errorCaptionWithDateValidation =
             let
                 dateValidation =
-                    if Debug.log "hasFailedInput" hasFailedInput then
+                    if hasInvalidInput then
                         [ Errors.ServerSideError "date" [ "has an invalid date format" ] ]
 
                     else

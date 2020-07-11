@@ -2,19 +2,12 @@ module Pages.Buses.Bus.CreateFuelReport exposing (Model, Msg, init, update, view
 
 import Api
 import Api.Endpoint as Endpoint
-import Browser.Dom
-import Colors
 import Date
 import DatePicker
 import Element exposing (..)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Font as Font
 import Errors
-import Html
 import Html.Attributes exposing (id)
 import Icons
-import Icons.Repairs
 import Json.Decode as Decode exposing (Decoder, int, list, string)
 import Json.Encode as Encode
 import Navigation
@@ -33,7 +26,7 @@ type alias Model =
     , requestState : WebData ()
     , datePicker :
         { state : DatePicker.DatePicker
-        , hasFailedInput : Bool
+        , hasInvalidInput : Bool
         }
     , problems : List (Errors.Errors Problem)
     }
@@ -69,7 +62,7 @@ init bus session =
             , volumeEndsWithDecimal = False
             }
       , requestState = NotAsked
-      , datePicker = { state = datePicker, hasFailedInput = False }
+      , datePicker = { state = datePicker, hasInvalidInput = False }
       , problems = []
       }
     , Cmd.map DatePickerUpdated datePickerCmd
@@ -146,10 +139,7 @@ update msg model =
                 ( newDatePickerState, event ) =
                     StyledElement.DatePicker.update datePickerMsg model.datePicker.state
 
-                _ =
-                    Debug.log "event" event
-
-                hasFailedInput =
+                hasInvalidInput =
                     case event of
                         DatePicker.FailedInput (DatePicker.Invalid _) ->
                             True
@@ -158,7 +148,7 @@ update msg model =
                             False
 
                         _ ->
-                            oldState.hasFailedInput
+                            oldState.hasInvalidInput
 
                 date =
                     case event of
@@ -172,7 +162,7 @@ update msg model =
                 | datePicker =
                     { oldState
                         | state = newDatePickerState
-                        , hasFailedInput = hasFailedInput
+                        , hasInvalidInput = hasInvalidInput
                     }
                 , form = { form | date = date }
               }
@@ -272,7 +262,7 @@ viewDatePicker model =
             , onChange = DatePickerUpdated
             , value = model.form.date
             , state = model.datePicker.state
-            , hasFailedInput = model.datePicker.hasFailedInput
+            , hasInvalidInput = model.datePicker.hasInvalidInput
             }
         )
 
