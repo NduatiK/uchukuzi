@@ -22,7 +22,6 @@ erl_crash.dump
 .elixir_ls/
 
 Elixir.Uchukuzi.World.ETA
-.gitignore
 Elixir.Uchukuzi.DiskDB
 
 apps/uchukuzi_interface/priv/static/js/app.css
@@ -31,6 +30,7 @@ apps/uchukuzi_interface/priv/static/css/app.css
 apps/uchukuzi_interface/priv/static/css/app.js 
 .vscode/settings.json
 models/
+
 exports/
 logs/
 trip_data_archive/
@@ -38,3 +38,7 @@ trip_data_testing/
 .VSCodeCounter/
 apps/uchukuzi_interface/priv/static/index.js
 apps/uchukuzi_interface/priv/static/index.js
+
+/apps/uchukuzi_interface/assets/node_modules
+/apps/uchukuzi_interface/assets/elm-stuff
+/apps/uchukuzi_interface/assets/.cache
