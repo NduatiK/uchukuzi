@@ -15,6 +15,11 @@ delete session url decoder =
     Endpoint.delete url session decoder
 
 
+deleteItems : Session -> Endpoint -> Encode.Value -> Decoder a -> Cmd (WebData a)
+deleteItems session url items decoder =
+    Endpoint.deleteItems url session (items |> Http.jsonBody) decoder
+
+
 get : Session -> Endpoint -> Decoder a -> Cmd (WebData a)
 get session url decoder =
     Endpoint.get url session decoder

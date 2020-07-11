@@ -89,6 +89,7 @@ defmodule UchukuziInterfaceWeb.Router do
 
     get "/buses/:bus_id/fuel_reports", SchoolController, :list_fuel_reports
     post "/buses/:bus_id/fuel_reports", SchoolController, :create_fuel_report
+    delete "/buses/:bus_id/fuel_reports", SchoolController, :delete_fuel_report
 
     get "/buses/:bus_id/route", SchoolController, :get_bus_route
 

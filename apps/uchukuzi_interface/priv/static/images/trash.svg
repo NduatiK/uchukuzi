@@ -1,25 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="14px" height="18px" viewBox="0 0 14 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <defs>
-        <rect id="path-1" x="0" y="1" width="1720" height="1135" rx="28"></rect>
-        <rect id="path-3" x="0" y="0" width="1463" height="984"></rect>
-        <path d="M6,19 C6,20.1 6.9,21 8,21 L16,21 C17.1,21 18,20.1 18,19 L18,7 L6,7 L6,19 Z M8,9 L16,9 L16,19 L8,19 L8,9 Z M15.5,4 L14.5,3 L9.5,3 L8.5,4 L5,4 L5,6 L19,6 L19,4 L15.5,4 Z" id="path-5"></path>
+        <path d="M6,19 C6,20.1 6.9,21 8,21 L16,21 C17.1,21 18,20.1 18,19 L18,7 L6,7 L6,19 Z M8,9 L16,9 L16,19 L8,19 L8,9 Z M15.5,4 L14.5,3 L9.5,3 L8.5,4 L5,4 L5,6 L19,6 L19,4 L15.5,4 Z" id="path-1"></path>
     </defs>
-    <g id="WebApp" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <g id="Artboard-Copy-18" transform="translate(-891.000000, -489.000000)">
-            <mask id="mask-2" fill="white">
-                <use xlink:href="#path-1"></use>
-            </mask>
-            <g id="icon/action/delete_outline_24px" mask="url(#mask-2)">
-                <g transform="translate(886.000000, 486.000000)">
-                    <mask id="mask-6" fill="white">
-                        <use xlink:href="#path-5"></use>
-                    </mask>
-                    <g id="*" stroke="none" fill="none" mask="url(#mask-6)"  fill-rule="evenodd">
-                        <rect id="Rectangle" fill="#000000" x="0" y="0" width="24" height="24"></rect>
-                    </g>
-                </g>
-            </g>
+    <g id="icon/action/delete_outline_24px" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <mask id="mask-2" fill="white">
+            <use xlink:href="#path-1"></use>
+        </mask>
+        <g fill-rule="nonzero"></g>
+        <g id="✱-/-Color-/-Icons-/-Black-/-Inactive" mask="url(#mask-2)" fill="#000000" >
+            <rect id="Rectangle" x="0" y="0" width="24" height="24"></rect>
         </g>
     </g>
 </svg>

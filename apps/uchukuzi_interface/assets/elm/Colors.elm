@@ -177,7 +177,7 @@ fillDarkness =
 
 fillErrorRed : Attribute msg
 fillErrorRed =
-    class "fillErrorRed"
+    class "fillErrorRed disableIconOpacitySettingsActive"
 
 
 fillErrorRedHover : Attribute msg

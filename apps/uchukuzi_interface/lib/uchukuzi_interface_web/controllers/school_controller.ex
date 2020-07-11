@@ -282,15 +282,40 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   end
 
   def list_fuel_reports(conn, %{"bus_id" => bus_id}, school_id) do
-    with {:ok, bus} <- School.bus_for(school_id, bus_id, [:fuel_reports])    do
+    with {:ok, bus} <- School.bus_for(school_id, bus_id, [:fuel_reports]) do
       fuel_reports = bus.fuel_reports
-      numberOfStudents =
-        school_id |> School.student_count_for_bus(bus.route_id)
+      numberOfStudents = school_id |> School.student_count_for_bus(bus.route_id)
 
-        conn
-        |> render("fuel_reports.json", fuel_reports: fuel_reports, numberOfStudents: numberOfStudents)
-        end
+      conn
+      |> render("fuel_reports.json",
+        fuel_reports: fuel_reports,
+        numberOfStudents: numberOfStudents
+      )
+    end
+  end
 
+  def delete_fuel_report(conn, %{"bus_id" => bus_id, "_json" => reports}, school_id) do
+    with {:ok, bus} <- School.bus_for(school_id, bus_id, [:fuel_reports]),
+         {:ok, reports} <- valid_report_ids(reports, bus.fuel_reports),
+         {_no_of_deletions, nil} <- School.delete_fuel_reports(school_id, bus_id, reports) |> IO.inspect() do
+      conn
+      |> resp(200, "{}")
+    end
+  end
+
+  def valid_report_ids(reports, existing_reports) do
+    fuel_report_ids = existing_reports |> Enum.map(& &1.id)
+
+    cond do
+      not Enum.all?(reports, &is_integer/1) ->
+        {:error, "expected ids"}
+
+      not Enum.all?(reports, fn report -> report in fuel_report_ids end) ->
+        {:error, "these ids are not yours"}
+
+      true ->
+        {:ok, reports}
+    end
   end
 
   # * Devices

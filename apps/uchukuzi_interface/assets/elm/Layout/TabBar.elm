@@ -128,12 +128,12 @@ viewTabItem item =
             )
             (case item of
                 Button button ->
-                    [ button.icon [ alignTop, Colors.fillDarkness, alpha 0.8 ]
+                    [ el [ width (px 24), height (px 24) ] (button.icon [ centerX, centerY, alignTop, Colors.fillDarkness, alpha 0.8 ])
                     , text button.title
                     ]
 
                 ErrorButton button ->
-                    [ button.icon [ alignTop, alpha 1, Colors.fillErrorRed ]
+                    [ el [ width (px 24), height (px 24) ] (button.icon [ centerX, centerY, alignTop, alpha 1, Colors.fillErrorRed ])
                     , text button.title
                     ]
 

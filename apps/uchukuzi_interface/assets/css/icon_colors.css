@@ -48,6 +48,13 @@
   filter: var(--error-red)
 }
 
+.fillErrorRed .ic{
+  opacity: 1  ;
+}
+
+.fillErrorRed.ic{
+  opacity: 1  ;
+}
 
 html {
   --white: brightness(100%) saturate(0) invert(1);

@@ -174,6 +174,14 @@ defmodule Uchukuzi.School do
     )
   end
 
+  def delete_fuel_reports(school_id, bus_id, report_ids) do
+    from(r in FuelReport,
+      inner_join: b in assoc(r, :bus),
+      where: b.school_id == ^school_id and b.id == ^bus_id and r.id in ^report_ids
+    )
+    |> Repo.delete_all()
+  end
+
   # ********* Devices *********
   def register_device(bus, imei) do
     %{imei: imei, bus_id: bus.id}
@@ -537,6 +545,7 @@ defmodule Uchukuzi.School do
   def student_count_for_bus(_, nil) do
     0
   end
+
   def student_count_for_bus(school_id, route_id) do
     Student
     |> where(school_id: ^school_id, route_id: ^route_id)

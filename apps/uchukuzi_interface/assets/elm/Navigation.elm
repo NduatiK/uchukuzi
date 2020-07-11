@@ -133,8 +133,6 @@ isPublicRoute route =
             List.member aRoute [ Home ]
 
 
-
-
 parsersFor : List Route -> List (Parser (Route -> Route) Route)
 parsersFor routes =
     List.map buildParser routes
@@ -163,6 +161,7 @@ href targetRoute =
 Change the URL, but do not trigger a page load.
 
 This will not add a new entry to the browser history.
+
 -}
 replaceUrl : Nav.Key -> Route -> Cmd msg
 replaceUrl key route =
@@ -172,6 +171,7 @@ replaceUrl key route =
 {-| Change the URL, but do not trigger a page load.
 
 This will add a new entry to the browser history.
+
 -}
 pushUrl : Nav.Key -> Route -> Cmd msg
 pushUrl key route =
@@ -183,6 +183,9 @@ isSamePage url1 url2 =
     case ( Parser.parse loggedInParser (parseUrl url1), Parser.parse loggedInParser (parseUrl url2) ) of
         ( Nothing, Nothing ) ->
             Parser.parse notLoggedInParser (parseUrl url1) == Parser.parse notLoggedInParser (parseUrl url2)
+
+        ( Just (Bus a FuelHistory), Just (Bus b _) ) ->
+            False
 
         ( Just (Bus a _), Just (Bus b _) ) ->
             a == b

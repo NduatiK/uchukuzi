@@ -21,9 +21,11 @@ import Html.Attributes exposing (id)
 import Icons
 import Json.Decode exposing (int, list)
 import Json.Decode.Pipeline exposing (required)
+import Json.Encode as Encode
 import Layout.TabBar as TabBar exposing (TabBarItem(..))
 import Models.FuelReport as FuelReport exposing (Distance, FuelReport, Volume, fuelRecordDecoder)
 import Navigation
+import Pages.Buses.Bus.Navigation
 import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
@@ -43,6 +45,7 @@ type alias Model =
     , showOverlay : Bool
     , deletedReports : List Int
     , data : WebData Data
+    , deleteRequest : WebData ()
     , statistics : Maybe Statistics
     }
 
@@ -91,6 +94,7 @@ init busID session =
       , inEditMode = False
       , showOverlay = False
       , deletedReports = []
+      , deleteRequest = NotAsked
       }
     , fetchFuelHistory session busID
     )
@@ -107,6 +111,7 @@ type Msg
     | ShowConfirmDeleteDialog
     | HideConfirmDeleteDialog
     | SaveChanges
+    | SaveChangesResponse (WebData ())
     | Delete Int
     | Undelete Int
 
@@ -141,13 +146,24 @@ update msg model =
             ( { model | deletedReports = model.deletedReports |> List.filter (\x -> x /= id) }, Cmd.none )
 
         SaveChanges ->
-            ( model, Cmd.none )
+            ( { model | deleteRequest = Loading }
+            , saveDeletes model.session model.busID model.deletedReports
+            )
 
         ShowConfirmDeleteDialog ->
             ( { model | showOverlay = True }, Cmd.none )
 
         HideConfirmDeleteDialog ->
             ( { model | showOverlay = False }, Cmd.none )
+
+        SaveChangesResponse response ->
+            if RemoteData.isSuccess response then
+                ( model
+                , Navigation.rerouteTo model (Navigation.Bus model.busID Pages.Buses.Bus.Navigation.FuelHistory)
+                )
+
+            else
+                ( { model | deleteRequest = response }, Cmd.none )
 
 
 
@@ -495,26 +511,63 @@ viewOverlay model viewHeight =
         , height = px viewHeight
         }
         (\_ ->
-            el [ Style.nonClickThrough, scrollbarY, centerX, centerY, Background.color Colors.white, Style.elevated2, Border.rounded 5 ]
+            el [ scrollbarY, centerX, centerY, Background.color Colors.white, Style.elevated2, Border.rounded 5 ]
                 (column [ spacing 20, padding 40 ]
-                    [ el Style.header2Style (text "Save trip to route")
-                    , el [ width fill, Border.color Colors.purple, Border.width 2, Border.rounded 5 ]
-                        (row [ width fill ]
-                            [ StyledElement.hoverButton [ Background.color Colors.purple, Border.rounded 0, width fill ]
-                                { icon = Just Icons.add
+                    [ paragraph []
+                        [ el Style.header2Style (text "We can undo this.\n")
+                        , el Style.header2Style (text "Are you sure you want to proceed?")
+                        ]
+                    , el [ width fill ]
+                        (column [ width fill, spacing 10 ]
+                            [ case model.deleteRequest of
+                                Loading ->
+                                    Icons.loading [ centerX, centerY ]
 
-                                -- , onPress = Just (SetSaveToRoute (NewRoute ""))
-                                , onPress = Nothing
-                                , title = "Create Route"
-                                }
-                            , el [ Background.color Colors.purple, width (px 2), height fill ] none
-                            , StyledElement.hoverButton [ Background.color Colors.backgroundPurple, Border.rounded 0, width fill ]
-                                { icon = Just Icons.edit
+                                NotAsked ->
+                                    StyledElement.hoverButton
+                                        [ Border.color Colors.errorRed
+                                        , Font.color Colors.errorRed
+                                        , Colors.fillWhiteOnHover
+                                        , Colors.fillErrorRed
+                                        , Border.width 2
+                                        , centerX
+                                        , mouseOver
+                                            [ Background.color Colors.errorRed
+                                            , Font.color Colors.white
+                                            ]
+                                        , Style.animatesNone
+                                        ]
+                                        { icon = Just Icons.trash
+                                        , onPress = Just SaveChanges
+                                        , title = "Yes, delete"
+                                        }
 
-                                -- , onPress = Just (SetSaveToRoute (ExistingRoute Nothing))
-                                , onPress = Nothing
-                                , title = "Update Route"
-                                }
+                                Success _ ->
+                                    none
+
+                                Failure _ ->
+                                    StyledElement.hoverButton
+                                        [ Border.color Colors.errorRed
+                                        , Font.color Colors.errorRed
+                                        , centerX
+                                        , Colors.fillWhiteOnHover
+                                        , Colors.fillErrorRed
+                                        , Border.width 2
+                                        , mouseOver
+                                            [ Background.color Colors.errorRed
+                                            , Font.color Colors.white
+                                            ]
+                                        , Style.animatesNone
+                                        ]
+                                        { icon = Just Icons.refresh
+                                        , onPress = Just SaveChanges
+                                        , title = "Try again"
+                                        }
+                            , if RemoteData.isFailure model.deleteRequest then
+                                paragraph (Style.captionStyle ++ [ Font.center, Font.color Colors.errorRed ]) [ text "Something went wrong" ]
+
+                              else
+                                none
                             ]
                         )
                     ]
@@ -530,6 +583,17 @@ fetchFuelHistory : Session -> Int -> Cmd Msg
 fetchFuelHistory session bus_id =
     Api.get session (Endpoint.fuelReports bus_id) (decoder session)
         |> Cmd.map RecordsResponse
+
+
+saveDeletes : Session -> Int -> List Int -> Cmd Msg
+saveDeletes session busID deletedReports =
+    let
+        params =
+            Encode.list Encode.int deletedReports
+    in
+    Api.deleteItems session (Endpoint.fuelReports busID) params (Json.Decode.succeed ())
+        -- Api.delete session (Endpoint.fuelReports busID) (Json.Decode.succeed ())
+        |> Cmd.map SaveChangesResponse
 
 
 decoder : Session -> Json.Decode.Decoder ( Data, Cmd Msg )
@@ -717,6 +781,15 @@ roundString100 =
             |> Maybe.withDefault (numberString ++ ".00")
 
 
+hasData model =
+    case model.data of
+        Success data ->
+            data.groupedReports /= []
+
+        _ ->
+            False
+
+
 tabBarItems : Model -> (Msg -> msg) -> List (TabBarItem msg)
 tabBarItems model mapper =
     if model.showOverlay then
@@ -724,11 +797,6 @@ tabBarItems model mapper =
             { title = "Cancel"
             , icon = Icons.cancel
             , onPress = HideConfirmDeleteDialog |> mapper
-            }
-        , TabBar.Button
-            { title = "Save"
-            , icon = Icons.save
-            , onPress = ShowConfirmDeleteDialog |> mapper
             }
         ]
 
@@ -738,22 +806,28 @@ tabBarItems model mapper =
             , icon = Icons.cancel
             , onPress = EditFuelReports False |> mapper
             }
-        , TabBar.Button
-            { title = "Save"
-            , icon = Icons.save
+        , TabBar.ErrorButton
+            { title = "Delete"
+            , icon = Icons.trash
             , onPress = ShowConfirmDeleteDialog |> mapper
             }
         ]
 
     else
-        [ TabBar.Button
-            { title = "Edit Fuel Records"
-            , icon = Icons.edit
-            , onPress = EditFuelReports True |> mapper
-            }
-        , TabBar.Button
-            { title = "Add Fuel record"
-            , icon = Icons.add
-            , onPress = CreateFuelReport |> mapper
-            }
-        ]
+        (if hasData model then
+            [ TabBar.Button
+                { title = "Delete Fuel Records"
+                , icon = Icons.trash
+                , onPress = EditFuelReports True |> mapper
+                }
+            ]
+
+         else
+            []
+        )
+            ++ [ TabBar.Button
+                    { title = "Add Fuel record"
+                    , icon = Icons.add
+                    , onPress = CreateFuelReport |> mapper
+                    }
+               ]

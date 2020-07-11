@@ -163,7 +163,12 @@ function renderChart({ x, y, statistics }: { x: number[]; y: { consumptionOnDate
                 // }
             }
 
-            var myChart = new Charts(document.querySelector("#chart"), options)
+            const domEl = document.querySelector("#chart")
+            if (!domEl) {
+                return
+            }
+
+            var myChart = new Charts(domEl, options)
 
             myChart.render()
 
