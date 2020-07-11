@@ -66,8 +66,10 @@ def predict(name, time):
         # find the model for the tile
         model = load(open(model_name(name), 'rb'))
     except:
-        # if no model is found, assume a speed of 16km/h (500m/8min)
-        return 60 * 8
+        # if no model is found, assume a speed of 10km/h 
+        # 10km/hr ≅ 2.78m/s
+        # we cover 250m in 90s
+        return 90
 
     try:
         # It may be an average
@@ -83,9 +85,3 @@ def predict(name, time):
         prediction = sc_y.inverse_transform(scaled_prediction)
         return float(prediction[0])
 
-
-# def predict_print(name, time):
-#     print(predict(name, time))
-
-# def predict_learn(name, data):
-#     print(learn(name, data))
