@@ -6,17 +6,15 @@ defmodule UchukuziInterfaceWeb.TrackingController do
 
   action_fallback(UchukuziInterfaceWeb.FallbackController)
 
-  # Reports should come in the most recent first order
   def create_report(conn, %{"_json" => reports_json, "device_id" => imei}) do
     with {:ok, device} <- School.device_with_imei(imei),
          bus_id when not is_nil(bus_id) <- device.bus_id,
          bus <- Repo.get_by(Bus, id: bus_id) do
+          
       reports =
         for report <- reports_json do
-          # Uchukuzi.DiskDB.createTable("reports")
           with {:ok, location} <-
                  Location.new(report["lng"], report["lat"]),
-               #  {:ok, time} <- DateTimeParser.parse_datetime(report["time"], assume_utc: true) do
                {:ok, time} <- DateTimeParser.parse_datetime(report["time"], assume_utc: true) do
             Report.new(time, location)
           end

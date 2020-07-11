@@ -108,19 +108,14 @@ defmodule Uchukuzi.World.ETA do
   end
 
   def adjust_by_index(hour_value, x) do
-    # Affine
-    # a = 1.4066
-    # b = -0.5105
+    hour_value - error(x) / 60
+  end
 
-    # y = a * x + b
-
-    # Polynomial
+  def error(x) do
     a0 = 0.1166
     a1 = 1.5381
     a2 = -0.0066
     a3 = 5.8506e-5
-    y = a0 + a1 * x + a2 * :math.pow(x, 2) + a3 * :math.pow(x, 3)
-
-    hour_value - y / 60
+    a0 + a1 * x + a2 * :math.pow(x, 2) + a3 * :math.pow(x, 3)
   end
 end

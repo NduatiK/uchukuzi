@@ -11,47 +11,38 @@ defmodule Uchukuzi.Common.Geofence do
 
   def school_changeset(schema \\ %__MODULE__{}, %{radius: _radius, center: _center} = params) do
     params = Map.put(params, :type, "school")
+
     schema
     |> cast(params, [:type, :radius])
     |> validate_required([:type, :radius])
     |> cast_embed(:center, with: &Location.changeset/2)
   end
 
-  # defp changeset(schema, %{perimeter: _perimeter} = params, stay_inside \\ true) do
-  #   params =
-  #     params
-  #     |> Map.put(:type, if stay_inside do "stay_inside" else "never_enter" end)
+  @spec contains_point?(Uchukuzi.Common.Geofence.t(), Uchukuzi.Common.Location.t()) :: boolean
+  def contains_point?(%Geofence{type: "school"} = geofence, %Location{} = location) do
+    # The school radius is extended to capture arrival points as early as possible
+    Location.distance_between(geofence.center, location) <= geofence.radius + 10
+  end
 
-  #     schema
-  #     |> cast(params, [:type])
-  #     |> validate_required([:type])
-  #     |> cast_embed(:perimeter, with: &Location.changeset/2)
-  #   end
+  def contains_point?(%Geofence{} = geofence, %Location{} = location) do
+    perimeter =
+      geofence.perimeter
+      |> Enum.map(&Location.to_coord/1)
+      |> to_polygon()
 
-    @spec contains_point?(Uchukuzi.Common.Geofence.t(), Uchukuzi.Common.Location.t()) :: boolean
-    def contains_point?(%Geofence{type: "school"} = geofence, %Location{} = location) do
-      # The school radius is extended to capture arrival points as early as possible
-      Location.distance_between(geofence.center, location) <= (geofence.radius + 10)
-    end
+    location =
+      location
+      |> to_geo_point
 
-    def contains_point?(%Geofence{} = geofence, %Location{} = location) do
-      perimeter =
-        geofence.perimeter
-        |> Enum.map(&Location.to_coord/1)
-        |> to_polygon()
+    location_env = location |> Envelope.from_geo()
 
-        location = location
-        |> to_geo_point
+    perimeter_env = perimeter |> Envelope.from_geo()
 
-        location_env =
-          location |> Envelope.from_geo()
+    Envelope.intersects?(perimeter_env, location_env) and Topo.intersects?(perimeter, location)
+  end
 
-          perimeter_env =
-            perimeter |> Envelope.from_geo()
+  defp to_polygon(points), do: %Geo.Polygon{coordinates: [points]}
 
-            Envelope.intersects?(perimeter_env , location_env) and Topo.intersects?(perimeter, location)
-          end
-
-          defp to_polygon(points), do: %Geo.Polygon{coordinates: [points]}
-          defp to_geo_point(%Location{} = location), do: %Geo.Point{coordinates: {location.lng, location.lat}}
-        end
+  defp to_geo_point(%Location{} = location),
+    do: %Geo.Point{coordinates: {location.lng, location.lat}}
+end
