@@ -48,8 +48,10 @@ defmodule UchukuziInterface.MixProject do
       {:eqrcode, "~> 0.1.7"},
 
       # {:uchukuzi, path: "../uchukuzi"}
-      {:uchukuzi, in_umbrella: true}
+      {:uchukuzi, in_umbrella: true},
 
+      # ----- TESTS --------
+      {:propcheck, "~> 1.1", only: [:test, :dev]}
     ]
   end
 end
