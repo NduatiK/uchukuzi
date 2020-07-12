@@ -253,6 +253,8 @@ toNetworkError =
 
     toMsg [ Unauthorized ] -- Api.logout
 
+    toMsg [ BadRequest _ ] -- Cmd.none
+
 -}
 toMsg : Http.Error -> Cmd msg
 toMsg =

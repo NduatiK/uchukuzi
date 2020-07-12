@@ -363,7 +363,7 @@ headerHeight =
 viewHeading : BusData -> Element msg
 viewHeading busData =
     column [ width fill, height (px headerHeight) ]
-        [ paragraph (Font.color Colors.darkText :: Style.headerStyle ++ [ Font.semiBold, paddingXY 0 12 ])
+        [ paragraph (Style.headerStyle ++ [ Font.semiBold, paddingXY 0 12, centerY, Font.color Colors.darkText ])
             [ el [] (text (pageName busData.currentPage))
             , text " for "
             , el

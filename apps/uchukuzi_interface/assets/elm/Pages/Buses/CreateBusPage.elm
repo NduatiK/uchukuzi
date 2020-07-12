@@ -48,8 +48,6 @@ type alias Model =
     , busID : Maybe Int
     , form : Form
     , routeDropdownState : Dropdown.State SimpleRoute
-    , fuelDropdownState : Dropdown.State FuelType
-    , consumptionDropdownState : Dropdown.State ConsumptionType
     , requestState : WebData Int
     , routeRequestState : WebData (List SimpleRoute)
     , editRequestState : WebData Form
@@ -57,12 +55,10 @@ type alias Model =
 
 
 type alias Form =
-    { vehicleClass : VehicleClass
+    { vehicleType : VehicleType
     , numberPlate : String
     , seatsAvailable : Int
     , routeId : Maybe Int
-    , consumptionType : ConsumptionType
-    , consumptionAmount : FloatInput
     , problems : List (Errors.Errors Problem)
     }
 
@@ -77,46 +73,32 @@ type alias ValidForm =
     , numberPlate : String
     , seatsAvailable : Int
     , routeId : Maybe Int
-    , consumptionAmount : Float
-    , fuelType : String
     }
-
-
-type ConsumptionType
-    = Custom
-    | Default
 
 
 type Field
     = VehicleType VehicleType
-    | FuelType FuelType
     | NumberPlate String
     | SeatsAvailable Int
     | Route (Maybe Int)
-    | FuelConsumptionType ConsumptionType
-    | FuelConsumptionAmount FloatInput
 
 
 emptyForm : Maybe Int -> Session -> Model
 emptyForm busID session =
     let
         defaultVehicle =
-            VehicleClass SchoolBus Diesel
+            SchoolBus
     in
     { session = session
     , busID = busID
     , form =
-        { vehicleClass = defaultVehicle
+        { vehicleType = defaultVehicle
         , numberPlate = ""
         , seatsAvailable = defaultSeats defaultVehicle
         , routeId = Nothing
-        , consumptionType = Default
-        , consumptionAmount = FloatInput.fromFloat (defaultConsumption defaultVehicle)
         , problems = []
         }
     , routeDropdownState = Dropdown.init "routeDropdown"
-    , fuelDropdownState = Dropdown.init "fuelDropdown"
-    , consumptionDropdownState = Dropdown.init "consumptionDropdown"
     , requestState = NotAsked
     , editRequestState = NotAsked
     , routeRequestState = Loading
@@ -129,8 +111,6 @@ init session =
     , Cmd.batch
         [ Ports.initializeMaps
         , fetchRoutes Nothing session
-        , Task.succeed (FuelDropdownMsg (Dropdown.selectOption Diesel)) |> Task.perform identity
-        , Task.succeed (ConsumptionDropdownMsg (Dropdown.selectOption Default)) |> Task.perform identity
         ]
     )
 
@@ -146,8 +126,6 @@ initEdit busID session =
         [ Ports.initializeMaps
         , fetchBus busID session
         , fetchRoutes (Just busID) session
-        , Task.succeed (FuelDropdownMsg (Dropdown.selectOption Diesel)) |> Task.perform identity
-        , Task.succeed (ConsumptionDropdownMsg (Dropdown.selectOption Default)) |> Task.perform identity
         ]
     )
 
@@ -163,8 +141,6 @@ type Msg
     | ReceivedRouteResponse (WebData (List SimpleRoute))
     | ReceivedEditResponse (WebData ( Form, Cmd Msg ))
     | RouteDropdownMsg (Dropdown.Msg SimpleRoute)
-    | FuelDropdownMsg (Dropdown.Msg FuelType)
-    | ConsumptionDropdownMsg (Dropdown.Msg ConsumptionType)
     | ReturnToBusList
     | NoOp
 
@@ -190,26 +166,6 @@ update msg model =
                     Dropdown.update config subMsg model.routeDropdownState options
             in
             ( { model | routeDropdownState = state }, cmd )
-
-        FuelDropdownMsg subMsg ->
-            let
-                ( _, config, options ) =
-                    fuelDropDown model
-
-                ( state, cmd ) =
-                    Dropdown.update config subMsg model.fuelDropdownState options
-            in
-            ( { model | fuelDropdownState = state }, cmd )
-
-        ConsumptionDropdownMsg subMsg ->
-            let
-                ( _, config, options ) =
-                    consumptionDropDown model
-
-                ( state, cmd ) =
-                    Dropdown.update config subMsg model.consumptionDropdownState options
-            in
-            ( { model | consumptionDropdownState = state }, cmd )
 
         SubmitButtonMsg ->
             let
@@ -308,27 +264,11 @@ updateField field model =
     case field of
         VehicleType vehicleType ->
             let
-                vehicleClass =
-                    VehicleClass vehicleType (vehicleClassToFuelType form.vehicleClass)
-
                 updated_form =
                     { form
-                        | vehicleClass = vehicleClass
-                        , seatsAvailable = defaultSeats vehicleClass
-                        , consumptionAmount =
-                            if form.consumptionType == Default then
-                                FloatInput.fromFloat (defaultConsumption vehicleClass)
-
-                            else
-                                form.consumptionAmount
+                        | vehicleType = vehicleType
+                        , seatsAvailable = defaultSeats vehicleType
                     }
-            in
-            ( { model | form = updated_form }, Cmd.none )
-
-        FuelType fuelType ->
-            let
-                updated_form =
-                    { form | vehicleClass = VehicleClass (vehicleClassToType form.vehicleClass) fuelType }
             in
             ( { model | form = updated_form }, Cmd.none )
 
@@ -350,28 +290,6 @@ updateField field model =
             let
                 updated_form =
                     { form | routeId = route }
-            in
-            ( { model | form = updated_form }, Cmd.none )
-
-        FuelConsumptionType consumptionType ->
-            let
-                updated_form =
-                    { form
-                        | consumptionType = consumptionType
-                        , consumptionAmount =
-                            if consumptionType == Default then
-                                FloatInput.fromFloat (defaultConsumption form.vehicleClass)
-
-                            else
-                                form.consumptionAmount
-                    }
-            in
-            ( { model | form = updated_form }, Cmd.none )
-
-        FuelConsumptionAmount consumptionAmount ->
-            let
-                updated_form =
-                    { form | consumptionAmount = consumptionAmount }
             in
             ( { model | form = updated_form }, Cmd.none )
 
@@ -420,25 +338,18 @@ viewForm model =
         (\routes ->
             column
                 [ spacing 50, paddingEach { edges | bottom = 100 }, centerX ]
-                [ viewTypePicker form.vehicleClass
+                [ viewTypePicker form.vehicleType
                 , viewDivider
                 , wrappedRow [ spaceEvenly, width fill ]
                     [ column
                         [ spacing 32, width (fill |> minimum 300 |> maximum 300), alignTop ]
                         [ viewNumberPlateInput form.numberPlate form.problems
                         , viewAvailableSeatingInput form.seatsAvailable form.problems
-                        , Dropdown.viewFromModel model routeDropDown
                         ]
                     , viewVerticalDivider
                     , column
                         [ spacing 32, width (fill |> minimum 300 |> maximum 300), alignTop ]
-                        [ viewFuelTypeDropDown model
-                        , viewConsumptionDropDown model
-                        , if form.consumptionType == Custom then
-                            viewConsumptionInput form.consumptionAmount
-
-                          else
-                            none
+                        [ Dropdown.viewFromModel model routeDropDown
                         , viewButton model.requestState
                         ]
                     ]
@@ -446,21 +357,18 @@ viewForm model =
         )
 
 
-viewTypePicker : VehicleClass -> Element Msg
-viewTypePicker vehicleClass =
+viewTypePicker : VehicleType -> Element Msg
+viewTypePicker vehicleType =
     wrappedRow [ spacing 32 ]
-        [ viewVehicle SchoolBus vehicleClass
-        , viewVehicle Shuttle vehicleClass
-        , viewVehicle Van vehicleClass
+        [ viewVehicle SchoolBus vehicleType
+        , viewVehicle Shuttle vehicleType
+        , viewVehicle Van vehicleType
         ]
 
 
-viewVehicle : VehicleType -> VehicleClass -> Element Msg
-viewVehicle vehicleType currentClass =
+viewVehicle : VehicleType -> VehicleType -> Element Msg
+viewVehicle vehicleType currentType =
     let
-        currentType =
-            vehicleClassToType currentClass
-
         selected =
             currentType == vehicleType
 
@@ -582,122 +490,6 @@ viewButton requestState =
     none
 
 
-consumptionDropDown : Model -> ( Element Msg, Dropdown.Config ConsumptionType Msg, List ConsumptionType )
-consumptionDropDown model =
-    let
-        vehicleClass =
-            model.form.vehicleClass
-
-        justConsumptionType x =
-            Maybe.withDefault Default x
-    in
-    StyledElement.dropDown
-        [ width
-            (fill
-                |> maximum 300
-            )
-        , alignTop
-        ]
-        { ariaLabel = "Select the consumption rate of the vehicle in kilometers per litre"
-        , caption = Nothing
-        , dropDownMsg = ConsumptionDropdownMsg
-        , dropdownState = model.consumptionDropdownState
-        , errorCaption = Nothing
-        , icon = Nothing
-        , onSelect = justConsumptionType >> FuelConsumptionType >> Changed
-        , options = [ Default, Custom ]
-        , title = "Fuel Consumption per Kilometer"
-        , prompt = Nothing
-        , toString =
-            \x ->
-                case x of
-                    Custom ->
-                        "Custom Mileage"
-
-                    Default ->
-                        "Default - " ++ String.fromFloat (defaultConsumption vehicleClass) ++ " Km / Litre"
-        , isLoading = False
-        }
-
-
-viewConsumptionDropDown : Model -> Element Msg
-viewConsumptionDropDown model =
-    case consumptionDropDown model of
-        ( dropDown, _, _ ) ->
-            dropDown
-
-
-viewConsumptionInput : FloatInput -> Element Msg
-viewConsumptionInput consumptionAmount =
-    FloatInput.view
-        [ width
-            (fill
-                |> maximum 300
-            )
-        , alignTop
-        ]
-        { ariaLabel = "What is the vehicle's mileage?"
-        , caption = Nothing
-        , errorCaption = Nothing
-        , icon = Nothing
-        , onChange = FuelConsumptionAmount >> Changed
-        , placeholder = Nothing
-        , title = "Custom Mileage (Km / Litre)"
-        , value = consumptionAmount
-        , minimum = Just 0
-        , maximum = Just 30
-        }
-
-
-fuelDropDown : Model -> ( Element Msg, Dropdown.Config FuelType Msg, List FuelType )
-fuelDropDown model =
-    let
-        problems =
-            model.form.problems
-
-        errorMapper =
-            Errors.captionFor model.form.problems
-
-        justFuelType x =
-            Maybe.withDefault (vehicleClassToFuelType model.form.vehicleClass) x
-    in
-    StyledElement.dropDown
-        [ width
-            (fill
-                |> maximum 300
-            )
-        , alignTop
-        ]
-        { ariaLabel = "Select fuel type"
-        , caption = Nothing
-        , prompt = Nothing
-        , dropDownMsg = FuelDropdownMsg
-        , dropdownState = model.fuelDropdownState
-        , errorCaption =
-            errorMapper "fuel_type" []
-
-        -- , errorCaption = Nothing
-        , icon = Just Icons.fuel
-        , onSelect = justFuelType >> FuelType >> Changed
-        , options = [ Diesel, Gasoline ]
-        , title = "Fuel Type"
-        , toString =
-            \x ->
-                case x of
-                    Diesel ->
-                        "Diesel"
-
-                    Gasoline ->
-                        "Gasoline"
-        , isLoading = False
-        }
-
-
-viewFuelTypeDropDown : Model -> Element Msg
-viewFuelTypeDropDown model =
-    Dropdown.viewFromModel model fuelDropDown
-
-
 routeDropDown : Model -> ( Element Msg, Dropdown.Config SimpleRoute Msg, List SimpleRoute )
 routeDropDown model =
     let
@@ -785,16 +577,8 @@ validateForm form =
                 ]
 
         vehicleType =
-            vehicleClassToType form.vehicleClass
+            form.vehicleType
                 |> Models.Bus.vehicleTypeToString
-
-        fuelType =
-            case vehicleClassToFuelType form.vehicleClass of
-                Diesel ->
-                    "diesel"
-
-                Gasoline ->
-                    "gasoline"
     in
     case problems of
         [] ->
@@ -803,8 +587,6 @@ validateForm form =
                 , numberPlate = form.numberPlate
                 , seatsAvailable = form.seatsAvailable
                 , routeId = form.routeId
-                , consumptionAmount = FloatInput.toFloat form.consumptionAmount
-                , fuelType = fuelType
                 }
 
         _ ->
@@ -819,8 +601,6 @@ submit model session form =
                 ([ ( "number_plate", Encode.string form.numberPlate )
                  , ( "seats_available", Encode.int form.seatsAvailable )
                  , ( "vehicle_type", Encode.string form.vehicleType )
-                 , ( "stated_milage", Encode.float form.consumptionAmount )
-                 , ( "fuel_type", Encode.string form.fuelType )
                  ]
                     ++ (form.routeId
                             |> Maybe.map (\routeId -> [ ( "route_id", Encode.int routeId ) ])
@@ -857,12 +637,10 @@ fetchBus busID session =
 
 busToForm : Bus -> ( Form, Cmd Msg )
 busToForm bus =
-    ( { vehicleClass = bus.vehicleClass
+    ( { vehicleType = bus.vehicleType
       , numberPlate = bus.numberPlate
       , seatsAvailable = bus.seatsAvailable
       , routeId = Nothing
-      , consumptionType = Custom
-      , consumptionAmount = FloatInput.fromFloat bus.statedMilage
       , problems = []
       }
     , case bus.route of

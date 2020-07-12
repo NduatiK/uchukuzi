@@ -5,7 +5,7 @@ defmodule Uchukuzi.Roles.Manager do
     field(:name, :string)
     field(:email, :string)
 
-    field(:email_verified, :boolean)
+    field(:email_verified, :boolean, default: false)
 
     field(:password, :string, virtual: true)
     field(:password_hash, :string)

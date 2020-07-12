@@ -30,6 +30,7 @@ import Time
 type alias Bus =
     { id : Int
     , numberPlate : String
+    , occupiedSeats : Int
     , seatsAvailable : Int
     , vehicleType : VehicleType
     , route : Maybe SimpleRoute
@@ -184,37 +185,31 @@ titleForPart part =
 busDecoderWithCallback : (Bus -> a) -> Decoder a
 busDecoderWithCallback callback =
     let
-        busDataDecoder id number_plate seats_available vehicle_type route device repairs update =
+        busDataDecoder id numberPlate occupiedSeats seatsAvailable vehicleType route device repairs update =
             let
-                bus =
-                    let
-                        lastSeen =
-                            update
-                                |> Maybe.map
-                                    (\update_ ->
-                                        LocationUpdate id update_.location update_.speed update_.bearing
-                                    )
-
-                        vehicleType =
-                            case vehicle_type of
-                                "van" ->
-                                    Van
-
-                                "shuttle" ->
-                                    Shuttle
-
-                                _ ->
-                                    SchoolBus
-                    in
-                    Bus id number_plate seats_available vehicleType route device repairs lastSeen
+                lastSeen =
+                    Maybe.map (\x -> { x | bus = id }) update
             in
-            Decode.succeed (callback bus)
+            Decode.succeed
+                (callback
+                    { id = id
+                    , numberPlate = numberPlate
+                    , occupiedSeats = occupiedSeats
+                    , seatsAvailable = seatsAvailable
+                    , vehicleType = vehicleType
+                    , route = route
+                    , device = device
+                    , repairs = repairs
+                    , lastSeen = lastSeen
+                    }
+                )
     in
     Decode.succeed busDataDecoder
         |> required "id" int
         |> required "number_plate" string
+        |> required "occupied_seats" int
         |> required "seats_available" int
-        |> required "vehicle_type" string
+        |> required "vehicle_type" vehicleTypeDecoder
         |> required "route" (nullable simpleRouteDecoder)
         |> required "device" (nullable string)
         |> required "performed_repairs" (list repairDecoder)
@@ -268,6 +263,23 @@ locationUpdateDecoder =
         |> required "location" locationDecoder
         |> required "speed" float
         |> required "bearing" float
+
+
+vehicleTypeDecoder : Decoder VehicleType
+vehicleTypeDecoder =
+    string
+        |> Decode.map
+            (\x ->
+                case x of
+                    "van" ->
+                        Van
+
+                    "shuttle" ->
+                        Shuttle
+
+                    _ ->
+                        SchoolBus
+            )
 
 
 vehicleTypeToIcon : VehicleType -> Icons.IconBuilder msg

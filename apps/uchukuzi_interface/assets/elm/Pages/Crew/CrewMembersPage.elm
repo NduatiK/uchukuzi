@@ -375,7 +375,7 @@ viewBus editedData edits inEditingMode bus =
                             text "Route not assigned"
                     )
                 ]
-            , case Models.Bus.vehicleClassToType bus.vehicleClass of
+            , case bus.vehicleType of
                 Models.Bus.Shuttle ->
                     Icons.shuttle [ scale 0.8 ]
 

@@ -18,7 +18,7 @@ import TypedSvg exposing (defs, g, linearGradient, stop, svg)
 import TypedSvg.Attributes exposing (class, offset, stopColor, stopOpacity, stroke, viewBox, x1, x2, y1, y2)
 import TypedSvg.Attributes.InPx exposing (strokeWidth)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (Align(..), AlignmentBaseline(..), AnchorAlignment(..), CoordinateSystem(..), Fill(..), Length(..), Opacity(..), Transform(..))
+import TypedSvg.Types exposing (Align(..), AlignmentBaseline(..), AnchorAlignment(..), CoordinateSystem(..), Length(..), Opacity(..), Paint(..), Transform(..))
 import Utils.DateFormatter exposing (timeFormatter)
 
 
@@ -243,11 +243,11 @@ viewGraph reports viewWidth =
                     ]
                     [ Path.element (line graphValues xScale yScale)
                         [ stroke <|
-                            Colors.toSVGColor Colors.darkGreen
+                            Paint <|
+                                Colors.toSVGColor Colors.darkGreen
                         , strokeWidth 2
-                        , TypedSvg.Attributes.fill <|
-                            TypedSvg.Types.Fill
-                                (Colors.toSVGColor Colors.darkGreen)
+                        , TypedSvg.Attributes.fill <| Reference "linGradientDuoVert"
+                        , TypedSvg.Attributes.strokeLinejoin TypedSvg.Types.StrokeLinejoinRound
                         ]
                     ]
 

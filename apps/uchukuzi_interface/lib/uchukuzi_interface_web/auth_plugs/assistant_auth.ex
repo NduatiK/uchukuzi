@@ -1,6 +1,6 @@
 defmodule UchukuziInterfaceWeb.AuthPlugs.AssistantAuth do
   import Plug.Conn
-
+  alias Uchukuzi.Roles.CrewMember
   def init(opts), do: opts
 
   def call(conn, _opts) do
@@ -41,8 +41,8 @@ defmodule UchukuziInterfaceWeb.AuthPlugs.AssistantAuth do
   @salt "SbciCndS/RFrK4SzsbQai3oOU8dAI9G0eq0fSCz1hvblwJeS+6lJl1wLJ4F/Yirh"
   @day 86400
 
-  def sign(user_id),
-    do: Phoenix.Token.sign(UchukuziInterfaceWeb.Endpoint, @salt, user_id)
+  def sign(%CrewMember{} = assistant),
+    do: Phoenix.Token.sign(UchukuziInterfaceWeb.Endpoint, @salt, assistant.id)
 
   def verify(token, max_age \\ 21 * @day),
     do: Phoenix.Token.verify(UchukuziInterfaceWeb.Endpoint, @salt, token, max_age: max_age)

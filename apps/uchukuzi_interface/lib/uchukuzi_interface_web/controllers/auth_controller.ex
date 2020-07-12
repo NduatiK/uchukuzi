@@ -26,7 +26,7 @@ defmodule UchukuziInterfaceWeb.AuthController do
 
       conn
       |> put_view(UchukuziInterfaceWeb.RolesView)
-      |> render("manager.json", manager: manager, token: ManagerAuth.sign(manager.id))
+      |> render("manager.json", manager: manager, token: ManagerAuth.sign(manager))
     else
       false ->
         conn
@@ -53,7 +53,7 @@ defmodule UchukuziInterfaceWeb.AuthController do
 
       conn
       |> put_view(UchukuziInterfaceWeb.RolesView)
-      |> render("manager.json", manager: manager, token: ManagerAuth.sign(manager.id))
+      |> render("manager.json", manager: manager, token: ManagerAuth.sign(manager))
     else
       {:error, :expired} ->
         conn
@@ -71,7 +71,7 @@ defmodule UchukuziInterfaceWeb.AuthController do
     with assistant when not is_nil(assistant) <- Roles.get_assistant_by(email: email) do
       send_token_email_to(
         Repo.preload(assistant, :school),
-        AssistantAuth.sign(assistant.id)
+        AssistantAuth.sign(assistant)
       )
 
       conn
@@ -91,7 +91,7 @@ defmodule UchukuziInterfaceWeb.AuthController do
 
       conn
       |> put_view(UchukuziInterfaceWeb.RolesView)
-      |> render("assistant.json", assistant: assistant, token: AssistantAuth.sign(assistant.id))
+      |> render("assistant.json", assistant: assistant, token: AssistantAuth.sign(assistant))
     else
       {:error, _} ->
         conn

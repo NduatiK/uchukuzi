@@ -1,5 +1,6 @@
 defmodule UchukuziInterfaceWeb.AuthPlugs.ManagerAuth do
   import Plug.Conn
+  alias Uchukuzi.Roles.Manager
 
   def init(opts), do: opts
 
@@ -27,7 +28,7 @@ defmodule UchukuziInterfaceWeb.AuthPlugs.ManagerAuth do
     |> assign(:manager, user)
   end
 
-  def authenticate_manager(conn, _opts) do
+  def authenticate_manager(conn, _opts \\ []) do
     if conn.assigns.manager do
       conn
     else
@@ -41,8 +42,8 @@ defmodule UchukuziInterfaceWeb.AuthPlugs.ManagerAuth do
   @salt "6t04lfTC2EeOIcaWQ+WlJbzhnK+JxehvSCGyDcvBXsKCoBjXncdOH2BI1/u7t+L2"
   @day (3600 * 24)
 
-  def sign(user_id),
-    do: Phoenix.Token.sign(UchukuziInterfaceWeb.Endpoint, @salt, user_id)
+  def sign(%Manager{} = manager),
+    do: Phoenix.Token.sign(UchukuziInterfaceWeb.Endpoint, @salt, manager.id)
 
   def verify(token, max_age \\ 14 * @day),
     do: Phoenix.Token.verify(UchukuziInterfaceWeb.Endpoint, @salt, token, max_age: max_age)

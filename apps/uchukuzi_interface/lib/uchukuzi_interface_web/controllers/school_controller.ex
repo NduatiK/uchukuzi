@@ -43,7 +43,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
            School.create_school(school, manager_params) do
       manager = Repo.preload(manager, :school)
 
-      token = ManagerAuth.sign(manager.id)
+      token = ManagerAuth.sign(manager)
 
       Email.send_token_email_to(manager, token)
       |> Mailer.deliver_now()
@@ -244,14 +244,26 @@ defmodule UchukuziInterfaceWeb.SchoolController do
 
   def get_bus(conn, %{"bus_id" => bus_id}, school_id) do
     with {:ok, bus} <- School.bus_for(school_id, bus_id) do
-      bus = Repo.preload(bus, :device)
+      bus = Repo.preload(bus, [:device, :route])
 
       last_seen =
         bus
         |> Uchukuzi.Tracking.status_of()
 
+      occupied_seats =
+        case bus.route do
+          nil ->
+            0
+
+          route ->
+            route
+            |> Repo.preload(:students)
+            |> Map.get(:students)
+            |> Enum.count()
+        end
+
       conn
-      |> render("bus.json", bus: bus, last_seen: last_seen)
+      |> render("bus.json", bus: bus, last_seen: last_seen, occupied_seats: occupied_seats)
     end
   end
 
@@ -297,7 +309,7 @@ defmodule UchukuziInterfaceWeb.SchoolController do
   def delete_fuel_report(conn, %{"bus_id" => bus_id, "_json" => reports}, school_id) do
     with {:ok, bus} <- School.bus_for(school_id, bus_id, [:fuel_reports]),
          {:ok, reports} <- valid_report_ids(reports, bus.fuel_reports),
-         {_no_of_deletions, nil} <- School.delete_fuel_reports(school_id, bus_id, reports) |> IO.inspect() do
+         {_no_of_deletions, nil} <- School.delete_fuel_reports(school_id, bus_id, reports) do
       conn
       |> resp(200, "{}")
     end

@@ -23,6 +23,9 @@
 .disableIconOpacitySettingsActive:hover:active .ic {
   opacity: 1;
 }
+.disableIconOpacitySettingsHover:hover .ic {
+  opacity: 1;
+}
 
 .fillPurple img {
   filter: var(--purple);

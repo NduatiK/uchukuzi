@@ -17,8 +17,8 @@ import Session
 import Style exposing (edges)
 import StyledElement
 import TypedSvg exposing (svg)
-import TypedSvg.Attributes exposing (stroke, viewBox)
-import TypedSvg.Types exposing (Transform(..))
+import TypedSvg.Attributes as SvgAttributes exposing (stroke, viewBox)
+import TypedSvg.Types exposing (Paint(..), Transform(..))
 import Views.NotificationView as NotificationView
 
 
@@ -385,27 +385,26 @@ dropdownTriangle =
         (html <|
             svg [ viewBox 0 0 24 24 ]
                 [ TypedSvg.polygon
-                    [ TypedSvg.Attributes.fill <|
-                        TypedSvg.Types.Fill
-                            (Colors.toSVGColor Colors.white)
-                    , TypedSvg.Attributes.points
+                    [ SvgAttributes.fill <|
+                        Paint <|
+                            Colors.toSVGColor Colors.white
+                    , SvgAttributes.points
                         path
                     ]
                     []
                 , TypedSvg.polyline
-                    [ TypedSvg.Attributes.fill <|
-                        TypedSvg.Types.Fill
-                            (Colors.white
+                    [ SvgAttributes.fill <|
+                        Paint <|
+                            Colors.toSVGColor Colors.white
+                    , stroke <|
+                        Paint <|
+                            (Colors.black
                                 |> Colors.toSVGColor
+                                |> Colors.svgColorwithAlpha 0.3
                             )
-                    , TypedSvg.Attributes.stroke <|
-                        (Colors.black
-                            |> Colors.toSVGColor
-                            |> Colors.svgColorwithAlpha 0.3
-                        )
-                    , TypedSvg.Attributes.points
+                    , SvgAttributes.points
                         path
-                    , TypedSvg.Attributes.strokeLinejoin TypedSvg.Types.StrokeLinejoinRound
+                    , SvgAttributes.strokeLinejoin TypedSvg.Types.StrokeLinejoinRound
                     ]
                     []
                 ]

@@ -200,21 +200,23 @@ viewGMAP =
 viewStatisticsPage : Model -> Element Msg
 viewStatisticsPage model =
     let
-        sidebarViews =
+        liveStatistics =
             case model.bus.lastSeen of
                 Nothing ->
-                    el [] none
+                    []
 
                 Just lastSeen ->
-                    --  textStack "Distance Travelled" "2,313 km"
-                    -- , textStack "Fuel Consumed" "3,200 l"
-                    -- column [ height fill, spaceEvenly, width (px 300) ]
-                    column [ height fill, spaceEvenly, width shrink ]
-                        [ el [] none
-                        , textStack "Current Speed" (String.fromFloat lastSeen.speed ++ " km/h")
-                        , textStack "Repairs Made" (String.fromInt (List.length model.bus.repairs))
-                        , el [] none
-                        ]
+                    [ textStack "Current Speed" (String.fromFloat lastSeen.speed ++ " km/h")
+                    , textStack "Repairs Made" (String.fromInt (List.length model.bus.repairs))
+                    ]
+
+        sidebarViews =
+            column [ height fill, spaceEvenly, width (shrink |> minimum 180) ]
+                (el [] none
+                    :: textStack "Occupied Seats" (String.fromInt model.bus.occupiedSeats ++ "/" ++ String.fromInt model.bus.seatsAvailable)
+                    :: liveStatistics
+                    ++ [ el [] none ]
+                )
     in
     row [ width fill, height fill, spacing 24 ]
         [ viewGMAP

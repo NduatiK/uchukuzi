@@ -20,12 +20,18 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     |> render_many(__MODULE__, "bus.json")
   end
 
-  def render("bus.json", %{school: params}), do: render("bus.json", params)
-
-  def render("bus.json", %{bus: bus} = params) do
-    render_bus(bus, Map.get(params, :last_seen), Map.get(bus, :performed_repairs))
+  def render("bus.json", %{school: params}) do
+    render("bus.json", params)
   end
 
+  def render("bus.json", %{bus: bus} = params) do
+    render_bus(
+      bus,
+      Map.get(params, :last_seen),
+      Map.get(bus, :performed_repairs),
+      Map.get(bus, :occupied_seats)
+    )
+  end
 
   def render("route_for_assistant.json", %{
         data: %{
@@ -98,7 +104,10 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     }
   end
 
-  def render("fuel_reports.json", %{fuel_reports: fuel_reports, numberOfStudents: numberOfStudents}) do
+  def render("fuel_reports.json", %{
+        fuel_reports: fuel_reports,
+        numberOfStudents: numberOfStudents
+      }) do
     %{
       reports: fuel_reports |> render_many(__MODULE__, "fuel_report.json", as: :fuel_report),
       students: numberOfStudents
@@ -116,20 +125,19 @@ defmodule UchukuziInterfaceWeb.SchoolView do
     }
   end
 
-  def render_bus(bus, last_seen \\ nil, performed_repairs \\ nil)
+  def render_bus(bus, last_seen \\ nil, performed_repairs \\ nil, occupied_seats \\ 0)
 
-  def render_bus(nil, _, _) do
+  def render_bus(nil, _, _, _) do
     nil
   end
 
-  def render_bus(bus, last_seen, performed_repairs) do
+  def render_bus(bus, last_seen, performed_repairs, occupied_seats) do
     %{
       id: bus.id,
       number_plate: bus.number_plate,
       vehicle_type: bus.vehicle_type,
-      fuel_type: bus.fuel_type,
-      stated_milage: bus.stated_milage,
       seats_available: bus.seats_available,
+      occupied_seats: occupied_seats || 0,
       device: render_device(bus.device),
       route: render_bus_route(Map.get(bus, :route)),
       # route: bus.route,
@@ -137,6 +145,7 @@ defmodule UchukuziInterfaceWeb.SchoolView do
       performed_repairs: render_performed_repairs(performed_repairs)
     }
   end
+
   def render_bus_route(nil), do: nil
   def render_bus_route(%Ecto.Association.NotLoaded{}), do: nil
 

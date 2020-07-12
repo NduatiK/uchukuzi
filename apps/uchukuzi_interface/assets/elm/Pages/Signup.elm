@@ -518,6 +518,12 @@ viewDivider =
 validateManagerForm : ManagerDetailsForm -> Result (List ( Problem, String )) ValidManagerForm
 validateManagerForm manager =
     let
+        firstName =
+            String.trim (nameString manager.firstName)
+
+        lastName =
+            String.trim (nameString manager.lastName)
+
         managerProblems =
             List.concat
                 [ if isValidEmail (emailString manager.email) then
@@ -525,12 +531,12 @@ validateManagerForm manager =
 
                   else
                     [ ( InvalidEmail, "There's something wrong with this email" ) ]
-                , if String.isEmpty (String.trim (nameString manager.firstName)) then
+                , if String.isEmpty firstName then
                     [ ( EmptyFirstName, "Required" ) ]
 
                   else
                     []
-                , if String.isEmpty (String.trim (nameString manager.lastName)) then
+                , if String.isEmpty lastName then
                     [ ( EmptyLastName, "Required" ) ]
 
                   else
@@ -548,7 +554,7 @@ validateManagerForm manager =
     case managerProblems of
         [] ->
             Ok
-                { name = nameString manager.firstName ++ " " ++ nameString manager.lastName
+                { name = firstName ++ " " ++ lastName
                 , email = emailString manager.email
                 , password = passwordString manager.password
                 }

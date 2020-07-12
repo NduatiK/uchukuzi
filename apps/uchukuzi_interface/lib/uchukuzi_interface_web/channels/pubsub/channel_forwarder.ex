@@ -82,8 +82,7 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
         event: "approaching_" <> travel_time,
         students_onboard: students_onboard
       }
-      # |> IO.inspect()
-    )
+     )
 
     {:noreply, state}
   end

@@ -202,7 +202,7 @@ fillPurpleOnClick =
 
 fillPurpleOnHover : Attribute msg
 fillPurpleOnHover =
-    class "fillPurpleOnHover disableIconOpacitySettingsActive"
+    class "fillPurpleOnHover disableIconOpacitySettingsHover"
 
 
 class : String -> Attribute msg

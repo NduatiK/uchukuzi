@@ -2,16 +2,11 @@ defmodule Uchukuzi.School.Bus do
   use Uchukuzi.School.Model
 
   @vehicle_types ~w(van shuttle bus)
-  @fuel_types ~w(gasoline diesel)
 
   schema "buses" do
     field(:number_plate, :string)
     field(:seats_available, :integer)
     field(:vehicle_type, :string)
-
-    # Km / L
-    field(:stated_milage, :float)
-    field(:fuel_type, :string)
 
     belongs_to(:school, School)
     belongs_to(:route, Route)
@@ -30,10 +25,9 @@ defmodule Uchukuzi.School.Bus do
   def changeset(schema, params) do
     schema
     |> cast(params, __MODULE__.__schema__(:fields))
-    |> validate_required([:number_plate, :vehicle_type, :stated_milage, :fuel_type])
+    |> validate_required([:number_plate, :vehicle_type])
     |> validate_inclusion(:vehicle_type, @vehicle_types)
     |> validate_number(:seats_available, greater_than: 3, less_than: 100)
-    |> validate_inclusion(:fuel_type, @fuel_types)
     |> trim_number_plate()
     |> Validation.validate_number_plate()
     |> unique_constraint(:number_plate, name: :buses_school_id_number_plate_index)
@@ -50,6 +44,11 @@ defmodule Uchukuzi.School.Bus do
     end
   end
 
+  @doc """
+  Given a `bus` and a `date`
+  Determine the total distance and number of trips
+    made by that bus before that date
+  """
   def distance_travelled_before(bus, date) do
     date = NaiveDateTime.to_date(date)
 
@@ -61,7 +60,6 @@ defmodule Uchukuzi.School.Bus do
           select: {type(sum(t.distance_covered), :float), count(t)}
         )
       )
-
 
     case result do
       [{nil, trips}] -> {0, trips}

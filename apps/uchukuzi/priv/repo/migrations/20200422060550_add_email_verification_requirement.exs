@@ -7,7 +7,7 @@ defmodule Uchukuzi.Repo.Migrations.AddEmailVerificationRequirement do
     end
   end
 
-  def up do
+  def down do
     alter table("managers") do
       remove(:email_verified)
     end

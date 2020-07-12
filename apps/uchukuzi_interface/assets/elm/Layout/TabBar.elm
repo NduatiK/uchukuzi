@@ -55,8 +55,6 @@ viewTabItem item =
          , centerY
          , centerX
          , Style.overline
-
-         --  , Border.color Colors.transparent
          , Font.color (Colors.withAlpha (rgb255 4 30 37) 0.69)
          ]
             ++ (case item of
@@ -73,8 +71,6 @@ viewTabItem item =
                         , mouseOver
                             [ Border.color Colors.purple
                             , Font.color Colors.purple
-
-                            -- , Background.color (Colors.withAlpha Colors.backgroundPurple 0.99)
                             , moveUp 1
                             , Border.shadow { offset = ( 2, 4 ), size = 0, blur = 8, color = rgba 0 0 0 0.2 }
                             ]
@@ -82,39 +78,27 @@ viewTabItem item =
                         , Colors.fillWhiteOnClick
                         ]
 
-                    -- [ Events.onMouseUp button.onPress
-                    -- , Background.color Colors.backgroundPurple
-                    -- , mouseOver [ Border.color Colors.purple ]
-                    -- , mouseDown [ Border.color Colors.purple, Background.color Colors.white, Font.color Colors.purple ]
-                    -- , Colors.fillPurpleOnClick
-                    -- ]
-                    -- [ Events.onMouseUp button.onPress
-                    -- , mouseDown [ Background.color Colors.simpleGrey, Border.color (Colors.withAlpha (rgb255 4 30 37) 0.69) ]
-                    -- , mouseOver [ Border.color (Colors.withAlpha (rgb255 4 30 37) 0.39) ]
-                    -- ]
-                    -- [ Events.onMouseUp button.onPress
-                    -- , Background.color Colors.backgroundPurple
-                    -- , Border.color (Colors.withAlpha Colors.purple 0.6)
-                    -- , mouseOver [ Border.color Colors.purple ]
-                    -- , mouseDown
-                    --     [ Background.color Colors.purple
-                    --     , Font.color Colors.white
-                    --     ]
-                    -- , Colors.fillWhiteOnClick
-                    -- -- , mouseDown [ Background.color Colors.simpleGrey, Border.color (Colors.withAlpha (rgb255 4 30 37) 0.69) ]
-                    -- -- , mouseOver [ Border.color (Colors.withAlpha (rgb255 4 30 37) 0.39) ]
-                    -- ]
                     ErrorButton button ->
                         [ Events.onMouseUp button.onPress
                         , Border.color Colors.errorRed
                         , Font.color Colors.errorRed
-                        , mouseDown [ Border.color Colors.errorRed ]
-                        , mouseOver [ Background.color Colors.errorRed, Border.color Colors.errorRed, Font.color Colors.white ]
+                        , mouseDown
+                            [ Background.color Colors.errorRed
+                            , Border.color Colors.errorRed
+                            , moveUp 1
+                            , Border.shadow { offset = ( 2, 4 ), size = 0, blur = 8, color = rgba 0 0 0 0.2 }
+                            ]
+                        , mouseOver
+                            [ Background.color (Colors.withAlpha Colors.errorRed 0.8)
+                            , Border.color Colors.errorRed
+                            , Font.color Colors.white
+                            ]
                         , Colors.fillWhiteOnHover
                         ]
 
                     LoadingButton ->
-                        []
+                        [ Border.color Colors.darkGreen
+                        ]
                )
         )
         (row

@@ -138,6 +138,7 @@
 
 .elm-datepicker--today {
   font-weight: bold;
+  background: rgba(97, 165, 145, 0.5);
 }
 
 .elm-datepicker--other-month {

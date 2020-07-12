@@ -192,7 +192,7 @@ viewBuses buses filterText =
                             String.toLower x.numberPlate
 
                         vehicleType =
-                            String.toLower (vehicleTypeToString (Models.Bus.vehicleClassToType x.vehicleClass))
+                            String.toLower (vehicleTypeToString x.vehicleType)
                     in
                     List.any (String.contains lowerFilterText) [ numberPlate, vehicleType ]
                 )
