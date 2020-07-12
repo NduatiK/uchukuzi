@@ -66,11 +66,16 @@ type alias Model =
     , url : Url.Url
     , locationUpdates : Dict Int LocationUpdate
     , allowReroute : Bool
-    , loading : Bool
-    , error : Bool
+    , startState : ModelState
     , phoenix : Maybe (Phoenix.Model Msg)
     , notifications : List Notification
     }
+
+
+type ModelState
+    = Loading
+    | Failure
+    | Success
 
 
 {-| Make sure to extend the updatePage method when you add a page
@@ -151,17 +156,28 @@ init args url navKey =
                 , url = url
                 , locationUpdates = Dict.fromList []
                 , allowReroute = True
-                , loading = isLoading
-                , error = hasLoadError
+                , startState =
+                    if isLoading then
+                        Loading
+
+                    else if hasLoadError then
+                        Failure
+
+                    else
+                        Success
                 , phoenix = phxModel
                 , notifications = []
                 }
     in
     ( model
-    , Cmd.batch
-        [ Task.perform UpdatedTimeZone Time.here
-        , phxMsg
-        ]
+    , if model.startState == Success then
+        Cmd.batch
+            [ Task.perform UpdatedTimeZone Time.here
+            , phxMsg
+            ]
+
+      else
+        Cmd.none
     )
 
 
@@ -287,7 +303,6 @@ update msg model =
             in
             changeRouteWithUpdatedSessionTo (Navigation.fromUrl session model.url) model session
 
-        -- ( { model | windowHeight = height }, Cmd.none )
         UrlRequested urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
@@ -324,11 +339,11 @@ update msg model =
             in
             if cred == Nothing then
                 changeRouteWithUpdatedSessionTo (Just (Navigation.Login Nothing)) model session
-                    |> updatePhoenix
+                    |> updatePhoenixCredentials
 
             else
                 changeRouteWithUpdatedSessionTo (Navigation.fromUrl session model.url) model session
-                    |> updatePhoenix
+                    |> updatePhoenixCredentials
 
         BusMoved locUpdateValue ->
             let
@@ -492,8 +507,8 @@ updatePage page_msg fullModel =
             ( fullModel, Cmd.none )
 
 
-updatePhoenix : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-updatePhoenix ( model, msg ) =
+updatePhoenixCredentials : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+updatePhoenixCredentials ( model, msg ) =
     let
         credentials =
             model.page |> pageToSession |> Session.getCredentials
@@ -828,14 +843,15 @@ view appModel =
     , body =
         [ Element.layoutWith layoutOptions
             Style.labelStyle
-            (if appModel.loading then
-                LoadingPage.view
+            (case appModel.startState of
+                Loading ->
+                    LoadingPage.view
 
-             else if appModel.error then
-                ErrorPage.view
+                Failure ->
+                    ErrorPage.view
 
-             else
-                renderView ()
+                Success ->
+                    renderView ()
             )
         ]
     }
