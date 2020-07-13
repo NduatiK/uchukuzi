@@ -58,6 +58,10 @@ defmodule Uchukuzi.World.Tile do
   Given a tile and a path
   Determines how far from its start that the path crosses the tile
   Returns `:does_not_cross` if the path does not intersect the tile
+
+  This is typically used with `Tile.tiles_between\2`. The tiles can
+  be rejected if they are not crossed by the path and sorted by the
+  order in which they were crossed.
   """
   def distance_from_start(tile, %Geo.LineString{} = path) do
     tile
@@ -120,8 +124,8 @@ defmodule Uchukuzi.World.Tile do
     for lat_offset <- -radius..radius,
         lng_offset <- -radius..radius,
         not (lat_offset == 0 and lng_offset == 0) do
-      {:ok, location} =
-        Location.new(
+      location =
+        Location.wrapping_new(
           tile.coordinate.lng + lng_offset * @default_tile_size,
           tile.coordinate.lat + lat_offset * @default_tile_size
         )
