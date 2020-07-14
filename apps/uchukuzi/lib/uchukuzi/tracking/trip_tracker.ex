@@ -178,13 +178,13 @@ defmodule Uchukuzi.Tracking.TripTracker do
       if data.debouncer == nil do
         path =
           data.trip_path
-          |> TripPath.update_predictions(data.trip.end_time)
-          |> TripPath.trim_etas(data.trip.travel_time)
+        # #   # |> TripPath.update_predictions(data.trip.end_time)
+        # #   # |> TripPath.trim_etas(data.trip.travel_time)
 
-        PubSub.publish(
-          :eta_prediction_update,
-          {:eta_prediction_update, data.route_id, path.etas, Trip.students_onboard(data.trip)}
-        )
+        # # PubSub.publish(
+        # #   :eta_prediction_update,
+        # #   {:eta_prediction_update, data.route_id, path.etas, Trip.students_onboard(data.trip)}
+        # )
 
         path
       else
@@ -361,11 +361,7 @@ defmodule Uchukuzi.Tracking.TripTracker do
     %{data | trip: trip}
   end
 
-  def set_state(data, @ongoing = state) do
-    %{data | state: state}
-  end
-
-  def set_state(data, @complete = state) do
+  def set_state(data, state) when state == @ongoing or state == @complete do
     %{data | state: state}
   end
 
