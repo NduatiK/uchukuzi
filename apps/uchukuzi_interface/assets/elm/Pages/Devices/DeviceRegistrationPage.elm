@@ -21,8 +21,7 @@ import Ports
 import RemoteData exposing (..)
 import Session exposing (Session)
 import Style
-import StyledElement exposing (wrappedInput)
-import StyledElement.DropDown as Dropdown
+import StyledElement
 import Utils.Validator as Validator
 
 

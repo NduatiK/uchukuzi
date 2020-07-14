@@ -178,13 +178,28 @@ pushUrl key route =
     Nav.pushUrl key (routeToString route)
 
 
+{-| Determines if two pages are the same so that we can avoid reloading a
+wrapper page when navigating between subpages
+
+Eg Assuming a transition like this
+
+    ------Item 1-----     ------Item 1-----
+    |               |     |               |
+    |   Subpage 1   | =>  |   Subpage 2   |
+    |               |     |               |
+    ----------------      ----------------
+
+There would be is typically no need to reload the item 1 wrapper page,
+just the inner subpage
+
+-}
 isSamePage : Url -> Url -> Bool
 isSamePage url1 url2 =
     case ( Parser.parse loggedInParser (parseUrl url1), Parser.parse loggedInParser (parseUrl url2) ) of
         ( Nothing, Nothing ) ->
             Parser.parse notLoggedInParser (parseUrl url1) == Parser.parse notLoggedInParser (parseUrl url2)
 
-        ( Just (Bus a FuelHistory), Just (Bus b _) ) ->
+        ( Just (Bus a FuelHistory), Just (Bus b FuelHistory) ) ->
             False
 
         ( Just (Bus a _), Just (Bus b _) ) ->

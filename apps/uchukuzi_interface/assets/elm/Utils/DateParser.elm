@@ -32,10 +32,7 @@ fromDateString =
         (Parser.succeed identity
             |= parser
             |. (Parser.oneOf
-                    [ Parser.map Ok
-                        Parser.end
-                    , Parser.map (always (Err "Expected a date only, not a date and time"))
-                        (Parser.chompIf ((==) 'T'))
+                    [ Parser.map Ok Parser.end
                     , Parser.succeed (Err "Expected a date only")
                     ]
                     |> Parser.andThen resultToParser
@@ -85,7 +82,10 @@ parser : Parser Date
 parser =
     Parser.succeed Tuple.pair
         |= dayOfYear
-        |. Parser.token "-"
+        |. Parser.oneOf
+            [ Parser.token "-"
+            , Parser.token "/"
+            ]
         |= int4
         |> Parser.andThen
             (fromDayOfYearAndYear >> resultToParser)
@@ -95,7 +95,10 @@ dayOfYear : Parser DayOfYear
 dayOfYear =
     Parser.succeed DayAndMonth
         |= int1or2
-        |. Parser.token "-"
+        |. Parser.oneOf
+            [ Parser.token "-"
+            , Parser.token "/"
+            ]
         |= int1or2
         |> Parser.andThen Parser.commit
 
@@ -105,6 +108,7 @@ int4 =
     Parser.succeed ()
         |. Parser.oneOf
             [ Parser.chompIf (\c -> c == '-')
+            , Parser.chompIf (\c -> c == '/')
             , Parser.succeed ()
             ]
         |. Parser.chompIf Char.isDigit

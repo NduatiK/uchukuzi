@@ -639,10 +639,10 @@ view model viewHeight =
 viewFormWrapper : Model -> Element Msg
 viewFormWrapper model =
     WebDataView.view model.routeRequestState
-        (\_ ->
+        (\routes ->
             column [ width fill, height fill, spacing 24 ]
                 [ googleMap model
-                , viewBody model
+                , viewBody model routes
                 ]
         )
 
@@ -726,23 +726,23 @@ googleMap model =
         ]
 
 
-viewBody : Model -> Element Msg
-viewBody model =
+viewBody : Model -> List Route -> Element Msg
+viewBody model routes =
     Element.column
         [ width fill, spacing 40, alignTop ]
-        [ viewForm model
+        [ viewForm model routes
         ]
 
 
-viewForm : Model -> Element Msg
-viewForm model =
+viewForm : Model -> List Route -> Element Msg
+viewForm model routes =
     let
         household =
             model.form
     in
     Element.column
         [ width (fillPortion 1), spacing 26 ]
-        [ el [ width (fill |> maximum 300) ] (Dropdown.viewFromModel model routeDropDown)
+        [ viewRouteDropDown model routes
 
         -- , viewDivider
         , el Style.header2Style (text "Students")
@@ -756,6 +756,40 @@ viewForm model =
             , viewPhoneInput model.form.problems household.guardian.phoneNumber
             ]
         ]
+
+
+viewRouteDropDown model routes =
+    el
+        (width (fill |> maximum 300)
+            :: (if routes == [] then
+                    [ Style.clickThrough
+                    , inFront
+                        (el
+                            [ centerX
+                            , width (fill |> maximum 310)
+                            , height fill
+                            ]
+                            (paragraph
+                                ([ Background.color Colors.white
+                                 , Style.elevated2
+                                 , Border.color Colors.errorRed
+                                 , Border.width 1
+                                 , padding 8
+                                 , moveRight 350
+                                 , moveDown 20
+                                 ]
+                                    ++ Style.captionStyle
+                                )
+                                [ text "You have not created any routes yet, you need to create one first" ]
+                            )
+                        )
+                    ]
+
+                else
+                    []
+               )
+        )
+        (Dropdown.viewFromModel model routeDropDown)
 
 
 viewStudentsInput : Form -> Element Msg
@@ -810,7 +844,7 @@ viewStudentsInput { students, problems, currentStudent, editingStudent, deletedS
                 , title = "Student Name"
                 , value = currentStudent
                 }
-            , StyledElement.iconButton [ padding 8, centerY, Background.color Colors.purple, Border.rounded 8 ]
+            , StyledElement.iconButton [ alignTop, padding 8, moveDown 24, Background.color Colors.purple, Border.rounded 8 ]
                 { icon = Icons.add
                 , iconAttrs = [ Colors.fillWhite ]
                 , onPress = Just SaveStudentPressed
