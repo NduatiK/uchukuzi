@@ -2,6 +2,7 @@ port module Main exposing (..)
 
 import Api
 import Browser
+import Colors
 import Browser.Events
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -826,15 +827,16 @@ view appModel =
                 [ focusStyle
                     { borderColor = Nothing
                     , backgroundColor = Nothing
-                    , shadow = Nothing
 
-                    -- Just
-                    --     { color =
-                    --         Colors.purple
-                    --     , offset = ( 0, 0 )
-                    --     , blur = 0
-                    --     , size = 3
-                    --     }
+                    -- , shadow = Nothing
+                    , shadow =
+                        Just
+                            { color =
+                                Colors.purple
+                            , offset = ( 0, 0 )
+                            , blur = 0
+                            , size = 3
+                            }
                     }
                 ]
             }

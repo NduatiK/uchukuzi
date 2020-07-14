@@ -35,7 +35,9 @@ import Element.Input as Input
 import Errors exposing (InputError)
 import Html exposing (node)
 import Html.Attributes
+import Html.Events as Events
 import Icons exposing (IconBuilder)
+import Json.Decode as Decode
 import Navigation
 import Regex
 import Style exposing (..)
@@ -299,6 +301,14 @@ iconButton attributes { onPress, iconAttrs, icon } =
         }
 
 
+paddingForIcon icon =
+    if icon /= Nothing then
+        paddingEach { edges | left = 48, right = 12, top = 12, bottom = 12 }
+
+    else
+        paddingXY 12 12
+
+
 textInput :
     List (Attribute msg)
     ->
@@ -316,7 +326,14 @@ textInput attributes { title, caption, errorCaption, value, onChange, placeholde
     let
         input =
             Input.text
-                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ])
+                (Style.labelStyle
+                    ++ [ centerY
+                       , Border.width 0
+                       , Background.color (rgba 0 0 0 0)
+                       , id (String.replace " " "-" (String.toLower ariaLabel))
+                       , paddingForIcon icon
+                       ]
+                )
                 { onChange = onChange
                 , text = value
                 , placeholder = placeholder
@@ -336,10 +353,9 @@ multilineInput :
         , onChange : String -> msg
         , placeholder : Maybe (Input.Placeholder msg)
         , ariaLabel : String
-        , icon : Maybe (IconBuilder msg)
         }
     -> Element msg
-multilineInput attributes { title, caption, errorCaption, value, onChange, placeholder, ariaLabel, icon } =
+multilineInput attributes { title, caption, errorCaption, value, onChange, placeholder, ariaLabel } =
     let
         input =
             Input.multiline
@@ -351,7 +367,7 @@ multilineInput attributes { title, caption, errorCaption, value, onChange, place
                 , spellcheck = True
                 }
     in
-    wrappedInput input title caption errorCaption icon attributes []
+    wrappedInput input title caption errorCaption Nothing attributes []
 
 
 emailInput :
@@ -371,7 +387,7 @@ emailInput attributes { title, caption, errorCaption, value, onChange, placehold
     let
         input =
             Input.email
-                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ])
+                (Style.labelStyle ++ [ paddingForIcon icon, centerY, Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ])
                 { onChange = onChange
                 , text = value
                 , placeholder = placeholder
@@ -438,7 +454,7 @@ passwordInput attributes { title, caption, errorCaption, value, onChange, placeh
 
         input =
             passwordBoxBuilder
-                ([ Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ]
+                ([ paddingForIcon icon, Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ]
                     ++ Style.labelStyle
                 )
                 { onChange = onChange
@@ -469,6 +485,34 @@ checkboxIcon checked =
         Input.defaultCheckbox checked
 
 
+onKeyDown :
+    { increase : Maybe msg, decrease : Maybe msg }
+    -> Attribute msg
+onKeyDown { increase, decrease } =
+    let
+        stringToKey str =
+            case str of
+                "ArrowUp" ->
+                    increase
+                        |> Maybe.map Decode.succeed
+                        |> Maybe.withDefault (Decode.fail "not used key")
+
+                "ArrowDown" ->
+                    decrease
+                        |> Maybe.map Decode.succeed
+                        |> Maybe.withDefault (Decode.fail "not used key")
+
+                _ ->
+                    Decode.fail "not used key"
+
+        keyDecoder =
+            Decode.field "key" Decode.string
+                |> Decode.andThen stringToKey
+    in
+    Events.on "keydown" keyDecoder
+        |> htmlAttribute
+
+
 numberInput :
     List (Attribute msg)
     ->
@@ -486,6 +530,30 @@ numberInput :
     -> Element msg
 numberInput attributes { title, caption, errorCaption, value, onChange, placeholder, ariaLabel, icon, minimum, maximum } =
     let
+        increase =
+            case maximum of
+                Nothing ->
+                    Just (onChange (value + 1))
+
+                Just max ->
+                    if (value + 1) > max then
+                        Nothing
+
+                    else
+                        Just (onChange (value + 1))
+
+        decrease =
+            case minimum of
+                Nothing ->
+                    Just (onChange (value - 1))
+
+                Just min ->
+                    if (value - 1) < min then
+                        Nothing
+
+                    else
+                        Just (onChange (value - 1))
+
         userReplace : String -> (Regex.Match -> String) -> String -> String
         userReplace userRegex replacer string =
             case Regex.fromString userRegex of
@@ -510,7 +578,15 @@ numberInput attributes { title, caption, errorCaption, value, onChange, placehol
 
         textField =
             Input.text
-                (Style.labelStyle ++ [ centerY, Border.width 0, Background.color (rgba 0 0 0 0), id (String.replace " " "-" (String.toLower ariaLabel)) ])
+                (Style.labelStyle
+                    ++ [ paddingForIcon icon
+                       , centerY
+                       , Border.width 0
+                       , Background.color (rgba 0 0 0 0)
+                       , id (String.replace " " "-" (String.toLower ariaLabel))
+                       , onKeyDown { increase = increase, decrease = decrease }
+                       ]
+                )
                 { onChange = onChangeWithMaxAndMin
                 , text = String.fromInt value
                 , placeholder = placeholder
@@ -527,32 +603,12 @@ numberInput attributes { title, caption, errorCaption, value, onChange, placehol
                 attributes
                 [ Input.button []
                     { label = Icons.subtract [ width <| px 24, height <| px 24 ]
-                    , onPress =
-                        case minimum of
-                            Nothing ->
-                                Just (onChange (value - 1))
-
-                            Just min ->
-                                if (value - 1) < min then
-                                    Nothing
-
-                                else
-                                    Just (onChange (value - 1))
+                    , onPress = decrease
                     }
                 , el [ Background.color (rgba 0 0 0 0.12), width <| px 1, height <| px 20 ] none
                 , Input.button []
                     { label = Icons.add [ width <| px 24, height <| px 24 ]
-                    , onPress =
-                        case maximum of
-                            Nothing ->
-                                Just (onChange (value + 1))
-
-                            Just max ->
-                                if (value + 1) > max then
-                                    Nothing
-
-                                else
-                                    Just (onChange (value + 1))
+                    , onPress = increase
                     }
                 , el [ width <| px 0, height <| px 20 ] none
                 ]
@@ -619,18 +675,16 @@ wrappedInput input title caption errorCaption icon attributes trailingElements =
     column
         (spacing 6 :: width fill :: height shrink :: attributes)
         [ viewTitle
-        , row
+        , el
             (spacing 12
                 :: width fill
                 :: centerY
+                :: inFront textBoxIcon
+                :: inFront (row [ spacing 12, height fill, alignRight ] trailingElements)
                 :: inputStyle
                 ++ errorBorder (errorCaption == Nothing)
             )
-            ([ textBoxIcon
-             , input
-             ]
-                ++ trailingElements
-            )
+            input
         , captionLabel
         , errorCaptionLabel
         ]

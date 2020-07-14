@@ -199,6 +199,7 @@ dropDownConfig dropDownMsgWrapper onPickMsg toString icon isLoading prompt input
             [ width fill
             , Background.color (rgb 1 1 1)
             , Font.size 16
+            , Style.class "focus-within"
             ]
                 ++ inputStyle
                 ++ [ Border.width 0 ]
@@ -236,7 +237,7 @@ dropDownConfig dropDownMsgWrapper onPickMsg toString icon isLoading prompt input
                 , right = 0
                 , top = 0
                 }
-            , Border.color Colors.darkGreen
+            , Border.color Colors.purple
             ]
 
         itemToPrompt item =
@@ -244,18 +245,9 @@ dropDownConfig dropDownMsgWrapper onPickMsg toString icon isLoading prompt input
                 Style.labelStyle
                 (text (toString item))
 
-        itemToElement selected _ i =
-            let
-                bgColor =
-                    if selected then
-                        Colors.withAlpha Colors.teal 0.3
-
-                    else
-                        rgb255 255 255 255
-            in
+        itemToElement selected highlighted i =
             el
-                ([ Background.color bgColor
-                 , paddingXY 12 12
+                ([ padding 12
                  , spacing 10
                  , width fill
                  , Border.color (rgba 0 0 0 0.2)
@@ -267,6 +259,18 @@ dropDownConfig dropDownMsgWrapper onPickMsg toString icon isLoading prompt input
                     }
                  ]
                     ++ Style.labelStyle
+                    ++ (if highlighted then
+                            [ Background.color (Colors.withAlpha Colors.purple 0.3) ]
+
+                        else
+                            []
+                       )
+                    ++ (if selected then
+                            [ Font.bold, Font.underline ]
+
+                        else
+                            []
+                       )
                 )
                 (text (toString i))
     in
@@ -463,7 +467,7 @@ update (Config config) msg (State state) data =
                                     False
 
                                 Enter ->
-                                    False
+                                    not state.isOpen
 
                                 _ ->
                                     True
@@ -517,7 +521,10 @@ view (Config config) (State state) data =
             triggerView config state
 
         body =
-            bodyView config state filteredData
+            column [ height shrink, width fill ]
+                [ el [ height (px 2) ] none --moveDown
+                , bodyView config state filteredData
+                ]
     in
     column
         containerAttrs
@@ -630,12 +637,12 @@ itemView config state i item =
         selected =
             state.selectedItem == Just item
 
-        highlighed =
+        highlighted =
             i == state.focusedIndex
     in
     el
         itemAttrs
-        (config.itemToElement selected highlighed item)
+        (config.itemToElement selected highlighted item)
 
 
 
