@@ -14,7 +14,7 @@ defmodule UchukuziInterfaceWeb.TrackingController do
         for report <- reports_json do
           with {:ok, location} <-
                  Location.new(report["lng"], report["lat"]),
-               {:ok, time} <- DateTimeParser.parse_datetime(report["time"], assume_utc: true) do
+               {:ok, time} <- parse_time(report["time"]) do
             Report.new(time, location)
           end
         end
@@ -43,5 +43,13 @@ defmodule UchukuziInterfaceWeb.TrackingController do
         end
       end
     end
+  end
+
+  def parse_time(time) when time |> is_number() do
+    parse_time("#{time}")
+  end
+
+  def parse_time(time) do
+    DateTimeParser.parse_datetime(time, assume_utc: true)
   end
 end
