@@ -2,13 +2,13 @@ defmodule UchukuziInterfaceWeb.EmailView do
   use UchukuziInterfaceWeb, :view
 
   if Mix.env() == :dev do
+    @website "https://uchukuzi.herokuapp.com"
+    @assistant_website "https://uchukuzi.herokuapp.com"
+  else
     # @website "http://10.0.2.2:4000"
     @website "http://localhost:4000"
     @assistant_website "http://192.168.42.220:4000"
     # @website "http://192.168.42.220:4000"
-  else
-    @website "http://localhost:4000"
-    @assistant_website "http://192.168.42.220:4000"
   end
 
   def render_manager_signup("html", %Uchukuzi.Roles.Manager{} = manager, token) do
