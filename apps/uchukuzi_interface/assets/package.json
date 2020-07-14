@@ -3,7 +3,7 @@
   "license": "MIT",
   "scripts": {
     "deploy": "elm-typescript-interop && parcel build ./index.ts ./css/app.css --out-dir ../priv/static --no-source-maps",
-    "watch": "elm-typescript-interop && parcel watch ./index.ts ./css/app.css --out-dir ../priv/static --no-source-maps",
+    "watch": "elm-typescript-interop && parcel watch ./index.ts ./css/app.css --out-dir ../priv/static --no-source-maps ",
     "test": "elm-test"
   },
   "dependencies": {
@@ -15,10 +15,11 @@
     "phoenix_html": "file:../../../deps/phoenix_html"
   },
   "devDependencies": {
-    "elm-hot": "^1.1.2",
     "elm": "^0.19.1-2",
+    "elm-hot": "^1.1.2",
     "elm-typescript-interop": "0.0.17",
     "node-elm-compiler": "^5.0.4",
-    "typescript": "^3.6.4"
+    "typescript": "^3.6.4",
+    "uglify-js": "^3.10.0"
   }
 }

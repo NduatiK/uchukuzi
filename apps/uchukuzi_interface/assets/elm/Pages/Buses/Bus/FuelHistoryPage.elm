@@ -78,6 +78,7 @@ type alias AnnotatedReport =
     , sinceLastReport :
         { distance : Distance
         }
+    , isOutlier : Bool
     }
 
 
@@ -158,7 +159,7 @@ update msg model =
 
         SaveChangesResponse response ->
             if RemoteData.isSuccess response then
-                ( model
+                ( { model | deleteRequest = response }
                 , Navigation.rerouteTo model (Navigation.Bus model.busID Pages.Buses.Bus.Navigation.FuelHistory)
                 )
 
@@ -229,11 +230,22 @@ viewStats data =
                 |> List.map .cost
                 |> List.sum
 
-        tripCost () =
+        tripCost =
             cost // data.tripsMade
 
         currency value =
             "KES. " ++ String.fromInt value
+
+        dataView title value =
+            el [ width (fillPortion 2), height fill ]
+                (StyledElement.textStackWithColor
+                    title
+                    value
+                    Colors.purple
+                )
+
+        divider =
+            el [ width (fillPortion 1), height fill ] (el [ centerX, width (px 2), height fill, Background.color Colors.sassyGrey ] none)
     in
     row
         [ width fill
@@ -245,12 +257,18 @@ viewStats data =
         , spaceEvenly
         ]
         (if data.tripsMade > 0 then
-            [ el [ width (fillPortion 3), height fill ] (StyledElement.textStackWithColor "Fuel Cost Per Trip" (currency (tripCost ())) Colors.purple)
-            , el [ width (fillPortion 1), height fill ] (el [ centerX, width (px 2), height fill, Background.color Colors.sassyGrey ] none)
-            , el [ width (fillPortion 2), height fill ] (StyledElement.textStackWithColor "No. of Students" (String.fromInt data.numberOfStudents) Colors.purple)
-            , el [ width (fillPortion 1), height fill ] (el [ centerX, width (px 2), height fill, Background.color Colors.sassyGrey ] none)
-            , el [ width (fillPortion 3), height fill ] (StyledElement.textStackWithColor "Student Cost per Trip" (currency (tripCost () // data.numberOfStudents)) Colors.purple)
+            [ dataView "Fuel Cost Per Trip" (currency tripCost)
+            , divider
+            , dataView "No. of Students" (String.fromInt data.numberOfStudents)
             ]
+                ++ (if data.numberOfStudents > 0 then
+                        [ divider
+                        , dataView "No. of Students" (currency (tripCost // data.numberOfStudents))
+                        ]
+
+                    else
+                        []
+                   )
 
          else
             [ el [ width (fillPortion 3), height fill ] (StyledElement.textStackWithColor "Total" (currency cost) Colors.purple)
@@ -334,6 +352,25 @@ viewFuelTable reportsForDate timezone deletedReports =
                 ]
                 none
 
+        highlightEl report =
+            el
+                [ Background.color Colors.errorRed
+                , height (px 33)
+                , paddingXY 0 4
+                , width fill
+                , transparent (List.member report.id deletedReports)
+                , alpha 0.2
+                , Border.rounded 5
+                ]
+                none
+
+        overlayEl report =
+            if report.isOutlier then
+                highlightEl report
+
+            else
+                hoverEl report
+
         strikeThroughEl report =
             el
                 [ height (px 33)
@@ -354,7 +391,7 @@ viewFuelTable reportsForDate timezone deletedReports =
             , inFront
                 (column [ paddingEach { edges | top = 36 }, spacingXY 30 0, width fill ] (List.map strikeThroughEl reportsForDate))
             , inFront
-                (column [ paddingEach { edges | top = 36 }, spacingXY 30 0, width fill ] (List.map hoverEl reportsForDate))
+                (column [ paddingEach { edges | top = 36 }, spacingXY 30 0, width fill ] (List.map overlayEl reportsForDate))
             ]
             { data = reportsForDate
             , columns =
@@ -414,7 +451,11 @@ viewFuelTable reportsForDate timezone deletedReports =
                                     else
                                         "-"
                             in
-                            rowText consumptionText
+                            if report.isOutlier then
+                                rowTextAlign [ Font.alignRight, alignRight, Font.bold ] consumptionText
+
+                            else
+                                rowText consumptionText
                   }
                 , { header = tableHeader [ "FUEL COST", "(KES)" ] [ alignRight ]
                   , width = fill
@@ -617,8 +658,8 @@ groupReports timezone reports students =
 
         --The sortedReports with the distance travelled since last fueling information and
         -- total distance purchased at that point data
-        distancedReports : List AnnotatedReport
-        distancedReports =
+        distancedReportsWithoutStatistics : List AnnotatedReport
+        distancedReportsWithoutStatistics =
             sortedReports
                 |> List.foldl
                     (\report ( ( totalDistance, cumulativeFuel ), acc ) ->
@@ -643,12 +684,52 @@ groupReports timezone reports students =
                           , sinceLastReport =
                                 { distance = distanceSinceLastFueling
                                 }
+                          , isOutlier = False
                           }
                             :: acc
                         )
                     )
                     ( ( FuelReport.distance 0, FuelReport.volume 0 ), [] )
                 |> Tuple.second
+
+        statistics =
+            let
+                stdDev =
+                    Statistics.deviation
+                        (distancedReportsWithoutStatistics
+                            |> List.map consumptionOnDate
+                            |> List.map FuelReport.consumptionToFloat
+                            |> List.filter (\x -> x /= 0)
+                        )
+
+                mean =
+                    distancedReportsWithoutStatistics
+                        |> takeLast
+                        |> Maybe.map runningAverage
+                        |> Maybe.map FuelReport.consumptionToFloat
+            in
+            case ( stdDev, mean ) of
+                ( Just stdDev_, Just mean_ ) ->
+                    Just
+                        { stdDev = stdDev_
+                        , mean = mean_
+                        }
+
+                _ ->
+                    Nothing
+
+        distancedReports : List AnnotatedReport
+        distancedReports =
+            case statistics of
+                Nothing ->
+                    distancedReportsWithoutStatistics
+
+                Just { stdDev, mean } ->
+                    distancedReportsWithoutStatistics
+                        |> List.map
+                            (\report ->
+                                { report | isOutlier = (consumptionOnDate report |> FuelReport.consumptionToFloat) > mean + 2 * stdDev }
+                            )
 
         --The Months and the Days within them are listed Recent to Oldest
         groupedReports =
@@ -673,32 +754,6 @@ groupReports timezone reports students =
         consumptionOnDate report =
             FuelReport.consumption report.sinceLastReport.distance report.volume
 
-        statistics =
-            let
-                stdDev =
-                    Statistics.deviation
-                        (distancedReports
-                            |> List.map consumptionOnDate
-                            |> List.map FuelReport.consumptionToFloat
-                            |> List.filter (\x -> x /= 0)
-                        )
-
-                mean =
-                    distancedReports
-                        |> takeLast
-                        |> Maybe.map runningAverage
-                        |> Maybe.map FuelReport.consumptionToFloat
-            in
-            case ( stdDev, mean ) of
-                ( Just stdDev_, Just mean_ ) ->
-                    Just
-                        { stdDev = stdDev_
-                        , mean = mean_
-                        }
-
-                _ ->
-                    Nothing
-
         takeLast list =
             list
                 |> List.drop (List.length list - 1)
@@ -707,6 +762,7 @@ groupReports timezone reports students =
         plotData =
             distancedReports
                 |> List.filter (\x -> FuelReport.distanceToInt x.sinceLastReport.distance /= 0)
+                |> List.reverse
 
         cmd =
             Ports.renderChart

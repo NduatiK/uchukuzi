@@ -3,6 +3,7 @@ import mapStyles from "./mapStyles"
 import * as  Cache from "./cache"
 import { Elm } from "../elm/Main"
 import { sleep } from "./sleep"
+import { Colors } from "./colors"
 
 
 type ElmLatLng = {
@@ -37,9 +38,7 @@ window.addEventListener("storage", (event) => {
     }
 }, false)
 
-let darkGreen = "#61A591"
-let purple = "#594fee"
-let errorRed = "#ff0000"
+
 // Prevent duplicate loads
 let runningRequest: Promise<any> | null = null
 let initializingMapsChain = null
@@ -283,10 +282,10 @@ function insertCircle(pos: google.maps.LatLng, app: Elm.Main.App, map: google.ma
     }
 
     schoolCircle = new google.maps.Circle({
-        strokeColor: darkGreen,
+        strokeColor: Colors.darkGreen,
         strokeOpacity: 0.8,
         strokeWeight: 2,
-        fillColor: darkGreen,
+        fillColor: Colors.darkGreen,
         fillOpacity: 0.35,
         map: map,
         draggable: editable,
@@ -703,9 +702,9 @@ function setupInterop(app: Elm.Main.App) {
             })
             if (polyline) {
                 if (highlighted) {
-                    polyline.set("strokeColor", purple)
+                    polyline.set("strokeColor", Colors.purple)
                 } else {
-                    polyline.set("strokeColor", darkGreen)
+                    polyline.set("strokeColor", Colors.darkGreen)
                 }
             }
         }
@@ -735,7 +734,7 @@ function setupInterop(app: Elm.Main.App) {
 
                 polyline = new google.maps.Polyline({
                     geodesic: false,
-                    strokeColor: highlighted ? purple : darkGreen,
+                    strokeColor: highlighted ? Colors.purple : Colors.darkGreen,
                     editable: editable
                 })
                 polyline.set("id", routeID)
@@ -744,9 +743,9 @@ function setupInterop(app: Elm.Main.App) {
                 polyline.setMap(null)
             }
             if (highlighted) {
-                polyline.set("strokeColor", purple)
+                polyline.set("strokeColor", Colors.purple)
             } else {
-                polyline.set("strokeColor", darkGreen)
+                polyline.set("strokeColor", Colors.darkGreen)
             }
 
             polyline.setPath(path)
@@ -847,8 +846,8 @@ function setupInterop(app: Elm.Main.App) {
                     }
                 }
 
-                correct.values.forEach(drawTile(darkGreen, 3, true))
-                deviation.values.forEach(drawTile(errorRed, 2, false))
+                correct.values.forEach(drawTile(Colors.darkGreen, 3, true))
+                deviation.values.forEach(drawTile(Colors.errorRed, 2, false))
 
                 setTilesVisibility(map, correct.visible, deviation.visible)
             })
@@ -895,7 +894,7 @@ function renderPathPoint(markerPosition: google.maps.LatLng, map: google.maps.Ma
             map: map
         })
         polyline.set("id", markerIdx)
-        polyline.set("strokeColor", darkGreen)
+        polyline.set("strokeColor", Colors.darkGreen)
         polylineMarkers.push(polyline)
         polylineMarkers.push(marker)
     }

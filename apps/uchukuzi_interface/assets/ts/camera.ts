@@ -1,4 +1,5 @@
 import { Elm } from "../elm/Main"
+import { Colors } from "./colors";
 
 
 interface CustomWindow extends Window {
@@ -121,7 +122,7 @@ const initializeCamera = (app: Elm.Main.App) => () => {
                                 code.location.topRightCorner,
                                 code.location.bottomRightCorner,
                                 code.location.bottomLeftCorner,
-                                "#594FEE"
+                                Colors.purple
                             );
                             freezeFrame = true;
                             app.ports.scannedDeviceCode.send(code.data)
