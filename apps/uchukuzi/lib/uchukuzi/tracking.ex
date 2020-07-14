@@ -41,10 +41,12 @@ defmodule Uchukuzi.Tracking do
   end
 
   def move(%Bus{} = bus, reports) do
-    bus_server = BusServer.pid_from(bus)
-    previous_report = BusServer.last_seen_status(bus_server)
 
     Task.async(fn ->
+
+      bus_server = BusServer.pid_from(bus)
+      previous_report = BusServer.last_seen_status(bus_server)
+
       reports
       |> Enum.reduce(previous_report, fn report, previous_report ->
         report = move(bus_server, bus, report, previous_report)

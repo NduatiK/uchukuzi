@@ -10,7 +10,6 @@ defmodule UchukuziInterfaceWeb.TrackingController do
     with {:ok, device} <- School.device_with_imei(imei),
          bus_id when not is_nil(bus_id) <- device.bus_id,
          bus <- Repo.get_by(Bus, id: bus_id) do
-          
       reports =
         for report <- reports_json do
           with {:ok, location} <-
@@ -20,23 +19,28 @@ defmodule UchukuziInterfaceWeb.TrackingController do
           end
         end
 
-      reports = Enum.sort(reports, &(DateTime.compare(&2.time, &1.time) != :lt))
-
-      Tracking.move(bus, reports)
-
-      bus = Repo.preload(bus, :school)
-
       last_point =
         reports
         |> Enum.reverse()
         |> hd()
 
-      if last_point && School.School.contains_point?(bus.school, last_point.location) do
-        conn
-        |> resp(201, "Inside")
-      else
+      if last_point == nil do
         conn
         |> resp(200, "Outside")
+      else
+        reports = Enum.sort(reports, &(DateTime.compare(&2.time, &1.time) != :lt))
+
+        Tracking.move(bus, reports)
+
+        bus = Repo.preload(bus, :school)
+
+        if last_point && School.School.contains_point?(bus.school, last_point.location) do
+          conn
+          |> resp(201, "Inside")
+        else
+          conn
+          |> resp(200, "Outside")
+        end
       end
     end
   end

@@ -328,7 +328,6 @@ viewRecord problems repair =
                         { ariaLabel = "Description of repair"
                         , caption = Just "Description of repair"
                         , errorCaption = errorMapper "description" []
-                        , icon = Nothing
                         , onChange = ChangedDescription repair.id
                         , placeholder = Nothing
                         , title = ""

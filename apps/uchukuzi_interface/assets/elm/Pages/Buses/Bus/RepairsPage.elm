@@ -36,31 +36,20 @@ type alias GroupedRepairs =
 
 
 type Page
-    = Summary
-      -- | ScheduledRepairs
-    | PastRepairs
+    = PastRepairs
 
 
 pageToString : Page -> String
 pageToString page =
     case page of
-        Summary ->
-            "Summary"
-
-        -- ScheduledRepairs ->
-        --     "Scheduled Repairs"
         PastRepairs ->
             "Past Repairs"
 
 
 type Msg
-    = ClickedSummaryPage
-      --------------------
-      -- | ClickedScheduledRepairsPage
-    | ClickedPastRepairsPage
-      --------------------
-    | HoveredOver (Maybe Repair)
+    = HoveredOver (Maybe Repair)
     | CreateRepair
+    | NoOp
 
 
 init : Session -> Int -> List Repair -> Time.Zone -> ( Model, Cmd Msg )
@@ -84,16 +73,11 @@ init session busID repairs timezone =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         CreateRepair ->
             ( model, Navigation.rerouteTo model (Navigation.CreateBusRepair model.busID) )
-
-        ClickedSummaryPage ->
-            ( { model | currentPage = Summary }, Cmd.none )
-
-        -- ClickedScheduledRepairsPage ->
-        --     ( { model | currentPage = ScheduledRepairs }, Cmd.none )
-        ClickedPastRepairsPage ->
-            ( { model | currentPage = PastRepairs }, Cmd.none )
 
         HoveredOver repair ->
             ( { model | highlightedRepair = repair }, Cmd.none )
@@ -105,24 +89,7 @@ update msg model =
 
 view : Model -> Int -> Element Msg
 view model height =
-    case model.currentPage of
-        Summary ->
-            viewSummary model (height - 220)
-
-        _ ->
-            viewPastRepairs model (height - 220)
-
-
-viewSummary : Model -> Int -> Element Msg
-viewSummary model viewHeight =
-    let
-        totalCost =
-            List.foldl (\x y -> y + x.cost) 0 model.repairs
-    in
-    column [ height (px viewHeight), width (px 500), paddingXY 40 40 ]
-        [ StyledElement.textStack "Due for maintenance in" "300km"
-        , StyledElement.textStack "Total Paid for Repairs" ("KES. " ++ String.fromInt totalCost)
-        ]
+    viewPastRepairs model (height - 220)
 
 
 viewPastRepairs : Model -> Int -> Element Msg
@@ -252,9 +219,7 @@ viewFooter model =
         [ el [ width (fillPortion 2) ]
             (Footer.view model.currentPage
                 pageToString
-                [ -- ( Summary, "", ClickedSummaryPage )
-                  -- ,
-                  ( PastRepairs, String.fromInt (List.length model.repairs), ClickedPastRepairsPage )
+                [ ( PastRepairs, String.fromInt (List.length model.repairs), NoOp )
                 ]
             )
         , el [ width (fillPortion 1) ] none

@@ -34,7 +34,6 @@ defmodule Uchukuzi.World.ETA.PredictionWorker do
 
   @impl true
   def handle_call({%Uchukuzi.Common.Location{} = coordinate, hour_value}, _from, state) do
-
     # coordinate
     # |> IO.inspect()
 

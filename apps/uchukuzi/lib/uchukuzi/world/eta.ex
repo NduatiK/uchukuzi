@@ -14,7 +14,7 @@ defmodule Uchukuzi.World.ETA do
 
   def insert(_, _, cross_time) when cross_time > 1200 do
   end
-
+     
   def insert(tile, %DateTime{} = date, cross_time) do
     insert(tile, dateToHourValue(date), cross_time)
   end

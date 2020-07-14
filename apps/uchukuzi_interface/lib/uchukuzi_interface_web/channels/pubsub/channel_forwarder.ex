@@ -20,8 +20,8 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
 
     PubSub.subscribe(self(), :trip_ended)
 
-    {:ok, file} = File.open("./logs/eta.log", [:append, :utf8])
-
+    # {:ok, file} = File.open("./extras/logs/eta.log", [:append, :utf8])
+file = nil
     {:ok,
      %{
        log_file: file
@@ -109,14 +109,14 @@ defmodule UchukuziInterfaceWeb.ChannelForwarder do
         {loc, time}
     end)
     |> (fn etas ->
-          IO.write(
-            state.log_file,
-            "\n" <>
-              (inspect(etas, pretty: true, limit: :infinity)
-               |> String.replace("{", "(")
-               |> String.replace("}", ")")) <>
-              ","
-          )
+          # IO.write(
+          #   state.log_file,
+          #   "\n" <>
+          #     (inspect(etas, pretty: true, limit: :infinity)
+          #      |> String.replace("{", "(")
+          #      |> String.replace("}", ")")) <>
+          #     ","
+          # )
 
           etas
           # |> IO.inspect()

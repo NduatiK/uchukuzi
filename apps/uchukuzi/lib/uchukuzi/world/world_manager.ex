@@ -26,17 +26,16 @@ defmodule Uchukuzi.World.WorldManager do
         _from,
         state
       ) do
-
-      tiles |> Enum.reduce(time_of_day, fn tile, time_of_day ->
-              Uchukuzi.World.ETA.insert(tile, time_of_day, average_cross_time)
-              DateTime.add(time_of_day, round(average_cross_time * 1000), :millisecond)
-      end)
+    tiles
+    |> Enum.reduce(time_of_day, fn tile, time_of_day ->
+      Uchukuzi.World.ETA.insert(tile, time_of_day, average_cross_time)
+      DateTime.add(time_of_day, round(average_cross_time * 1000), :millisecond)
+    end)
 
     {:reply, state, state}
   end
 
   def handle_call({:crossed_tile, tile, _bus_server, cross_time, time_of_day}, _from, state) do
-
     Uchukuzi.World.ETA.insert(tile, time_of_day, cross_time)
 
     {:reply, state, state}

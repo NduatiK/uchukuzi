@@ -11,7 +11,7 @@ defmodule Uchukuzi.Tracking.BusServer do
 
   defmodule State do
     alias __MODULE__
-    defstruct [:bus, :school, :report]
+    defstruct [:bus, :school, report: nil]
 
     def update_state(%State{} = state, %Report{} = report) do
       # with prev_report when not is_nil(prev_report) <- state.report,
