@@ -1,7 +1,7 @@
 defmodule UchukuziInterfaceWeb.EmailView do
   use UchukuziInterfaceWeb, :view
 
-  if Mix.env() == :dev do
+  if Mix.env() == :prod do
     @website "https://uchukuzi.herokuapp.com"
     @assistant_website "https://uchukuzi.herokuapp.com"
   else
