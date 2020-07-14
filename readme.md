@@ -14,3 +14,10 @@ sleep 10
 mix ecto.create
 mix ecto.migrate
 iex -S mix phx.server
+
+
+
+Reset giga;ixir
+
+Ecto.Migrator.run(Uchukuzi.Repo, Application.app_dir(:uchukuzi, "priv/repo/migrations"), :down, [all: true])
+Ecto.Migrator.run(Uchukuzi.Repo, Application.app_dir(:uchukuzi, "priv/repo/migrations"), :up, [all: true])
